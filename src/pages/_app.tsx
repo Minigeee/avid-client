@@ -1,8 +1,10 @@
 import { AppProps } from 'next/app';
 
 import { MantineProvider } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 
 import SessionProvider from '@/lib/contexts/session';
+import { modals } from '@/lib/components/modals';
 
 
 export default function App(props: AppProps) {
@@ -29,7 +31,7 @@ export default function App(props: AppProps) {
               '#131519'
             ],
           },
-          primaryColor: 'pink',
+          primaryColor: 'grape',
           primaryShade: 5,
           defaultGradient: { from: 'violet', to: 'pink' },
 
@@ -81,7 +83,9 @@ export default function App(props: AppProps) {
           }
         }}
       >
-        <Component {...pageProps} />
+        <ModalsProvider modals={modals}>
+          <Component {...pageProps} />
+        </ModalsProvider>
       </MantineProvider >
     </SessionProvider>
   );

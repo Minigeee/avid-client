@@ -26,7 +26,7 @@ const config = {
 		max_access_token_age: 1 * 24 * 60 * 60,
 
 		/** JWT signing algorithm */
-		jwt_algorithm: 'HS256' as Algorithm,
+		jwt_algorithm: 'RS256' as Algorithm,
 	},
 
 	/** Database config */
@@ -37,6 +37,8 @@ const config = {
 		namespace: dev_mode ? 'test' : 'main',
 		/** Default databse */
 		database: dev_mode ? 'test' : 'main',
+		/** Default token */
+		token: 'main',
 	},
 };
 export default config;

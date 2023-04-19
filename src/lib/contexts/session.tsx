@@ -4,6 +4,7 @@ import axios, { AxiosError } from 'axios';
 import { decode } from 'jsonwebtoken';
 
 import config from '@/config';
+import { queryDefault } from '@/lib/db/query';
 
 
 /** Holds session state */
@@ -76,7 +77,19 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 				profile_id: payload.profile_id,
 			});
 
+			// Update query token (hack bc i dont wanna pass token to every query)
+			queryDefault.token = token;
+
 			return true;
+		},
+
+		/**
+		 * Sets the currently active profile (does not make any database changes).
+		 * 
+		 * @param profile_id The profile id that should be made the current
+		 */
+		setProfile: (profile_id: string) => {
+			setSession({ ...session, profile_id });
 		},
 	};
 }

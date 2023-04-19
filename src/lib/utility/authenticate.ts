@@ -10,6 +10,8 @@ import { uid } from 'uid';
 import config from '@/config';
 import { users } from '@/lib/db';
 
+import { getJwtPrivate } from './keys';
+
 
 /** Available authentication providers */
 export type AuthProviders = 'google';
@@ -27,10 +29,11 @@ export type JwtPayload = {
 
 ////////////////////////////////////////////////////////////
 function _setIdCookie(user_id: string, key: string, res: NextApiResponse) {
-	assert(process.env.JWT_SECRET);
+	const privkey = getJwtPrivate();
+	assert(privkey);
 
 	// Create id token
-	const jwt = sign({ id: user_id, key }, process.env.JWT_SECRET, {
+	const jwt = sign({ id: user_id, key }, privkey, {
 		algorithm: config.auth.jwt_algorithm,
 		expiresIn: config.auth.max_id_token_age,
 	});
@@ -123,13 +126,14 @@ export async function signin(user: JwtPayload, res: NextApiResponse, redirect?: 
  */
 export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 	try {
-		assert(process.env.JWT_SECRET);
+		const privkey = getJwtPrivate();
+		assert(privkey);
 
 		const token = req.cookies[config.auth.cookie_name];
 		assert(token);
 
 		// Get payload
-		const id_payload = verify(token, process.env.JWT_SECRET);
+		const id_payload = verify(token, privkey);
 		assert(typeof id_payload === 'object');
 
 		// Get user
@@ -142,9 +146,12 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 
 		// Create access token
 		const access_token = sign({
+			NS: config.db.namespace,
+			DB: config.db.database,
+			TK: config.db.token,
 			user_id: user.id,
 			profile_id: user.current_profile,
-		}, process.env.JWT_SECRET, {
+		}, privkey, {
 			algorithm: config.auth.jwt_algorithm,
 			expiresIn: config.auth.max_access_token_age,
 		});
@@ -155,6 +162,7 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		return access_token;
 
 	} catch (err) {
+		console.log(err)
 		// By default, make user relog if error occurs
 		res.status(401).end();
 	}

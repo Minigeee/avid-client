@@ -4,13 +4,20 @@ import config from '@/config';
 import assert from 'assert';
 
 
+/** Use to hold query default token */
+export const queryDefault = {
+	token: '',
+};
+
+
 /**
  * Make a query to SurrealDB
  * 
  * @param sql The query string
+ * @param complete Determines if all statement results should be returned
  * @returns A promise for the query results
  */
-export async function query<T>(sql: string): Promise<T> {
+export async function query<T, Ret = T>(sql: string, complete: boolean = false): Promise<Ret> {
 	const is_server = typeof window === 'undefined';
 	if (is_server) {
 		assert(process.env.SURREAL_USERNAME);
@@ -26,7 +33,7 @@ export async function query<T>(sql: string): Promise<T> {
 
 		headers: {
 			// Use bearer token if on client
-			Authorization: !is_server ? `Bearer ${''}` : undefined,
+			Authorization: !is_server ? `Bearer ${queryDefault.token}` : undefined,
 			Accept: 'application/json',
 			NS: config.db.namespace,
 			DB: config.db.database,
@@ -35,8 +42,27 @@ export async function query<T>(sql: string): Promise<T> {
 
 	// TODO : Error handling
 
-	return result.data.at(-1).result;
+	return complete ? result.data.map((x: any) => x.result) : result.data.at(-1).result;
 }
+
+
+////////////////////////////////////////////////////////////
+type _NestedPaths<T> = T extends string | number | boolean | Date | RegExp | Buffer | Uint8Array | ((...args: any[]) => any) | {
+	_bsontype: string;
+} ? never :
+	T extends ReadonlyArray<infer A> ? ([] | _NestedPaths<A>) :
+	T extends Map<string, any> ? [string] :
+	T extends object ? {
+		[K in keyof Required<T>]:
+		T[K] extends T ? [K] : T extends T[K] ? [K] :
+		[K, ...([] | _NestedPaths<T[K]>)];
+	}[keyof T] : never;
+
+type Join<T extends unknown[], D extends string> =
+	T extends [] ? '' : T extends [string | number] ? `${T[0]}` : T extends [string | number, ...infer R] ? `${T[0]}${D}${Join<R, D>}` : string;
+
+/** All selectable fields up to a certain recursion level */
+export type Selectables<T> = Join<_NestedPaths<T>, '.'>;
 
 
 /** Operators */
@@ -48,34 +74,52 @@ export type SqlOp = '&&' | '||' | '??' | '?:' | '=' | '!=' | '==' | '?=' | '*=' 
 /** Return modes */
 export type SqlReturn = 'NONE' | 'BEFORE' | 'DIFF';
 
+/** Relate statement options */
+export type SqlRelateOptions<T extends object> = {
+	/** Extra content that should be stored in relate edge */
+	content?: Partial<T>;
+	/** Return mode (by default NONE) */
+	return?: SqlReturn | Selectables<T>[];
+};
+
 /** Select statement options */
 export type SqlSelectOptions = {
-	/** Table to select from */
+	/** Record to select from */
 	from: string;
 	/** Select condition */
 	where?: string;
 };
 
 /** Update statement options */
-export type SqlUpdateOptions = {
+export type SqlUpdateOptions<T extends object> = {
 	/** Update condition */
 	where?: string;
 	/** Return mode */
-	return?: SqlReturn | string[];
+	return?: SqlReturn | Selectables<T>[];
+	/** Data that should be incremented or decremented (or array push or pull) (nested fields can't be used in `content` or `set` if `set` is defined) */
+	set?: { [K in keyof T]?: T[K] | ['=' | '+=' | '-=', T[K] | string] };
 	/** Whether update should merge or replace data (merge by default) */
 	merge?: boolean;
 };
 
 type SqlType = number | string;
 
-function _v(x: SqlType) {
-	return typeof x === 'string' ? `"${x}"` : x;
+function _v(x: unknown) {
+	return typeof x === 'string' && x[0] !== '$' ? `"${x}"` : x;
+}
+
+function _json(x: any) {
+	let json = JSON.stringify(x);
+	json.replace(/\\"/g, "\uFFFF");  // U+ FFFF
+	json = json.replace(/"([^"]+)":/g, '$1:');
+	json = json.replace(/:"(\$[^"]+)"/g, ':$1').replace(/\uFFFF/g, '\\\"');
+	return json;
 }
 
 /** SQL commands in function form for ease of use and future proofing */
 export const sql = {
 	/** Join a list of expressions with "and" */
-	and: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('&&'),
+	and: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('&&') + ' ',
 
 	/** Match a set of expressions and join them with "and" or "or", where each object key and value are being compared for equality.
 	 * Other boolean operators can be used if object values are arrays, where [0] is the operator and [1] is the second operand */
@@ -86,25 +130,43 @@ export const sql = {
 	multi: (statements: string[]) => statements.map(x => x.trim()).join('; ') + ' ',
 	
 	/** Join a list of expressions with "or" */
-	or: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('||'),
+	or: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('||') + ' ',
+
+	/** Wrap statement in parantheses */
+	wrap: (expr: string, append: string = '') => `(${expr.trim()})${append} `,
 
 
 	/** Create statement */
-	create: (table: string, content: object, ret?: SqlReturn | string[]) => {
+	create: <T extends object>(record: string, content: Partial<T>, ret?: SqlReturn | Selectables<T>[]) => {
 		// Content string
-		let json = JSON.stringify(content);
-		json.replace(/\\"/g, "\uFFFF");  // U+ FFFF
-		json = json.replace(/"([^"]+)":/g, '$1:').replace(/\uFFFF/g, '\\\"');
+		let json = _json(content);
 
-		let q = `CREATE ${table} CONTENT ${json} `;
+		let q = `CREATE ${record} CONTENT ${json} `;
 		if (ret)
 			q += `RETURN ${typeof ret === 'string' ? ret : ret.join(',')} `;
 
 		return q;
 	},
 
+	/** Relate statement */
+	relate: <T extends object>(from: string, edge: string, to: string, options?: SqlRelateOptions<T>) => {
+		let q = `RELATE ${from}->${edge}->${to} `;
+		
+		// Content string
+		if (options?.content) {
+			let json = _json(options.content);
+			q += `CONTENT ${json} `;
+		}
+
+		// Return
+		const ret = options?.return || 'NONE';
+		q += `RETURN ${typeof ret === 'string' ? ret : ret.join(',')} `;
+
+		return q;
+	},
+
 	/** Select statement */
-	select: (fields: '*' | string[], options: SqlSelectOptions) => {
+	select: <T extends object>(fields: '*' | Selectables<T>[], options: SqlSelectOptions) => {
 		let q = `SELECT ${typeof fields === 'string' ? '*' : fields.join(',')} FROM ${options.from} `;
 		if (options.where)
 			q += `WHERE ${options.where} `;
@@ -113,13 +175,27 @@ export const sql = {
 	},
 
 	/** Update statement */
-	update: (table: string, content: object, options?: SqlUpdateOptions) => {
-		// Content string
-		let json = JSON.stringify(content);
-		json.replace(/\\"/g, "\uFFFF");  // U+ FFFF
-		json = json.replace(/"([^"]+)":/g, '$1:').replace(/\uFFFF/g, '\\\"');
+	update: <T extends object>(record: string, content: Partial<T>, options?: SqlUpdateOptions<T>) => {
+		let q = `UPDATE ${record} `;
 
-		let q = `UPDATE ${table} ${options?.merge === false ? 'CONTENT' : 'MERGE'} ${json} `;
+		// Check if SET should be used
+		if (options?.set) {
+			// All must be set using merge
+			const updates = { ...content, ...options.set };
+			const set = Object.entries(updates).map(([k, v]) =>
+				Array.isArray(v) && (v[0] === '=' || v[0] === '+=' || v[0] === '-=') ?
+					`${k}${v[0]}${_v(v[1])}` :
+					`${k}=${_v(v)}`
+			).join(',');
+
+			q += `SET ${set} `;
+		}
+		else {
+			// CONTENT or MERGE should be used
+			let json = _json(content);
+			q += `${options?.merge === false ? 'CONTENT' : 'MERGE'} ${json} `;
+		}
+		
 		if (options?.where)
 			q += `WHERE ${options.where} `;
 		if (options?.return)
@@ -143,4 +219,8 @@ export const sql = {
 
 		return q;
 	},
+
+	/** Transaction statement (automatically wraps multiple statements) */
+	transaction: (statements: string[]) =>
+		`BEGIN TRANSACTION; ${statements.map(x => x.trim()).join('; ')}; COMMIT TRANSACTION `,
 };

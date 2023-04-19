@@ -66,7 +66,7 @@ function getByProvider(provider_id: string, provider: AuthProviders, email?: str
  */
 async function update(user_id: string, data: Partial<User>) {
 	const users = await query<User[]>(
-		sql.update(user_id, data)
+		sql.update<User>(user_id, data)
 	);
 
 	return users.length > 0 ? users[0] : null;
