@@ -36,7 +36,7 @@ export default function App() {
 
 
   // Show create profile panel if no current profile
-  if (!session.profile_id) {
+  if (session._exists && !session.profile_id) {
     return (
       <Center style={{ height: '60vh' }}>
         <CreateProfile />

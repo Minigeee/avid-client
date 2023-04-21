@@ -12,7 +12,7 @@ import {
 import { useForm } from '@mantine/form';
 
 import { useSession } from '@/lib/hooks';
-import { profiles } from '@/lib/db';
+import { useProfilesDb } from '@/lib/db';
 
 import { verify } from 'jsonwebtoken';
 
@@ -25,6 +25,8 @@ interface Props {
 ////////////////////////////////////////////////////////////
 export default function CreateProfile(props: Props) {
   const session = useSession();
+  const profiles = useProfilesDb();
+
   const [loading, setLoading] = useState(false);
 
 

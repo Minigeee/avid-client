@@ -1,3 +1,5 @@
+import axios from 'axios';
+import axiosBetterStacktrace from 'axios-better-stacktrace';
 import { Algorithm } from 'jsonwebtoken';
 
 const dev_mode = process.env.NODE_ENV === 'development';
@@ -40,5 +42,29 @@ const config = {
 		/** Default token */
 		token: 'main',
 	},
+	
+	/** Application config */
+	app: {
+		/** Message used to notify user to contact/report issue */
+		support_message: 'Please contact us if this problem persists.',
+
+		/** Project board config */
+		board: {
+			/** The default collection name */
+			default_collection: 'Main',
+		},
+		/** Member related configs */
+		member: {
+			/** The maximum number of members returned in any given query */
+			query_limit: 200,
+			/** The number of milliseconds within which the cached data for a member query should be used rather than fetching from server */
+			query_interval: 60 * 60 * 1000,
+			/** The number of members under which a new query should be requested when searching members */
+			new_query_threshold: 5,
+		},
+	},
 };
 export default config;
+
+// better axios stack trace
+axiosBetterStacktrace(axios);

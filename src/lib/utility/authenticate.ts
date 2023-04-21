@@ -111,7 +111,8 @@ export async function signin(user: JwtPayload, res: NextApiResponse, redirect?: 
 	const full_user = await users.getByProvider(user.provider_id, user.provider, user.email);
 
 	// Create id token
-	_setIdCookie(full_user.id, full_user._id_key, res);
+	if (full_user)
+		_setIdCookie(full_user.id, full_user._id_key, res);
 
 	// Redirect
 	res.redirect(redirect || `${config.domains.site}/app`);
@@ -151,6 +152,7 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 			TK: config.db.token,
 			user_id: user.id,
 			profile_id: user.current_profile,
+			email: user.email,
 		}, privkey, {
 			algorithm: config.auth.jwt_algorithm,
 			expiresIn: config.auth.max_access_token_age,
@@ -162,7 +164,6 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		return access_token;
 
 	} catch (err) {
-		console.log(err)
 		// By default, make user relog if error occurs
 		res.status(401).end();
 	}

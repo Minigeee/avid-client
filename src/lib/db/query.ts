@@ -1,14 +1,18 @@
 import axios from 'axios';
-
-import config from '@/config';
 import assert from 'assert';
 
+import config from '@/config';
+import { axiosHandler } from '../utility/error-handler';
+import { SessionContextState } from '../contexts';
 
-/** Use to hold query default token */
-export const queryDefault = {
-	token: '',
+
+/** Db query options */
+type QueryOptions = {
+	/** Session object used for credentials */
+	session?: SessionContextState;
+	/** If full results should be returned. By default only the results of the last statement are returned. */
+	complete?: boolean;
 };
-
 
 /**
  * Make a query to SurrealDB
@@ -17,32 +21,65 @@ export const queryDefault = {
  * @param complete Determines if all statement results should be returned
  * @returns A promise for the query results
  */
-export async function query<T, Ret = T>(sql: string, complete: boolean = false): Promise<Ret> {
+export async function query<T, Ret = T>(sql: string, options?: QueryOptions): Promise<Ret | null> {
 	const is_server = typeof window === 'undefined';
 	if (is_server) {
 		assert(process.env.SURREAL_USERNAME);
 		assert(process.env.SURREAL_PASSWORD);
 	}
+	else {
+		assert(options?.session?.token);
+	}
 
-	const result = await axios.post(config.db.url, sql.trim(), {
-		// Use username password auth if on server
-		auth: is_server && process.env.SURREAL_USERNAME && process.env.SURREAL_PASSWORD ? {
-			username: process.env.SURREAL_USERNAME,
-			password: process.env.SURREAL_PASSWORD,
-		} : undefined,
+	// Access token (for client request)
+	let token = options?.session?.token;
 
-		headers: {
-			// Use bearer token if on client
-			Authorization: !is_server ? `Bearer ${queryDefault.token}` : undefined,
-			Accept: 'application/json',
-			NS: config.db.namespace,
-			DB: config.db.database,
-		},
-	});
+	// Retry once if fail first time
+	for (let i = 0; i < 2; ++i) {
+		try {
+			// DB query
+			const result = await axios.post(config.db.url, sql.trim(), {
+				// Use username password auth if on server
+				auth: is_server && process.env.SURREAL_USERNAME && process.env.SURREAL_PASSWORD ? {
+					username: process.env.SURREAL_USERNAME,
+					password: process.env.SURREAL_PASSWORD,
+				} : undefined,
+		
+				headers: {
+					// Use bearer token if on client
+					Authorization: !is_server ? `Bearer ${token}` : undefined,
+					Accept: 'application/json',
+					NS: config.db.namespace,
+					DB: config.db.database,
+				},
+			});
+		
+			return options?.complete ? result.data.map((x: any) => x.result) : result.data.at(-1).result;
+		}
+		catch (error: any) {
+			let retry = false;
 
-	// TODO : Error handling
+			// Not authenticated
+			if (i === 0 && error.response?.status === 403) {
+				// Auto refresh if 403 error
+				const newToken = await options?.session?.refresh();
 
-	return complete ? result.data.map((x: any) => x.result) : result.data.at(-1).result;
+				// Stop retrying if invalid token
+				retry = newToken !== undefined && newToken !== token;
+
+				// Set token for retry
+				token = newToken;
+			}
+
+			if (!retry) {
+				// Default axios handler
+				axiosHandler(error);
+				return null;
+			}
+		}
+	}
+
+	return null;
 }
 
 

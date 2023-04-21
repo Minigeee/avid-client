@@ -2,9 +2,10 @@ import { createContext, PropsWithChildren, useState } from 'react';
 
 import axios, { AxiosError } from 'axios';
 import { decode } from 'jsonwebtoken';
+import { setUser } from '@sentry/nextjs';
 
 import config from '@/config';
-import { queryDefault } from '@/lib/db/query';
+import { axiosHandler } from '@/lib/utility/error-handler';
 
 
 /** Holds session state */
@@ -40,11 +41,11 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 		 * Refresh access token.
 		 * 
 		 * @param force Whether access token refresh should be forced
-		 * @returns True if refresh was successful, false if the user is not authenticated
+		 * @returns The access token if refresh was successful, undefined if the user is not authenticated
 		 */
 		refresh: async (force: boolean = false) => {
 			// Don't need to refresh if still have access token
-			if (!force && _hasAccessToken(session)) return true;
+			if (!force && _hasAccessToken(session)) return session.token;
 
 			// Get access token
 			let token: string;
@@ -57,15 +58,11 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 				token = result.data.token;
 
 			} catch (error: any) {
-				if (!(error instanceof AxiosError))
-					throw error;
+				// Throw error if authenticated, but still errored
+				if (error.response?.status !== 401)
+					axiosHandler(error);
 
-				// Not authenticated
-				if (error.response?.status === 401)
-					return false;
-
-				// TODO : Error handling
-				throw error;
+				return;
 			}
 
 			// Set session data
@@ -77,10 +74,13 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 				profile_id: payload.profile_id,
 			});
 
-			// Update query token (hack bc i dont wanna pass token to every query)
-			queryDefault.token = token;
+			// Set user for error logging
+			setUser({
+				id: payload.profile_id || payload.user_id,
+				email: payload.email,
+			});
 
-			return true;
+			return token;
 		},
 
 		/**
@@ -96,7 +96,7 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 
 
 /** Session context state */
-type SessionContextState = SessionState & ReturnType<typeof mutatorFactory>;
+export type SessionContextState = SessionState & ReturnType<typeof mutatorFactory>;
 
 /** Session context */
 // @ts-ignore

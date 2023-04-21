@@ -2,6 +2,7 @@ import { AppProps } from 'next/app';
 
 import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
+import { Notifications } from '@mantine/notifications';
 
 import SessionProvider from '@/lib/contexts/session';
 import { modals } from '@/lib/components/modals';
@@ -83,6 +84,7 @@ export default function App(props: AppProps) {
           }
         }}
       >
+        <Notifications position='top-right' />
         <ModalsProvider modals={modals}>
           <Component {...pageProps} />
         </ModalsProvider>
