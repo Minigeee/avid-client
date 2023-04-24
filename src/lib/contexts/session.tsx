@@ -18,6 +18,8 @@ export type SessionState = {
 	user_id: string;
 	/** Currently active profile id */
 	profile_id: string;
+	/** User email */
+	email?: string;
 };
 
 
@@ -30,13 +32,6 @@ function _hasAccessToken(session: SessionState) {
 /** Creates mutator functions for session (not all funcs are mutators) */
 function mutatorFactory(session: SessionState, setSession: (state: SessionState) => unknown) {
 	return {
-		/**
-		 * Checks if user has a valid access token, which is needed to access database.
-		 * 
-		 * @returns True if the user has a valid access token
-		 */
-		hasAccessToken: () => _hasAccessToken(session),
-
 		/**
 		 * Refresh access token.
 		 * 
@@ -72,6 +67,7 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 				token,
 				user_id: payload.user_id,
 				profile_id: payload.profile_id,
+				email: payload.email,
 			});
 
 			// Set user for error logging
@@ -96,7 +92,7 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 
 
 /** Session context state */
-export type SessionContextState = SessionState & ReturnType<typeof mutatorFactory>;
+export type SessionContextState = SessionState & { _mutators: ReturnType<typeof mutatorFactory> };
 
 /** Session context */
 // @ts-ignore
@@ -112,7 +108,7 @@ export default function SessionProvider({ children }: PropsWithChildren) {
 	});
 
 	return (
-		<SessionContext.Provider value={{ ...session, ...mutatorFactory(session, setSession) }}>
+		<SessionContext.Provider value={{ ...session, _mutators: mutatorFactory(session, setSession) }}>
 			{children}
 		</SessionContext.Provider>
 	);

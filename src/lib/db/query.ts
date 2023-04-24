@@ -7,7 +7,7 @@ import { SessionContextState } from '../contexts';
 
 
 /** Db query options */
-type QueryOptions = {
+export type QueryOptions = {
 	/** Session object used for credentials */
 	session?: SessionContextState;
 	/** If full results should be returned. By default only the results of the last statement are returned. */
@@ -18,10 +18,10 @@ type QueryOptions = {
  * Make a query to SurrealDB
  * 
  * @param sql The query string
- * @param complete Determines if all statement results should be returned
+ * @param options Query options
  * @returns A promise for the query results
  */
-export async function query<T, Ret = T>(sql: string, options?: QueryOptions): Promise<Ret | null> {
+export async function query<T>(sql: string, options?: QueryOptions): Promise<T | null> {
 	const is_server = typeof window === 'undefined';
 	if (is_server) {
 		assert(process.env.SURREAL_USERNAME);
@@ -62,7 +62,7 @@ export async function query<T, Ret = T>(sql: string, options?: QueryOptions): Pr
 			// Not authenticated
 			if (i === 0 && error.response?.status === 403) {
 				// Auto refresh if 403 error
-				const newToken = await options?.session?.refresh();
+				const newToken = await options?.session?._mutators.refresh();
 
 				// Stop retrying if invalid token
 				retry = newToken !== undefined && newToken !== token;
@@ -80,6 +80,28 @@ export async function query<T, Ret = T>(sql: string, options?: QueryOptions): Pr
 	}
 
 	return null;
+}
+
+
+/** Db query fetcher options */
+export type FetcherOptions<T, Ret> = QueryOptions & {
+	/** Modify data before returning */
+	then?: (data: T | null) => Ret | null,
+};
+
+/**
+ * Create a fetcher for swr queries
+ * 
+ * @param builder A function that builds query string
+ * @param options Query options
+ * @returns A fetcher function
+ */
+export function fetcher<T, Ret = T>(builder: (key: string) => string, options?: FetcherOptions<T, Ret>) {
+	return (key: string) => {
+		// Execute query
+		const promise = query<T>(builder(key), options);
+		return options?.then ? promise.then(options.then) : (promise as Promise<Ret | null>);
+	};
 }
 
 
@@ -115,6 +137,14 @@ export type SqlReturn = 'NONE' | 'BEFORE' | 'DIFF';
 export type SqlRelateOptions<T extends object> = {
 	/** Extra content that should be stored in relate edge */
 	content?: Partial<T>;
+	/** Return mode (by default NONE) */
+	return?: SqlReturn | Selectables<T>[];
+};
+
+/** Update statement options */
+export type SqlDeleteOptions<T extends object> = {
+	/** Update condition */
+	where?: string;
 	/** Return mode (by default NONE) */
 	return?: SqlReturn | Selectables<T>[];
 };
@@ -170,7 +200,8 @@ export const sql = {
 	or: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('||') + ' ',
 
 	/** Wrap statement in parantheses */
-	wrap: (expr: string, append: string = '') => `(${expr.trim()})${append} `,
+	wrap: (expr: string, options?: { alias?: string, append?: string }) =>
+		`(${expr.trim()})${options?.alias ? ` AS ${options.alias}` : options?.append} `,
 
 
 	/** Create statement */
@@ -181,6 +212,20 @@ export const sql = {
 		let q = `CREATE ${record} CONTENT ${json} `;
 		if (ret)
 			q += `RETURN ${typeof ret === 'string' ? ret : ret.join(',')} `;
+
+		return q;
+	},
+
+	/** Delete statement */
+	delete: <T extends object>(record: string, options?: SqlDeleteOptions<T>) => {
+		let q = `DELETE ${record} `;
+
+		if (options?.where)
+			q += `WHERE ${options.where} `;
+			
+		// Return
+		const ret = options?.return || 'NONE';
+		q += `RETURN ${typeof ret === 'string' ? ret : ret.join(',')} `;
 
 		return q;
 	},
@@ -203,7 +248,7 @@ export const sql = {
 	},
 
 	/** Select statement */
-	select: <T extends object>(fields: '*' | Selectables<T>[], options: SqlSelectOptions) => {
+	select: <T extends object>(fields: '*' | (Selectables<T> | (string & {}))[], options: SqlSelectOptions) => {
 		let q = `SELECT ${typeof fields === 'string' ? '*' : fields.join(',')} FROM ${options.from} `;
 		if (options.where)
 			q += `WHERE ${options.where} `;

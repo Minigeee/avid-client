@@ -2,13 +2,14 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
 import {
-  Box,
   Center,
+  Loader,
 } from '@mantine/core';
 
 import CreateProfile from '@/lib/components/screens/CreateProfile';
 
 import { useSession } from '@/lib';
+import { useProfile } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -16,6 +17,7 @@ export default function App() {
   const router = useRouter();
 
   const session = useSession();
+  const profile = useProfile(session.profile_id);
 
   
   // Authentication logic
@@ -23,17 +25,23 @@ export default function App() {
     // Should be only client side
     if (typeof window === 'undefined') return;
 
-    // Check if session needs to be refreshed
-    if (!session.hasAccessToken())
-      // After refreshing, should have a valid access token
-      session.refresh().then((success) => {
-        // Redirect to log in if refresh failed
-        if (!success)
-          router.replace('/login');
-      });
-
+    // Refresh session (refresh won't occur if session is already valid)
+    session._mutators.refresh().then((success) => {
+      // Redirect to log in if refresh failed
+      if (!success)
+        router.replace('/login');
+    });
   }, []);
 
+
+  // Loading screen
+  if (!session._exists || (session.profile_id && !profile._exists)) {
+    return (
+      <Center style={{ height: '80vh' }}>
+        <Loader variant='bars' />
+      </Center>
+    );
+  }
 
   // Show create profile panel if no current profile
   if (session._exists && !session.profile_id) {

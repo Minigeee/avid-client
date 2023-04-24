@@ -53,7 +53,7 @@ export default function CreateProfile(props: Props) {
     // Update session with new profile
     if (profile_id)
       // Force refresh because new user object will have current profile
-      session.refresh(true);
+      session._mutators.refresh(true);
 
     setLoading(false);
   }

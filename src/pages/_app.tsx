@@ -1,11 +1,15 @@
 import { AppProps } from 'next/app';
+import { SWRConfig } from 'swr';
 
 import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 
-import SessionProvider from '@/lib/contexts/session';
 import { modals } from '@/lib/components/modals';
+
+import config from '@/config';
+import SessionProvider from '@/lib/contexts/session';
+import { swrHandler } from '@/lib/utility/error-handler';
 
 
 export default function App(props: AppProps) {
@@ -85,10 +89,16 @@ export default function App(props: AppProps) {
         }}
       >
         <Notifications position='top-right' />
-        <ModalsProvider modals={modals}>
-          <Component {...pageProps} />
-        </ModalsProvider>
-      </MantineProvider >
+        <SWRConfig value={{
+          onError: swrHandler,
+          dedupingInterval: config.swr.dedupe_interval * 1000,
+          focusThrottleInterval: config.swr.focus_throttle_interval * 1000,
+        }}>
+          <ModalsProvider modals={modals}>
+            <Component {...pageProps} />
+          </ModalsProvider>
+        </SWRConfig>
+      </MantineProvider>
     </SessionProvider>
   );
 }
