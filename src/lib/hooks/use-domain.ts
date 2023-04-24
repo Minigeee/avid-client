@@ -3,7 +3,7 @@ import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
 import config from '@/config';
-import { SessionContextState } from '@/lib/contexts';
+import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
 import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
@@ -13,7 +13,7 @@ import { useDbQuery } from './use-db-query';
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionContextState) {
+function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) {
 	assert(session);
 
 	return {
@@ -73,7 +73,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionContext
 				if (!domain) return;
 
 				// Delete channel
-				await query(sql.delete(channel_id));
+				await query(sql.delete(channel_id), { session });
 
 				// Filter out channels that aren't removed
 				const channels = domain.channels.filter(x => x.id !== channel_id);

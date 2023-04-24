@@ -1,12 +1,12 @@
 import { query, sql } from '@/lib/db/query';
 
-import { SessionContextState } from '@/lib/contexts';
+import { SessionState } from '@/lib/contexts';
 import { useSession } from '@/lib/hooks';
 import { NoId, Profile, User } from '@/lib/types';
 
 
 /** Creates db functions */
-function factory(session?: SessionContextState) {
+function factory(session?: SessionState) {
 	return {
 		/**
 		 * Create a new profile.

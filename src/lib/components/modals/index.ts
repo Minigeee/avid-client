@@ -1,8 +1,0 @@
-import { openContextModal } from '@mantine/modals';
-
-
-
-////////////////////////////////////////////////////////////
-export const modals = {
-};
-

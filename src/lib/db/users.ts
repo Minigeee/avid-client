@@ -1,6 +1,6 @@
 import { query, sql } from '@/lib/db/query';
 
-import { SessionContextState } from '@/lib/contexts';
+import { SessionState } from '@/lib/contexts';
 import { useSession } from '@/lib/hooks';
 import { AuthProviders } from '@/lib/utility/authenticate';
 import { NoId, User } from '@/lib/types';
@@ -9,7 +9,7 @@ import { uid } from 'uid';
 
 
 /** Creates db functions */
-function factory(session?: SessionContextState) {
+function factory(session?: SessionState) {
 	return {
 		/**
 		 * Get a user object from user id
@@ -58,7 +58,7 @@ function factory(session?: SessionContextState) {
 						_id_key: uid(),
 					} as NoId<User>),
 				}),
-			]));
+			]), { session });
 		},
 
 		/**
@@ -70,7 +70,8 @@ function factory(session?: SessionContextState) {
 		 */
 		update: async (user_id: string, data: Partial<User>) => {
 			const users = await query<User[]>(
-				sql.update<User>(user_id, data)
+				sql.update<User>(user_id, data),
+				{ session }
 			);
 		
 			return users && users.length > 0 ? users[0] : null;

@@ -3,13 +3,13 @@ import assert from 'assert';
 
 import config from '@/config';
 import { axiosHandler } from '../utility/error-handler';
-import { SessionContextState } from '../contexts';
+import { SessionState } from '../contexts';
 
 
 /** Db query options */
 export type QueryOptions = {
 	/** Session object used for credentials */
-	session?: SessionContextState;
+	session?: SessionState;
 	/** If full results should be returned. By default only the results of the last statement are returned. */
 	complete?: boolean;
 };

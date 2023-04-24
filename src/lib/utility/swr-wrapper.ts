@@ -1,5 +1,5 @@
 import { KeyedMutator, SWRResponse } from 'swr';
-import { SessionContextState } from '@/lib/contexts';
+import { SessionState } from '@/lib/contexts';
 
 
 export type SwrRefresh = () => Promise<void>;
@@ -26,7 +26,7 @@ export type SwrWrapper<T, Mutators extends SwrMutators = {}, Seperate extends bo
 	(Loaded extends true ? never : ((Seperate extends true ? { data?: T } : Partial<T>) & SwrObject<T> & { _exists: false }));
 
 /** The type signature of a mutator factory function */
-export type SwrMutatorFactory<T, Mutators extends SwrMutators> = (mutate: KeyedMutator<T>, session?: SessionContextState) => Mutators;
+export type SwrMutatorFactory<T, Mutators extends SwrMutators> = (mutate: KeyedMutator<T>, session?: SessionState) => Mutators;
 
 
 /**
@@ -36,7 +36,7 @@ export type SwrMutatorFactory<T, Mutators extends SwrMutators> = (mutate: KeyedM
  * @returns A wrapped object containing all data returned by a swr hoook
  */
 export function wrapSwrData<T, Mutators extends SwrMutators = {}, Seperate extends boolean = false>
-	(response: SWRResponse<T | null>, mutatorFactory?: SwrMutatorFactory<T, Mutators>, seperate?: Seperate, session?: SessionContextState):
+	(response: SWRResponse<T | null>, mutatorFactory?: SwrMutatorFactory<T, Mutators>, seperate?: Seperate, session?: SessionState):
 	SwrWrapper<T, Mutators, Seperate> {
 
 	const swr = {

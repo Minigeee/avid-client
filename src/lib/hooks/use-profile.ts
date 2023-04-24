@@ -1,11 +1,6 @@
 
-import { KeyedMutator } from 'swr';
-import assert from 'assert';
-
-import config from '@/config';
-import { SessionContextState } from '@/lib/contexts';
-import { query, sql } from '@/lib/db';
-import { Domain, ExpandedProfile, Profile } from '@/lib/types';
+import { sql } from '@/lib/db';
+import { Domain, ExpandedProfile } from '@/lib/types';
 
 import { useDbQuery } from './use-db-query';
 

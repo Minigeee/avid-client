@@ -6,10 +6,12 @@ import {
   Loader,
 } from '@mantine/core';
 
-import CreateProfile from '@/lib/components/screens/CreateProfile';
+import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
+import CreateProfile from '@/lib/ui/screens/CreateProfile';
 
-import { useSession } from '@/lib';
-import { useProfile } from '@/lib/hooks';
+import AppProvider from '@/lib/contexts/app';
+import { useProfile, useSession } from '@/lib/hooks';
+import Main from '@/lib/ui/screens/Main';
 
 
 ////////////////////////////////////////////////////////////
@@ -53,6 +55,10 @@ export default function App() {
   }
 
   return (
-    <div>{session.profile_id}</div>
+    <ErrorBoundary>
+      <AppProvider>
+        <Main />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

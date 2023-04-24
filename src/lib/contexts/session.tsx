@@ -9,7 +9,7 @@ import { axiosHandler } from '@/lib/utility/error-handler';
 
 
 /** Holds session state */
-export type SessionState = {
+type _SessionState = {
 	/** Session exists or not */
 	_exists: boolean;
 	/** Jwt access token */
@@ -23,14 +23,14 @@ export type SessionState = {
 };
 
 
-function _hasAccessToken(session: SessionState) {
+function _hasAccessToken(session: _SessionState) {
 	if (!session?.token) return false;
 	const payload: any = decode(session.token);
 	return payload?.exp !== undefined && Date.now() < payload.exp * 1000;
 }
 
 /** Creates mutator functions for session (not all funcs are mutators) */
-function mutatorFactory(session: SessionState, setSession: (state: SessionState) => unknown) {
+function mutatorFactory(session: _SessionState, setSession: (state: _SessionState) => unknown) {
 	return {
 		/**
 		 * Refresh access token.
@@ -92,15 +92,15 @@ function mutatorFactory(session: SessionState, setSession: (state: SessionState)
 
 
 /** Session context state */
-export type SessionContextState = SessionState & { _mutators: ReturnType<typeof mutatorFactory> };
+export type SessionState = _SessionState & { _mutators: ReturnType<typeof mutatorFactory> };
 
 /** Session context */
 // @ts-ignore
-export const SessionContext = createContext<SessionContextState>();
+export const SessionContext = createContext<SessionState>();
 
 ////////////////////////////////////////////////////////////
 export default function SessionProvider({ children }: PropsWithChildren) {
-	const [session, setSession] = useState<SessionState>({
+	const [session, setSession] = useState<_SessionState>({
 		_exists: false,
 		token: '',
 		user_id: '',

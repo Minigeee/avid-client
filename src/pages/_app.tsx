@@ -5,7 +5,7 @@ import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 
-import { modals } from '@/lib/components/modals';
+import { modals } from '@/lib/ui/modals';
 
 import config from '@/config';
 import SessionProvider from '@/lib/contexts/session';
@@ -41,6 +41,14 @@ export default function App(props: AppProps) {
           defaultGradient: { from: 'violet', to: 'pink' },
 
           components: {
+            Input: {
+              styles: (theme) => ({
+                wrapper: {
+                  marginTop: 5,
+                },
+              }),
+            },
+
             InputWrapper: {
               styles: (theme) => ({
                 description: {
@@ -49,10 +57,16 @@ export default function App(props: AppProps) {
                 },
               }),
             },
-            Input: {
+
+            MultiSelect: {
               styles: (theme) => ({
-                wrapper: {
-                  marginTop: 5,
+                dropdown: {
+                  boxShadow: '0px 2px 10px #00000022',
+                },
+                item: {
+                  '&[data-hovered]': {
+                    background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
+                  },
                 },
               }),
             },
@@ -67,21 +81,17 @@ export default function App(props: AppProps) {
                     background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
                   },
                   '&[data-selected]': {
-                    background: `linear-gradient(to right, ${theme.colors.blue[4]} 4px, ${theme.colors.dark[4]} 0)`,
+                    background: `linear-gradient(to right, ${theme.colors.grape[5]} 4px, ${theme.colors.dark[4]} 0)`,
                   },
                 },
               }),
             },
 
-            MultiSelect: {
+            Tooltip: {
               styles: (theme) => ({
-                dropdown: {
-                  boxShadow: '0px 2px 10px #00000022',
-                },
-                item: {
-                  '&[data-hovered]': {
-                    background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
-                  },
+                tooltip: {
+                  backgroundColor: theme.colors.dark[9],
+                  color: theme.colors.dark[0],
                 },
               }),
             },
