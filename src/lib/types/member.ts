@@ -1,6 +1,8 @@
 
 /** A type representing a domain member */
 export type Member = {
+	/** Profile id */
+	id: string;
 	/** The member's alias within this domain */
 	alias: string;
 	/** A list of role ids assigned to the member */

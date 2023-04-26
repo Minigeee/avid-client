@@ -1,4 +1,5 @@
-import { Channel } from "./channel";
+import { Channel } from './channel';
+import { Role } from './role';
 
 
 /**
@@ -19,7 +20,9 @@ export type Domain = {
 
 
 /** Domain with expanded fields */
-export type ExpandedDomain = Domain & {
+export type ExpandedDomain = Omit<Domain, 'roles'> & {
 	/** Channels belonging to domain */
 	channels: Channel[];
+	/** A list of roles belonging to the domain */
+	roles: Role[];
 };

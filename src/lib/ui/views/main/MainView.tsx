@@ -9,7 +9,7 @@ import {
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import ChannelsView from '@/lib/ui/views/main/ChannelsView';
 import HeaderView from '@/lib/ui/views/main/HeaderView';
-// TODO : import MessagesView from 'components/app/views/chat/MessagesView';
+import MessagesView from '@/lib/ui/views/chat/MessagesView';
 // TODO : import RoomView from 'components/app/views/rtc/RoomView';
 // TODO : import BoardView from 'components/app/views/projects/BoardView';
 
@@ -72,12 +72,12 @@ export default function MainView() {
               height: '100%',
               backgroundColor: theme.colors.dark[7],
             })}>
-              {/* channel.type === 'text' && (
+              {channel.type === 'text' && (
                 <MessagesView
-                  channel_id={channel._id as string}
+                  channel_id={channel.id}
                   domain={domain}
                 />
-              ) */}
+              )}
               {/* channel.type === 'rtc' && (
                 <RoomView
                   channel={channel}

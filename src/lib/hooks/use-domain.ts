@@ -112,7 +112,7 @@ export function useDomain(domain_id: string) {
 				['id', 'name', 'type', 'data'],
 				{ from: 'channels', where: sql.match({ domain: domain_id }) }
 			), { alias: 'channels' })
-		], { from: domain_id });
+		], { from: domain_id, fetch: ['roles'] });
 	}, {
 		then: (results) => results?.length ? results[0] : null,
 		mutators,

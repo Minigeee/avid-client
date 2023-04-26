@@ -124,6 +124,11 @@ type Join<T extends unknown[], D extends string> =
 export type Selectables<T> = Join<_NestedPaths<T>, '.'>;
 
 
+/** Sql var accessor */
+type SqlVarExpr = { __expr__: string };
+/** Valid sql types */
+type SqlType = number | string | SqlVarExpr;
+
 /** Operators */
 export type SqlOp = '&&' | '||' | '??' | '?:' | '=' | '!=' | '==' | '?=' | '*=' | '~'
 	| '!~' | '*~' | '<' | '<=' | '>' | '>=' | '+' | '-' | '*' | '/'
@@ -133,10 +138,13 @@ export type SqlOp = '&&' | '||' | '??' | '?:' | '=' | '!=' | '==' | '?=' | '*=' 
 /** Return modes */
 export type SqlReturn = 'NONE' | 'BEFORE' | 'DIFF';
 
+/** Content objects */
+export type SqlContent<T> = { [K in keyof T]?: T[K] | SqlVarExpr };
+
 /** Relate statement options */
 export type SqlRelateOptions<T extends object> = {
 	/** Extra content that should be stored in relate edge */
-	content?: Partial<T>;
+	content?: SqlContent<T>;
 	/** Return mode (by default NONE) */
 	return?: SqlReturn | Selectables<T>[];
 };
@@ -150,11 +158,22 @@ export type SqlDeleteOptions<T extends object> = {
 };
 
 /** Select statement options */
-export type SqlSelectOptions = {
+export type SqlSelectOptions<T extends object> = {
 	/** Record to select from */
 	from: string;
 	/** Select condition */
 	where?: string;
+	/** Limit number of returned entries */
+	limit?: number;
+	/** Sort option */
+	sort?: Selectables<T> | {
+		/** The field to sort on */
+		field: Selectables<T>;
+		/** Sort order */
+		order?: 'ASC' | 'DESC';
+	}[];
+	/** Fetch option */
+	fetch?: (Selectables<T> | (string & {}))[];
 };
 
 /** Update statement options */
@@ -169,22 +188,45 @@ export type SqlUpdateOptions<T extends object> = {
 	merge?: boolean;
 };
 
-type SqlType = number | string;
 
-function _v(x: unknown) {
-	return typeof x === 'string' && x[0] !== '$' ? `"${x}"` : x;
+function _v(x: any) {
+	return typeof x === 'string' ? `"${x}"` : x.__expr__ !== undefined ? `$${x.__expr__}` : x;
 }
 
-function _json(x: any) {
-	let json = JSON.stringify(x);
-	json.replace(/\\"/g, "\uFFFF");  // U+ FFFF
-	json = json.replace(/"([^"]+)":/g, '$1:');
-	json = json.replace(/:"(\$[^"]+)"/g, ':$1').replace(/\uFFFF/g, '\\\"');
-	return json;
+function _json(x: any): string {
+    const type = typeof x;
+
+    if (type === 'string')
+        return `"${x.replaceAll('"', '\\"').replaceAll('\\', '\\\\')}"`;
+    else if (Array.isArray(x))
+        return `[${x.map(x => _json(x)).join(',')}]`;
+    else if (type === 'object') {
+        if (x === null)
+            return 'null';
+        else if (x.__expr__ !== undefined)
+            return `$${x.__expr__}`;
+        else if (x instanceof Date)
+            return `"${x.toISOString()}"`;
+        else {
+            const rows: string[] = [];
+            for (const [k, v] of Object.entries(x)) {
+                if (v !== undefined)
+                    rows.push(`${k}:${_json(v)}`);
+            }
+            return `{${rows.join(',')}}`;
+        }
+    }
+    else
+        return x;
 }
 
 /** SQL commands in function form for ease of use and future proofing */
 export const sql = {
+	/** Used to create epxressions that access variables without turning the expression into a string.
+	 * This should be used anywhere an expression that accesses a variable is used. Anywhere data is modified or accessed.
+	 */
+	$: (expr: string) => ({ __expr__: expr }),
+
 	/** Join a list of expressions with "and" */
 	and: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('&&') + ' ',
 
@@ -205,7 +247,7 @@ export const sql = {
 
 
 	/** Create statement */
-	create: <T extends object>(record: string, content: Partial<T>, ret?: SqlReturn | Selectables<T>[]) => {
+	create: <T extends object>(record: string, content: SqlContent<T>, ret?: SqlReturn | Selectables<T>[]) => {
 		// Content string
 		let json = _json(content);
 
@@ -248,16 +290,28 @@ export const sql = {
 	},
 
 	/** Select statement */
-	select: <T extends object>(fields: '*' | (Selectables<T> | (string & {}))[], options: SqlSelectOptions) => {
+	select: <T extends object>(fields: '*' | (Selectables<T> | (string & {}))[], options: SqlSelectOptions<T>) => {
 		let q = `SELECT ${typeof fields === 'string' ? '*' : fields.join(',')} FROM ${options.from} `;
 		if (options.where)
 			q += `WHERE ${options.where} `;
+
+		if (options.sort) {
+			if (Array.isArray(options.sort))
+				q += `ORDER BY ${options.sort.map(x => `${x.field} ${x.order || 'ASC'}`).join(',')} `;
+			else
+				q += `ORDER BY ${options.sort} `;
+		}
+		
+		if (options.limit)
+			q += `LIMIT ${options.limit} `;
+		if (options.fetch)
+			q += `FETCH ${options.fetch.join(',')} `;
 
 		return q;
 	},
 
 	/** Update statement */
-	update: <T extends object>(record: string, content: Partial<T>, options?: SqlUpdateOptions<T>) => {
+	update: <T extends object>(record: string, content: SqlContent<T>, options?: SqlUpdateOptions<T>) => {
 		let q = `UPDATE ${record} `;
 
 		// Check if SET should be used

@@ -56,6 +56,18 @@ const config = {
 		/** Message used to notify user to contact/report issue */
 		support_message: 'Please contact us if this problem persists.',
 
+		/** Message config */
+		message: {
+			/** Query limit */
+			query_limit: 100,
+			/** Max role id length limit */
+			max_mention_length: 24,
+			/** Characters used for member mentions */
+			member_mention_chars: '{}',
+			/** Characters used for role mentions */
+			role_mention_chars: '[]',
+		},
+
 		/** Project board config */
 		board: {
 			/** The default collection name */
@@ -63,10 +75,12 @@ const config = {
 		},
 		/** Member related configs */
 		member: {
+			/** The number of seconds where data in a member cache is considered to be valid */
+			cache_lifetime: 60 * 60,
 			/** The maximum number of members returned in any given query */
 			query_limit: 200,
-			/** The number of milliseconds within which the cached data for a member query should be used rather than fetching from server */
-			query_interval: 60 * 60 * 1000,
+			/** The number of seconds for which a member query is considered to have updated data */
+			query_interval: 3 * 60,
 			/** The number of members under which a new query should be requested when searching members */
 			new_query_threshold: 5,
 		},
