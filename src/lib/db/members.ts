@@ -132,7 +132,7 @@ export async function listMembers(domain_id: string, search: string, session: Se
 	const queryTime = data.queries[search];
 
 	// Fetch data if needed
-	if (!queryTime || Date.now() - queryTime > config.app.member.query_interval) {
+	if (!queryTime || Date.now() - queryTime > config.app.member.query_interval * 1000) {
 		const members = await query<Member[]>(
 			sql.select<Member>(MEMBER_SELECT_FIELDS, {
 				from: `${domain_id}<-member_of`,

@@ -9,10 +9,10 @@ import {
 
 import { Plus } from 'tabler-icons-react';
 
+import { openCreateChannel } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
-import { openCreateChannel } from '@/lib/ui/modals';
-// TODO : import RtcControlBar from 'components/app/rtc/RtcControlBar';
+import RtcControlBar from '@/lib/ui/components/rtc/RtcControlBar';
 // TODO : import BoardHeader from './headers/BoardHeader';
 
 import { DomainWrapper, useApp } from '@/lib/hooks';
@@ -85,9 +85,9 @@ export default function HeaderView(props: HeaderViewProps) {
 
           <div style={{ flexGrow: 1 }} />
 
-          {/* TODO : app.rtc?.joined && (
+          {app.rtc?.joined && (
             <RtcControlBar />
-          ) */}
+          )}
         </Group>
       )}
     </Box>

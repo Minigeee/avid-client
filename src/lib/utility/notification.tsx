@@ -15,7 +15,7 @@ const LAST_SHOWN: Record<string, number> = {};
  * @param cooldown The minimum amount of time required between showing the same notification twice
  * @returns True if the notification was successfully displayed (the cooldown condition was met)
  */
-export function error(title: string, message: string, error: Error, cooldown: number = 60) {
+export function error(title: string, message: string, error?: Error, cooldown: number = 60) {
 	// Don't run on server
 	if (typeof window === 'undefined') return;
 
@@ -30,11 +30,11 @@ export function error(title: string, message: string, error: Error, cooldown: nu
 			message: (
 				<Stack spacing='xs'>
 					<Text>{message}</Text>
-					<Code sx={(theme) => ({
+					{error && <Code sx={(theme) => ({
 						padding: '0.3rem 0.5rem',
 						backgroundColor: theme.colors.dark[6],
 						color: theme.colors.dark[1]
-					})}>{error.name}: {error.message}</Code>
+					})}>{error.name}: {error.message}</Code>}
 				</Stack>
 			),
 			color: 'red',

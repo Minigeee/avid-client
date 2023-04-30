@@ -8,10 +8,29 @@ import {
 
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import CreateProfile from '@/lib/ui/screens/CreateProfile';
+import RtcVoices from '@/lib/ui/components/rtc/RtcVoices';
 
 import AppProvider from '@/lib/contexts/app';
-import { useProfile, useSession } from '@/lib/hooks';
+import { useApp, useProfile, useSession } from '@/lib/hooks';
 import Main from '@/lib/ui/screens/Main';
+
+
+////////////////////////////////////////////////////////////
+function ScreenState() {
+  const app = useApp();
+
+  return (
+    <>
+      <Main />
+
+      {app.rtc?.joined && (
+        <>
+          <RtcVoices />
+        </>
+      )}
+    </>
+  );
+}
 
 
 ////////////////////////////////////////////////////////////
@@ -57,7 +76,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <Main />
+        <ScreenState />
       </AppProvider>
     </ErrorBoundary>
   );

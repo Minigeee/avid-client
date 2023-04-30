@@ -77,6 +77,7 @@ const config = {
 				{ label: 'Completed', color: '#40C057' },
 			],
 		},
+
 		/** Member related configs */
 		member: {
 			/** The number of seconds where data in a member cache is considered to be valid */
@@ -87,6 +88,14 @@ const config = {
 			query_interval: 3 * 60,
 			/** The number of members under which a new query should be requested when searching members */
 			new_query_threshold: 5,
+		},
+
+		/** Rtc config */
+		rtc: {
+			/** List of available rtc servers */
+			servers: [
+				'localhost:3002',
+			],
 		},
 	},
 };

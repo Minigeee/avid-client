@@ -10,7 +10,7 @@ import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import ChannelsView from '@/lib/ui/views/main/ChannelsView';
 import HeaderView from '@/lib/ui/views/main/HeaderView';
 import MessagesView from '@/lib/ui/views/chat/MessagesView';
-// TODO : import RoomView from 'components/app/views/rtc/RoomView';
+import RoomView from '@/lib/ui/views/rtc/RoomView';
 // TODO : import BoardView from 'components/app/views/projects/BoardView';
 
 import { useApp, useDomain, useMemo } from '@/lib/hooks';
@@ -78,12 +78,12 @@ export default function MainView() {
                   domain={domain}
                 />
               )}
-              {/* channel.type === 'rtc' && (
+              {channel.type === 'rtc' && (
                 <RoomView
                   channel={channel}
                   domain={domain}
                 />
-              ) */}
+              )}
               {/* channel.type === 'board' && (
                 <BoardView
                   channel={channel}

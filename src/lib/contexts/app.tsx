@@ -1,5 +1,7 @@
 import { createContext, PropsWithChildren, useState } from 'react';
 
+import { RtcMutators, RtcState, useRtc } from '@/lib/hooks';
+
 
 /** Holds navigation context state */
 type _NavState = {
@@ -59,9 +61,11 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 /** Session context state */
 export type AppState = {
 	navigation: _NavState,
+	rtc?: RtcState,
 } & {
 	_mutators: {
 		navigation: ReturnType<typeof navMutatorFactory>,
+		rtc: RtcMutators,
 	}
 };
 
@@ -73,12 +77,15 @@ export const AppContext = createContext<AppState>();
 ////////////////////////////////////////////////////////////
 export default function AppProvider({ children }: PropsWithChildren) {
 	const [nav, setNav] = useState<_NavState>({});
+	const rtc = useRtc();
 
 	return (
 		<AppContext.Provider value={{
 			navigation: nav,
+			rtc: rtc.rtc,
 			_mutators: {
 				navigation: navMutatorFactory(nav, setNav),
+				rtc: rtc.mutators,
 			},
 		}}>
 			{children}

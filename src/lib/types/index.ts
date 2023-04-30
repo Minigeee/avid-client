@@ -5,6 +5,7 @@ export * from './member';
 export * from './message';
 export * from './profile';
 export * from './role';
+export * from './socket';
 export * from './task';
 export * from './user';
 export * from './util';

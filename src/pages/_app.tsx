@@ -36,7 +36,7 @@ export default function App(props: AppProps) {
               '#11151B'
             ],
           },
-          primaryColor: 'grape',
+          primaryColor: 'indigo',
           primaryShade: 5,
           defaultGradient: { from: 'violet', to: 'pink' },
 
@@ -81,7 +81,7 @@ export default function App(props: AppProps) {
                     background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
                   },
                   '&[data-selected]': {
-                    background: `linear-gradient(to right, ${theme.colors.grape[5]} 4px, ${theme.colors.dark[4]} 0)`,
+                    background: `linear-gradient(to right, ${theme.colors.indigo[5]} 4px, ${theme.colors.dark[4]} 0)`,
                   },
                 },
               }),

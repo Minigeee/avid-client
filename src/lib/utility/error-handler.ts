@@ -6,7 +6,7 @@ import notification from './notification';
 
 
 /** Print and display error notification */
-export function notifyError(error: Error, options?: { title?: string, message?: string, cooldown?: number }) {
+export function notifyError(error: Error, options?: { title?: string, message?: string, cooldown?: number, notify?: boolean }) {
 	console.error(error);
 
 	// Notification
@@ -18,7 +18,8 @@ export function notifyError(error: Error, options?: { title?: string, message?: 
 	);
 
 	// Save error
-	captureException(error);
+	if (options?.notify !== false)
+		captureException(error);
 }
 
 
@@ -58,6 +59,7 @@ export function axiosHandler(error: AxiosError, options?: AxiosErrorHandlerOptio
 				notifyError(
 					error, {
 					title: options?.title || `Authentication Error`,
+					message: 'You do not have valid credentials.'
 				});
 		}
 

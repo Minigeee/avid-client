@@ -226,7 +226,7 @@ export class AsyncCache<T> {
 			const object = this._data[k];
 			
 			// Mark this object as missing if it is not valid
-			const elapsed = now - object.last_updated;
+			const elapsed = now - (object?.last_updated || 0);
 			if (!object || elapsed > this.invalidate_time || (revalidate && elapsed > 1 * 60))
 				missing.push([k, i]);
 

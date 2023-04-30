@@ -5,4 +5,5 @@ export * from './use-members';
 export * from './use-memo';
 export * from './use-messages';
 export * from './use-profile';
+export * from './use-rtc';
 export * from './use-session';
