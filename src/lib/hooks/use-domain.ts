@@ -2,9 +2,8 @@
 import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
-import config from '@/config';
 import { SessionState } from '@/lib/contexts';
-import { query, sql } from '@/lib/db';
+import { addChannel, query, sql } from '@/lib/db';
 import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { SwrWrapper } from '@/lib/utility/swr-wrapper';
@@ -30,28 +29,25 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				if (!domain) return;
 
 				// Create channel
-				const results = await query<Channel[]>(
-					sql.create<Channel>('channels', {
-						domain: domain.id,
-						name,
-						type,
-						data,
-					}, ['id']),
-					{ session }
-				);
-				assert(results && results.length > 0);
+				const channel: Omit<Channel, 'id'> = {
+					domain: domain.id,
+					name,
+					type,
+					data,
+				};
 
-				const id: string = results[0].id;
+				// Create channel
+				const { id, data: newData } = await addChannel(channel, options, session);
+
+				// Merge data
+				let merged: any = { ...data, ...newData };
+				if (Object.keys(merged).length === 0)
+					merged = undefined;
 
 				// Update channels
-				const channels = [
+				const channels: Channel[] = [
 					...domain.channels,
-					{
-						_id: id,
-						type,
-						name,
-						data,
-					}
+					{ ...channel, id, data: merged },
 				];
 
 				return {

@@ -67,7 +67,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
     <Flex wrap='nowrap' sx={(theme) => ({
       '&:hover': hasPing ? undefined : {
         '.msg-border': {
-          background: theme.colors.blue[5],
+          background: theme.colors.indigo[5],
         },
       }
     })}>
@@ -78,6 +78,8 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
           hasPing ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) :
             fromUser ? theme.colors.dark[5] : undefined,
         transition: 'background 0.08s',
+        borderTopLeftRadius: 3,
+        borderBottomLeftRadius: 3,
       })} />
 
       <Stack spacing={0} sx={{ flexGrow: 1 }}>

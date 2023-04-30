@@ -22,7 +22,7 @@ function factory(session?: SessionState) {
 		
 			// If the new profile should be made current, update the user object
 			if (make_current)
-				statements.splice(2, 0, sql.update<User>(user_id, { current_profile: sql.$('profile.id') }, { return: 'NONE' }));
+				statements.splice(2, 0, sql.update<User>(user_id, { current_profile: sql.$('$profile.id') }, { return: 'NONE' }));
 		
 			// Execute query
 			const results = await query<Profile[]>(

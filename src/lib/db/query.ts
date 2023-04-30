@@ -125,7 +125,7 @@ export type Selectables<T> = Join<_NestedPaths<T>, '.'>;
 
 
 /** Sql var accessor */
-type SqlVarExpr = { __expr__: string };
+type SqlVarExpr = { __esc__: string };
 /** Valid sql types */
 type SqlType = number | string | SqlVarExpr;
 
@@ -139,7 +139,8 @@ export type SqlOp = '&&' | '||' | '??' | '?:' | '=' | '!=' | '==' | '?=' | '*=' 
 export type SqlReturn = 'NONE' | 'BEFORE' | 'DIFF';
 
 /** Content objects */
-export type SqlContent<T> = { [K in keyof T]?: T[K] | SqlVarExpr };
+export type SqlContent<T> = T extends object ? { [K in keyof T]?: SqlContent<T[K]> } :
+	T extends ReadonlyArray<infer A> ? (A | SqlVarExpr)[] : T | SqlVarExpr;
 
 /** Relate statement options */
 export type SqlRelateOptions<T extends object> = {
@@ -183,15 +184,11 @@ export type SqlUpdateOptions<T extends object> = {
 	/** Return mode */
 	return?: SqlReturn | Selectables<T>[];
 	/** Data that should be incremented or decremented (or array push or pull) (nested fields can't be used in `content` or `set` if `set` is defined) */
-	set?: { [K in keyof T]?: T[K] | ['=' | '+=' | '-=', T[K] | string] };
+	set?: { [K in keyof T]?: T[K] | ['=' | '+=' | '-=', SqlContent<T[K]>] };
 	/** Whether update should merge or replace data (merge by default) */
 	merge?: boolean;
 };
 
-
-function _v(x: any) {
-	return typeof x === 'string' ? `"${x}"` : x.__expr__ !== undefined ? `$${x.__expr__}` : x;
-}
 
 function _json(x: any): string {
     const type = typeof x;
@@ -203,8 +200,8 @@ function _json(x: any): string {
     else if (type === 'object') {
         if (x === null)
             return 'null';
-        else if (x.__expr__ !== undefined)
-            return `$${x.__expr__}`;
+        else if (x.__esc__ !== undefined)
+            return x.__esc__;
         else if (x instanceof Date)
             return `"${x.toISOString()}"`;
         else {
@@ -222,10 +219,8 @@ function _json(x: any): string {
 
 /** SQL commands in function form for ease of use and future proofing */
 export const sql = {
-	/** Used to create epxressions that access variables without turning the expression into a string.
-	 * This should be used anywhere an expression that accesses a variable is used. Anywhere data is modified or accessed.
-	 */
-	$: (expr: string) => ({ __expr__: expr }),
+	/** Used to escape a string from being surrounded by quotations */
+	$: (expr: string) => ({ __esc__: expr }),
 
 	/** Join a list of expressions with "and" */
 	and: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('&&') + ' ',
@@ -233,7 +228,7 @@ export const sql = {
 	/** Match a set of expressions and join them with "and" or "or", where each object key and value are being compared for equality.
 	 * Other boolean operators can be used if object values are arrays, where [0] is the operator and [1] is the second operand */
 	match: (conds: Record<string, SqlType | [SqlOp, SqlType]>, join: '&&' | '||' = '&&') =>
-		Object.entries(conds).map(([k, v]) => !Array.isArray(v) ? `${k}=${_v(v)}` : `${k}${v[0]}${_v(v[1])}`).join(join) + ' ',
+		Object.entries(conds).map(([k, v]) => !Array.isArray(v) ? `${k}=${_json(v)}` : `${k}${v[0]}${_json(v[1])}`).join(join) + ' ',
 
 	/** Chain multiple statements */
 	multi: (statements: string[]) => statements.map(x => x.trim()).join('; ') + ' ',
@@ -320,8 +315,8 @@ export const sql = {
 			const updates = { ...content, ...options.set };
 			const set = Object.entries(updates).map(([k, v]) =>
 				Array.isArray(v) && (v[0] === '=' || v[0] === '+=' || v[0] === '-=') ?
-					`${k}${v[0]}${_v(v[1])}` :
-					`${k}=${_v(v)}`
+					`${k}${v[0]}${_json(v[1])}` :
+					`${k}=${_json(v)}`
 			).join(',');
 
 			q += `SET ${set} `;

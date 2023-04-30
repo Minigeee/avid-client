@@ -70,8 +70,12 @@ const config = {
 
 		/** Project board config */
 		board: {
-			/** The default collection name */
-			default_collection: 'Main',
+			/** Default statuses */
+			default_statuses: [
+				{ label: 'To Do', color: '#868E96' },
+				{ label: 'In Progress', color: '#228BE6' },
+				{ label: 'Completed', color: '#40C057' },
+			],
 		},
 		/** Member related configs */
 		member: {

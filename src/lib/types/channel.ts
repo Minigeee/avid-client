@@ -10,7 +10,10 @@ export type ChannelData<Type extends ChannelTypes> =
 		/** Maximum number of participants that can join an rtc channel */
 		max_participants: number;
 	} :
-	Type extends 'board' ? undefined :
+	Type extends 'board' ? {
+		/** The id of the board */
+		board: string;
+	} :
 	never;
 
 
