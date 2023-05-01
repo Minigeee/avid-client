@@ -2,12 +2,13 @@ import useSWR, { KeyedMutator } from 'swr';
 import assert from 'assert';
 
 import { SessionState } from '@/lib/contexts';
-import { getMembers, query, sql } from '@/lib/db';
+import { getDomainCache, getMember, getMembers, query, sql } from '@/lib/db';
 import { Board, ExpandedTask, Member, Task } from '@/lib/types';
 import { useSession } from '@/lib/hooks';
 
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { SwrWrapper, wrapSwrData } from '@/lib/utility/swr-wrapper';
+import { useDbQuery } from './use-db-query';
 
 
 ////////////////////////////////////////////////////////////
@@ -32,11 +33,11 @@ function fetcher(session: SessionState) {
 				'subtasks',
 				'time_created',
 			], {
-				from: 'boards',
+				from: 'tasks',
 				where: sql.match({ board: board_id }),
 			}),
 			sql.select<Board>(['domain'], { from: board_id }),
-		]), { session });
+		]), { session, complete: true });
 		assert(results);
 
 		const tasks = results[0];
@@ -66,7 +67,7 @@ function fetcher(session: SessionState) {
 
 
 ////////////////////////////////////////////////////////////
-function mutators(board_id: string) {
+function tasksMutators(board_id: string) {
 	return (mutate: KeyedMutator<ExpandedTask[]>, session?: SessionState) => {
 		assert(session);
 
@@ -90,7 +91,7 @@ function mutators(board_id: string) {
 						// Create task
 						sql.create<Task>('tasks', {
 							...task,
-							sid: sql.$('_task_counter'),
+							sid: sql.$(`${board_id}._task_counter`),
 							board: board_id,
 							status: task.status || 'To Do',
 							assignee: task.assignee?.id || undefined,
@@ -155,7 +156,7 @@ function mutators(board_id: string) {
 			removeTask: (task_id: string) => mutate(
 				swrErrorWrapper(async (tasks: ExpandedTask[]) => {
 					// Send delete task
-					await query(sql.delete(task_id));
+					await query(sql.delete(task_id), { session });
 
 					return tasks.filter(x => x.id !== task_id);
 				}, { message: 'An error occurred while deleting task' }),
@@ -173,24 +174,86 @@ function mutators(board_id: string) {
 
 
 /** Mutators that will be attached to the board swr wrapper */
-export type TasksMutators = ReturnType<ReturnType<typeof mutators>>;
+export type TasksMutators = ReturnType<ReturnType<typeof tasksMutators>>;
 /** Swr data wrapper for a domain object */
 export type TasksWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedTask[], TasksMutators, true, Loaded>;
 
 /**
- * A swr hook that performs an db query to retrieve tasks from a project board.
+ * A swr hook that performs a db query to retrieve tasks from a project board.
+ * All fields are retrieved except `description`, `board`, `time_updated`, and `time_status_changed`.
  * 
  * @param board_id The id of the board to retrieve tasks from
  * @returns A swr object containing the requested tasks
  */
-export function useTasks(board_id: string) {
+export function useTasks(board_id?: string) {
 	const session = useSession();
 	const swr = useSWR<ExpandedTask[] | null>(
 		board_id && session.token ? `${board_id}.tasks` : null,
 		fetcher(session)
 	);
 
-	return wrapSwrData<ExpandedTask[], TasksMutators, true>(swr, mutators(board_id), true, session);
+	return wrapSwrData<ExpandedTask[], TasksMutators, true>(swr, tasksMutators(board_id || ''), true, session);
 }
 
-// WIP : Add RTC
+
+
+////////////////////////////////////////////////////////////
+function taskMutators(mutate: KeyedMutator<ExpandedTask>, session?: SessionState) {
+	return {
+		/**
+		 * Update the task object locally. Use `tasks.updatedTask` to update
+		 * server data.
+		 * 
+		 * @param task Task object with updated properties
+		 * @returns Updated task object
+		 */
+		updateLocal: (task: Partial<ExpandedTask>) => mutate(
+			async (old) => {
+				if (!old) return;
+				return {
+					...old,
+					...task,
+				};
+			},
+			{ revalidate: false }
+		),
+	};
+}
+
+
+/** Mutators that will be attached to the board swr wrapper */
+export type TaskMutators = ReturnType<typeof taskMutators>;
+/** Swr data wrapper for a domain object */
+export type TaskWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedTask, TaskMutators, false, Loaded>;
+
+
+/**
+ * A swr hook that performs a db to retrieve a task.
+ * 
+ * @param task_id The id of the task to retrieve
+ * @param fallback The optional fallback task data to display while task is loading or errored
+ * @returns A swr object containing the requested task
+ */
+export function useTask(task_id: string, fallback?: ExpandedTask) {
+	const session = useSession();
+
+	return useDbQuery<ExpandedTask, TaskMutators>(task_id, (key) => {
+		return sql.select<Task>(['*', 'board.domain AS _domain'], { from: task_id });
+	}, {
+		then: async (results) => {
+			const task = results?.length ? results[0] : null;
+			if (!task) return task;
+
+			// Get assignee
+			if (task.assignee)
+				task.assignee = await getMember(task._domain, task.assignee, session);
+
+			// Delete domain temp field
+			delete task._domain;
+
+			return task;
+		},
+		mutators: taskMutators,
+		fallback,
+	});
+}

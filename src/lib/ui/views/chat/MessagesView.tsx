@@ -283,8 +283,10 @@ export default function MessagesView(props: MessagesViewProps) {
             placeholder='Message'
             markdown
             autofocus
+            focusRing={false}
             maxCharacters={2048}
             maxHeight='40ch'
+            
             rightSection={useFormattedEditor ? (
               <Tooltip
                 label='Send'

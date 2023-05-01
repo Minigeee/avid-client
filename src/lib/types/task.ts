@@ -65,5 +65,5 @@ export type Task = {
 /** A task with expanded fields */
 export type ExpandedTask = Omit<Task, 'assignee'> & {
 	/** The member this task is assigned to */
-	assignee?: Member;
+	assignee?: Member | null;
 };

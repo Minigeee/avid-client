@@ -11,7 +11,7 @@ import ChannelsView from '@/lib/ui/views/main/ChannelsView';
 import HeaderView from '@/lib/ui/views/main/HeaderView';
 import MessagesView from '@/lib/ui/views/chat/MessagesView';
 import RoomView from '@/lib/ui/views/rtc/RoomView';
-// TODO : import BoardView from 'components/app/views/projects/BoardView';
+import BoardView from '@/lib/ui/views/projects/BoardView';
 
 import { useApp, useDomain, useMemo } from '@/lib/hooks';
 import { Channel } from '@/lib/types';
@@ -84,13 +84,13 @@ export default function MainView() {
                   domain={domain}
                 />
               )}
-              {/* channel.type === 'board' && (
+              {channel.type === 'board' && (
                 <BoardView
-                  channel={channel}
+                  channel={channel as Channel<'board'>}
                   domain={domain}
                   view={headerData.view}
                 />
-              ) */}
+              )}
             </Box>
           )}
         </ErrorBoundary>

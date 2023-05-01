@@ -28,12 +28,12 @@ export default function App(props: AppProps) {
               '#BFC0C6',
               '#96999F',
               '#626771',
-              '#3D424C',
-              '#2F333C',
-              '#272B36',
-              '#1F242C',
-              '#181D25',
-              '#11151B'
+              '#3D424B',
+              '#2F333B',
+              '#272B34',
+              '#1F242A',
+              '#181D23',
+              '#111519'
             ],
           },
           primaryColor: 'indigo',

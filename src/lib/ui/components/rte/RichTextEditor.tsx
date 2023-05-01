@@ -273,6 +273,7 @@ export type RichTextEditorProps = {
   rightSection?: JSX.Element;
   maxCharacters?: number;
   maxHeight?: string | number;
+  focusRing?: boolean;
 
   domain?: DomainWrapper;
 
@@ -360,15 +361,18 @@ export default function RichTextEditor(props: RichTextEditorProps) {
           },
         },
       },
+
+      border: `1px solid ${theme.colors.dark[4]}`,
+      borderRadius: 3,
+      overflow: 'hidden',
+      '&:focus-within': props.focusRing === false ? undefined : {
+        border: `1px solid ${theme.colors[theme.primaryColor][5]}`,
+      },
     })}>
       {variant === 'full' && (
         <Box sx={(theme) => ({
           padding: '0.35rem 0.55rem',
           backgroundColor: theme.colors.dark[8],
-          border: `1px solid ${theme.colors.dark[4]}`,
-          borderBottom: 'none',
-          borderTopLeftRadius: 3,
-          borderTopRightRadius: 3,
         })}>
           <Group spacing={2}>
             <EditorButton
@@ -498,14 +502,6 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       <Group spacing={2} sx={(theme) => ({
         padding: 2,
         backgroundColor: theme.colors.dark[6],
-        border: `1px solid ${theme.colors.dark[4]}`,
-        ...(variant === 'full' ? {
-          borderTop: 'none',
-          borderBottomLeftRadius: 3,
-          borderBottomRightRadius: 3,
-        } : {
-          borderRadius: 3,
-        }),
       })}>
         <ScrollArea.Autosize mah={props.maxHeight || '60ch'} sx={{
           flexGrow: 1,

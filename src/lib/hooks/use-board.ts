@@ -21,16 +21,35 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		 * @param tags A list of new tags to add without the id
 		 * @returns The new board object
 		 */
-		addTags: (tags: Omit<TaskTag, 'id'>[]) => mutate(
+		addTags: (tags: Partial<TaskTag>[]) => mutate(
 			swrErrorWrapper(async (board: Board) => {
 				if (!board) return;
+
+				// Determine which tags are new and which have an id they need to update
+				const withIds: Partial<TaskTag>[] = [];
+				const newTags: Omit<TaskTag, 'id'>[] = [];
+				for (const tag of tags) {
+					if (tag.id)
+						withIds.push(tag);
+					else
+						newTags.push(tag as Omit<TaskTag, 'id'>);
+				}
 
 				// Add tags
 				const results = await query<Board[]>(
 					sql.update<Board>(board.id, {}, {
 						set: {
-							tags: ['+=', tags.map((x, i) => ({ id: sql.$(`_tag_counter+${i + 1}`), ...x }))],
-							_tag_counter: ['+=', tags.length],
+							// Function that updates existing tags and adds new ones
+							tags: sql.fn<Board>(function() {
+								for (const tag of withIds) {
+									const idx = this.tags.findIndex(x => x.id === tag.id);
+									this.tags[idx] = { ...this.tags[idx], ...tag };
+								}
+
+								return this.tags.concat(newTags.map((x, i) => ({ ...x, id: this._tag_counter + i + 1 })));
+							}, { withIds, newTags }),
+
+							_tag_counter: ['+=', newTags.length],
 						},
 						return: ['tags', '_tag_counter'],
 					}),
@@ -63,9 +82,11 @@ export type BoardWrapper<Loaded extends boolean = true> = SwrWrapper<Board, Boar
  * @param board_id The id of the board to retrieve
  * @returns A swr object containing the requested profile
  */
-export function useBoard(board_id: string) {
+export function useBoard(board_id?: string) {
+	assert(!board_id || board_id.startsWith('boards:'));
+
 	return useDbQuery(board_id, (key) => {
-		return sql.select<Board[]>('*', { from: board_id });
+		return sql.select<Board[]>('*', { from: board_id || '' });
 	}, {
 		then: (results) => results?.length ? results[0] : null,
 		mutators,

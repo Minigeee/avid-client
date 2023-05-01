@@ -15,6 +15,8 @@ type SwrDbQueryOptions<T, Mutators extends SwrMutators, Separate extends boolean
 	mutators?: SwrMutatorFactory<T, Mutators>;
 	/** Determines if data should be separated in its own `data` field */
 	separate?: Separate;
+	/** Optional fallback data */
+	fallback?: T;
 };
 
 /**
@@ -25,7 +27,7 @@ type SwrDbQueryOptions<T, Mutators extends SwrMutators, Separate extends boolean
  * @param options Query options
  * @returns The requested data inside a swr wrapper object
  */
-export function useDbQuery<T, Mutators extends SwrMutators = {}, Separate extends boolean = false>(key: string, builder?: (key: string) => string, options?: SwrDbQueryOptions<T, Mutators, Separate>) {
+export function useDbQuery<T, Mutators extends SwrMutators = {}, Separate extends boolean = false>(key: string | undefined, builder?: (key: string) => string, options?: SwrDbQueryOptions<T, Mutators, Separate>) {
 	const session = useSession();
 
 	// Make sure builder exists
@@ -33,5 +35,8 @@ export function useDbQuery<T, Mutators extends SwrMutators = {}, Separate extend
 		assert(builder, 'query builder is required if custom fetcher is not provided');
 
 	const swr = useSWR<T | null>(session.token ? key : null, options?.fetcher || fetcher(builder || (() => ''), { ...options, session }));
-	return wrapSwrData<T, Mutators, Separate>(swr, options?.mutators, options?.separate, session);
+	return wrapSwrData<T, Mutators, Separate>({
+		...swr,
+		data: swr.isLoading || swr.error ? options?.fallback : swr.data,
+	}, options?.mutators, options?.separate, session);
 }

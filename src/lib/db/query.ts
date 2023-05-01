@@ -86,7 +86,7 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 /** Db query fetcher options */
 export type FetcherOptions<T, Ret> = QueryOptions & {
 	/** Modify data before returning */
-	then?: (data: T | null) => Ret | null,
+	then?: (data: T | null) => Ret | null | Promise<Ret | null>,
 };
 
 /**
@@ -139,8 +139,8 @@ export type SqlOp = '&&' | '||' | '??' | '?:' | '=' | '!=' | '==' | '?=' | '*=' 
 export type SqlReturn = 'NONE' | 'BEFORE' | 'DIFF';
 
 /** Content objects */
-export type SqlContent<T> = T extends object ? { [K in keyof T]?: SqlContent<T[K]> } :
-	T extends ReadonlyArray<infer A> ? (A | SqlVarExpr)[] : T | SqlVarExpr;
+export type SqlContent<T> = (T extends object ? { [K in keyof T]?: SqlContent<T[K]> } :
+	T extends ReadonlyArray<infer A> ? (A | SqlVarExpr)[] : T) | SqlVarExpr;
 
 /** Relate statement options */
 export type SqlRelateOptions<T extends object> = {
@@ -184,19 +184,21 @@ export type SqlUpdateOptions<T extends object> = {
 	/** Return mode */
 	return?: SqlReturn | Selectables<T>[];
 	/** Data that should be incremented or decremented (or array push or pull) (nested fields can't be used in `content` or `set` if `set` is defined) */
-	set?: { [K in keyof T]?: T[K] | ['=' | '+=' | '-=', SqlContent<T[K]>] };
+	set?: { [K in keyof T]?: T[K] extends ReadonlyArray<infer A> ?
+		(SqlContent<A> | SqlContent<A>[] | ['=' | '+=' | '-=', SqlContent<A> | SqlContent<A>[]]) :
+		(SqlContent<T[K]> | ['=' | '+=' | '-=', SqlContent<T[K]>]) };
 	/** Whether update should merge or replace data (merge by default) */
 	merge?: boolean;
 };
 
 
-function _json(x: any): string {
+function _json(x: any, doubleBackslash: boolean = true): string {
     const type = typeof x;
 
     if (type === 'string')
-        return `"${x.replaceAll('"', '\\"').replaceAll('\\', '\\\\')}"`;
+        return `"${x.replaceAll('"', '\\"').replaceAll('\\', doubleBackslash ? '\\\\' : '\\')}"`;
     else if (Array.isArray(x))
-        return `[${x.map(x => _json(x)).join(',')}]`;
+        return `[${x.map(x => _json(x, doubleBackslash)).join(',')}]`;
     else if (type === 'object') {
         if (x === null)
             return 'null';
@@ -208,7 +210,7 @@ function _json(x: any): string {
             const rows: string[] = [];
             for (const [k, v] of Object.entries(x)) {
                 if (v !== undefined)
-                    rows.push(`${k}:${_json(v)}`);
+                    rows.push(`${k}:${_json(v, doubleBackslash)}`);
             }
             return `{${rows.join(',')}}`;
         }
@@ -217,10 +219,36 @@ function _json(x: any): string {
         return x;
 }
 
+function _fnstr(fn: any) {
+    const str = fn.toString();
+    const paramstr: string = str.match(/function[^\()]*\(([\s\S]*?)\)/)[1];
+    const bodystr: string = str.match(/function[^{]+\{([\s\S]*)\}$/)[1];
+
+    return {
+        params: paramstr ? paramstr.split(', ') : [],
+        body: bodystr.split('\r\n').map(x => x.trim()).join(' '),
+    };
+}
+
 /** SQL commands in function form for ease of use and future proofing */
 export const sql = {
 	/** Used to escape a string from being surrounded by quotations */
 	$: (expr: string) => ({ __esc__: expr }),
+
+	/** Create string from function */
+	fn: <This extends object>(fn: (this: This, ...args: any[]) => any, hardcode?: Record<string, any>) => {
+		let { params, body } = _fnstr(fn);
+	
+		// Replace parameters
+		for (let i = 0; i < params.length; ++i)
+			body = body.replaceAll(params[i], `arguments[${i}]`);
+	
+		// Replace hardcodes
+		for (const [k, v] of Object.entries(hardcode || {}))
+			body = body.replaceAll(k, _json(v, false));
+	
+		return { __esc__: `function(${params.map(x => `$${x}`).join(', ')}) {${body}}` };
+	},
 
 	/** Join a list of expressions with "and" */
 	and: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('&&') + ' ',
