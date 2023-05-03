@@ -70,12 +70,45 @@ const config = {
 
 		/** Project board config */
 		board: {
+			/** Default tag color */
+			default_tag_color: '#495057',
+
 			/** Default statuses */
 			default_statuses: [
-				{ label: 'To Do', color: '#868E96' },
-				{ label: 'In Progress', color: '#228BE6' },
-				{ label: 'Completed', color: '#40C057' },
+				{ id: 'todo', label: 'To Do', color: '#868E96' },
+				{ id: 'in-progress', label: 'In Progress', color: '#228BE6' },
+				{ id: 'completed', label: 'Completed', color: '#40C057' },
 			],
+			/** Defualt status id */
+			default_status_id: 'todo',
+
+			/** Default backlog */
+			default_backlog: {
+				id: 'backlog',
+				name: 'Backlog',
+				description: 'A backlog is a collection of tasks, features, or issues ' + 
+					'that have not yet been completed. These items are typically prioritized ' + 
+					'based on their importance and urgency, and are worked on by a team over ' + 
+					'a series of cycles. During each cycle, the team selects a subset of items ' + 
+					'from the backlog to work on, with the goal of completing as many items as ' + 
+					'possible within the cycle period. At the end of each cycle, the team reviews ' + 
+					'their progress and re-prioritizes the items in the backlog based on what they ' + 
+					'have learned. By using a backlog and cycles in this way, teams can stay ' + 
+					'focused on their goals and make steady progress towards completing their work.',
+			},
+			/** Defualt backlog id */
+			default_backlog_id: 'backlog',
+
+			/** Task sort keys */
+			sort_keys: {
+				/** Priority sort keys */
+				priority: {
+					critical: 0,
+					high: 1,
+					medium: 2,
+					low: 3,
+				},
+			},
 		},
 
 		/** Member related configs */

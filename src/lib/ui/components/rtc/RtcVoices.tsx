@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import {
   RtcParticipant,
   useApp,
-  useMemo,
 } from '@/lib/hooks';
 
 
@@ -57,7 +56,7 @@ export default function RtcVoices() {
 
   return (
     <>
-      {participants && participants.map((participant, i) => (
+      {participants.map((participant, i) => (
         <RtcVoice participant={participant} />
       ))}
     </>

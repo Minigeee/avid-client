@@ -3,7 +3,7 @@ import assert from 'assert';
 
 import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
-import { Board, TaskTag } from '@/lib/types'; 
+import { Board, Label, NoId, TaskGroup, WithId } from '@/lib/types'; 
 import { useDbQuery } from '@/lib/hooks/use-db-query';
 
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
@@ -16,24 +16,49 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 
 	return {
 		/**
-		 * Add new tags to a board
+		 * Add new task group.
 		 * 
-		 * @param tags A list of new tags to add without the id
+		 * @param group The group that should be added omitting the `id`
 		 * @returns The new board object
 		 */
-		addTags: (tags: Partial<TaskTag>[]) => mutate(
+		addGroup: (group: NoId<TaskGroup>) => mutate(
 			swrErrorWrapper(async (board: Board) => {
-				if (!board) return;
+				// Add group, iterate id counter
+				const results = await query<Board[]>(
+					sql.update<Board>(board.id, {}, {
+						set: {
+							groups: ['+=', { id: sql.$('_id_counter'), ...group }],
+							_id_counter: ['+=', 1],
+						},
+						return: ['groups', '_id_counter'],
+					}),
+					{ session }
+				);
+				assert(results && results.length);
 
-				// Determine which tags are new and which have an id they need to update
-				const withIds: Partial<TaskTag>[] = [];
-				const newTags: Omit<TaskTag, 'id'>[] = [];
-				for (const tag of tags) {
-					if (tag.id)
-						withIds.push(tag);
-					else
-						newTags.push(tag as Omit<TaskTag, 'id'>);
-				}
+				return {
+					...board,
+					_id_counter: results[0]._id_counter,
+					groups: results[0].groups,
+				};
+			}),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Add new tags, or modify existing tags. A list of tags should be
+		 * provided in `options.add` for every new tag to be added, and a list of
+		 * tag updates should be provided in `options.update` for every
+		 * tag to be updated.
+		 * 
+		 * @param options.add A list of new tags to add
+		 * @param options.update A list of tags to modify
+		 * @returns The new board object
+		 */
+		addTags: (options: { add?: Label[], update?: WithId<Partial<Label>>[] }) => mutate(
+			swrErrorWrapper(async (board: Board) => {
+				const add = options.add || [];
+				const update = options.update || [];
 
 				// Add tags
 				const results = await query<Board[]>(
@@ -41,17 +66,20 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 						set: {
 							// Function that updates existing tags and adds new ones
 							tags: sql.fn<Board>(function() {
-								for (const tag of withIds) {
+								// Merge updates
+								for (const tag of update) {
 									const idx = this.tags.findIndex(x => x.id === tag.id);
-									this.tags[idx] = { ...this.tags[idx], ...tag };
+									if (idx >= 0)
+										this.tags[idx] = { ...this.tags[idx], ...tag };
 								}
 
-								return this.tags.concat(newTags.map((x, i) => ({ ...x, id: this._tag_counter + i + 1 })));
-							}, { withIds, newTags }),
+								// Add new tags
+								return this.tags.concat(add.map((x, i) => ({ ...x, id: (this._id_counter + i).toString() })));
+							}, { add, update }),
 
-							_tag_counter: ['+=', newTags.length],
+							_id_counter: ['+=', add.length],
 						},
-						return: ['tags', '_tag_counter'],
+						return: ['tags', '_id_counter'],
 					}),
 					{ session }
 				);
@@ -59,7 +87,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 
 				return {
 					...board,
-					_tag_counter: results[0]._tag_counter,
+					_id_counter: results[0]._id_counter,
 					tags: results[0].tags,
 				};
 			}, { message: 'An error occurred while creating tags' }),

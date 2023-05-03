@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   ActionIcon,
@@ -36,12 +36,12 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
-  useMemo,
   useMemoState,
 } from '@/lib/hooks';
-import { ExpandedTask, Task, TaskTag } from '@/lib/types';
+import { ExpandedTask, Label } from '@/lib/types';
 
 import { groupBy, round } from 'lodash';
+import moment from 'moment';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 
 
@@ -50,7 +50,7 @@ type TaskCardProps = {
   task: ExpandedTask;
   prefix: string;
 
-  tags?: Record<string, TaskTag>;
+  tags: Record<string, Label>;
 
   index: number;
   onClick: () => unknown,
@@ -58,6 +58,9 @@ type TaskCardProps = {
 
 ////////////////////////////////////////////////////////////
 function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
+  const today = new Date();
+  const diff = moment(task.due_date || 0).diff([today.getFullYear(), today.getMonth(), today.getDate()], 'days');
+
   return (
     <Draggable draggableId={task.id.toString()} index={props.index}>
       {(provided) => (
@@ -136,8 +139,25 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
             </Group>
           )}
 
-          <Group spacing={5}>
+          <Group spacing={6}>
             <TaskPriorityIcon priority={task.priority} />
+            {task.due_date && (
+              <Tooltip
+                label={moment(task.due_date).format('ll')}
+                position='right'
+                withArrow
+                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+              >
+                <Text size='xs' sx={(theme) => ({
+                  padding: '1px 8px',
+                  backgroundColor: theme.colors.dark[4],
+                  borderRadius: 15,
+                  cursor: 'default',
+                })}>
+                  {Math.max(diff, 0)}
+                </Text>
+              </Tooltip>
+            )}
 
             <Box sx={{ flexGrow: 1 }} />
 
@@ -166,36 +186,36 @@ type KanbanViewProps = {
 export default function KanbanView({ board, ...props }: KanbanViewProps) {
   const [filterTags, setFilterTags] = useState<string[]>([]);
 
-  // Status data
-  const statuses = board.statuses;
-
-  // Create tags map
-  const tags = useMemo<Record<string, TaskTag & { value: string }>>(() => {
-    if (!board?.tags) return {};
-
-    // Add tags to map
-    const map: Record<string, TaskTag & { value: string }> = {};
+  // Tag map
+  const tagMap = useMemo<Record<string, Label>>(() => {
+    const map: Record<string, Label> = {};
     for (const tag of board.tags)
-      map[tag.id] = { ...tag, value: tag.id.toString() };
-
+      map[tag.id] = tag;
     return map;
-  }, [board?.tags]);
+  }, [board.tags]);
+  
+  // Status map
+  const statusMap = useMemo<Record<string, Label>>(() => {
+    const map: Record<string, Label> = {};
+    for (const s of board.statuses)
+      map[s.id] = s;
+    return map;
+  }, [board.statuses]);
 
   // Group tasks by status
   const [tasks, setTasks] = useMemoState<Record<string, ExpandedTask[]>>(
     () => {
-      if (!board._exists) return;
+      if (!board._exists) return {};
 
       // Apply filter options
-      const filterTagInts = filterTags.map(x => parseInt(x));
       const filtered = props.tasks.data.filter(x => {
         // Make sure all tags exist in filtered tags
-        for (const tag of filterTagInts) {
+        for (const tag of filterTags) {
           if (x.tags && x.tags.findIndex(y => y === tag) >= 0)
             return true;
         }
 
-        return filterTagInts.length === 0;
+        return filterTags.length === 0;
       });
 
       // Group data
@@ -217,7 +237,7 @@ export default function KanbanView({ board, ...props }: KanbanViewProps) {
           const added = new Set<number>();
 
           // Iterate (old) status group and add tasks in order they appear, while keeping track of which tasks are added
-          for (const task of tasks[status]) {
+          for (const task of (tasks[status] || [])) {
             if (existing.has(task.sid)) {
               group.push(task);
               added.add(task.sid);
@@ -282,7 +302,7 @@ export default function KanbanView({ board, ...props }: KanbanViewProps) {
     })}>
       <Group align='end'>
         <TaskTagsSelector
-          data={Object.values(tags || {})}
+          data={Object.values(board.tags).map(x => ({ value: x.id, ...x }))}
           placeholder='Filter by tags'
           label='Filters'
           icon={<Tag size={16} />}
@@ -304,90 +324,89 @@ export default function KanbanView({ board, ...props }: KanbanViewProps) {
         </Button>
       </Group>
 
-      {statuses && (
-        <DragDropContext onDragEnd={(result) => {
-          const { source: src, destination: dst } = result;
 
-          if (tasks && dst) {
-            onTaskMove(tasks[src.droppableId][src.index], src.index, dst.droppableId, dst.index);
-          }
-        }}>
-          <SimpleGrid
-            cols={statuses.length}
-            sx={{
-              width: `${statuses.length * 41}ch`,
-            }}
-          >
-            {statuses?.map((status, i) => (
-              <Flex direction='column'>
-                <Flex gap='xs' align='center' sx={(theme) => ({
-                  padding: '0.4rem 0.5rem 0.4rem 0.8rem',
-                  backgroundColor: theme.colors.dark[4],
-                  borderTopLeftRadius: 6,
-                  borderTopRightRadius: 6,
-                })}>
-                  <ColorSwatch size={18} color={status.color} />
-                  <Title order={5} sx={{ flexGrow: 1 }}>
-                    {status.label} - {tasks && tasks[status.label] ? tasks[status.label].length : 0}
-                  </Title>
+      <DragDropContext onDragEnd={(result) => {
+        const { source: src, destination: dst } = result;
 
-                  <ActionIcon
-                    onClick={() => {
-                      if (board._exists) {
-                        openCreateTask({
-                          board_id: board.id,
-                          domain: props.domain,
-                          status: status.label,
-                        });
-                      }
-                    }}
-                  >
-                    <Plus size={19} />
-                  </ActionIcon>
-                </Flex>
+        if (tasks && dst) {
+          onTaskMove(tasks[src.droppableId][src.index], src.index, dst.droppableId, dst.index);
+        }
+      }}>
+        <SimpleGrid
+          cols={Object.keys(board.statuses).length}
+          sx={{
+            width: `${Object.keys(board.statuses).length * 41}ch`,
+          }}
+        >
+          {Object.values(board.statuses).map((status, i) => (
+            <Flex direction='column'>
+              <Flex gap='xs' align='center' sx={(theme) => ({
+                padding: '0.4rem 0.5rem 0.4rem 0.8rem',
+                backgroundColor: theme.colors.dark[4],
+                borderTopLeftRadius: 6,
+                borderTopRightRadius: 6,
+              })}>
+                {status.color && <ColorSwatch size={18} color={status.color} />}
+                <Title order={5} sx={{ flexGrow: 1 }}>
+                  {status.label} - {tasks && tasks[status.id] ? tasks[status.id].length : 0}
+                </Title>
 
-                <Droppable droppableId={status.label}>
-                  {(provided) => (
-                    <Box
-                      ref={provided.innerRef}
-                      sx={(theme) => ({
-                        flexGrow: 1,
-                        padding: '9px 9px 0.1px 9px',
-                        backgroundColor: theme.colors.dark[8],
-                        borderBottomLeftRadius: 6,
-                        borderBottomRightRadius: 6,
-                      })}
-                      {...provided.droppableProps}
-                    >
-                      {tasks && tasks[status.label]?.map((task, j) => (
-                        <TaskCard
-                          task={task}
-                          prefix={board?.prefix || ''}
-                          tags={tags}
-
-                          key={task.id}
-                          index={j}
-                          onClick={() => {
-                            if (board._exists)
-                              openEditTask({
-                                board_id: board.id,
-                                board_prefix: board.prefix,
-                                domain: props.domain,
-                                task: task,
-                              });
-                          }}
-                        />
-                      ))}
-
-                      {provided.placeholder}
-                    </Box>
-                  )}
-                </Droppable>
+                <ActionIcon
+                  onClick={() => {
+                    if (board._exists) {
+                      openCreateTask({
+                        board_id: board.id,
+                        domain: props.domain,
+                        status: status.id,
+                      });
+                    }
+                  }}
+                >
+                  <Plus size={19} />
+                </ActionIcon>
               </Flex>
-            ))}
-          </SimpleGrid>
-        </DragDropContext>
-      )}
+
+              <Droppable droppableId={status.id}>
+                {(provided) => (
+                  <Box
+                    ref={provided.innerRef}
+                    sx={(theme) => ({
+                      flexGrow: 1,
+                      padding: '9px 9px 0.1px 9px',
+                      backgroundColor: theme.colors.dark[8],
+                      borderBottomLeftRadius: 6,
+                      borderBottomRightRadius: 6,
+                    })}
+                    {...provided.droppableProps}
+                  >
+                    {tasks && tasks[status.id]?.map((task, j) => (
+                      <TaskCard
+                        task={task}
+                        prefix={board?.prefix || ''}
+                        tags={tagMap}
+
+                        key={task.id}
+                        index={j}
+                        onClick={() => {
+                          if (board._exists)
+                            openEditTask({
+                              board_id: board.id,
+                              board_prefix: board.prefix,
+                              domain: props.domain,
+                              task: task,
+                            });
+                        }}
+                      />
+                    ))}
+
+                    {provided.placeholder}
+                  </Box>
+                )}
+              </Droppable>
+            </Flex>
+          ))}
+        </SimpleGrid>
+      </DragDropContext>
     </Stack>
   )
 }

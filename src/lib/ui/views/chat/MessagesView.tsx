@@ -1,4 +1,4 @@
-import { ForwardedRef, Fragment, Ref, useEffect, useRef, useState } from 'react';
+import { ForwardedRef, Fragment, Ref, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
@@ -34,7 +34,6 @@ import {
   MemberWrapper,
   useChatStyles,
   useMember,
-  useMemo,
   useMessages,
   useSession,
 } from '@/lib/hooks';

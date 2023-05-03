@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
+
 import {
   Avatar,
   Sx,
 } from '@mantine/core';
 
-import { useMemo } from '@/lib/hooks';
 import { Member } from '@/lib/types';
 
 

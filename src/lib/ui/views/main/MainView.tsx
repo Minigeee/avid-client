@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import assert from 'assert';
 
 import {
@@ -13,7 +13,7 @@ import MessagesView from '@/lib/ui/views/chat/MessagesView';
 import RoomView from '@/lib/ui/views/rtc/RoomView';
 import BoardView from '@/lib/ui/views/projects/BoardView';
 
-import { useApp, useDomain, useMemo } from '@/lib/hooks';
+import { useApp, useDomain } from '@/lib/hooks';
 import { Channel } from '@/lib/types';
 
 const HEADER_HEIGHT = '2.8rem';
@@ -30,7 +30,7 @@ export default function MainView() {
   const [headerData, setHeaderData] = useState<Record<string, any>>({});
 
   // Retrieve channel object
-  const channel = useMemo<Channel>(
+  const channel = useMemo<Channel | undefined>(
     () => domain.channels?.find(x => x.id === channel_id),
     [channel_id, domain.channels]
   );

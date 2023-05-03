@@ -1,4 +1,20 @@
-import { Task, TaskTag } from './task';
+import { Date, WithId } from './util';
+import { Label } from './common';
+
+
+/** A task group makes task management easier (used for backlog, cycles, etc.) */
+export type TaskGroup = {
+	/** Id of the task group */
+	id: string;
+	/** The name of the task group */
+	name: string;
+	/** Group description */
+	description?: string;
+	/** The start date (if the group is a cycle) */
+	start_date?: Date;
+	/** The end date (if the group is a cycle) */
+	end_date?: Date;
+};
 
 
 /**
@@ -14,19 +30,15 @@ export interface Board {
 	domain: string;
 	/** The prefix given to all tasks in this board */
 	prefix: string;
-	/** All tags belonging to this board */
-	tags: TaskTag[];
-	/** A list of task statuses that exist in this board */
-	statuses: {
-		/** The name or label of the status */
-		label: string;
-		/** The hex color of the status with '#' */
-		color: string;
-	}[];
+	/** Map of all tags belonging to this board */
+	tags: WithId<Label>[];
+	/** Map of all statuses belonging to this board */
+	statuses: WithId<Label>[];
+	/** Ids of all task groups belonging to the board */
+	groups: TaskGroup[];
 
 	/** A counter used to assign task ids */
 	_task_counter: number;
-	/** A counter for assigning tag ids */
-	_tag_counter: number;
+	/** Counter used to assign unique ids to every board object except tasks */
+	_id_counter: number;
 }
-

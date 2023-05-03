@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Accordion,
@@ -26,12 +26,12 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
-  useMemo,
   useMemoState,
 } from '@/lib/hooks';
-import { ExpandedTask, TaskTag } from '@/lib/types';
+import { ExpandedTask, Label } from '@/lib/types';
 
 import { groupBy, round } from 'lodash';
+import moment from 'moment';
 import DataTable from 'react-data-table-component';
 
 
@@ -50,8 +50,8 @@ type TaskTableProps = {
   /** The group this table is part of */
   group: string;
   
-  statusColors?: Record<string, string>;
-  tags?: Record<string, TaskTag>;
+  statuses: Record<string, Label & { index: number }>;
+  tags: Record<string, Label>;
 };
 
 ////////////////////////////////////////////////////////////
@@ -111,7 +111,9 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             <TaskPriorityIcon priority={task.priority} outerSize={24} innerSize={18} sx={{  }} />
           ),
           sortable: true,
-          sortFunction: (a: ExpandedTask, b: ExpandedTask) => (b.priority || 0) - (a.priority || 0),
+          sortFunction: (a: ExpandedTask, b: ExpandedTask) =>
+            (b.priority ? config.app.board.sort_keys.priority[b.priority] : 100) -
+            (a.priority ? config.app.board.sort_keys.priority[a.priority] : 100),
         },
         {
           name: 'ID',
@@ -135,17 +137,17 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               padding: '1px 13px 2px 11px',
               width: 'fit-content',
               maxWidth: 'calc(100% - 1.0rem)',
-              backgroundColor: props.statusColors ? props.statusColors[task.status] : undefined,
+              backgroundColor: props.statuses[task.status].color,
               borderRadius: 3,
               textOverflow: 'ellipsis',
               overflow: 'hidden',
               whiteSpace: 'nowrap',
             }}>
-              {task.status}
+              {props.statuses[task.status].label}
             </Text>
           ),
           sortable: true,
-          sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.status.localeCompare(b.status),
+          sortFunction: (a: ExpandedTask, b: ExpandedTask) => props.statuses[a.status].index - props.statuses[b.status].index,
         },
         {
           name: 'Assignee',
@@ -162,17 +164,28 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
         },
         {
+          name: 'Due Date',
+          center: true,
+          grow: 1.2,
+          cell: (task: ExpandedTask) =>
+            task.due_date ? (
+              <Text data-tag='allowRowEvents' size='sm' weight={600}>
+                {moment(task.due_date).format('l')}
+              </Text>
+            ) : undefined,
+          sortable: true,
+          sortFunction: (a: ExpandedTask, b: ExpandedTask) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
+        },
+        {
           name: 'Tags',
           grow: 3,
           cell: (task: ExpandedTask) =>{
             if (!props.tags || !task.tags || task.tags.length === 0) return;
 
             // Prioritize tag group if grouping by tags
-            let tags: number[];
-            if (props.groupingField === 'tags') {
-              const priority = parseInt(props.group);
-              tags = [priority, ...task.tags.filter(x => x !== priority).sort()];
-            }
+            let tags: string[];
+            if (props.groupingField === 'tags')
+              tags = [props.group, ...task.tags.filter(x => x !== props.group).sort()];
             else
               tags = [...task.tags].sort();
 
@@ -209,7 +222,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                   else if (props.groupingField === 'tags')
                     groupData.tag = props.group;
                   else if (props.groupingField === 'priority')
-                    groupData.priority = tasks[0].priority;
+                    groupData.priority = tasks[0].priority || undefined;
                   else if (props.groupingField === 'status')
                     groupData.status = tasks[0].status;
 
@@ -265,21 +278,38 @@ export default function ListView({ board, ...props }: ListViewProps) {
   const [expanded, setExpanded] = useState<Record<string, string[]>>({});
 
 
+  // Tag map
+  const tagMap = useMemo<Record<string, Label>>(() => {
+    const map: Record<string, Label> = {};
+    for (const tag of board.tags)
+      map[tag.id] = tag;
+    return map;
+  }, [board.tags]);
+  
+  // Status map
+  const statusMap = useMemo<Record<string, Label & { index: number }>>(() => {
+    const map: Record<string, Label & { index: number }> = {};
+    for (let i = 0; i < board.statuses.length; ++i) {
+      const s = board.statuses[i];
+      map[s.id] = { ...s, index: i };
+    }
+    return map;
+  }, [board.statuses]);
+
   // Group tasks by collection
   const [tasks, setTasks] = useMemoState<Record<string, ExpandedTask[]>>(
     () => {
-      if (!props.tasks._exists) return;
+      if (!props.tasks._exists) return {};
 
       // Apply filter options
-      const filterTagInts = filterTags.map(x => parseInt(x));
       const filtered = props.tasks.data.filter(x => {
         // Make sure all tags exist in filtered tags
-        for (const tag of filterTagInts) {
+        for (const tag of filterTags) {
           if (x.tags && x.tags.findIndex(y => y === tag) >= 0)
             return true;
         }
 
-        return filterTagInts.length === 0;
+        return filterTags.length === 0;
       });
 
       let data: Record<string, ExpandedTask[]> = {};
@@ -297,6 +327,13 @@ export default function ListView({ board, ...props }: ListViewProps) {
 
             data[tag_id].push(task);
           }
+
+          if (!task.tags?.length) {
+            if (!data[0])
+              data[0] = [];
+
+            data[0].push(task);
+          }
         }
       }
       else if (groupingField === 'assignee') {
@@ -308,6 +345,13 @@ export default function ListView({ board, ...props }: ListViewProps) {
 
           data[id].push(task);
         }
+      }
+      else if (groupingField === 'due_date') {
+        data = groupBy(filtered, (task) => task.due_date || '_nodate');
+        data = Object.keys(data).sort().reduce((obj: any, key: any) => {
+          obj[key] = data[key];
+          return obj;
+        }, {});
       }
       else {
         data = groupBy(filtered, (task) => task[groupingField]);
@@ -322,29 +366,6 @@ export default function ListView({ board, ...props }: ListViewProps) {
     },
     [props.tasks.data, groupingField, filterTags]
   );
-
-  // Status colors
-  const statusColors = useMemo<Record<string, string>>(() => {
-    if (!board.statuses) return;
-
-    const map: Record<string, string> = {};
-    for (const status of board.statuses)
-      map[status.label] = status.color;
-
-    return map;
-  }, [board.statuses]);
-
-  // Create tags map
-  const tags = useMemo<Record<string, TaskTag & { value: string }>>(() => {
-    if (!board?.tags) return {};
-
-    // Add tags to map
-    const map: Record<string, TaskTag & { value: string }> = {};
-    for (const tag of board.tags)
-      map[tag.id] = { ...tag, value: tag.id.toString() };
-
-    return map;
-  }, [board?.tags]);
 
   
   // Key used to find expand values
@@ -362,6 +383,7 @@ export default function ListView({ board, ...props }: ListViewProps) {
             { value: 'assignee', label: 'Assignee' },
             { value: 'tags', label: 'Tags' },
             { value: 'priority', label: 'Priority' },
+            { value: 'due_date', label: 'Due Date' },
             { value: 'status', label: 'Status' },
           ]}
           label='Group By'
@@ -375,7 +397,7 @@ export default function ListView({ board, ...props }: ListViewProps) {
         />
 
         <TaskTagsSelector
-          data={Object.values(tags || {})}
+          data={Object.values(board.tags).map(x => ({ value: x.id, ...x }))}
           placeholder='Filter by tags'
           label='Filters'
           icon={<Tag size={16} />}
@@ -418,11 +440,13 @@ export default function ListView({ board, ...props }: ListViewProps) {
                   <Text weight={600} size='lg'>
                     {
                       groupingField === 'tags' ?
-                        tags?.[group]?.label :
+                        group !== '0' ? tagMap[group]?.label : 'No Tags' :
                         groupingField === 'assignee' ?
                           group === 'unassigned' ? 'Unassigned' : tasks[0].assignee?.alias :
                           groupingField === 'priority' ?
                             PRIORITY_LABELS[group as unknown as number] :
+                            groupingField === 'due_date' ?
+                              tasks[0].due_date ? moment(tasks[0].due_date).format('ll') : 'No Due Date' :
                             group
                     }
                   </Text>
@@ -435,8 +459,8 @@ export default function ListView({ board, ...props }: ListViewProps) {
                   tasks={tasks}
                   groupingField={groupingField}
                   group={group}
-                  tags={tags}
-                  statusColors={statusColors}
+                  statuses={statusMap}
+                  tags={tagMap}
                 />
               </Accordion.Panel>
             </Accordion.Item>
@@ -450,8 +474,8 @@ export default function ListView({ board, ...props }: ListViewProps) {
           tasks={tasks?.['none'] || []}
           groupingField={groupingField}
           group={'none'}
-          tags={tags}
-          statusColors={statusColors}
+          statuses={statusMap}
+          tags={tagMap}
         />
       )}
     </Stack>

@@ -4,15 +4,13 @@ import assert from 'assert';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
-import { Board, Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain } from '@/lib/types';
-import { swrErrorWrapper } from '@/lib/utility/error-handler';
-import { SwrWrapper } from '@/lib/utility/swr-wrapper';
+import { Board, Channel, ChannelOptions, ChannelTypes } from '@/lib/types';
 
 
 /** Default function for creating channel */
 function addDefaultChannel(channel: Partial<Channel>, session: SessionState) {
 	return query<Channel[]>(
-		sql.create<Channel>('channels', channel, ['id']),
+		sql.create<Channel>('channels', channel, ['id', 'data']),
 		{ session }
 	);
 }
@@ -25,14 +23,15 @@ function addBoardChannel(channel: Partial<Channel>, options: ChannelOptions<'boa
 			prefix: options.prefix,
 			statuses: config.app.board.default_statuses,
 			tags: [],
+			groups: [config.app.board.default_backlog],
 
 			_task_counter: 0,
-			_tag_counter: 0,
+			_id_counter: 0,
 		}, ['id'])),
 		sql.create<Channel>('channels', {
 			...channel,
 			data: { ...channel.data, board: sql.$('$board.id') },
-		}, ['id']),
+		}, ['id', 'data']),
 	]), { session });
 }
 
@@ -58,4 +57,24 @@ export async function addChannel<T extends ChannelTypes>(channel: Partial<Channe
 
 	assert(results && results.length > 0);
 	return results[0];
+}
+
+
+/**
+ * Remove a channel from the domain object. This function handles
+ * any special operations required for each channel type.
+ * 
+ * @param channel_id The id of the channel to remove
+ * @param session The session used to access database
+ * @returns The new domain object
+ */
+export async function removeChannel(channel_id: string, session: SessionState) {
+	// Delete channel, while taking any extra actions necessary
+	await query(sql.transaction([
+		sql.let('$channel', sql.delete(channel_id, { return: 'BEFORE' })),
+		sql.delete(sql.if({
+			cond: '$channel.type = "board"',
+			body: '$channel.data.board',
+		})),
+	]), { session });
 }

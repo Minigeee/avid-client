@@ -10,6 +10,7 @@ import { modals } from '@/lib/ui/modals';
 import config from '@/config';
 import SessionProvider from '@/lib/contexts/session';
 import { swrHandler } from '@/lib/utility/error-handler';
+import { DatesProvider } from '@mantine/dates';
 
 
 export default function App(props: AppProps) {
@@ -28,8 +29,8 @@ export default function App(props: AppProps) {
               '#BFC0C6',
               '#96999F',
               '#626771',
-              '#3D424B',
-              '#2F333B',
+              '#434852',
+              '#343841',
               '#272B34',
               '#1F242A',
               '#181D23',
@@ -41,6 +42,24 @@ export default function App(props: AppProps) {
           defaultGradient: { from: 'violet', to: 'pink' },
 
           components: {
+            DatePickerInput: {
+              styles: (theme) => ({
+                day: {
+                  '&[data-today="true"]:not([data-selected="true"])': {
+                    backgroundColor: theme.colors.dark[4],
+                    '&:hover': { backgroundColor: theme.colors.dark[3] }
+                  },
+                  '&[data-weekend="true"]': {
+                    color: theme.colors.dark[2],
+                    fontWeight: 700,
+                  },
+                  '&[data-weekend="true"][data-selected="true"]': {
+                    color: theme.colors.dark[0],
+                  },
+                },
+              }),
+            },
+
             Input: {
               styles: (theme) => ({
                 wrapper: {
@@ -104,9 +123,11 @@ export default function App(props: AppProps) {
           dedupingInterval: config.swr.dedupe_interval * 1000,
           focusThrottleInterval: config.swr.focus_throttle_interval * 1000,
         }}>
-          <ModalsProvider modals={modals}>
-            <Component {...pageProps} />
-          </ModalsProvider>
+          <DatesProvider settings={{ firstDayOfWeek: 0 }}>
+            <ModalsProvider modals={modals}>
+              <Component {...pageProps} />
+            </ModalsProvider>
+          </DatesProvider>
         </SWRConfig>
       </MantineProvider>
     </SessionProvider>

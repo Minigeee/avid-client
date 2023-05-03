@@ -4,6 +4,7 @@ import assert from 'assert';
 import config from '@/config';
 import { axiosHandler } from '../utility/error-handler';
 import { SessionState } from '../contexts';
+import { debug } from '../utility';
 
 
 /** Db query options */
@@ -53,7 +54,13 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 					DB: config.db.database,
 				},
 			});
-		
+
+			// Debug log
+			debug({
+				query: sql.trim(),
+				results: result.data,
+			});
+
 			return options?.complete ? result.data.map((x: any) => x.result) : result.data.at(-1).result;
 		}
 		catch (error: any) {
@@ -136,7 +143,7 @@ export type SqlOp = '&&' | '||' | '??' | '?:' | '=' | '!=' | '==' | '?=' | '*=' 
 	| 'INSIDE' | 'NOTINSIDE' | 'ALLINSIDE' | 'ANYINSIDE' | 'NONEINSIDE' | 'OUTSIDE' | 'INTERSECTS';
 
 /** Return modes */
-export type SqlReturn = 'NONE' | 'BEFORE' | 'DIFF';
+export type SqlReturn = 'NONE' | 'BEFORE' | 'AFTER' | 'DIFF';
 
 /** Content objects */
 export type SqlContent<T> = (T extends object ? { [K in keyof T]?: SqlContent<T[K]> } :
@@ -223,11 +230,16 @@ function _fnstr(fn: any) {
     const str = fn.toString();
     const paramstr: string = str.match(/function[^\()]*\(([\s\S]*?)\)/)[1];
     const bodystr: string = str.match(/function[^{]+\{([\s\S]*)\}$/)[1];
+	const lines = bodystr.split(/\r?\n/g).map(x => x.trim());
 
     return {
         params: paramstr ? paramstr.split(', ') : [],
-        body: bodystr.split('\r\n').map(x => x.trim()).join(' '),
+        body: lines.filter(x => !x.startsWith('//')).join(' '),
     };
+}
+
+function _replace(str: string, v: string, replace: string) {
+    return str.replace(new RegExp(`(\\b(?<!\\w\\.))(${v})(\\b)`, 'g'), replace);
 }
 
 /** SQL commands in function form for ease of use and future proofing */
@@ -241,11 +253,11 @@ export const sql = {
 	
 		// Replace parameters
 		for (let i = 0; i < params.length; ++i)
-			body = body.replaceAll(params[i], `arguments[${i}]`);
+			body = _replace(body, params[i], `arguments[${i}]`);
 	
 		// Replace hardcodes
 		for (const [k, v] of Object.entries(hardcode || {}))
-			body = body.replaceAll(k, _json(v, false));
+			body = _replace(body, k, _json(v, false));
 	
 		return { __esc__: `function(${params.map(x => `$${x}`).join(', ')}) {${body}}` };
 	},
@@ -282,15 +294,16 @@ export const sql = {
 	},
 
 	/** Delete statement */
-	delete: <T extends object>(record: string, options?: SqlDeleteOptions<T>) => {
-		let q = `DELETE ${record} `;
+	delete: <T extends object>(record: string | string[], options?: SqlDeleteOptions<T>) => {
+		let q = `DELETE ${typeof record === 'string' ? record : record.join(',')} `;
 
 		if (options?.where)
 			q += `WHERE ${options.where} `;
 			
 		// Return
-		const ret = options?.return || 'NONE';
-		q += `RETURN ${typeof ret === 'string' ? ret : ret.join(',')} `;
+		const ret = options?.return;
+		if (ret)
+			q += `RETURN ${typeof ret === 'string' ? ret : ret.join(',')} `;
 
 		return q;
 	},

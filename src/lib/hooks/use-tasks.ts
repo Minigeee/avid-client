@@ -1,6 +1,7 @@
-import useSWR, { KeyedMutator } from 'swr';
+import useSWR, { KeyedMutator, mutate as _mutate } from 'swr';
 import assert from 'assert';
 
+import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { getDomainCache, getMember, getMembers, query, sql } from '@/lib/db';
 import { Board, ExpandedTask, Member, Task } from '@/lib/types';
@@ -26,7 +27,7 @@ function fetcher(session: SessionState) {
 				'status',
 				'assignee',
 				'priority',
-				'cycle',
+				'group',
 				'due_date',
 				'tags',
 				'dependencies',
@@ -81,7 +82,7 @@ function tasksMutators(board_id: string) {
 			addTask: (task: Partial<ExpandedTask> & { summary: string }) => mutate(
 				swrErrorWrapper(async (tasks: ExpandedTask[]) => {
 					// Creation time
-					const now = new Date();
+					const now = new Date().toISOString();
 
 					// Create task
 					const results = await query<Task[]>(sql.transaction([
@@ -93,7 +94,7 @@ function tasksMutators(board_id: string) {
 							...task,
 							sid: sql.$(`${board_id}._task_counter`),
 							board: board_id,
-							status: task.status || 'To Do',
+							status: task.status || config.app.board.default_status_id,
 							assignee: task.assignee?.id || undefined,
 							time_created: now,
 						}),
@@ -141,6 +142,9 @@ function tasksMutators(board_id: string) {
 						...results[0],
 						assignee: task.assignee,
 					};
+
+					// Mutate task hook
+					_mutate(task_id, copy[index], { revalidate: false });
 
 					return copy;
 				}, { message: 'An error occurred while modifying task' }),

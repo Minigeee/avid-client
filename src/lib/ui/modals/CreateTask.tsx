@@ -1,9 +1,10 @@
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
   Box,
   Button,
+  Center,
   CloseButton,
   ColorPicker,
   ColorSwatch,
@@ -25,10 +26,11 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
+import { DatePickerInput, DatePickerInputProps } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { closeAllModals, ContextModalProps, openConfirmModal } from '@mantine/modals';
 
-import { DotsVertical, FileDatabase, Hash, Trash } from 'tabler-icons-react';
+import { CalendarEvent, DotsVertical, FileDatabase, Hash, Trash } from 'tabler-icons-react';
 
 import MemberInput from '@/lib/ui/components/MemberInput';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
@@ -41,30 +43,30 @@ import {
   TasksWrapper,
   useBoard,
   useChatStyles,
-  useMemo,
   useMemoState,
   useTask,
   useTasks,
 } from '@/lib/hooks';
 import {
   ExpandedTask,
+  Label,
   Member,
-  Task,
   TaskPriority,
-  TaskTag,
+  WithId,
 } from '@/lib/types';
+
+import moment from 'moment';
+import { v4 as uuid } from 'uuid';
 
 
 ////////////////////////////////////////////////////////////
 const SHORT_INPUT_WIDTH = 40;
 const MED_INPUT_WIDTH = 60;
 
-const DEFAULT_TAG_COLOR = '#495057';
-
 
 ////////////////////////////////////////////////////////////
 interface PriorityItemProps extends React.ComponentPropsWithoutRef<'div'> {
-  value: number;
+  value: TaskPriority | null;
   label: string;
 }
 
@@ -192,24 +194,46 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
 
 
 ////////////////////////////////////////////////////////////
+function DueDatePicker(props: DatePickerInputProps) {
+  return (
+    <DatePickerInput
+      {...props}
+      popoverProps={{ withinPortal: true }}
+      label={(
+        <Group spacing={6} align='baseline'>
+          Due Date
+          <Text color='dimmed' size='sm'>
+            {(() => {
+              if (!props.value) return '';
+              const today = new Date();
+              const diff = moment(props.value).diff([today.getFullYear(), today.getMonth(), today.getDate()], 'days');
+              if (diff < 0)
+                return '(Passed)';
+              else if (diff === 0)
+                return '(Today)';
+              else if (diff === 1)
+                return '(Tomorrow)';
+              else
+                return `(${diff} days)`;
+            })()}
+          </Text>
+        </Group>
+      )}
+    />
+  );
+}
+
+
+////////////////////////////////////////////////////////////
 type FormValues = {
   summary: string;
   description: string;
   status: string;
-  priority: string;
+  priority: TaskPriority | null;
   due_date: Date | null;
   tags: string[];
 };
 
-
-////////////////////////////////////////////////////////////
-function tagToSelectItem(tag: TaskTag) {
-  return {
-    value: tag.id.toString(),
-    label: tag.label,
-    color: tag.color || DEFAULT_TAG_COLOR
-  };
-}
 
 ////////////////////////////////////////////////////////////
 function selectItemToTag(item: { value: string, label: string, color: string }) {
@@ -223,74 +247,76 @@ function selectItemToTag(item: { value: string, label: string, color: string }) 
 
 ////////////////////////////////////////////////////////////
 function useTaskHooks(board: BoardWrapper<false>) {
-  const [createdTags, setCreatedTags] = useState<TaskTag[]>([]);
+  const [createdTags, setCreatedTags] = useState<Record<string, WithId<Label>>>({});
   const [tagColorOverrides, setTagColorOverrides] = useState<Record<string, string>>({});
 
-  // Status data
-  const statuses = useMemo<{ value: string, label: string, color: string }[]>(() => {
-    return board?.statuses?.map((x, i) => ({ ...x, value: x.label }));
-  }, []) || [];
-
   // Tags data
-  const [tags, setTags] = useMemoState<{ value: string, label: string, color: string }[]>(() => {
+  const [tags, setTags] = useMemoState<{ value: string, label: string, color?: string }[]>(() => {
     if (!board._exists) return [];
 
     // Get existing tags
-    const existing = board.tags.map(tagToSelectItem);
+    const existing = Object.entries(board.tags).map(x => ({ value: x[0], ...x[1] }));
 
     // Get created tags
-    const created = createdTags.map(tagToSelectItem);
+    const created = Object.entries(createdTags).map(x => ({ value: x[0], ...x[1] }));
 
     // Combine them
     return existing.concat(created).sort((a, b) => a.label.localeCompare(b.label));
   }, []);
-
+  
+  // Status map
+  const statusMap = useMemo<Record<string, Label>>(() => {
+    const map: Record<string, Label> = {};
+    for (const status of (board.statuses || []))
+      map[status.id] = status;
+    return map;
+  }, [board.statuses]);
 
   return {
     createdTags, setCreatedTags,
     tagColorOverrides, setTagColorOverrides,
-    statuses,
-    tags, setTags
+    tags, setTags,
+    statusMap,
   };
 }
 
 
-async function updateTags(values: FormValues, created: TaskTag[], overrides: Record<string, string>, board: BoardWrapper) {
-  let updatedTagIds = values.tags.map(x => parseInt(x));
-  if (created.length > 0 || Object.keys(overrides).length > 0) {
-    // Created tags with updated colors
-    const updatedCreatedTags = created.map(x => ({ ...x, color: overrides[x.id] || x.color }));
+async function updateTags(values: FormValues, created: Record<string, Label>, overrides: Record<string, string>, board: BoardWrapper) {
+  if (Object.keys(created).length > 0 || Object.keys(overrides).length > 0) {
+    // Apply color overrides to created tags
+    const createdTags: Record<string, Label> = {};
+    for (const [k, v] of Object.entries(created))
+      createdTags[k] = { ...v, color: overrides[k] || v.color };
 
-    // Add all tags that changed colors (aren't newly created)
-    const allChangedTags: Partial<TaskTag>[] = updatedCreatedTags.map(x => ({ label: x.label, color: x.color }));
+    // Apply color overrides to existing tags
+    const updatedTags: Record<string, WithId<Partial<Label>>> = {};
     for (const [id, color] of Object.entries(overrides)) {
-      const index = updatedCreatedTags.findIndex(x => x.id && x.id === parseInt(id));
-      if (index < 0)
-        allChangedTags.push({ id: parseInt(id), color });
+      if (!createdTags[id])
+        updatedTags[id] = { id, color };
     }
 
     // Update tags in server and get the new ones (with assigned ids)
-    const newBoard = await board._mutators.addTags(allChangedTags);
+    const newBoard = await board._mutators.addTags({
+      add: Object.values(createdTags),
+      update: Object.values(updatedTags),
+    });
 
     // Generate id map (maps old temp ids to new assigned ones)
-    const newIdMap: Record<number, number | undefined> = {};
-    for (const tag of updatedCreatedTags) {
+    const newTags = Object.entries(newBoard?.tags || {});
+    const newIdMap: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(createdTags)) {
       // Find the corresponding created tag in the new board
-      const newTag = newBoard?.tags.find(x => x.label === tag.label && x.color === tag.color);
+      const newTag = newTags.find(x => x[1].label === v.label && x[1].color === v.color);
 
       // Add id to map
-      newIdMap[tag.id] = newTag?.id;
+      newIdMap[k] = newTag?.[0];
     }
 
-    // Update tag id list
-    for (let i = 0; i < updatedTagIds.length; ++i) {
-      const newId = newIdMap[updatedTagIds[i]];
-      if (newId !== undefined)
-        updatedTagIds[i] = newId;
-    }
+    // Return remapped tag id list
+    return values.tags.map(id => newIdMap[id] || id);
   }
 
-  return updatedTagIds;
+  return values.tags;
 }
 
 
@@ -301,7 +327,7 @@ export type CreateTaskProps = {
   /** Starting status */
   status?: string;
   /** Starting priority */
-  priority?: number;
+  priority?: TaskPriority;
   /** Starting assignee */
   assignee?: Member;
   /** Starting tag */
@@ -318,8 +344,8 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     initialValues: {
       summary: '',
       description: '',
-      status: props.status || 'To Do',
-      priority: props.priority?.toString() || TaskPriority.None.toString(),
+      status: props.status || config.app.board.default_status_id,
+      priority: props.priority || null,
       due_date: null,
       assignee: props.assignee || null,
       tags: props.tag !== undefined ? [props.tag] : [],
@@ -331,14 +357,14 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
   const {
     createdTags, setCreatedTags,
     tagColorOverrides, setTagColorOverrides,
-    statuses,
-    tags, setTags
+    tags, setTags,
+    statusMap,
   } = useTaskHooks(board);
 
 
   ////////////////////////////////////////////////////////////
   async function submit(values: FormValues) {
-    if (!board._exists || !tasks._exists || !statuses) return;
+    if (!board._exists || !tasks._exists) return;
 
     // Indicate loading
     setLoading(true);
@@ -349,7 +375,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     // Create task and upload it
     const task = {
       ...values,
-      priority: parseInt(values.priority),
+      due_date: values.due_date?.toISOString(),
       tags: updatedTagIds,
     };
     await tasks._mutators.addTask(task);
@@ -360,6 +386,8 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     context.closeModal(id);
   }
 
+
+  if (!board._exists) return null;
 
   ////////////////////////////////////////////////////////////
   return (
@@ -383,12 +411,11 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
 
         <Divider />
 
-        {/* Add status colors */}
         <Select
           label='Status'
-          data={statuses}
+          data={board.statuses.map(x => ({ value: x.id, ...x }))}
           icon={<ColorSwatch
-            color={statuses?.find(x => x.value === form.values['status'])?.color || ''}
+            color={statusMap[form.values['status']]?.color || ''}
             size={16}
             mt={1}
           />}
@@ -399,20 +426,21 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
 
         <Select
           label='Priority'
+          placeholder='None'
           data={[
-            { value: TaskPriority.Critical.toString(), label: 'Critical' },
-            { value: TaskPriority.High.toString(), label: 'High' },
-            { value: TaskPriority.Medium.toString(), label: 'Medium' },
-            { value: TaskPriority.Low.toString(), label: 'Low' },
-            { value: TaskPriority.None.toString(), label: 'None' },
+            { value: 'critical', label: 'Critical' },
+            { value: 'high', label: 'High' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'low', label: 'Low' },
           ]}
           icon={<TaskPriorityIcon
-            priority={parseInt(form.values['priority'])}
+            priority={form.values['priority']}
             outerSize={19}
             innerSize={16}
             tooltip={false}
             sx={{ marginTop: 1 }}
           />}
+          clearable
           itemComponent={PrioritySelectItem}
           sx={{ maxWidth: `${SHORT_INPUT_WIDTH}ch` }}
           {...form.getInputProps('priority')}
@@ -427,9 +455,16 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           {...form.getInputProps('assignee')}
         />
 
+        <DueDatePicker
+          placeholder='None'
+          icon={<CalendarEvent size={19} />}
+          clearable
+          sx={{ maxWidth: `${MED_INPUT_WIDTH}ch` }}
+          {...form.getInputProps('due_date')}
+        />
+
         <Divider />
 
-        {/* TODO */}
         <MultiSelect
           label='Tags'
           description='Tags can be used to categorize tasks for easier searching and filtering. Click a tag to change its color'
@@ -438,12 +473,11 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           clearable
           creatable
           getCreateLabel={(query) => {
-            // TODO : Make sure the tag want to create doesn't exist already
             return (
               <Box sx={{
                 width: 'fit-content',
                 padding: '1px 11px 2px 11px',
-                backgroundColor: DEFAULT_TAG_COLOR,
+                backgroundColor: config.app.board.default_tag_color,
                 borderRadius: 15,
               }}>
                 <Text size='xs' weight={500}>{query}</Text>
@@ -452,15 +486,17 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           }}
           onCreate={(query) => {
             // Create new tag (id doesn't matter before tag is created)
-            const item = {
-              value: (1000000 - createdTags.length).toString(),
+            const id = uuid();
+            const tag: WithId<Label> = {
+              id,
               label: query,
-              color: DEFAULT_TAG_COLOR,
+              color: config.app.board.default_tag_color,
             };
+            const item = { value: id, ...tag };
 
             // Add to created list and tags list
             setTags([...(tags || []), item]);
-            setCreatedTags([...createdTags, selectItemToTag(item)]);
+            setCreatedTags({ ...createdTags, [id]: tag });
 
             return item;
           }}
@@ -471,7 +507,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
             setTagColorOverrides({ ...tagColorOverrides, [value]: color });
 
             // Change actual tag color
-            const copy = [...(tags || [])];
+            const copy = tags.slice();
             const index = copy.findIndex(x => x.value === value);
             copy[index] = { ...copy[index], color };
             setTags(copy);
@@ -532,15 +568,13 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     initialValues: {
       summary: task.summary,
       description: task.description || '',
-      status: task.status || 'To Do',
-      priority: task.priority !== undefined ? task.priority.toString() : TaskPriority.None.toString(),
-      due_date: null,
+      status: task.status || config.app.board.default_status_id,
+      priority: task.priority || null,
+      due_date: task.due_date ? new Date(task.due_date) : null,
       assignee: task.assignee || null,
       tags: task.tags?.map(x => x.toString()) || [],
     } as FormValues,
   });
-
-  console.log(form.values.priority)
 
   const [inEditMode, setInEditMode] = useState<Record<'description' | 'summary', boolean>>({ description: false, summary: false });
   const [prevDesc, setPrevDesc] = useState<string>('');
@@ -548,8 +582,8 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   const {
     createdTags, setCreatedTags,
     tagColorOverrides, setTagColorOverrides,
-    statuses,
-    tags, setTags
+    tags, setTags,
+    statusMap,
   } = useTaskHooks(board);
 
 
@@ -572,6 +606,8 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     await task._mutators.updateLocal(localUpdates);
   }
 
+
+  if (!board._exists) return null;
 
   return (
     <Stack>
@@ -724,7 +760,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                   <Box sx={{
                     width: 'fit-content',
                     padding: '1px 11px 2px 11px',
-                    backgroundColor: DEFAULT_TAG_COLOR,
+                    backgroundColor: config.app.board.default_tag_color,
                     borderRadius: 15,
                   }}>
                     <Text size='xs' weight={500}>{query}</Text>
@@ -733,15 +769,17 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               }}
               onCreate={(query) => {
                 // Create new tag (id doesn't matter before tag is created)
-                const item = {
-                  value: (1000000 - createdTags.length).toString(),
+                const id = uuid();
+                const tag = {
+                  id,
                   label: query,
-                  color: DEFAULT_TAG_COLOR,
+                  color: config.app.board.default_tag_color,
                 };
-
+                const item = { value: id, ...tag };
+    
                 // Add to created list and tags list
                 setTags([...(tags || []), item]);
-                setCreatedTags([...createdTags, selectItemToTag(item)]);
+                setCreatedTags({ ...createdTags, [id]: tag });
 
                 return item;
               }}
@@ -779,43 +817,43 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
           <Stack>
             <Select
               label='Status'
-              data={statuses}
+              data={board.statuses.map(x => ({ value: x.id, ...x }))}
               icon={<ColorSwatch
-                color={statuses?.find(x => x.value === form.values['status'])?.color || ''}
+                color={statusMap[form.values['status']]?.color || ''}
                 size={16}
                 mt={1}
               />}
               itemComponent={StatusSelectItem}
               {...form.getInputProps('status')}
               onChange={(value) => {
-                form.setFieldValue('status', value || 'To Do');
+                form.setFieldValue('status', value || config.app.board.default_status_id);
                 onFieldChange({ status: value || '' });
               }}
             />
 
             <Select
               label='Priority'
+              placeholder='None'
               data={[
-                { value: TaskPriority.Critical.toString(), label: 'Critical' },
-                { value: TaskPriority.High.toString(), label: 'High' },
-                { value: TaskPriority.Medium.toString(), label: 'Medium' },
-                { value: TaskPriority.Low.toString(), label: 'Low' },
-                { value: TaskPriority.None.toString(), label: 'None' },
+                { value: 'critical', label: 'Critical' },
+                { value: 'high', label: 'High' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'low', label: 'Low' },
               ]}
               icon={<TaskPriorityIcon
-                priority={parseInt(form.values['priority'])}
+                priority={form.values['priority']}
                 outerSize={19}
                 innerSize={16}
                 tooltip={false}
                 sx={{ marginTop: 1 }}
               />}
+              clearable
               itemComponent={PrioritySelectItem}
               withinPortal
               {...form.getInputProps('priority')}
-              onChange={(value) => {
-                const v = value !== null ? value : TaskPriority.None.toString();
-                form.setFieldValue('priority', v);
-                onFieldChange({ priority: parseInt(v) });
+              onChange={(value: TaskPriority | null) => {
+                form.setFieldValue('priority', value);
+                onFieldChange({ priority: value });
               }}
             />
 
@@ -829,6 +867,18 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               onChange={(value) => {
                 form.setFieldValue('assignee', value);
                 onFieldChange({ assignee: value });
+              }}
+            />
+
+            <DueDatePicker
+              placeholder='None'
+              icon={<CalendarEvent size={19} />}
+              clearable
+              sx={{ maxWidth: `${MED_INPUT_WIDTH}ch` }}
+              {...form.getInputProps('due_date')}
+              onChange={(value) => {
+                form.setFieldValue('due_date', value);
+                onFieldChange({ due_date: value?.toISOString() || null });
               }}
             />
 

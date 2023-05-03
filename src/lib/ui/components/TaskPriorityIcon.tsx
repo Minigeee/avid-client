@@ -16,14 +16,17 @@ import {
   Subtask,
 } from 'tabler-icons-react';
 
+import { TaskPriority } from '@/lib/types';
+
 
 ////////////////////////////////////////////////////////////
 type TaskPriorityIconProps = {
-  priority: number | null | undefined;
+  priority: TaskPriority | null | undefined;
   outerSize?: number;
   innerSize?: number;
 
   tooltip?: boolean;
+  tooltipPos?: 'left' | 'right';
   sx?: Sx;
 }
 
@@ -31,14 +34,14 @@ type TaskPriorityIconProps = {
 export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
   const theme = useMantineTheme();
 
-  const priorities = [
-    { label: 'Critical', color: theme.colors.red[5], icon: ChevronsUp },
-    { label: 'High', color: theme.colors.orange[5], icon: ChevronUp },
-    { label: 'Medium', color: theme.colors.yellow[4], icon: Equal },
-    { label: 'Low', color: theme.colors.blue[4], icon: ChevronDown },
-    { label: 'None', color: theme.colors.gray[5], icon: Point },
-  ];
-  const priority = priorities[props.priority !== undefined && props.priority !== null ? props.priority : 4];
+  const priorities = {
+    critical: { label: 'Critical', color: theme.colors.red[5], icon: ChevronsUp },
+    high: { label: 'High', color: theme.colors.orange[5], icon: ChevronUp },
+    medium: { label: 'Medium', color: theme.colors.yellow[4], icon: Equal },
+    low: { label: 'Low', color: theme.colors.blue[4], icon: ChevronDown },
+    none: { label: 'None', color: theme.colors.gray[5], icon: Point },
+  };
+  const priority = priorities[props.priority || 'none'];
 
 
   if (props.tooltip === false) {
@@ -67,8 +70,9 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
     return (
       <Tooltip
         label={priority.label}
-        position='left'
+        position={props.tooltipPos || 'left'}
         withArrow
+        withinPortal
         sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
       >
         <ThemeIcon size={props.outerSize || 21} radius='xl' sx={(theme) => ({

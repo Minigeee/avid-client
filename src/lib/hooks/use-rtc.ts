@@ -816,7 +816,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 	});
 
 	// Socket connection error handler
-	_.socket.on('connect_error', (error) => {
+	_.socket.on('connect_error', errorWrapper((error) => {
 		assert(_.socket);
 	
 		notifyError(
@@ -828,9 +828,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 
 		// Stop trying to connect
 		_.socket.disconnect();
-
-		// WIP : Add socket logging
-	});
+	}, { message: 'An error occurred while handling RTC server connection error' }));
 
 	// Server side error notification
 	_.socket.on('error', (message, status) => {

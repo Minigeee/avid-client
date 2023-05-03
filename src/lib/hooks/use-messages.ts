@@ -277,7 +277,10 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>) {
 			statements.push(sql.select<Channel>(['domain.id', 'domain.roles'], { from: channel_id, fetch: ['domain.roles'] }));
 
 		// Get messages, sorted by creation time
-		const results = await query<[Message[], { domain: ExpandedDomain }[]]>(sql.multi(statements), { session, complete: true });
+		const results = await query<[Message[], { domain: ExpandedDomain }[]]>(
+			sql.multi(statements),
+			{ session, complete: true }
+		);
 		if (!results) return null;
 
 		// Construct markdown env
@@ -403,7 +406,7 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 			// Generate temporary id so we know which message to update with correct id
 			const tempId = (_state.counter++).toString();
 			// Time message is sent
-			const now = new Date();
+			const now = new Date().toISOString();
 
 			return mutate(swrErrorWrapper(async (messages: GroupedMessages) => {
 				// Post message
