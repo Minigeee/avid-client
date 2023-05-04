@@ -11,6 +11,17 @@ import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { SwrWrapper, wrapSwrData } from '@/lib/utility/swr-wrapper';
 import { useDbQuery } from './use-db-query';
 
+import sanitizeHtml from 'sanitize-html';
+
+
+////////////////////////////////////////////////////////////
+function _sanitize<T extends Partial<ExpandedTask>>(task: T) {
+	if (task.description)
+		task.description = sanitizeHtml(task.description);
+
+	return task;
+}
+
 
 ////////////////////////////////////////////////////////////
 function fetcher(session: SessionState) {
@@ -27,7 +38,7 @@ function fetcher(session: SessionState) {
 				'status',
 				'assignee',
 				'priority',
-				'group',
+				'collection',
 				'due_date',
 				'tags',
 				'dependencies',
@@ -56,8 +67,8 @@ function fetcher(session: SessionState) {
 		for (const member of members)
 			assignees[member.id] = member;
 
-		// Attach senders and pings to message
-		const expanded: ExpandedTask[] = tasks.map(task => ({
+		// Attach senders and pings to message, sanitize tasks
+		const expanded: ExpandedTask[] = tasks.map(task => _sanitize({
 			...task,
 			assignee: task.assignee ? assignees[task.assignee] || undefined : undefined,
 		}));
@@ -91,7 +102,7 @@ function tasksMutators(board_id: string) {
 
 						// Create task
 						sql.create<Task>('tasks', {
-							...task,
+							..._sanitize(task),
 							sid: sql.$(`${board_id}._task_counter`),
 							board: board_id,
 							status: task.status || config.app.board.default_status_id,
@@ -102,10 +113,10 @@ function tasksMutators(board_id: string) {
 					assert(results && results.length);
 
 					return [
-						...tasks, {
+						...tasks, _sanitize({
 							...results[0],
 							assignee: task.assignee,
-						},
+						}),
 					];
 				}, { message: 'An error occurred while creating task' }),
 				{ revalidate: false }
@@ -128,7 +139,7 @@ function tasksMutators(board_id: string) {
 					// Update task
 					const results = await query<Task[]>(
 						sql.update<Task>(task_id, {
-							...task,
+							..._sanitize(task),
 							assignee: task.assignee === null ? null : task.assignee?.id,
 						}),
 						{ session }
@@ -138,10 +149,10 @@ function tasksMutators(board_id: string) {
 					// Create new updated task list
 					const copy = tasks.slice();
 					const index = copy.findIndex(x => x.id === task_id);
-					copy[index] = {
+					copy[index] = _sanitize({
 						...results[0],
 						assignee: task.assignee,
-					};
+					});
 
 					// Mutate task hook
 					_mutate(task_id, copy[index], { revalidate: false });
@@ -255,7 +266,7 @@ export function useTask(task_id: string, fallback?: ExpandedTask) {
 			// Delete domain temp field
 			delete task._domain;
 
-			return task;
+			return _sanitize(task);
 		},
 		mutators: taskMutators,
 		fallback,

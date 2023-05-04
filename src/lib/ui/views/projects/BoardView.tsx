@@ -16,6 +16,8 @@ import {
 } from '@mantine/core';
 import {
   ArrowIteration,
+  ChevronDown,
+  Clock,
   Folders,
   LayoutKanban,
   ListDetails,
@@ -37,11 +39,11 @@ import {
   useMemoState,
   useTasks,
 } from '@/lib/hooks';
-import { Channel, ExpandedTask, TaskGroup, TaskPriority } from '@/lib/types';
+import { Channel, ExpandedTask, TaskCollection, TaskPriority } from '@/lib/types';
 import { openCreateTask } from '@/lib/ui/modals';
 import { remap, sortObject } from '@/lib/utility';
 
-import moment from 'moment';
+import moment from 'moment-business-days';
 import { groupBy } from 'lodash';
 
 
@@ -71,8 +73,6 @@ function TabView({ board, type, ...props }: TabViewProps) {
   const [grouper, setGrouper] = useState<GroupableFields | null>(null);
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
-
-  // WIP : Re-add all kanban tasks, change "group" to "collection"
 
   // Available grouping options
   const groupingOptions = useMemo(() => {
@@ -257,7 +257,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
 
   return (
-    <Stack spacing={32}>
+    <Stack spacing={32} pb={64}>
       <Group align='end'>
         <Select
           data={groupingOptions}
@@ -332,7 +332,7 @@ interface GroupSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
   ({ name, start_date, end_date, ...others }: GroupSelectItemProps, ref) => (
     <div ref={ref} {...others}>
-      <Text size='md' weight={600}>{name}</Text>
+      <Title order={5}>{name}</Title>
       {(start_date || end_date) && (
         <Text size='xs' color='dimmed'>
           {start_date ? moment(start_date).format('l') : ''} - {end_date ? moment(end_date).format('l') : ''}
@@ -357,21 +357,21 @@ export default function BoardView(props: BoardViewProps) {
   
   const { classes } = useChatStyles();
   
-  const [groupId, setGroupId] = useState<string | null>(config.app.board.default_backlog_id);
+  const [collectionId, setCollectionId] = useState<string | null>(config.app.board.default_backlog_id);
   const [view, setView] = useState<string | null>(config.app.board.default_task_view);
 
-  const groupMap = useMemo(() => {
+  const collectionMap = useMemo(() => {
     if (!board._exists) return {};
 
-    const map: Record<string, TaskGroup> = {};
-    for (const group of board.groups)
+    const map: Record<string, TaskCollection> = {};
+    for (const group of board.collections)
       map[group.id] = group;
     return map;
-  }, [board.groups]);
+  }, [board.collections]);
 
 
-  // Get group object for less typing
-  const group = groupId ? groupMap[groupId] : null;
+  // Get collection object for less typing
+  const collection = collectionId ? collectionMap[collectionId] : null;
 
   if (!board._exists || !tasks._exists) return null;
 
@@ -384,45 +384,69 @@ export default function BoardView(props: BoardViewProps) {
         width: '100%',
         padding: '1.0rem 1.5rem 1.0rem 1.5rem'
       })}>
-        <Group noWrap spacing='xs' align='end' mb={24}>
+        <Group noWrap spacing='xs' align='center' mb={16}>
           <Select
-            data={board.groups.map(x => ({ value: x.id, label: x.name, ...x }))}
+            data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
             itemComponent={GroupSelectItem}
+            rightSection={<ChevronDown size={24} />}
+            size='md'
             styles={(theme) => ({
               input: {
-                fontSize: theme.fontSizes.md,
-                fontWeight: 600,
+                paddingTop: 0,
+                background: theme.colors.dark[6],
+                border: 'none',
+                fontFamily: theme.headings.fontFamily,
+                fontSize: theme.headings.sizes.h3.fontSize,
+                fontWeight: theme.headings.fontWeight as number, // "number" for typescript error
+              },
+              item: {
+                paddingTop: '0.4rem',
+                paddingBottom: '0.4rem',
               },
             })}
-            value={groupId}
-            onChange={setGroupId}
+            value={collectionId}
+            onChange={setCollectionId}
           />
           <Menu width='20ch' position='bottom-start'>
             <Menu.Target>
-              <ActionIcon size='lg' mb={1}>
+              <ActionIcon size='lg' mt={4}>
                 <Plus />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item icon={<ArrowIteration size={20} />}>New Cycle</Menu.Item>
-              <Menu.Item icon={<Folders size={19} />}>New Group</Menu.Item>
+              <Menu.Item icon={<Folders size={19} />}>New Collection</Menu.Item>
             </Menu.Dropdown>
           </Menu>
+
+          <div style={{ flexGrow: 1 }} />
+          {collection && (collection.start_date || collection.end_date) && (
+            <>
+              <Text size='sm' color='dimmed' weight={600} align='right'>
+                {collection.start_date ? moment(collection.start_date).format('l') : ''} -{' '}
+                {collection.end_date ? moment(collection.end_date).format('l') : ''}{' '}
+                <br />
+                {(() => {
+                  if (!collection.end_date) return '';
+                  const diff = moment(collection.end_date).businessDiff(moment(new Date()));
+                  return `${diff} working day${diff === 1 ? '' : 's'} remaining`;
+                })()}
+              </Text>
+              <Box mt={6} mr={8} sx={(theme) => ({ color: theme.colors.dark[2] })}>
+                <Clock size={32} />
+              </Box>
+            </>
+          )}
         </Group>
 
-        {groupId && group && (
+        {collectionId && collection && (
           <>
-            <Title order={2}>{group.name}</Title>
-            {(group.start_date || group.end_date) && (
-              <Text size='sm' color='dimmed'>
-                {group.start_date ? moment(group.start_date).format('l') : ''} - {group.end_date ? moment(group.end_date).format('l') : ''}
-              </Text>
-            )}
             <Text
               className={classes.typography}
-              mt={9}
+              size='sm'
+              mt={8}
               sx={{ maxWidth: '100ch' }}
-              dangerouslySetInnerHTML={{ __html: group.description || '' }}
+              dangerouslySetInnerHTML={{ __html: collection.description || '' }}
             />
 
             <Tabs
@@ -446,7 +470,7 @@ export default function BoardView(props: BoardViewProps) {
                   tasks={tasks}
                   domain={props.domain}
                   type={'list'}
-                  collection={groupId}
+                  collection={collectionId}
                 />
               </Tabs.Panel>
               <Tabs.Panel value='kanban' mt={16}>
@@ -455,7 +479,7 @@ export default function BoardView(props: BoardViewProps) {
                   tasks={tasks}
                   domain={props.domain}
                   type={'kanban'}
-                  collection={groupId}
+                  collection={collectionId}
                 />
               </Tabs.Panel>
             </Tabs>

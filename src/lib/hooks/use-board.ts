@@ -3,11 +3,32 @@ import assert from 'assert';
 
 import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
-import { Board, Label, NoId, TaskGroup, WithId } from '@/lib/types'; 
+import { Board, Label, NoId, TaskCollection, WithId } from '@/lib/types'; 
 import { useDbQuery } from '@/lib/hooks/use-db-query';
 
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { SwrWrapper } from '@/lib/utility/swr-wrapper';
+
+import sanitizeHtml from 'sanitize-html';
+
+
+////////////////////////////////////////////////////////////
+function _sanitize(board: Board) {
+	for (const c of board.collections)
+		_sanitizeCollection(c);
+
+	return board;
+}
+
+////////////////////////////////////////////////////////////
+function _sanitizeCollection(collection: Partial<TaskCollection>): Partial<TaskCollection> {
+	if (collection.description)
+		collection.description = sanitizeHtml(collection.description);
+
+	collection.start_date = '5/4/2023';
+	collection.end_date = '5/10/2023';
+	return collection;
+}
 
 
 ////////////////////////////////////////////////////////////
@@ -16,21 +37,21 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 
 	return {
 		/**
-		 * Add new task group.
+		 * Add new task collection.
 		 * 
-		 * @param group The group that should be added omitting the `id`
+		 * @param collection The collection that should be added omitting the `id`
 		 * @returns The new board object
 		 */
-		addGroup: (group: NoId<TaskGroup>) => mutate(
+		addCollection: (collection: NoId<TaskCollection>) => mutate(
 			swrErrorWrapper(async (board: Board) => {
 				// Add group, iterate id counter
 				const results = await query<Board[]>(
 					sql.update<Board>(board.id, {}, {
 						set: {
-							groups: ['+=', { id: sql.$('_id_counter'), ...group }],
+							collections: ['+=', { id: sql.$('_id_counter'), ..._sanitizeCollection(collection) }],
 							_id_counter: ['+=', 1],
 						},
-						return: ['groups', '_id_counter'],
+						return: ['collections', '_id_counter'],
 					}),
 					{ session }
 				);
@@ -39,7 +60,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 				return {
 					...board,
 					_id_counter: results[0]._id_counter,
-					groups: results[0].groups,
+					collections: results[0].collections.map(_sanitizeCollection),
 				};
 			}),
 			{ revalidate: false }
@@ -116,7 +137,7 @@ export function useBoard(board_id?: string) {
 	return useDbQuery(board_id, (key) => {
 		return sql.select<Board[]>('*', { from: board_id || '' });
 	}, {
-		then: (results) => results?.length ? results[0] : null,
+		then: (results) => results?.length ? _sanitize(results[0]) : null,
 		mutators,
 	});
 }

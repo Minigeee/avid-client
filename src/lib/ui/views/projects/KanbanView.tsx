@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import assert from 'assert';
 
 import {
   Accordion,
@@ -37,6 +38,7 @@ import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 import { DoubleGrouped, GroupableFields, SingleGrouped } from './BoardView';
 
 import config from '@/config';
+import { getMemberSync } from '@/lib/db';
 import {
   BoardWrapper,
   DomainWrapper,
@@ -48,7 +50,6 @@ import { ExpandedTask, Label, TaskPriority } from '@/lib/types';
 import { groupBy, round } from 'lodash';
 import moment from 'moment';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
-import { getMemberSync } from '@/lib/db';
 
 
 ////////////////////////////////////////////////////////////
@@ -218,15 +219,17 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
               onClick={() => {
                 // Add starting group data
                 const groupData: Partial<CreateTaskProps> = {};
-                const task = Object.values(tasks)[0][0];
-                if (props.grouper === 'assignee')
-                  groupData.assignee = task.assignee || undefined;
-                else if (props.grouper === 'tags')
-                  groupData.tag = group === '_' ? undefined : group || undefined;
-                else if (props.grouper === 'priority')
-                  groupData.priority = task.priority || undefined;
-                else if (props.grouper === 'due_date')
-                  groupData.due_date = task.due_date || undefined;
+                
+                if (group) {
+                  if (props.grouper === 'assignee')
+                    groupData.assignee = group === '_' ? undefined : getMemberSync(props.domain.id, group) || undefined;
+                  else if (props.grouper === 'tags')
+                    groupData.tag = group === '_' ? undefined : group;
+                  else if (props.grouper === 'priority')
+                    groupData.priority = group === '_' ? undefined : group as TaskPriority;
+                  else if (props.grouper === 'due_date')
+                    groupData.due_date = group === '_' ? undefined : group;
+                }
 
                 openCreateTask({
                   board_id: board.id,

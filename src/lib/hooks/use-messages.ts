@@ -18,6 +18,7 @@ import hljs from 'highlight.js';
 import { groupBy } from 'lodash';
 import MarkdownIt from 'markdown-it';
 import moment from 'moment';
+import sanitizeHtml from 'sanitize-html';
 import shash from 'string-hash';
 
 
@@ -194,7 +195,7 @@ function renderMessage(id: string, message: string, env: MarkdownEnv) {
 		return _state.msg_cache[id].rendered;
 
 	// Render new message
-	const rendered = _md.render(message, env);
+	const rendered = sanitizeHtml(_md.render(message, env));
 
 	// Add to cache
 	_state.msg_cache[id] = { hash, rendered };

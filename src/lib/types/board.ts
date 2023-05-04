@@ -2,8 +2,8 @@ import { Date, WithId } from './util';
 import { Label } from './common';
 
 
-/** A task group makes task management easier (used for backlog, cycles, etc.) */
-export type TaskGroup = {
+/** A task collection makes task management easier (used for backlog, cycles, etc.) */
+export type TaskCollection = {
 	/** Id of the task group */
 	id: string;
 	/** The name of the task group */
@@ -34,8 +34,8 @@ export interface Board {
 	tags: WithId<Label>[];
 	/** Map of all statuses belonging to this board */
 	statuses: WithId<Label>[];
-	/** Ids of all task groups belonging to the board */
-	groups: TaskGroup[];
+	/** Ids of all task collections belonging to the board */
+	collections: TaskCollection[];
 
 	/** A counter used to assign task ids */
 	_task_counter: number;

@@ -23,7 +23,7 @@ function addBoardChannel(channel: Partial<Channel>, options: ChannelOptions<'boa
 			prefix: options.prefix,
 			statuses: config.app.board.default_statuses,
 			tags: [],
-			groups: [config.app.board.default_backlog],
+			collections: [config.app.board.default_backlog],
 
 			_task_counter: 0,
 			_id_counter: 0,

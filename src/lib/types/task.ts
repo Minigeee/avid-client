@@ -24,7 +24,7 @@ export type Task = {
 	/** The numeric priority of the task, where higher is more important */
 	priority?: TaskPriority | null;
 	/** The group the task belongs to */
-	group?: string | null;
+	collection?: string | null;
 	/** The target due date of this task */
 	due_date?: Date | null;
 	/** A list of tag ids on this task */
