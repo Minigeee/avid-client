@@ -20,6 +20,7 @@ import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
 import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
+import { GroupableFields, NoGrouped, SingleGrouped } from './BoardView';
 
 import config from '@/config';
 import {
@@ -33,6 +34,8 @@ import { ExpandedTask, Label } from '@/lib/types';
 import { groupBy, round } from 'lodash';
 import moment from 'moment';
 import DataTable from 'react-data-table-component';
+import assert from 'assert';
+import TaskGroupAccordion from '../../components/TaskGroupAccordion';
 
 
 ////////////////////////////////////////////////////////////
@@ -46,10 +49,10 @@ type TaskTableProps = {
   tasks: ExpandedTask[];
 
   /** Currently chosen grouping field */
-  groupingField: keyof ExpandedTask | null;
+  groupingField: GroupableFields | null;
   /** The group this table is part of */
   group: string;
-  
+
   statuses: Record<string, Label & { index: number }>;
   tags: Record<string, Label>;
 };
@@ -108,7 +111,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           center: true,
           grow: 0.8,
           cell: (task: ExpandedTask) => (
-            <TaskPriorityIcon priority={task.priority} outerSize={24} innerSize={18} sx={{  }} />
+            <TaskPriorityIcon priority={task.priority} outerSize={24} innerSize={18} sx={{}} />
           ),
           sortable: true,
           sortFunction: (a: ExpandedTask, b: ExpandedTask) =>
@@ -160,8 +163,8 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                 size={32}
               />
             ) : undefined,
-            sortable: true,
-            sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
+          sortable: true,
+          sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
         },
         {
           name: 'Due Date',
@@ -179,7 +182,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         {
           name: 'Tags',
           grow: 3,
-          cell: (task: ExpandedTask) =>{
+          cell: (task: ExpandedTask) => {
             if (!props.tags || !task.tags || task.tags.length === 0) return;
 
             // Prioritize tag group if grouping by tags
@@ -256,7 +259,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           });
       }}
     />
-    );
+  );
 }
 
 
@@ -265,17 +268,19 @@ type ListViewProps = {
   board: BoardWrapper;
   tasks: TasksWrapper;
   domain: DomainWrapper;
+  collection: string;
+
+  filtered: NoGrouped | SingleGrouped;
+  setFiltered: (filtered: NoGrouped | SingleGrouped) => any;
+  grouper: GroupableFields | null;
 }
 
 ////////////////////////////////////////////////////////////
-export default function ListView({ board, ...props }: ListViewProps) {
-  // Filter tags
-  const [filterTags, setFilterTags] = useState<string[]>([]);
-  // Groping field
-  const [groupingField, setGroupingField] = useState<keyof ExpandedTask | null>(null);
-
+export default function ListView({ board, filtered, grouper, ...props }: ListViewProps) {
   // Currently expanded fields per group by view
   const [expanded, setExpanded] = useState<Record<string, string[]>>({});
+  // Memo this so it doesn't change every render
+  const groups = useMemo<string[]>(() => Object.keys(filtered), [filtered]);
 
 
   // Tag map
@@ -285,7 +290,7 @@ export default function ListView({ board, ...props }: ListViewProps) {
       map[tag.id] = tag;
     return map;
   }, [board.tags]);
-  
+
   // Status map
   const statusMap = useMemo<Record<string, Label & { index: number }>>(() => {
     const map: Record<string, Label & { index: number }> = {};
@@ -296,188 +301,44 @@ export default function ListView({ board, ...props }: ListViewProps) {
     return map;
   }, [board.statuses]);
 
-  // Group tasks by collection
-  const [tasks, setTasks] = useMemoState<Record<string, ExpandedTask[]>>(
-    () => {
-      if (!props.tasks._exists) return {};
-
-      // Apply filter options
-      const filtered = props.tasks.data.filter(x => {
-        // Make sure all tags exist in filtered tags
-        for (const tag of filterTags) {
-          if (x.tags && x.tags.findIndex(y => y === tag) >= 0)
-            return true;
-        }
-
-        return filterTags.length === 0;
-      });
-
-      let data: Record<string, ExpandedTask[]> = {};
-
-      // Different fields have different grouping methods
-      if (groupingField === null) {
-        data['none'] = filtered;
-      }
-      else if (groupingField === 'tags') {
-        // Iterate all tasks and add to each tag group
-        for (const task of filtered) {
-          for (const tag_id of (task.tags || [])) {
-            if (!data[tag_id])
-              data[tag_id] = [];
-
-            data[tag_id].push(task);
-          }
-
-          if (!task.tags?.length) {
-            if (!data[0])
-              data[0] = [];
-
-            data[0].push(task);
-          }
-        }
-      }
-      else if (groupingField === 'assignee') {
-        // Iterate all tasks and add to each tag group
-        for (const task of filtered) {
-          const id = task.assignee?.id || 'unassigned';
-          if (!data[id])
-            data[id] = [];
-
-          data[id].push(task);
-        }
-      }
-      else if (groupingField === 'due_date') {
-        data = groupBy(filtered, (task) => task.due_date || '_nodate');
-        data = Object.keys(data).sort().reduce((obj: any, key: any) => {
-          obj[key] = data[key];
-          return obj;
-        }, {});
-      }
-      else {
-        data = groupBy(filtered, (task) => task[groupingField]);
-      }
-
-      // If this is first time switching group by value, set default expanded tabs
-      const expandKey = `${groupingField}`;
-      if (!expanded[expandKey])
-        setExpanded({ ...expanded, [expandKey]: Object.keys(data) });
-
-      return data;
-    },
-    [props.tasks.data, groupingField, filterTags]
-  );
-
-  
-  // Key used to find expand values
-  const expandKey = `${groupingField}`;
 
   return (
-    <Stack spacing={32} sx={(theme) => ({
-      width: '100%',
-      height: '100%',
-      padding: '1.0rem 1.5rem 1.0rem 1.5rem'
-    })}>
-      <Group align='end'>
-        <Select
-          data={[
-            { value: 'assignee', label: 'Assignee' },
-            { value: 'tags', label: 'Tags' },
-            { value: 'priority', label: 'Priority' },
-            { value: 'due_date', label: 'Due Date' },
-            { value: 'status', label: 'Status' },
-          ]}
-          label='Group By'
-          placeholder='None'
-          clearable
+    <>
+      {grouper && (
+        <TaskGroupAccordion
+          domain={props.domain}
+          groups={groups}
+          expanded={expanded}
+          setExpanded={setExpanded}
 
-          value={groupingField}
-          onChange={(value: keyof ExpandedTask | null) => {
-            setGroupingField(value);
-          }}
+          component={(group) => (
+            <TaskTable
+              board={board}
+              domain={props.domain}
+              tasks={(filtered as SingleGrouped)[group]}
+              groupingField={grouper}
+              group={group}
+              statuses={statusMap}
+              tags={tagMap}
+            />
+          )}
+
+          tagMap={tagMap}
+          collection={props.collection}
+          grouper={grouper}
         />
-
-        <TaskTagsSelector
-          data={Object.values(board.tags).map(x => ({ value: x.id, ...x }))}
-          placeholder='Filter by tags'
-          label='Filters'
-          icon={<Tag size={16} />}
-          value={filterTags}
-          onChange={setFilterTags}
-        />
-        <Button
-          variant='gradient'
-          onClick={() => {
-            if (board._exists)
-              openCreateTask({
-                board_id: board.id,
-                domain: props.domain,
-              });
-          }}
-        >
-          Create Task
-        </Button>
-      </Group>
-
-      {groupingField && (
-        <Accordion
-          value={expanded[expandKey] || []}
-          onChange={(values) => setExpanded({ ...expanded, [expandKey]: values })}
-          multiple
-          sx={{
-            minWidth: '100ch',
-          }}
-          styles={(theme) => ({
-            item: {
-              borderWidth: 2,
-            },
-          })}
-        >
-          {Object.entries(tasks || {})?.map(([group, tasks], group_idx) => (
-            <Accordion.Item value={group}>
-              <Accordion.Control>
-                <Group noWrap>
-                  {groupingField === 'assignee' && (<MemberAvatar member={group === 'unassigned' ? null : tasks[0].assignee} size={32} />)}
-                  <Text weight={600} size='lg'>
-                    {
-                      groupingField === 'tags' ?
-                        group !== '0' ? tagMap[group]?.label : 'No Tags' :
-                        groupingField === 'assignee' ?
-                          group === 'unassigned' ? 'Unassigned' : tasks[0].assignee?.alias :
-                          groupingField === 'priority' ?
-                            PRIORITY_LABELS[group as unknown as number] :
-                            groupingField === 'due_date' ?
-                              tasks[0].due_date ? moment(tasks[0].due_date).format('ll') : 'No Due Date' :
-                            group
-                    }
-                  </Text>
-                </Group>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <TaskTable
-                  board={board}
-                  domain={props.domain}
-                  tasks={tasks}
-                  groupingField={groupingField}
-                  group={group}
-                  statuses={statusMap}
-                  tags={tagMap}
-                />
-              </Accordion.Panel>
-            </Accordion.Item>
-          ))}
-        </Accordion>
       )}
-      {!groupingField && (
+      {!grouper && (
         <TaskTable
           board={board}
           domain={props.domain}
-          tasks={tasks?.['none'] || []}
-          groupingField={groupingField}
-          group={'none'}
+          tasks={filtered as NoGrouped}
+          groupingField={grouper}
+          group={''}
           statuses={statusMap}
           tags={tagMap}
         />
       )}
-    </Stack>
+    </>
   );
 }

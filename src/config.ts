@@ -70,6 +70,8 @@ const config = {
 
 		/** Project board config */
 		board: {
+			/** Default task view */
+			default_task_view: 'kanban',
 			/** Default tag color */
 			default_tag_color: '#495057',
 
@@ -86,7 +88,7 @@ const config = {
 			default_backlog: {
 				id: 'backlog',
 				name: 'Backlog',
-				description: 'A backlog is a collection of tasks, features, or issues ' + 
+				description: 'A backlog is typically used as a collection of tasks, features, or issues ' + 
 					'that have not yet been completed. These items are typically prioritized ' + 
 					'based on their importance and urgency, and are worked on by a team over ' + 
 					'a series of cycles. During each cycle, the team selects a subset of items ' + 

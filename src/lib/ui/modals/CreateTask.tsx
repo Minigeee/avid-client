@@ -332,6 +332,8 @@ export type CreateTaskProps = {
   assignee?: Member;
   /** Starting tag */
   tag?: string;
+  /** Starting due date */
+  due_date?: string;
 }
 
 ////////////////////////////////////////////////////////////
@@ -346,7 +348,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       description: '',
       status: props.status || config.app.board.default_status_id,
       priority: props.priority || null,
-      due_date: null,
+      due_date: props.due_date ? new Date(props.due_date) : null,
       assignee: props.assignee || null,
       tags: props.tag !== undefined ? [props.tag] : [],
     } as FormValues,

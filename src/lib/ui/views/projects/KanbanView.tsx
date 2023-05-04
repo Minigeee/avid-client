@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import {
+  Accordion,
   ActionIcon,
   Box,
   Button,
@@ -29,7 +30,11 @@ import {
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
 import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
+import TaskGroupAccordion from '@/lib/ui/components/TaskGroupAccordion';
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
+import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
+
+import { DoubleGrouped, GroupableFields, SingleGrouped } from './BoardView';
 
 import config from '@/config';
 import {
@@ -38,11 +43,12 @@ import {
   TasksWrapper,
   useMemoState,
 } from '@/lib/hooks';
-import { ExpandedTask, Label } from '@/lib/types';
+import { ExpandedTask, Label, TaskPriority } from '@/lib/types';
 
 import { groupBy, round } from 'lodash';
 import moment from 'moment';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
+import { getMemberSync } from '@/lib/db';
 
 
 ////////////////////////////////////////////////////////////
@@ -176,15 +182,126 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
 
 
 ////////////////////////////////////////////////////////////
+type KanbanProps = {
+  board: BoardWrapper;
+  domain: DomainWrapper;
+  tasks: SingleGrouped;
+  grouper: GroupableFields | null;
+  group: string | null;
+
+  tagMap: Record<string, Label>;
+};
+
+////////////////////////////////////////////////////////////
+function Kanban({ board, tasks, group, ...props }: KanbanProps) {
+  return (
+    <SimpleGrid
+      cols={Object.keys(board.statuses).length}
+      sx={{
+        width: `${Object.keys(board.statuses).length * 41}ch`,
+      }}
+    >
+      {Object.values(board.statuses).map((status, i) => (
+        <Flex direction='column'>
+          <Flex gap='xs' align='center' sx={(theme) => ({
+            padding: '0.4rem 0.5rem 0.4rem 0.8rem',
+            backgroundColor: theme.colors.dark[4],
+            borderTopLeftRadius: 6,
+            borderTopRightRadius: 6,
+          })}>
+            {status.color && <ColorSwatch size={18} color={status.color} />}
+            <Title order={5} sx={{ flexGrow: 1 }}>
+              {status.label} - {tasks && tasks[status.id] ? tasks[status.id].length : 0}
+            </Title>
+
+            <ActionIcon
+              onClick={() => {
+                // Add starting group data
+                const groupData: Partial<CreateTaskProps> = {};
+                const task = Object.values(tasks)[0][0];
+                if (props.grouper === 'assignee')
+                  groupData.assignee = task.assignee || undefined;
+                else if (props.grouper === 'tags')
+                  groupData.tag = group === '_' ? undefined : group || undefined;
+                else if (props.grouper === 'priority')
+                  groupData.priority = task.priority || undefined;
+                else if (props.grouper === 'due_date')
+                  groupData.due_date = task.due_date || undefined;
+
+                openCreateTask({
+                  board_id: board.id,
+                  domain: props.domain,
+                  status: status.id,
+                  ...groupData,
+                });
+              }}
+            >
+              <Plus size={19} />
+            </ActionIcon>
+          </Flex>
+
+          <Droppable droppableId={`${group || null}.${status.id}`}>
+            {(provided) => (
+              <Box
+                ref={provided.innerRef}
+                sx={(theme) => ({
+                  flexGrow: 1,
+                  padding: '9px 9px 0.1px 9px',
+                  backgroundColor: theme.colors.dark[8],
+                  borderBottomLeftRadius: 6,
+                  borderBottomRightRadius: 6,
+                })}
+                {...provided.droppableProps}
+              >
+                {tasks && tasks[status.id]?.map((task, j) => (
+                  <TaskCard
+                    task={task}
+                    prefix={board?.prefix || ''}
+                    tags={props.tagMap}
+
+                    key={task.id}
+                    index={j}
+                    onClick={() => {
+                      if (board._exists)
+                        openEditTask({
+                          board_id: board.id,
+                          board_prefix: board.prefix,
+                          domain: props.domain,
+                          task: task,
+                        });
+                    }}
+                  />
+                ))}
+
+                {provided.placeholder}
+              </Box>
+            )}
+          </Droppable>
+        </Flex>
+      ))}
+    </SimpleGrid>
+  );
+}
+
+
+////////////////////////////////////////////////////////////
 type KanbanViewProps = {
   board: BoardWrapper;
   tasks: TasksWrapper;
   domain: DomainWrapper;
+  collection: string;
+
+  filtered: SingleGrouped | DoubleGrouped;
+  setFiltered: (filtered: SingleGrouped | DoubleGrouped) => any;
+  grouper: GroupableFields | null;
 }
 
 ////////////////////////////////////////////////////////////
-export default function KanbanView({ board, ...props }: KanbanViewProps) {
-  const [filterTags, setFilterTags] = useState<string[]>([]);
+export default function KanbanView({ board, filtered, grouper, ...props }: KanbanViewProps) {
+  // Used to track which accordion panels are expanded
+  const [expanded, setExpanded] = useState<Record<string, string[]>>({});
+  // Memo this so it doesn't change every render
+  const groups = useMemo<string[]>(() => Object.keys(filtered), [filtered]);
 
   // Tag map
   const tagMap = useMemo<Record<string, Label>>(() => {
@@ -202,211 +319,127 @@ export default function KanbanView({ board, ...props }: KanbanViewProps) {
     return map;
   }, [board.statuses]);
 
-  // Group tasks by status
-  const [tasks, setTasks] = useMemoState<Record<string, ExpandedTask[]>>(
-    () => {
-      if (!board._exists) return {};
-
-      // Apply filter options
-      const filtered = props.tasks.data.filter(x => {
-        // Make sure all tags exist in filtered tags
-        for (const tag of filterTags) {
-          if (x.tags && x.tags.findIndex(y => y === tag) >= 0)
-            return true;
-        }
-
-        return filterTags.length === 0;
-      });
-
-      // Group data
-      const data = groupBy(filtered, (task) => task.status);
-
-      // Maintain order (prevents snapping when changing status)
-      let exists = false;
-      try { exists = tasks !== undefined; } catch(e) { }
-
-      if (exists && tasks) {
-        const reordered: Record<string, ExpandedTask[]> = {};
-
-        // Make list of existing tasks
-        const existing = new Set<number>(filtered.map(task => task.sid));
-
-        // Iterate (new) status groups
-        for (const [status, newTasks] of Object.entries(data)) {
-          const group: ExpandedTask[] = [];
-          const added = new Set<number>();
-
-          // Iterate (old) status group and add tasks in order they appear, while keeping track of which tasks are added
-          for (const task of (tasks[status] || [])) {
-            if (existing.has(task.sid)) {
-              group.push(task);
-              added.add(task.sid);
-            }
-          }
-
-          // Iterate (new) status group and add all tasks that haven't been added
-          for (const task of newTasks) {
-            if (!added.has(task.sid))
-              group.push(task);
-          }
-
-          // Set status group
-          reordered[status] = group;
-        }
-
-        return reordered;
-      }
-
-      return data;
-    },
-    [props.tasks.data, filterTags]
-  );
-
-
-  ////////////////////////////////////////////////////////////
-  function onTaskMove(task: ExpandedTask, src_index: number, status: string, index: number) {
-    if (!board._exists || !tasks) return;
-
-    // Remove task from original position
-    const srcCopy = [...tasks[task.status]];
-    srcCopy.splice(src_index, 1);
-    
-    // Take different actions based on if the task went through status change
-    if (task.status === status) {
-      // Status didn't change, just reordered
-      srcCopy.splice(index, 0, task);
-      
-      // Update tasks
-      setTasks({ ...tasks, [status]: srcCopy });
-    }
-    else {
-      // Add new task to other list
-      const dstCopy = [...(tasks[status] || [])];
-      dstCopy.splice(index, 0, { ...task, status });
-      console.log(`${task.status} -> ${status}`, dstCopy.map(x => x.id));
-
-      // Update tasks
-      setTasks({ ...tasks, [task.status]: srcCopy, [status]: dstCopy });
-
-      // Send update to database
-      props.tasks._mutators.updateTask(task.id, { status });
-    }
-  }
-
 
   return (
-    <Stack spacing={32} sx={(theme) => ({
-      width: '100%',
-      height: '100%',
-      padding: '1.0rem 1.5rem 1.0rem 1.5rem'
-    })}>
-      <Group align='end'>
-        <TaskTagsSelector
-          data={Object.values(board.tags).map(x => ({ value: x.id, ...x }))}
-          placeholder='Filter by tags'
-          label='Filters'
-          icon={<Tag size={16} />}
-          value={filterTags}
-          onChange={setFilterTags}
-        />
+    <DragDropContext onDragEnd={(result) => {
+      const { source: src, destination: dst } = result;
 
-        <Button
-          variant='gradient'
-          onClick={() => {
-            if (board._exists)
-              openCreateTask({
-                board_id: board.id,
-                domain: props.domain,
-              });
-          }}
-        >
-          Create Task
-        </Button>
-      </Group>
+      // Get task and the source/destination lists
+      let task: ExpandedTask;
+      let srcParts: string[];
+      let srcList: ExpandedTask[];
 
+      if (grouper) {
+        srcParts = src.droppableId.split('.');
+        srcList = (filtered as DoubleGrouped)[srcParts[0]][srcParts[1]].slice();
+        task = srcList[src.index];
+      }
+      else {
+        srcParts = src.droppableId.split('.');
+        srcList = (filtered as SingleGrouped)[srcParts[1]].slice();
+        task = srcList[src.index];
+      }
+      
+      // Get destination list
+      let dstParts: string[];
+      let dstList: ExpandedTask[];
 
-      <DragDropContext onDragEnd={(result) => {
-        const { source: src, destination: dst } = result;
+      if (!dst) {
+        // Handle destroy task
+        return;
+      }
+      else if (grouper) {
+        dstParts = dst.droppableId.split('.');
+        dstList = (filtered as DoubleGrouped)[dstParts[0]][dstParts[1]]?.slice() || [];
+      }
+      else {
+        dstParts = dst.droppableId.split('.');
+        dstList = (filtered as SingleGrouped)[dstParts[1]].slice();
+      }
 
-        if (tasks && dst) {
-          onTaskMove(tasks[src.droppableId][src.index], src.index, dst.droppableId, dst.index);
+      // Remove task from original position
+      srcList.splice(src.index, 1);
+
+      // Add task to new position
+      dstList.splice(dst.index, 0, task);
+
+      // Apply lists
+      if (grouper) {
+        props.setFiltered({
+          ...filtered,
+          [srcParts[0]]: { [srcParts[1]]: srcList },
+          [dstParts[0]]: { [dstParts[1]]: dstList },
+        } as DoubleGrouped);
+      }
+      else {
+        props.setFiltered({
+          ...filtered,
+          [srcParts[1]]: srcList,
+          [dstParts[1]]: dstList,
+        } as SingleGrouped);
+      }
+
+      // Handle task mutation if changed lists
+      if (src.droppableId !== dst.droppableId) {
+        const updates: Partial<ExpandedTask> = {};
+
+        // Status change
+        if (srcParts[1] !== dstParts[1])
+          updates.status = dstParts[1];
+
+        // Group change
+        if (srcParts[0] !== dstParts[0]) {
+          if (grouper === 'assignee')
+            updates.assignee = dstParts[0] === '_' ? null : getMemberSync(props.domain.id, dstParts[0]);
+
+          else if (grouper === 'due_date')
+            updates.due_date = dstParts[0] === '_' ? null : dstParts[0];
+
+          else if (grouper === 'priority')
+            updates.priority = dstParts[0] === '_' ? null : dstParts[0] as TaskPriority;
+
+          // Tag changes are not allowed
         }
-      }}>
-        <SimpleGrid
-          cols={Object.keys(board.statuses).length}
-          sx={{
-            width: `${Object.keys(board.statuses).length * 41}ch`,
-          }}
-        >
-          {Object.values(board.statuses).map((status, i) => (
-            <Flex direction='column'>
-              <Flex gap='xs' align='center' sx={(theme) => ({
-                padding: '0.4rem 0.5rem 0.4rem 0.8rem',
-                backgroundColor: theme.colors.dark[4],
-                borderTopLeftRadius: 6,
-                borderTopRightRadius: 6,
-              })}>
-                {status.color && <ColorSwatch size={18} color={status.color} />}
-                <Title order={5} sx={{ flexGrow: 1 }}>
-                  {status.label} - {tasks && tasks[status.id] ? tasks[status.id].length : 0}
-                </Title>
 
-                <ActionIcon
-                  onClick={() => {
-                    if (board._exists) {
-                      openCreateTask({
-                        board_id: board.id,
-                        domain: props.domain,
-                        status: status.id,
-                      });
-                    }
-                  }}
-                >
-                  <Plus size={19} />
-                </ActionIcon>
-              </Flex>
+        // Apply changes
+        props.tasks._mutators.updateTask(task.id, updates);
+      }
+    }}>
+      {grouper && (
+        <TaskGroupAccordion
+          domain={props.domain}
+          groups={groups}
+          expanded={expanded}
+          setExpanded={setExpanded}
 
-              <Droppable droppableId={status.id}>
-                {(provided) => (
-                  <Box
-                    ref={provided.innerRef}
-                    sx={(theme) => ({
-                      flexGrow: 1,
-                      padding: '9px 9px 0.1px 9px',
-                      backgroundColor: theme.colors.dark[8],
-                      borderBottomLeftRadius: 6,
-                      borderBottomRightRadius: 6,
-                    })}
-                    {...provided.droppableProps}
-                  >
-                    {tasks && tasks[status.id]?.map((task, j) => (
-                      <TaskCard
-                        task={task}
-                        prefix={board?.prefix || ''}
-                        tags={tagMap}
+          component={(group) => (
+            <Kanban
+              board={board}
+              domain={props.domain}
+              tasks={(filtered as DoubleGrouped)[group]}
+              grouper={grouper}
+              group={group}
 
-                        key={task.id}
-                        index={j}
-                        onClick={() => {
-                          if (board._exists)
-                            openEditTask({
-                              board_id: board.id,
-                              board_prefix: board.prefix,
-                              domain: props.domain,
-                              task: task,
-                            });
-                        }}
-                      />
-                    ))}
+              tagMap={tagMap}
+            />
+          )}
 
-                    {provided.placeholder}
-                  </Box>
-                )}
-              </Droppable>
-            </Flex>
-          ))}
-        </SimpleGrid>
-      </DragDropContext>
-    </Stack>
-  )
+          tagMap={tagMap}
+          collection={props.collection}
+          grouper={grouper}
+        />
+      )}
+      {!grouper && (
+        <Kanban
+          board={board}
+          domain={props.domain}
+          tasks={filtered as SingleGrouped}
+          grouper={grouper}
+          group={null}
+
+          tagMap={tagMap}
+        />
+      )}
+    </DragDropContext>
+  );
 }

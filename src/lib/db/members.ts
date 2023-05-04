@@ -35,6 +35,8 @@ const MEMBER_SELECT_FIELDS = [
  * @returns An object containing the member object cache and a map of query times
  */
 export async function getDomainCache(domain_id: string, session: SessionState) {
+	assert(domain_id.startsWith('domains:'));
+
 	const release = await _mutex.acquire();
 
 	// Check if cache data exists
@@ -94,6 +96,7 @@ export async function getMember(domain_id: string, member_id: string, session: S
 	const data = await getDomainCache(domain_id, session);
 
 	// Return cached data
+	assert(member_id.startsWith('profiles:'));
 	return await data.cache.get(member_id);
 }
 
@@ -112,6 +115,8 @@ export async function getMembers(domain_id: string, member_ids: string[], sessio
 	const data = await getDomainCache(domain_id, session);
 
 	// Return cached data
+	for (const id of member_ids)
+		assert(id.startsWith('profiles:'));
 	return await data.cache.get(member_ids);
 }
 
@@ -178,7 +183,8 @@ export function getMemberSync(domain_id: string, member_id: string) {
 	if (!data) return null;
 
 	// Get cache data to proc validation check
+	assert(member_id.startsWith('profiles:'));
 	data.cache.get(member_id);
 
-	return data.cache._data[member_id].data || null;
+	return data.cache._data[member_id]?.data || null;
 }
