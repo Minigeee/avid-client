@@ -186,6 +186,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
 type KanbanProps = {
   board: BoardWrapper;
   domain: DomainWrapper;
+  collection: string;
   tasks: SingleGrouped;
   grouper: GroupableFields | null;
   group: string | null;
@@ -235,6 +236,7 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
                   board_id: board.id,
                   domain: props.domain,
                   status: status.id,
+                  collection: props.collection,
                   ...groupData,
                 });
               }}
@@ -419,6 +421,7 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
             <Kanban
               board={board}
               domain={props.domain}
+              collection={props.collection}
               tasks={(filtered as DoubleGrouped)[group]}
               grouper={grouper}
               group={group}
@@ -436,6 +439,7 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
         <Kanban
           board={board}
           domain={props.domain}
+          collection={props.collection}
           tasks={filtered as SingleGrouped}
           grouper={grouper}
           group={null}

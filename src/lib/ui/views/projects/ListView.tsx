@@ -46,6 +46,7 @@ const PRIORITY_LABELS = ['Critical', 'High', 'Medium', 'Low', 'None'];
 type TaskTableProps = {
   board: BoardWrapper;
   domain: DomainWrapper;
+  collection: string;
   tasks: ExpandedTask[];
 
   /** Currently chosen grouping field */
@@ -168,8 +169,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         },
         {
           name: 'Due Date',
-          center: true,
-          grow: 1.2,
+          grow: 2,
           cell: (task: ExpandedTask) =>
             task.due_date ? (
               <Text data-tag='allowRowEvents' size='sm' weight={600}>
@@ -232,6 +232,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                   openCreateTask({
                     board_id: board.id,
                     domain: props.domain,
+                    collection: props.collection,
                     ...groupData,
                   });
                 }
@@ -315,6 +316,7 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
             <TaskTable
               board={board}
               domain={props.domain}
+              collection={props.collection}
               tasks={(filtered as SingleGrouped)[group]}
               groupingField={grouper}
               group={group}
@@ -332,6 +334,7 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
         <TaskTable
           board={board}
           domain={props.domain}
+          collection={props.collection}
           tasks={filtered as NoGrouped}
           groupingField={grouper}
           group={''}

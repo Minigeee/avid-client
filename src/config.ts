@@ -56,6 +56,14 @@ const config = {
 		/** Message used to notify user to contact/report issue */
 		support_message: 'Please contact us if this problem persists.',
 
+		/** General ui config */
+		ui: {
+			/** Width for short length input */
+			short_input_width: '40ch',
+			/** Width for medium length input */
+			med_input_width: '60ch',
+		},
+
 		/** Message config */
 		message: {
 			/** Query limit */
@@ -98,8 +106,14 @@ const config = {
 					'have learned. By using a backlog and cycles in this way, teams can stay ' + 
 					'focused on their goals and make steady progress towards completing their work.',
 			},
-			/** Defualt backlog id */
-			default_backlog_id: 'backlog',
+			/** All collection */
+			all_collection: {
+				value: 'all',
+				id: 'all',
+				label: 'All',
+				name: 'All',
+				description: 'All tasks in this board',
+			},
 
 			/** Task sort keys */
 			sort_keys: {

@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
@@ -17,10 +17,12 @@ import {
 import {
   ArrowIteration,
   ChevronDown,
+  ChevronRight,
   Clock,
   Folders,
   LayoutKanban,
   ListDetails,
+  Pencil,
   Plus,
   Tag
 } from 'tabler-icons-react';
@@ -40,7 +42,7 @@ import {
   useTasks,
 } from '@/lib/hooks';
 import { Channel, ExpandedTask, TaskCollection, TaskPriority } from '@/lib/types';
-import { openCreateTask } from '@/lib/ui/modals';
+import { openCreateTask, openCreateTaskCollection, openEditTaskCollection } from '@/lib/ui/modals';
 import { remap, sortObject } from '@/lib/utility';
 
 import moment from 'moment-business-days';
@@ -97,7 +99,9 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
     // Apply filter options
     const filteredList = props.tasks.data.filter(x => {
-      // TODO : Filter out tasks not in current group
+      // Keep only tasks in the current collection
+      if (x.collection !== props.collection && props.collection !== 'all')
+        return false;
 
       // Make sure all tags exist in filtered tags
       for (const tag of filterTags) {
@@ -285,6 +289,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
             openCreateTask({
               board_id: board.id,
               domain: props.domain,
+              collection: props.collection,
             });
           }}
         >
@@ -323,23 +328,33 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
 ////////////////////////////////////////////////////////////
 interface GroupSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
-  name: string;
+  label: string;
   start_date?: string;
   end_date?: string;
 }
 
 ////////////////////////////////////////////////////////////
 const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
-  ({ name, start_date, end_date, ...others }: GroupSelectItemProps, ref) => (
-    <div ref={ref} {...others}>
-      <Title order={5}>{name}</Title>
-      {(start_date || end_date) && (
-        <Text size='xs' color='dimmed'>
-          {start_date ? moment(start_date).format('l') : ''} - {end_date ? moment(end_date).format('l') : ''}
-        </Text>
-      )}
-    </div>
-  )
+  ({ label, start_date, end_date, ...others }: GroupSelectItemProps, ref) => {
+    const t = new Date();
+    const current = start_date && end_date &&
+      t >= new Date(start_date) &&
+      t <= moment(end_date).add(1, 'day').toDate();
+
+    return (
+      <div ref={ref} {...others}>
+        <Group spacing={3} align='center'>
+          {current && <ChevronRight size={18} style={{ marginLeft: -4, marginTop: 2 }} />}
+          <Text weight={600}>{label}</Text>
+        </Group>
+        {(start_date || end_date) && (
+          <Text size='xs' color='dimmed'>
+            {start_date ? moment(start_date).format('l') : ''} - {end_date ? moment(end_date).format('l') : ''}
+          </Text>
+        )}
+      </div>
+    );
+  }
 );
 
 
@@ -357,23 +372,62 @@ export default function BoardView(props: BoardViewProps) {
   
   const { classes } = useChatStyles();
   
-  const [collectionId, setCollectionId] = useState<string | null>(config.app.board.default_backlog_id);
+  const [collectionId, setCollectionId] = useState<string | null>();
   const [view, setView] = useState<string | null>(config.app.board.default_task_view);
 
+  // Collection selections
+  const collectionSelections = useMemo(() => {
+    if (!board._exists) return [];
+
+    const collections = board.collections.map(x => ({ value: x.id, label: x.name, ...x }));
+    return [config.app.board.all_collection, ...collections.sort((a, b) =>
+      a.end_date ?
+        b.end_date ? new Date(b.end_date).getTime() - new Date(a.end_date).getTime() : 1 :
+        b.end_date ? -1 : a.name.localeCompare(b.name)
+    )];
+  }, [board.collections]);
+
+  // Map of collections
   const collectionMap = useMemo(() => {
     if (!board._exists) return {};
 
     const map: Record<string, TaskCollection> = {};
     for (const group of board.collections)
       map[group.id] = group;
+
+    const all = config.app.board.all_collection;
+    map[all.value] = all;
     return map;
   }, [board.collections]);
+
+  // Set default view
+  useEffect(() => {
+    if (!board._exists) return;
+
+    // Choose a current cycle
+    const today = new Date();
+    for (const c of board.collections) {
+      if (c.start_date && c.end_date &&
+        today >= new Date(c.start_date) &&
+        today <= moment(c.end_date).add(1, 'day').toDate()
+      ) {
+        // Set collection id of first cycle that is current
+        setCollectionId(c.id);
+        return;
+      }
+    }
+
+    // Use backlog as default
+    setCollectionId(config.app.board.default_backlog.id);
+  }, [board._exists]);
 
 
   // Get collection object for less typing
   const collection = collectionId ? collectionMap[collectionId] : null;
 
   if (!board._exists || !tasks._exists) return null;
+
+  // WIP : Channel state persistence, rerender channel view on every channel switch (to proc component mount)
 
   return (
     <ScrollArea sx={{
@@ -384,9 +438,9 @@ export default function BoardView(props: BoardViewProps) {
         width: '100%',
         padding: '1.0rem 1.5rem 1.0rem 1.5rem'
       })}>
-        <Group noWrap spacing='xs' align='center' mb={16}>
+        <Group noWrap spacing={3} align='center' mb={16}>
           <Select
-            data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
+            data={collectionSelections}
             itemComponent={GroupSelectItem}
             rightSection={<ChevronDown size={24} />}
             size='md'
@@ -403,10 +457,22 @@ export default function BoardView(props: BoardViewProps) {
                 paddingTop: '0.4rem',
                 paddingBottom: '0.4rem',
               },
+              rightSection: {pointerEvents: 'none' },
             })}
             value={collectionId}
             onChange={setCollectionId}
           />
+
+          {collection && (
+            <ActionIcon size='lg' mt={4} ml={8} onClick={() => openEditTaskCollection({
+              board,
+              domain: props.domain,
+              collection,
+              onDelete: () => setCollectionId(config.app.board.default_backlog.id),
+            })}>
+              <Pencil />
+            </ActionIcon>
+          )}
           <Menu width='20ch' position='bottom-start'>
             <Menu.Target>
               <ActionIcon size='lg' mt={4}>
@@ -414,8 +480,28 @@ export default function BoardView(props: BoardViewProps) {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item icon={<ArrowIteration size={20} />}>New Cycle</Menu.Item>
-              <Menu.Item icon={<Folders size={19} />}>New Collection</Menu.Item>
+              <Menu.Item
+                icon={<ArrowIteration size={20} />}
+                onClick={() => openCreateTaskCollection({
+                  board,
+                  domain: props.domain,
+                  mode: 'cycle',
+                  onCreate: (id) => setCollectionId(id),
+                })}
+              >
+                New Cycle
+              </Menu.Item>
+              <Menu.Item
+                icon={<Folders size={19} />}
+                onClick={() => openCreateTaskCollection({
+                  board,
+                  domain: props.domain,
+                  mode: 'collection',
+                  onCreate: (id) => setCollectionId(id),
+                })}
+              >
+                New Collection
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
 
@@ -428,11 +514,21 @@ export default function BoardView(props: BoardViewProps) {
                 <br />
                 {(() => {
                   if (!collection.end_date) return '';
-                  const diff = moment(collection.end_date).businessDiff(moment(new Date()));
-                  return `${diff} working day${diff === 1 ? '' : 's'} remaining`;
+                  const today = new Date();
+                  const started = collection.start_date && today >= new Date(collection.start_date);
+                  const diff = moment(started ? collection.end_date : collection.start_date).diff(
+                    [today.getFullYear(), today.getMonth(), today.getDate()],
+                    'days'
+                  );
+                  if (diff < 0)
+                    return 'Passed';
+                  else if (diff === 0)
+                    return `${started ? 'Ends' : 'Starts'} Today`;
+                  else
+                    return `${diff} day${diff === 1 ? '' : 's'} ${started ? 'remaining' : 'until start'}`;
                 })()}
               </Text>
-              <Box mt={6} mr={8} sx={(theme) => ({ color: theme.colors.dark[2] })}>
+              <Box mt={6} mr={8} ml={6} sx={(theme) => ({ color: theme.colors.dark[2] })}>
                 <Clock size={32} />
               </Box>
             </>

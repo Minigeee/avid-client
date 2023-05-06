@@ -60,11 +60,6 @@ import { v4 as uuid } from 'uuid';
 
 
 ////////////////////////////////////////////////////////////
-const SHORT_INPUT_WIDTH = 40;
-const MED_INPUT_WIDTH = 60;
-
-
-////////////////////////////////////////////////////////////
 interface PriorityItemProps extends React.ComponentPropsWithoutRef<'div'> {
   value: TaskPriority | null;
   label: string;
@@ -225,12 +220,35 @@ function DueDatePicker(props: DatePickerInputProps) {
 
 
 ////////////////////////////////////////////////////////////
+interface CollectionSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
+  name: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+////////////////////////////////////////////////////////////
+const CollectionSelectItem = forwardRef<HTMLDivElement, CollectionSelectItemProps>(
+  ({ name, start_date, end_date, ...others }: CollectionSelectItemProps, ref) => (
+    <div ref={ref} {...others}>
+      <Text weight={600}>{name}</Text>
+      {(start_date || end_date) && (
+        <Text size='xs' color='dimmed'>
+          {start_date ? moment(start_date).format('l') : ''} - {end_date ? moment(end_date).format('l') : ''}
+        </Text>
+      )}
+    </div>
+  )
+);
+
+
+////////////////////////////////////////////////////////////
 type FormValues = {
   summary: string;
   description: string;
   status: string;
   priority: TaskPriority | null;
   due_date: Date | null;
+  collection: string;
   tags: string[];
 };
 
@@ -334,6 +352,8 @@ export type CreateTaskProps = {
   tag?: string;
   /** Starting due date */
   due_date?: string;
+  /** Starting collection */
+  collection?: string;
 }
 
 ////////////////////////////////////////////////////////////
@@ -350,6 +370,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       priority: props.priority || null,
       due_date: props.due_date ? new Date(props.due_date) : null,
       assignee: props.assignee || null,
+      collection: props.collection || config.app.board.default_backlog.id,
       tags: props.tag !== undefined ? [props.tag] : [],
     } as FormValues,
   });
@@ -422,7 +443,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
             mt={1}
           />}
           itemComponent={StatusSelectItem}
-          sx={{ maxWidth: `${SHORT_INPUT_WIDTH}ch` }}
+          sx={{ maxWidth: config.app.ui.short_input_width }}
           {...form.getInputProps('status')}
         />
 
@@ -444,7 +465,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           />}
           clearable
           itemComponent={PrioritySelectItem}
-          sx={{ maxWidth: `${SHORT_INPUT_WIDTH}ch` }}
+          sx={{ maxWidth: config.app.ui.short_input_width }}
           {...form.getInputProps('priority')}
         />
 
@@ -453,7 +474,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           label='Assignee'
           placeholder='Start typing to get a list of users'
           clearable
-          sx={{ maxWidth: `${MED_INPUT_WIDTH}ch` }}
+          sx={{ maxWidth: config.app.ui.med_input_width }}
           {...form.getInputProps('assignee')}
         />
 
@@ -461,11 +482,21 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           placeholder='None'
           icon={<CalendarEvent size={19} />}
           clearable
-          sx={{ maxWidth: `${MED_INPUT_WIDTH}ch` }}
+          sx={{ maxWidth: config.app.ui.med_input_width }}
           {...form.getInputProps('due_date')}
         />
 
         <Divider />
+        
+        <Select
+          label='Cycle'
+          description='A cycle is a period of time during which a team works to complete a collection of tasks.'
+          placeholder='None'
+          data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
+          itemComponent={CollectionSelectItem}
+          sx={{ maxWidth: config.app.ui.med_input_width }}
+          {...form.getInputProps('collection')}
+        />
 
         <MultiSelect
           label='Tags'
@@ -514,7 +545,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
             copy[index] = { ...copy[index], color };
             setTags(copy);
           })}
-          styles={{ wrapper: { maxWidth: `${MED_INPUT_WIDTH}ch` }, value: { margin: '3px 5px 3px 2px' } }}
+          styles={{ wrapper: { maxWidth: config.app.ui.med_input_width }, value: { margin: '3px 5px 3px 2px' } }}
           {...form.getInputProps('tags')}
         />
 
@@ -574,6 +605,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
       priority: task.priority || null,
       due_date: task.due_date ? new Date(task.due_date) : null,
       assignee: task.assignee || null,
+      collection: task.collection || config.app.board.default_backlog.id,
       tags: task.tags?.map(x => x.toString()) || [],
     } as FormValues,
   });
@@ -592,7 +624,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   // Set description
   useEffect(() => {
     form.setFieldValue('description', task.description || '');
-  }, [task._exists]);
+  }, [task.description]);
 
   // Handle task field change
   async function onFieldChange(updates: Partial<ExpandedTask>) {
@@ -797,7 +829,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                 copy[index] = { ...copy[index], color };
                 setTags(copy);
               })}
-              styles={{ wrapper: { maxWidth: `${MED_INPUT_WIDTH}ch` }, value: { margin: '3px 5px 3px 2px' } }}
+              styles={{ wrapper: { maxWidth: config.app.ui.med_input_width }, value: { margin: '3px 5px 3px 2px' } }}
               {...form.getInputProps('tags')}
               onBlur={async () => {
                 if (!board._exists) return;
@@ -817,6 +849,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
         </Grid.Col>
         <Grid.Col span={4} pl={16} pb={16} sx={(theme) => ({ borderLeft: `1px solid ${theme.colors.dark[5]}` })}>
           <Stack>
+
             <Select
               label='Status'
               data={board.statuses.map(x => ({ value: x.id, ...x }))}
@@ -876,11 +909,24 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               placeholder='None'
               icon={<CalendarEvent size={19} />}
               clearable
-              sx={{ maxWidth: `${MED_INPUT_WIDTH}ch` }}
+              sx={{ maxWidth: config.app.ui.med_input_width }}
               {...form.getInputProps('due_date')}
               onChange={(value) => {
                 form.setFieldValue('due_date', value);
                 onFieldChange({ due_date: value?.toISOString() || null });
+              }}
+            />
+            
+            <Select
+              label='Cycle'
+              placeholder='None'
+              data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
+              itemComponent={CollectionSelectItem}
+              {...form.getInputProps('collection')}
+              onChange={(value) => {
+                const v = value || config.app.board.default_status_id;
+                form.setFieldValue('collection', v);
+                onFieldChange({ collection: v });
               }}
             />
 
