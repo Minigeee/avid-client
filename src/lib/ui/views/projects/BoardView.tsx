@@ -36,6 +36,7 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  useApp,
   useBoard,
   useChatStyles,
   useMemoState,
@@ -362,18 +363,22 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
 type BoardViewProps = {
   channel: Channel<'board'>;
   domain: DomainWrapper;
-  view?: 'list' | 'kanban';
 }
 
 ////////////////////////////////////////////////////////////
 export default function BoardView(props: BoardViewProps) {
+  const app = useApp();
   const board = useBoard(props.channel.data?.board);
   const tasks = useTasks(board.id);
   
   const { classes } = useChatStyles();
   
-  const [collectionId, setCollectionId] = useState<string | null>();
-  const [view, setView] = useState<string | null>(config.app.board.default_task_view);
+  const [collectionId, setCollectionId] = useState<string | null>(
+    app.navigation.board.collections[board.id || '']
+  );
+  const [view, setView] = useState<string | null>(
+    app.navigation.board.views[board.id || ''] || config.app.board.default_task_view
+  );
 
   // Collection selections
   const collectionSelections = useMemo(() => {
@@ -404,6 +409,13 @@ export default function BoardView(props: BoardViewProps) {
   useEffect(() => {
     if (!board._exists) return;
 
+    // Used nav state if available
+    const nav = app.navigation.board.collections[board.id];
+    if (nav) {
+      setCollectionId(nav);
+      return;
+    }
+
     // Choose a current cycle
     const today = new Date();
     for (const c of board.collections) {
@@ -413,6 +425,11 @@ export default function BoardView(props: BoardViewProps) {
       ) {
         // Set collection id of first cycle that is current
         setCollectionId(c.id);
+        
+        // Set nav state for faster load
+        if (!nav)
+          app._mutators.navigation.board.setCollection(board.id, c.id);
+          
         return;
       }
     }
@@ -460,7 +477,11 @@ export default function BoardView(props: BoardViewProps) {
               rightSection: {pointerEvents: 'none' },
             })}
             value={collectionId}
-            onChange={setCollectionId}
+            onChange={(value) => {
+              setCollectionId(value);
+              if (value)
+                app._mutators.navigation.board.setCollection(board.id, value);
+            }}
           />
 
           {collection && (
@@ -549,7 +570,11 @@ export default function BoardView(props: BoardViewProps) {
               variant='outline'
               mt={32}
               value={view}
-              onTabChange={setView}
+              onTabChange={(value) => {
+                setView(value);
+                if (value)
+                  app._mutators.navigation.board.setView(board.id, value as 'list' | 'kanban');
+              }}
               styles={(theme) => ({
                 tab: {
                   fontWeight: 500,

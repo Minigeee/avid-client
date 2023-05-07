@@ -1174,8 +1174,7 @@ function disconnect(emit: RtcSetState) {
 
 
 /** Get rtc context state and mutators */
-export function useRtc() {
-	const session = useSession();
+export function useRtc(session: SessionState) {
 	const [state, setState] = useState<RtcState | undefined>(_state);
 
 	return {

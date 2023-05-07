@@ -195,6 +195,7 @@ function renderMessage(id: string, message: string, env: MarkdownEnv) {
 		return _state.msg_cache[id].rendered;
 
 	// Render new message
+	// WIP : Fix sanitization
 	const rendered = sanitizeHtml(_md.render(message, env));
 
 	// Add to cache

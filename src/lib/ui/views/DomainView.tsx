@@ -24,7 +24,7 @@ type DomainHeaderProps = {
 
 ////////////////////////////////////////////////////////////
 function DomainHeader({ app, domain }: DomainHeaderProps) {
-  const expansion_id = app.navigation.expansions?.[domain.id];
+  const expansion_id = app.navigation.expansions?.[domain.id] || 'home';
   const expansions = [
     { value: 'home', label: 'Home' },
     { value: 'calendar', label: 'Calendar' },
@@ -102,7 +102,8 @@ export default function DomainView({ domain_id }: DomainViewProps) {
   if (!domain._exists)
     return null;
 
-  const expansion_id = app.navigation.expansions?.[domain.id];
+  // Use nav state expansion as default, home as back up
+  const expansion_id = app.navigation.expansions?.[domain.id] || 'home';
 
 
   return (

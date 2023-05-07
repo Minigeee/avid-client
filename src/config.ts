@@ -55,6 +55,8 @@ const config = {
 	app: {
 		/** Message used to notify user to contact/report issue */
 		support_message: 'Please contact us if this problem persists.',
+		/** Amount of time to wait before updating navigation state */
+		nav_update_timeout: 10 * 1000,
 
 		/** General ui config */
 		ui: {

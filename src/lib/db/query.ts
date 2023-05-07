@@ -199,11 +199,11 @@ export type SqlUpdateOptions<T extends object> = {
 };
 
 
-function _json(x: any, doubleBackslash: boolean = true): string {
+function _json(x: any, doubleBackslash: boolean = false): string {
     const type = typeof x;
 
     if (type === 'string')
-        return `"${x.replaceAll('"', '\\"').replaceAll('\\', doubleBackslash ? '\\\\' : '\\')}"`;
+        return `"${x.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
     else if (Array.isArray(x))
         return `[${x.map(x => _json(x, doubleBackslash)).join(',')}]`;
     else if (type === 'object') {

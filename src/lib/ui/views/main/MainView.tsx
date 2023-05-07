@@ -25,7 +25,9 @@ export default function MainView() {
   assert(app.navigation.domain && app.navigation.domain?.startsWith('domains'));
 
   const domain = useDomain(app.navigation.domain);
-  const channel_id = app.navigation.channels?.[app.navigation.domain];
+  // Get channel, using nav state as first choice and first channel as back up
+  const channel_id = app.navigation.channels?.[app.navigation.domain] ||
+    (domain.channels?.length ? domain.channels[0].id : undefined);
 
   const [headerData, setHeaderData] = useState<Record<string, any>>({});
 
@@ -74,21 +76,23 @@ export default function MainView() {
             })}>
               {channel.type === 'text' && (
                 <MessagesView
+                  key={channel.id}
                   channel_id={channel.id}
                   domain={domain}
                 />
               )}
               {channel.type === 'rtc' && (
                 <RoomView
+                  key={channel.id}
                   channel={channel}
                   domain={domain}
                 />
               )}
               {channel.type === 'board' && (
                 <BoardView
+                  key={channel.id}
                   channel={channel as Channel<'board'>}
                   domain={domain}
-                  view={headerData.view}
                 />
               )}
             </Box>
