@@ -18,8 +18,9 @@ import hljs from 'highlight.js';
 import { groupBy } from 'lodash';
 import MarkdownIt from 'markdown-it';
 import moment from 'moment';
-import sanitizeHtml from 'sanitize-html';
 import shash from 'string-hash';
+
+import sanitizeHtml from 'sanitize-html';
 
 
 /** An expanded message with information on if a target member was pinged within message */
@@ -118,7 +119,7 @@ const _md = new MarkdownIt({
 		md.renderer.rules.mention_member = (tokens, idx, opts, env: MarkdownEnv) => {
 			const id = `profiles:${tokens[idx].content}`;
 			const alias = env.domain?.id ? getMemberSync(env.domain.id, id)?.alias || '_' : '_';
-			return `<span class="highlight mention-member">@${alias}</span>`;
+			return `<span class="avid-highlight avid-mention-member">@${alias}</span>`;
 		}
 
 		md.renderer.rules.mention_role = (tokens, idx, opts, env: MarkdownEnv) => {
@@ -126,7 +127,7 @@ const _md = new MarkdownIt({
 			const role = env.domain?.roles?.[id];
 			const name = role?.name || '_';
 			const color = role?.color || '#EAECEF';
-			return `<span class="highlight" style="background-color: ${color}2A; color: ${color}; font-weight: 600;">@${name}</span>`;
+			return `<span class="avid-highlight" style="background-color: ${color}2A; color: ${color}; font-weight: 600;">@${name}</span>`;
 		}
 	});
 
@@ -195,8 +196,7 @@ function renderMessage(id: string, message: string, env: MarkdownEnv) {
 		return _state.msg_cache[id].rendered;
 
 	// Render new message
-	// WIP : Fix sanitization
-	const rendered = sanitizeHtml(_md.render(message, env));
+	const rendered = _md.render(message, env);
 
 	// Add to cache
 	_state.msg_cache[id] = { hash, rendered };

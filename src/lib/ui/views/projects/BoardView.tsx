@@ -444,7 +444,7 @@ export default function BoardView(props: BoardViewProps) {
 
   if (!board._exists || !tasks._exists) return null;
 
-  // WIP : Channel state persistence, rerender channel view on every channel switch (to proc component mount)
+  // WIP : Pfp! + move all tasks from old board
 
   return (
     <ScrollArea sx={{

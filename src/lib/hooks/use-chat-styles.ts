@@ -205,12 +205,12 @@ export const useChatStyles = createStyles((theme) => ({
 			},
 		},
 
-		'.highlight': {
+		'.avid-highlight': {
 			padding: '1px 4px 1.5px 3px',
 			borderRadius: 3,
 		},
 
-		'.mention-member': {
+		'.avid-mention-member': {
 			backgroundColor: `#50345C`,
 			color: '#F0F0FC',
 			fontWeight: 600,

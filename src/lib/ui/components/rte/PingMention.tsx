@@ -81,7 +81,7 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
     
     // Construct attrs
     const finalAttrs: any = {
-      class: `highlight${attrs.type === 'member' ? ' mention-member' : ''}`,
+      class: `avid-highlight avid-${attrs.type === 'member' ? 'mention-member' : ''}`,
     };
 
     if (attrs.type === 'role') {

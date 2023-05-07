@@ -17,7 +17,7 @@ import sanitizeHtml from 'sanitize-html';
 ////////////////////////////////////////////////////////////
 function _sanitize<T extends Partial<ExpandedTask>>(task: T) {
 	if (task.description)
-		task.description = sanitizeHtml(task.description);
+		task.description = sanitizeHtml(task.description, config.sanitize);
 
 	return task;
 }

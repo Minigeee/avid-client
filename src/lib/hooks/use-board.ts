@@ -24,7 +24,7 @@ function _sanitize(board: Board) {
 ////////////////////////////////////////////////////////////
 function _sanitizeCollection(collection: Partial<TaskCollection>): Partial<TaskCollection> {
 	if (collection.description)
-		collection.description = sanitizeHtml(collection.description);
+		collection.description = sanitizeHtml(collection.description, config.sanitize);
 
 	return collection;
 }
@@ -74,6 +74,8 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		 */
 		updateCollection: (collection_id: string, collection: Partial<NoId<TaskCollection>>) => mutate(
 			swrErrorWrapper(async (board: Board) => {
+				collection = _sanitizeCollection(collection);
+
 				// Add group, iterate id counter
 				const results = await query<Board[]>(
 					sql.update<Board>(board.id, {}, {

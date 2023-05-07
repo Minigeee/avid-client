@@ -1,6 +1,7 @@
 import axios from 'axios';
 import axiosBetterStacktrace from 'axios-better-stacktrace';
 import { Algorithm } from 'jsonwebtoken';
+import sanitizeHtml from 'sanitize-html';
 
 const dev_mode = process.env.NODE_ENV === 'development';
 
@@ -50,6 +51,22 @@ const config = {
 		/** Minimum amount of time in between revalidating data (seconds) */
 		focus_throttle_interval: 2 * 60,
 	},
+
+	/** Html sanitization options */
+	sanitize: {
+		allowedTags: [
+			...sanitizeHtml.defaults.allowedTags,
+			'img',
+		],
+		allowedAttributes: {
+			...sanitizeHtml.defaults.allowedAttributes,
+			'*': ['style'],
+		},
+		allowedClasses: {
+			code: ['language-*'],
+			'*': ['avid*', 'hljs*'],
+		},
+	} as sanitizeHtml.IOptions,
 	
 	/** Application config */
 	app: {

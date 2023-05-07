@@ -308,8 +308,6 @@ export default function AppProvider({ children }: PropsWithChildren) {
 			});
 	}, [session.profile_id]);
 
-	// WIP : Fix save/load funcs (save state as a string?)
-
 	return (
 		<AppContext.Provider value={{
 			navigation: nav,
