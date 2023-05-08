@@ -37,8 +37,8 @@ export type Task = {
 	time_created: Date;
 	/** The time the task was last updated */
 	time_updated?: Date;
-	/** The time the task status was last changed */
-	time_status_changed?: Date;
+	/** The time the task status was last updated */
+	time_status_updated?: Date;
 }
 
 /** A task with expanded fields */

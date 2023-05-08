@@ -1,4 +1,5 @@
-import { Domain } from "./domain";
+import { Domain } from './domain';
+import { Date } from './util';
 
 
 /**
@@ -12,6 +13,8 @@ export type Profile = {
 	id: string;
 	/** Username of the profile */
 	username: string;
+	/** Time the profile was created */
+	time_created: Date;
 };
 
 

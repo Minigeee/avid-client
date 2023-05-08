@@ -184,19 +184,29 @@ export type SqlSelectOptions<T extends object> = {
 	fetch?: (Selectables<T> | (string & {}))[];
 };
 
-/** Update statement options */
-export type SqlUpdateOptions<T extends object> = {
+type _SqlUpdateBaseOptions<T extends object> = {
 	/** Update condition */
 	where?: string;
 	/** Return mode */
 	return?: SqlReturn | Selectables<T>[];
-	/** Data that should be incremented or decremented (or array push or pull) (nested fields can't be used in `content` or `set` if `set` is defined) */
-	set?: { [K in keyof T]?: T[K] extends ReadonlyArray<infer A> ?
-		(SqlContent<A> | SqlContent<A>[] | ['=' | '+=' | '-=', SqlContent<A> | SqlContent<A>[]]) :
-		(SqlContent<T[K]> | ['=' | '+=' | '-=', SqlContent<T[K]>]) };
+};
+
+type _SqlUpdateContentOptions<T extends object> = {
+	/** Content of the update */
+	content: SqlContent<T>;
 	/** Whether update should merge or replace data (merge by default) */
 	merge?: boolean;
-};
+} & _SqlUpdateBaseOptions<T>;
+
+type _SqlUpdateSetOptions<T extends object> = {
+	/** Data that should be incremented or decremented (or array push or pull) */
+	set: { [K in keyof T]?: T[K] extends ReadonlyArray<infer A> ?
+		(SqlContent<A> | SqlContent<A>[] | ['=' | '+=' | '-=', SqlContent<A> | SqlContent<A>[]]) :
+		(SqlContent<T[K]> | ['=' | '+=' | '-=', SqlContent<T[K]>]) };
+} & _SqlUpdateBaseOptions<T>;
+
+/** Update statement options */
+export type SqlUpdateOptions<T extends object> = _SqlUpdateContentOptions<T> | _SqlUpdateSetOptions<T>;
 
 
 function _json(x: any, doubleBackslash: boolean = false): string {
@@ -347,14 +357,13 @@ export const sql = {
 	},
 
 	/** Update statement */
-	update: <T extends object>(record: string, content: SqlContent<T>, options?: SqlUpdateOptions<T>) => {
+	update: <T extends object>(record: string, options: SqlUpdateOptions<T>) => {
 		let q = `UPDATE ${record} `;
 
 		// Check if SET should be used
-		if (options?.set) {
+		if ((options as _SqlUpdateSetOptions<T>).set) {
 			// All must be set using merge
-			const updates = { ...content, ...options.set };
-			const set = Object.entries(updates).map(([k, v]) =>
+			const set = Object.entries((options as _SqlUpdateSetOptions<T>).set).map(([k, v]) =>
 				Array.isArray(v) && (v[0] === '=' || v[0] === '+=' || v[0] === '-=') ?
 					`${k}${v[0]}${_json(v[1])}` :
 					`${k}=${_json(v)}`
@@ -364,8 +373,9 @@ export const sql = {
 		}
 		else {
 			// CONTENT or MERGE should be used
-			let json = _json(content);
-			q += `${options?.merge === false ? 'CONTENT' : 'MERGE'} ${json} `;
+			const opts = options as _SqlUpdateContentOptions<T>;
+			let json = _json(opts.content);
+			q += `${opts.merge === false ? 'CONTENT' : 'MERGE'} ${json} `;
 		}
 		
 		if (options?.where)

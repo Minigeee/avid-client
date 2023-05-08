@@ -79,7 +79,7 @@ async function _saveAll(nav: _NavState, session: SessionState) {
 	};
 	
 	await query(
-		sql.update(id, data, { merge: false }),
+		sql.update(id, { content: data, merge: false }),
 		{ session }
 	);
 }
@@ -252,9 +252,11 @@ export default function AppProvider({ children }: PropsWithChildren) {
 		// Update everything in diff object
 		await query(
 			sql.update<_NavState>(_id(session), {
-				domain: nav._diff.domain?.split(':').at(-1),
-				channels: _rmPrefix(nav._diff.channels || {}),
-				expansions: _rmPrefix(nav._diff.expansions || {}),
+				content: {
+					domain: nav._diff.domain?.split(':').at(-1),
+					channels: _rmPrefix(nav._diff.channels || {}),
+					expansions: _rmPrefix(nav._diff.expansions || {}),
+				},
 			}),
 			{ session }
 		);

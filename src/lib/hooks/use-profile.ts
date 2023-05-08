@@ -16,11 +16,15 @@ export function useProfile(profile_id: string) {
 		return sql.select([
 			'*',
 			sql.wrap(sql.select<Domain>(
-				['id', 'name'],
+				['id', 'name', 'time_created'],
 				{ from: '->member_of->domains' }
 			), { alias: 'domains' }),
 		], { from: profile_id });
 	}, {
-		then: (results) => results?.length ? results[0] : null,
+		then: (results) => results?.length ? {
+			...results[0],
+			// TODO : Make domains draggable
+			domains: results[0].domains.sort((a: Domain, b: Domain) => new Date(a.time_created).getTime() - new Date(b.time_created).getTime()),
+		 } : null,
 	});
 }

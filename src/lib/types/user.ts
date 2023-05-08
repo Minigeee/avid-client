@@ -1,8 +1,12 @@
+import { Date } from './util';
+
 
 /** A user object is associated with an account and can have multiple profiles */
 export type User = {
 	/** User id */
 	id: string;
+	/** Time the user account was created */
+	time_created: Date;
 
 	/** The string id given by a provider when a user authenticates themselves */
 	provider_id: string;

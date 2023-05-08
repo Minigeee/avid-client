@@ -505,6 +505,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           searchable
           clearable
           creatable
+          withinPortal
           getCreateLabel={(query) => {
             return (
               <Box sx={{
@@ -788,6 +789,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               searchable
               clearable
               creatable
+              withinPortal
               getCreateLabel={(query) => {
                 // TODO : Make sure the tag want to create doesn't exist already
                 return (
@@ -920,6 +922,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
             <Select
               label='Cycle'
               placeholder='None'
+              withinPortal
               data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
               itemComponent={CollectionSelectItem}
               {...form.getInputProps('collection')}

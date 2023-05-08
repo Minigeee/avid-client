@@ -36,6 +36,8 @@ export interface Board {
 	statuses: WithId<Label>[];
 	/** Ids of all task collections belonging to the board */
 	collections: TaskCollection[];
+	/** Time the board was created */
+	time_created: Date;
 
 	/** A counter used to assign task ids */
 	_task_counter: number;

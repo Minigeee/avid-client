@@ -41,9 +41,8 @@ export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...
         )}
         <Text weight={600} size='lg'>
           {(() => {
-            console.log('group', group)
             if (grouper === 'tags')
-              return group === '_' ? 'No Tags' : props.tagMap[group].label;
+              return group === '_' ? 'No Tags' : props.tagMap[group.trim()].label;
             else if (grouper === 'assignee')
               return group === '_' ? 'Unassigned' : getMemberSync(props.domain.id, group)?.alias;
             else if (grouper === 'priority')
@@ -51,7 +50,7 @@ export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...
             else if (grouper === 'due_date')
               return group === '_' ? 'No Due Date' : moment(group).format('ll');
             else if (grouper === 'status')
-              return props.statusMap?.[group].label;
+              return props.statusMap?.[group.trim()].label;
           })()}
         </Text>
       </Group>

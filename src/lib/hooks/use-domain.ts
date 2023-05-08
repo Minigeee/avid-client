@@ -34,6 +34,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 					name,
 					type,
 					data,
+					time_created: new Date().toISOString(),
 				};
 
 				// Create channel
@@ -84,6 +85,35 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				}
 			}
 		),
+
+		/**
+		 * Set the order channels appear in this domain
+		 * TEMP : After adding channel groups, this will have to be changed.
+		 * 
+		 * @param channels The channel objects in the order they should appear
+		 * @returns The new domain object
+		 */
+		setChannelOrder: (channels: Channel[]) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				if (!domain) return;
+
+				// Set channel ids
+				const ids = channels.map(x => x.id);
+				await query<Domain>(
+					sql.update<Domain>(domain.id, { set: { channels: ids } }),
+					{ session }
+				);
+
+				return { ...domain, channels };
+			}, { message: 'An error occurred while changing channel order' }),
+			{
+				revalidate: false,
+				optimisticData: (domain) => {
+					assert(domain);
+					return { ...domain, channels };
+				}
+			}
+		),
 	};
 }
 
@@ -102,13 +132,7 @@ export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDo
  */
 export function useDomain(domain_id: string) {
 	return useDbQuery<ExpandedDomain, DomainMutators>(domain_id, (key) => {
-		return sql.select<Domain>([
-			'*',
-			sql.wrap(sql.select<Channel>(
-				['id', 'name', 'type', 'data'],
-				{ from: 'channels', where: sql.match({ domain: domain_id }) }
-			), { alias: 'channels' })
-		], { from: domain_id, fetch: ['roles'] });
+		return sql.select<Domain>('*', { from: domain_id, fetch: ['roles', 'channels'] });
 	}, {
 		then: (results) => results?.length ? results[0] : null,
 		mutators,

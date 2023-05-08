@@ -1,3 +1,5 @@
+import { Date } from './util';
+
 
 /** All possible channel types */
 export type ChannelTypes = 'text' | 'rtc' | 'board';
@@ -40,6 +42,8 @@ export interface Channel<Type extends ChannelTypes = ChannelTypes> {
 	type: Type;
 	/** Extra data for each channel type */
 	data?: ChannelData<Type>;
+	/** Time the channel was created */
+	time_created: Date;
 }
 
 

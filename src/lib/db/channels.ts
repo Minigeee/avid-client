@@ -4,19 +4,27 @@ import assert from 'assert';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
-import { Board, Channel, ChannelOptions, ChannelTypes } from '@/lib/types';
+import { Board, Channel, ChannelOptions, ChannelTypes, Domain } from '@/lib/types';
 
 
 /** Default function for creating channel */
 function addDefaultChannel(channel: Partial<Channel>, session: SessionState) {
-	return query<Channel[]>(
-		sql.create<Channel>('channels', channel, ['id', 'data']),
-		{ session }
-	);
+	assert(channel.domain);
+
+	return query<Channel[]>(sql.transaction([
+		sql.let('$channel', sql.create<Channel>('channels', channel, ['id', 'data'])),
+		sql.update<Domain>(channel.domain, {
+			set: { channels: ['+=', sql.$('$channel.id')] },
+			return: 'NONE',
+		}),
+		sql.select('*', { from: '$channel' }),
+	]), { session });
 }
 
 /** Create board channel */
 function addBoardChannel(channel: Partial<Channel>, options: ChannelOptions<'board'>, session: SessionState) {
+	assert(channel.domain);
+
 	return query<Channel[]>(sql.transaction([
 		sql.let('$board', sql.create<Board>('boards', {
 			domain: channel.domain,
@@ -24,14 +32,20 @@ function addBoardChannel(channel: Partial<Channel>, options: ChannelOptions<'boa
 			statuses: config.app.board.default_statuses,
 			tags: [],
 			collections: [config.app.board.default_backlog],
+			time_created: channel.time_created,
 
 			_task_counter: 0,
 			_id_counter: 0,
 		}, ['id'])),
-		sql.create<Channel>('channels', {
+		sql.let('$channel', sql.create<Channel>('channels', {
 			...channel,
 			data: { ...channel.data, board: sql.$('$board.id') },
-		}, ['id', 'data']),
+		}, ['id', 'data'])),
+		sql.update<Domain>(channel.domain, {
+			set: { channels: ['+=', sql.$('$channel.id')] },
+			return: 'NONE',
+		}),
+		sql.select('*', { from: '$channel' }),
 	]), { session });
 }
 
@@ -56,6 +70,7 @@ export async function addChannel<T extends ChannelTypes>(channel: Partial<Channe
 		results = await addDefaultChannel(channel, session);
 
 	assert(results && results.length > 0);
+
 	return results[0];
 }
 

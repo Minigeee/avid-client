@@ -48,6 +48,7 @@ function factory(session?: SessionState) {
 					body: '$user[0]',
 				}, {
 					body: sql.create('users', {
+						time_created: new Date().toISOString(),
 						provider_id,
 						provider,
 						profiles: [],
@@ -70,7 +71,7 @@ function factory(session?: SessionState) {
 		 */
 		update: async (user_id: string, data: Partial<User>) => {
 			const users = await query<User[]>(
-				sql.update<User>(user_id, data),
+				sql.update<User>(user_id, { content: data }),
 				{ session }
 			);
 		

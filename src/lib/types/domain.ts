@@ -16,11 +16,16 @@ export type Domain = {
 	name: string;
 	/** A list of role ids belonging to the domain */
 	roles: string[];
+	/** Time the domain was created */
+	time_created: Date;
+
+	/** TEMP : A list of channel ids belonging to domain, used to track channel order */
+	channels: string[];
 }
 
 
 /** Domain with expanded fields */
-export type ExpandedDomain = Omit<Domain, 'roles'> & {
+export type ExpandedDomain = Omit<Domain, 'roles' | 'channels'> & {
 	/** Channels belonging to domain */
 	channels: Channel[];
 	/** A list of roles belonging to the domain */

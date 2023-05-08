@@ -45,7 +45,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 			swrErrorWrapper(async (board: Board) => {
 				// Add group, iterate id counter
 				const results = await query<Board[]>(
-					sql.update<Board>(board.id, {}, {
+					sql.update<Board>(board.id, {
 						set: {
 							collections: ['+=', { id: sql.$('_id_counter'), ..._sanitizeCollection(collection) }],
 							_id_counter: ['+=', 1],
@@ -78,7 +78,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 
 				// Add group, iterate id counter
 				const results = await query<Board[]>(
-					sql.update<Board>(board.id, {}, {
+					sql.update<Board>(board.id, {
 						set: {
 							collections: sql.fn<Board>(function() {
 								// Find index
@@ -114,7 +114,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 			swrErrorWrapper(async (board: Board) => {
 				// Delete collection, move all tasks in collection, get a list of task ids
 				const results = await query<[Board[], Task[]]>(sql.transaction([
-					sql.update<Board>(board.id, {}, {
+					sql.update<Board>(board.id, {
 						set: {
 							collections: sql.fn<Board>(function() {
 								return this.collections.filter(x => x.id !== collection_id);
@@ -122,7 +122,8 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 						},
 						return: ['collections'],
 					}),
-					sql.update<Task>('tasks', { collection: config.app.board.default_backlog.id }, {
+					sql.update<Task>('tasks', {
+						content: { collection: config.app.board.default_backlog.id },
 						where: sql.match<Task>({ board: board.id, collection: collection_id }),
 						return: ['id'],
 					}),
@@ -183,7 +184,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 
 				// Add tags
 				const results = await query<Board[]>(
-					sql.update<Board>(board.id, {}, {
+					sql.update<Board>(board.id, {
 						set: {
 							// Function that updates existing tags and adds new ones
 							tags: sql.fn<Board>(function() {

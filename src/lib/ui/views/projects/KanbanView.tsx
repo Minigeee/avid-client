@@ -315,14 +315,6 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
       map[tag.id] = tag;
     return map;
   }, [board.tags]);
-  
-  // Status map
-  const statusMap = useMemo<Record<string, Label>>(() => {
-    const map: Record<string, Label> = {};
-    for (const s of board.statuses)
-      map[s.id] = s;
-    return map;
-  }, [board.statuses]);
 
 
   return (
@@ -353,13 +345,17 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
         // Handle destroy task
         return;
       }
+      else if (src.droppableId === dst.droppableId) {
+        dstParts = srcParts;
+        dstList = srcList;
+      }
       else if (grouper) {
         dstParts = dst.droppableId.split('.');
         dstList = (filtered as DoubleGrouped)[dstParts[0]][dstParts[1]]?.slice() || [];
       }
       else {
         dstParts = dst.droppableId.split('.');
-        dstList = (filtered as SingleGrouped)[dstParts[1]].slice();
+        dstList = (filtered as SingleGrouped)[dstParts[1]]?.slice() || [];
       }
 
       // Remove task from original position

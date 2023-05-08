@@ -98,7 +98,7 @@ function tasksMutators(board_id: string) {
 					// Create task
 					const results = await query<Task[]>(sql.transaction([
 						// Increment counter
-						sql.update<Board>(board_id, {}, { set: { _task_counter: ['+=', 1] } }),
+						sql.update<Board>(board_id, { set: { _task_counter: ['+=', 1] } }),
 
 						// Create task
 						sql.create<Task>('tasks', {
@@ -136,11 +136,21 @@ function tasksMutators(board_id: string) {
 					if (task.sid !== undefined) delete task.sid;
 					if (task.board !== undefined) delete task.board;
 
+					// Time the task is updated
+					const now = new Date().toISOString();
+
+					// Check if status changed
+					const statusUpdated = task.status && task.status !== tasks.find(x => x.id === task_id)?.status;
+
 					// Update task
 					const results = await query<Task[]>(
 						sql.update<Task>(task_id, {
-							..._sanitize(task),
-							assignee: task.assignee === null ? null : task.assignee?.id,
+							content: {
+								..._sanitize(task),
+								assignee: task.assignee === null ? null : task.assignee?.id,
+								time_updated: now,
+								time_status_updated: statusUpdated ? now : undefined,
+							},
 						}),
 						{ session }
 					);

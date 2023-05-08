@@ -136,14 +136,16 @@ function TabView({ board, type, ...props }: TabViewProps) {
         }
         else {
           for (const tag of task.tags) {
-            if (!grouped[tag]) {
-              grouped[tag] = [];
+            // Add space to prevent sort of numeric ids
+            const tagStr = ' ' + tag;
+            if (!grouped[tagStr]) {
+              grouped[tagStr] = [];
 
               // Track tag name for sorting
-              tagNames[tag] = board.tags.find(x => x.id === tag)?.label || '';
+              tagNames[tagStr] = board.tags.find(x => x.id === tag)?.label || '';
             }
 
-            grouped[tag].push(task);
+            grouped[tagStr].push(task);
           }
         }
       }
@@ -168,12 +170,13 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
     // Status
     else if (grouper === 'status') {
-      grouped = groupBy(filteredList, task => task.status);
+      // Add space to prevent sort of numeric ids
+      grouped = groupBy(filteredList, task => ' ' + task.status);
 
       // Status map for sorting
       const statusMap: Record<string, number> = {};
       for (let i = 0; i < board.statuses.length; ++i)
-        statusMap[board.statuses[i].id] = i;
+        statusMap[' ' + board.statuses[i].id] = i;
 
       grouped = sortObject(grouped, ([a], [b]) => statusMap[a] - statusMap[b]);
     }
@@ -188,17 +191,15 @@ function TabView({ board, type, ...props }: TabViewProps) {
         // Maintain order (prevents snapping when changing status)
         const reordered: SingleGrouped = {};
 
-        // Make list of existing tasks
-        const existing = new Set<number>();
-        for (const taskList of Object.values(newGroups)) {
-          for (const task of taskList)
-            existing.add(task.sid);
-        }
-
         // Iterate (new) status groups
         for (const [status, newTasks] of Object.entries(newGroups)) {
           const group: ExpandedTask[] = [];
           const added = new Set<number>();
+          const existing = new Set<number>();
+
+          // Make list of existing tasks in the (new) status group
+          for (const task of newTasks)
+            existing.add(task.sid);
 
           // Iterate (old) status group and add tasks in order they appear, while keeping track of which tasks are added
           if (!Array.isArray(oldGroups)) {
@@ -560,7 +561,7 @@ export default function BoardView(props: BoardViewProps) {
           <>
             <Text
               className={classes.typography}
-              size='sm'
+              size='md'
               mt={8}
               sx={{ maxWidth: '100ch' }}
               dangerouslySetInnerHTML={{ __html: collection.description || '' }}
