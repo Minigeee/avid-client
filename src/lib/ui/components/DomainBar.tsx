@@ -4,6 +4,7 @@ import {
   Avatar,
   Box,
   Divider,
+  Flex,
   Group,
   ScrollArea,
   Stack,
@@ -11,10 +12,11 @@ import {
   Transition,
 } from '@mantine/core';
 
-import { Calendar, Message2 } from 'tabler-icons-react';
+import { Calendar, Message2, Plus, Settings } from 'tabler-icons-react';
 
 import { useApp, useProfile, useSession } from '@/lib/hooks';
 import { Domain } from '@/lib/types';
+import { openCreateDomain } from '../modals';
 
 const AVATAR_RADIUS = 24;
 
@@ -109,32 +111,97 @@ export default function DomainBar() {
 
   ////////////////////////////////////////////////////////////
   return (
-    <ScrollArea sx={(theme) => ({
-      flexShrink: 0,
-      height: '100%',
-      backgroundColor: theme.colors.dark[8],
-    })}>
-      <Stack spacing={0} sx={{ marginTop: '0.18rem' }}>
-        {PERSONAL_TABS.map((tab, i) => (
-          <DomainAvatar
-            domain={{
-              id: tab.id,
-              name: tab.name,
-            }}
-            icon={tab.icon}
-            active={app.navigation.domain === tab.id}
-            onClick={() => app._mutators.navigation.setDomain(tab.id)}
-          />
-        ))}
-        <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
-        {profile.domains?.map((domain, i) => (
-          <DomainAvatar
-            domain={domain}
-            active={app.navigation.domain === domain.id}
-            onClick={() => app._mutators.navigation.setDomain(domain.id)}
-          />
-        ))}
-      </Stack>
-    </ScrollArea>
+    <Flex direction='column' h='100%'>
+      <ScrollArea sx={{ flexGrow: 1 }}>
+        <Stack spacing={0} sx={{ marginTop: '0.18rem' }}>
+          {PERSONAL_TABS.map((tab, i) => (
+            <DomainAvatar
+              domain={{
+                id: tab.id,
+                name: tab.name,
+              }}
+              icon={tab.icon}
+              active={app.navigation.domain === tab.id}
+              onClick={() => app._mutators.navigation.setDomain(tab.id)}
+            />
+          ))}
+          <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
+          {profile.domains?.map((domain, i) => (
+            <DomainAvatar
+              domain={domain}
+              active={app.navigation.domain === domain.id}
+              onClick={() => app._mutators.navigation.setDomain(domain.id)}
+            />
+          ))}
+        </Stack>
+      </ScrollArea>
+
+      <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
+
+      <Tooltip
+        label='New Domain'
+        position='right'
+        transitionProps={{ transition: 'fade' }}
+        withArrow
+        withinPortal
+      >
+        <Avatar
+          size={2 * AVATAR_RADIUS}
+          sx={(theme) => ({
+            cursor: 'pointer',
+            margin: '0.25rem 0.4rem 0.25rem calc(0.4rem + 4px)',
+            borderRadius: AVATAR_RADIUS,
+            transition: 'background-color 0.1s, border-radius 0.1s',
+            '&:hover': {
+              borderRadius: 0.6 * AVATAR_RADIUS,
+              backgroundColor: theme.colors.dark[6],
+            },
+            '&:active': {
+              transform: 'translateY(1px)',
+            }
+          })}
+          onClick={() => {
+            if (profile._exists) {
+              openCreateDomain({
+                profile,
+                onCreate: (domain_id) => {
+                  // Switch to new domain
+                  app._mutators.navigation.setDomain(domain_id);
+                },
+              });
+            }
+          }}
+        >
+          <Plus size={26} />
+        </Avatar>
+      </Tooltip>
+
+      <Tooltip
+        label='Settings'
+        position='right'
+        transitionProps={{ transition: 'fade' }}
+        withArrow
+        withinPortal
+      >
+        <Avatar
+          size={2 * AVATAR_RADIUS}
+          sx={(theme) => ({
+            cursor: 'pointer',
+            margin: '0.25rem 0.4rem 0.25rem calc(0.4rem + 4px)',
+            borderRadius: AVATAR_RADIUS,
+            transition: 'background-color 0.1s, border-radius 0.1s',
+            '&:hover': {
+              borderRadius: 0.6 * AVATAR_RADIUS,
+              backgroundColor: theme.colors.dark[6],
+            },
+            '&:active': {
+              transform: 'translateY(1px)',
+            }
+          })}
+        >
+          <Settings size={24} />
+        </Avatar>
+      </Tooltip>
+    </Flex>
   );
 }

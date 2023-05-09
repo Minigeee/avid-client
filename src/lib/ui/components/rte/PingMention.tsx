@@ -231,7 +231,7 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
     }
 
     // Filter roles
-    const filteredR = roles.filter(x => x.name.toLowerCase().startsWith(query));
+    const filteredR = roles.filter(x => x.label.toLowerCase().startsWith(query));
 
     // Merge lists
     const filtered = [
@@ -244,7 +244,7 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
       ...filteredR.map(x => ({
         type: 'role',
         id: x.id,
-        name: x.name,
+        name: x.label,
         color: x.color,
       })),
     ] as SuggestionType[];

@@ -125,7 +125,7 @@ const _md = new MarkdownIt({
 		md.renderer.rules.mention_role = (tokens, idx, opts, env: MarkdownEnv) => {
 			const id = `roles:${tokens[idx].content}`;
 			const role = env.domain?.roles?.[id];
-			const name = role?.name || '_';
+			const name = role?.label || '_';
 			const color = role?.color || '#EAECEF';
 			return `<span class="avid-highlight" style="background-color: ${color}2A; color: ${color}; font-weight: 600;">@${name}</span>`;
 		}

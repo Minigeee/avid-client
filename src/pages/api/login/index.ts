@@ -19,6 +19,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 		if (req.query.provider === 'google') {
 			authenticate('google', {
 				scope: ['email', 'profile'],
+				state: req.query.redirect as string,
 			}, req, res);
 		}
 	}

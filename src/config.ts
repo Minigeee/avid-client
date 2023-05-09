@@ -17,6 +17,8 @@ const config = {
 		api: dev_mode ? 'http://localhost:3001' : '',
 		/** Site address */
 		site: dev_mode ? 'http://localhost:3000' : '',
+		/** App path */
+		app_path: '/app',
 	},
 
 	/** Authorization config */

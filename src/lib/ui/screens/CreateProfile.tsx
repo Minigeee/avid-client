@@ -14,8 +14,6 @@ import { useForm } from '@mantine/form';
 import { useSession } from '@/lib/hooks';
 import { useProfilesDb } from '@/lib/db';
 
-import { verify } from 'jsonwebtoken';
-
 
 ////////////////////////////////////////////////////////////
 interface Props {
@@ -72,6 +70,7 @@ export default function CreateProfile(props: Props) {
           <TextInput
             label='Username'
             placeholder='None'
+            data-autofocus
             {...form.getInputProps('username')}
           />
 

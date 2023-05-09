@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { NextRouter, useRouter } from 'next/router';
 import { useEffect } from 'react';
 
 import {
@@ -10,14 +10,27 @@ import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import CreateProfile from '@/lib/ui/screens/CreateProfile';
 import RtcVoices from '@/lib/ui/components/rtc/RtcVoices';
 
+import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
 import { useApp, useProfile, useSession } from '@/lib/hooks';
 import Main from '@/lib/ui/screens/Main';
+import JoinDomain from '@/lib/ui/screens/JoinDomain';
 
 
 ////////////////////////////////////////////////////////////
-function ScreenState() {
+function ScreenState({ router }: { router: NextRouter }) {
   const app = useApp();
+
+  // Show join domain screen if specified
+  if (router.query.join) {
+    return (
+      <JoinDomain
+        domain_id={router.query.join as string}
+        inviter_id={router.query.inviter as string | undefined}
+        onSubmit={() => router.replace(config.domains.app_path)}
+      />
+    );
+  }
 
   return (
     <>
@@ -50,7 +63,8 @@ export default function App() {
     session._mutators.refresh().then((success) => {
       // Redirect to log in if refresh failed
       if (!success)
-        router.replace('/login');
+        // Redirect while keeping all query parameters
+        router.replace(`/login?redirect=${encodeURIComponent(router.asPath)}`);
     });
   }, []);
 
@@ -76,7 +90,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <ScreenState />
+        <ScreenState router={router} />
       </AppProvider>
     </ErrorBoundary>
   );

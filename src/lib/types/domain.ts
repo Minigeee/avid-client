@@ -21,6 +21,9 @@ export type Domain = {
 
 	/** TEMP : A list of channel ids belonging to domain, used to track channel order */
 	channels: string[];
+
+	/** The default everyone role */
+	_default_role: string;
 }
 
 

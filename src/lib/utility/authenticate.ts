@@ -115,7 +115,7 @@ export async function signin(user: JwtPayload, res: NextApiResponse, redirect?: 
 		_setIdCookie(full_user.id, full_user._id_key, res);
 
 	// Redirect
-	res.redirect(redirect || `${config.domains.site}/app`);
+	res.redirect(redirect || `${config.domains.site}${config.domains.app_path}`);
 }
 
 

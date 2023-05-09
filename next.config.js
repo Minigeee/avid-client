@@ -1,6 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+
+  // Redirects
+  async redirects() {
+    return [
+      {
+        source: '/join/:domain_id',
+        destination: '/app?join=:domain_id',
+        permanent: false,
+      }
+    ];
+  }
 }
 
 module.exports = nextConfig

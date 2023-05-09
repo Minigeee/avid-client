@@ -3,17 +3,20 @@ import {
   Box,
   Flex,
   Group,
+  Menu,
   Text,
   Title,
   UnstyledButton,
 } from '@mantine/core';
+import { useClipboard } from '@mantine/hooks';
 
-import { ChevronDown } from 'tabler-icons-react';
+import { ChevronDown, Copy, Settings } from 'tabler-icons-react';
 
 import MainView from '@/lib/ui/views/main/MainView';
 
+import config from '@/config';
 import { AppState } from '@/lib/contexts';
-import { DomainWrapper, useApp, useDomain } from '@/lib/hooks';
+import { DomainWrapper, useApp, useDomain, useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -24,11 +27,16 @@ type DomainHeaderProps = {
 
 ////////////////////////////////////////////////////////////
 function DomainHeader({ app, domain }: DomainHeaderProps) {
+  const session = useSession();
+
   const expansion_id = app.navigation.expansions?.[domain.id] || 'home';
   const expansions = [
     { value: 'home', label: 'Home' },
     { value: 'calendar', label: 'Calendar' },
   ];
+
+  const clipboard = useClipboard({ timeout: 500 });
+
 
   return (
     <Group spacing={0} sx={(theme) => ({
@@ -38,15 +46,38 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
       height: '2.8rem',
       backgroundColor: theme.colors.dark[8],
     })}>
-      <ActionIcon size='lg' sx={(theme) => ({
-        marginRight: '0.3rem',
-        color: theme.colors.dark[1],
-        '&:hover': {
-          backgroundColor: theme.colors.dark[6],
-        }
+      <Menu width='25ch' position='bottom-start' styles={(theme) => ({
+        dropdown: {
+          backgroundColor: theme.colors.dark[7],
+          borderColor: theme.colors.dark[5],
+        },
+        item: {
+          '&:hover': {
+            backgroundColor: theme.colors.dark[6],
+          },
+        },
       })}>
-        <ChevronDown size={22} />
-      </ActionIcon>
+        <Menu.Target>
+          <ActionIcon size='lg' sx={(theme) => ({
+            marginRight: '0.3rem',
+            color: theme.colors.dark[1],
+            '&:hover': {
+              backgroundColor: theme.colors.dark[6],
+            }
+          })}>
+            <ChevronDown size={22} />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
+          <Menu.Item icon={<Settings size={16} />} disabled>Settings</Menu.Item>
+          <Menu.Item icon={<Copy size={16} />} onClick={() =>
+            clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}?inviter=${session.profile_id.split(':')[1]}`)
+          }>
+            Copy Invite URL
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
       <Title order={4}>
         {domain.name}
       </Title>

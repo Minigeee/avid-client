@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import config from '@/config';
 import { authenticate, signin } from '@/lib/utility/authenticate';
 
 
@@ -14,5 +15,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	const user = await authenticate('google', { failureRedirect: '/fail' }, req, res);
 
 	// Complete sign in
-	await signin(user, res);
+	await signin(user, res, req.query.state as string | undefined);
 }

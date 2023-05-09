@@ -1,6 +1,7 @@
 import { openContextModal } from '@mantine/modals';
 
 import CreateChannel, { CreateChannelProps } from './CreateChannel';
+import CreateDomain, { CreateDomainProps } from './CreateDomain';
 import { CreateTask, CreateTaskProps, EditTask, EditTaskProps } from './CreateTask';
 import {
 	CreateTaskCollection, CreateTaskCollectionProps,
@@ -11,6 +12,7 @@ import {
 ////////////////////////////////////////////////////////////
 export const modals = {
 	'create-channel': CreateChannel,
+	'create-domain': CreateDomain,
 	'create-task': CreateTask,
 	'edit-task': EditTask,
 	'create-task-collection': CreateTaskCollection,
@@ -23,6 +25,17 @@ export const openCreateChannel = (props: CreateChannelProps) => openContextModal
 	modal: 'create-channel',
 	title: 'New Channel',
 	innerProps: props,
+});
+
+
+/** Opens the modal to create domains */
+export const openCreateDomain = (props: CreateDomainProps) => openContextModal({
+	modal: 'create-domain',
+	withCloseButton: false,
+	innerProps: props,
+	styles: (theme) => ({
+		body: { backgroundColor: theme.colors.dark[5] }
+	})
 });
 
 

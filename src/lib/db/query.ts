@@ -34,12 +34,15 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 
 	// Access token (for client request)
 	let token = options?.session?.token;
+	
+	// List of errors
+	let errors = [];
 
 	// Retry once if fail first time
 	for (let i = 0; i < 2; ++i) {
 		try {
 			// DB query
-			const result = await axios.post(config.db.url, sql.trim(), {
+			const results = await axios.post(config.db.url, sql.trim(), {
 				// Use username password auth if on server
 				auth: is_server && process.env.SURREAL_USERNAME && process.env.SURREAL_PASSWORD ? {
 					username: process.env.SURREAL_USERNAME,
@@ -58,10 +61,17 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 			// Debug log
 			debug({
 				query: sql.trim(),
-				results: result.data,
+				results: results.data,
 			});
 
-			return options?.complete ? result.data.map((x: any) => x.result) : result.data.at(-1).result;
+			// Return if all results are ok
+			for (const result of results.data) {
+				if (result.status === 'ERR')
+					errors.push(result.detail);
+			}
+
+			if (errors.length === 0)
+				return options?.complete ? results.data.map((x: any) => x.result) : results.data.at(-1).result;
 		}
 		catch (error: any) {
 			let retry = false;
@@ -86,7 +96,8 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 		}
 	}
 
-	return null;
+	// Error occurred
+	throw new Error(errors[0]);
 }
 
 
@@ -318,9 +329,28 @@ export const sql = {
 		return q;
 	},
 
+	/** Insert statement */
+	insert: <T extends object>(table: string, values: SqlContent<T>[]) => {
+		// Get keys
+		const keySet = new Set<string>();
+		for (const obj of values) {
+			for (const k of Object.keys(obj))
+				keySet.add(k);
+		}
+		const keys = Array.from(keySet);
+
+		// Construct value strings
+		const strs: string[] = [];
+		for (const obj of values)
+			strs.push(`(${keys.map(k => _json(obj[k as keyof SqlContent<T>])).join(',')})`);
+
+		// Put parts togther
+		return `INSERT INTO ${table} (${keys.join(',')}) VALUES ${strs.join(',')} `;
+	},
+
 	/** Relate statement */
 	relate: <T extends object>(from: string, edge: string, to: string, options?: SqlRelateOptions<T>) => {
-		let q = `RELATE ${from}->${edge}->${to} `;
+		let q = `RELATE ${from.includes('.') ? `(${from})` : from}->${edge}->${to.includes('.') ? `(${to})` : to} `;
 		
 		// Content string
 		if (options?.content) {
