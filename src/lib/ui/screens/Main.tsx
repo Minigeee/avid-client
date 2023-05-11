@@ -12,7 +12,7 @@ import { useApp, useProfile, useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
-export default function Main() {
+export default function Main(props: { visible: boolean }) {
   const app = useApp();
   const session = useSession();
   
@@ -29,6 +29,7 @@ export default function Main() {
   return (
     <Flex w='100vw' h='100vh' gap={0} sx={(theme) => ({
       backgroundColor: theme.colors.dark[8],
+      display: props.visible ? undefined : 'none',
     })}>
       <DomainBar />
       <Box sx={{

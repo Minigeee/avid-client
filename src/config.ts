@@ -1,6 +1,5 @@
 import axios from 'axios';
 import axiosBetterStacktrace from 'axios-better-stacktrace';
-import { Algorithm } from 'jsonwebtoken';
 import sanitizeHtml from 'sanitize-html';
 
 const dev_mode = process.env.NODE_ENV === 'development';
@@ -19,19 +18,6 @@ const config = {
 		site: dev_mode ? 'http://localhost:3000' : '',
 		/** App path */
 		app_path: '/app',
-	},
-
-	/** Authorization config */
-	auth: {
-		/** Token cookie name */
-		cookie_name: 'sid',
-		/** Max id token (and cookie) age in seconds */
-		max_id_token_age: 14 * 24 * 60 * 60,
-		/** Max access token age in seconds */
-		max_access_token_age: 1 * 24 * 60 * 60,
-
-		/** JWT signing algorithm */
-		jwt_algorithm: 'RS256' as Algorithm,
 	},
 
 	/** Database config */
@@ -76,6 +62,12 @@ const config = {
 		support_message: 'Please contact us if this problem persists.',
 		/** Amount of time to wait before updating navigation state */
 		nav_update_timeout: 10 * 1000,
+
+		/** Standardized image sizes */
+		image_sizes: {
+			/** Profile picture size */
+			profile_picture: { w: 256, h: 256 },
+		},
 
 		/** General ui config */
 		ui: {

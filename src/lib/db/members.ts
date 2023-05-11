@@ -25,6 +25,7 @@ const MEMBER_SELECT_FIELDS = [
 	'in AS id',
 	'alias',
 	'roles',
+	'in.profile_picture AS profile_picture',
 ];
 
 
@@ -34,7 +35,7 @@ const MEMBER_SELECT_FIELDS = [
  * @param domain_id The domain id of the member cache to retrieve
  * @returns An object containing the member object cache and a map of query times
  */
-export async function getDomainCache(domain_id: string, session: SessionState) {
+export async function getDomainCache(domain_id: string, session: SessionState, throwOnMissing?: boolean) {
 	assert(domain_id.startsWith('domains:'));
 
 	const release = await _mutex.acquire();
@@ -44,6 +45,9 @@ export async function getDomainCache(domain_id: string, session: SessionState) {
 
 	try {
 		if (!data) {
+			// Throw if specified
+			if (throwOnMissing) throw new Error('domain cache missing');
+
 			// Get initial data for cache
 			const members = await query<Member[]>(
 				sql.select<Member>(MEMBER_SELECT_FIELDS, {

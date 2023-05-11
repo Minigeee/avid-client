@@ -44,7 +44,7 @@ export function wrapSwrData<T, Mutators extends SwrMutators = {}, Seperate exten
 		_error: response.error,
 		_refresh: async () => { await response.mutate(); },
 		_update: async (data: T | SwrWrapper<T>, revalidate: boolean = false) => {
-			const { _exists, _loading, _error, _refresh, _update, ...filtered } = data as SwrWrapper<T>;
+			const { _exists, _loading, _error, _refresh, _update, _mutators, ...filtered } = data as SwrWrapper<T, {}, false, true>;
 			await response.mutate(filtered as T, { revalidate });
 		},
 		_mutators: response.data !== undefined && response.data !== null && mutatorFactory ?

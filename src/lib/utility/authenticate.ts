@@ -8,6 +8,7 @@ import { sign, verify } from 'jsonwebtoken';
 import { uid } from 'uid';
 
 import config from '@/config';
+import api_config from '@/api-config';
 import { users } from '@/lib/db';
 
 import { getJwtPrivate } from './keys';
@@ -34,14 +35,14 @@ function _setIdCookie(user_id: string, key: string, res: NextApiResponse) {
 
 	// Create id token
 	const jwt = sign({ id: user_id, key }, privkey, {
-		algorithm: config.auth.jwt_algorithm,
-		expiresIn: config.auth.max_id_token_age,
+		algorithm: api_config.auth.jwt_algorithm,
+		expiresIn: api_config.auth.max_id_token_age,
 	});
 
 	// Set token as cookie
-	const cookie = serialize(config.auth.cookie_name, jwt, {
-		maxAge: config.auth.max_id_token_age,
-		expires: new Date(Date.now() + config.auth.max_id_token_age * 1000),
+	const cookie = serialize(api_config.auth.cookie_name, jwt, {
+		maxAge: api_config.auth.max_id_token_age,
+		expires: new Date(Date.now() + api_config.auth.max_id_token_age * 1000),
 		httpOnly: true,
 		secure: !config.dev_mode,
 		path: '/',
@@ -130,7 +131,7 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		const privkey = getJwtPrivate();
 		assert(privkey);
 
-		const token = req.cookies[config.auth.cookie_name];
+		const token = req.cookies[api_config.auth.cookie_name];
 		assert(token);
 
 		// Get payload
@@ -154,8 +155,8 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 			profile_id: user.current_profile,
 			email: user.email,
 		}, privkey, {
-			algorithm: config.auth.jwt_algorithm,
-			expiresIn: config.auth.max_access_token_age,
+			algorithm: api_config.auth.jwt_algorithm,
+			expiresIn: api_config.auth.max_access_token_age,
 		});
 
 		// Save new id key

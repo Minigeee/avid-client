@@ -14,9 +14,9 @@ import {
 
 import { Calendar, Message2, Plus, Settings } from 'tabler-icons-react';
 
-import { useApp, useProfile, useSession } from '@/lib/hooks';
 import { Domain } from '@/lib/types';
-import { openCreateDomain } from '../modals';
+import { useApp, useProfile, useSession } from '@/lib/hooks';
+import { openCreateDomain, openUserSettings } from '@/lib/ui/modals';
 
 const AVATAR_RADIUS = 24;
 
@@ -198,6 +198,7 @@ export default function DomainBar() {
               transform: 'translateY(1px)',
             }
           })}
+          onClick={() => openUserSettings({})}
         >
           <Settings size={24} />
         </Avatar>

@@ -8,6 +8,8 @@ import {
 	EditTaskCollection, EditTaskCollectionProps
 } from './CreateTaskCollection';
 
+import UserSettings, { UserSettingsProps } from './UserSettings';
+
 
 ////////////////////////////////////////////////////////////
 export const modals = {
@@ -17,6 +19,8 @@ export const modals = {
 	'edit-task': EditTask,
 	'create-task-collection': CreateTaskCollection,
 	'edit-task-collection': EditTaskCollection,
+
+	'user-settings': UserSettings,
 };
 
 
@@ -73,3 +77,22 @@ export const openEditTaskCollection = (props: EditTaskCollectionProps) => openCo
 	innerProps: props,
 	size: 'lg',
 });
+
+
+/** Open user settings modal */
+export const openUserSettings = (props: UserSettingsProps) => openContextModal({
+	modal: 'user-settings',
+	withCloseButton: false,
+	innerProps: props,
+	size: '160ch',
+	styles: {
+		body: {
+			padding: 0,
+			height: '120ch',
+			maxHeight: '90vh',
+		},
+	},
+});
+
+
+export { useImageModal } from './ImageModal';

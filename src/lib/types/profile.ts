@@ -13,6 +13,8 @@ export type Profile = {
 	id: string;
 	/** Username of the profile */
 	username: string;
+	/** Url of the profile picture image */
+	profile_picture?: string | null;
 	/** Time the profile was created */
 	time_created: Date;
 };

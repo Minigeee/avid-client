@@ -31,6 +31,9 @@ function _addPrefix(x: Record<string, string>, kpre?: string, vpre?: string) {
 }
 
 
+/** Screen state types */
+type ScreenStates = 'main' | 'settings';
+
 /** Holds navigation context state */
 type _NavState = {
 	/** Indicates if nav state fetch is still loading */
@@ -38,6 +41,8 @@ type _NavState = {
 	/** Indicates if remote nav state exists */
 	_exists: boolean;
 
+	/** The screen the user is currently viewing */
+	screen: ScreenStates;
 	/** The current domain the user is viewing */
 	domain?: string;
 	/** The ids of the current channel the user is viewing per domain */
@@ -70,7 +75,7 @@ async function _saveAll(nav: _NavState, session: SessionState) {
 	const id = `nav_states:${session.profile_id.split(':').at(-1)}`;
 
 	// Update state
-	const data: Omit<_NavState, '_exists' | '_loading' | '_diff' | 'board'> & { _exists: undefined; _loading: undefined } = {
+	const data: Partial<_NavState> = {
 		_exists: undefined,
 		_loading: undefined,
 		domain: nav.domain?.split(':').at(-1),
@@ -87,6 +92,15 @@ async function _saveAll(nav: _NavState, session: SessionState) {
 ////////////////////////////////////////////////////////////
 function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown, session: SessionState, save: () => void) {
 	return {
+		/**
+		 * Switch to viewing specified screen
+		 * 
+		 * @param screen The screen to switch to
+		 */
+		setScreen: (screen: ScreenStates) => {
+			setNav({ ...nav, screen });
+		},
+
 		/**
 		 * Switch to viewing the given domain.
 		 * This function saves the new navigation state to the database.
@@ -236,6 +250,7 @@ export default function AppProvider({ children }: PropsWithChildren) {
 	const [nav, setNav] = useState<_NavState>({
 		_loading: true,
 		_exists: false,
+		screen: 'main',
 		board: {
 			collections: {},
 			views: {},

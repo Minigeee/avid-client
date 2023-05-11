@@ -1,7 +1,7 @@
 import { AppProps } from 'next/app';
 import { SWRConfig } from 'swr';
 
-import { MantineProvider } from '@mantine/core';
+import { MantineProvider, ScrollArea } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 
@@ -30,7 +30,7 @@ export default function App(props: AppProps) {
               '#96999F',
               '#626771',
               '#434852',
-              '#343841',
+              '#32363E',
               '#272B34',
               '#1F242A',
               '#181D23',
@@ -106,6 +106,12 @@ export default function App(props: AppProps) {
               }),
             },
 
+            Slider: {
+              styles: (theme) => ({
+                trackContainer: { cursor: 'default' },
+              }),
+            },
+
             Tooltip: {
               styles: (theme) => ({
                 tooltip: {
@@ -124,7 +130,7 @@ export default function App(props: AppProps) {
           focusThrottleInterval: config.swr.focus_throttle_interval * 1000,
         }}>
           <DatesProvider settings={{ firstDayOfWeek: 0 }}>
-            <ModalsProvider modals={modals}>
+            <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
               <Component {...pageProps} />
             </ModalsProvider>
           </DatesProvider>

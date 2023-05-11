@@ -2,11 +2,13 @@ import {
   ActionIcon,
   ActionIconProps,
   Tooltip,
+  TooltipProps,
 } from '@mantine/core';
 
 
 export type ActionButtonProps = ActionIconProps & {
   tooltip?: string;
+  tooltipProps?: Omit<TooltipProps, 'label' | 'children'>;
   onClick?: () => unknown,
 };
 
@@ -17,12 +19,25 @@ export default function ActionButton(props: ActionButtonProps) {
       label={props.tooltip}
       withArrow
       sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
+      {...props.tooltipProps}
     >
-      <ActionIcon {...props} sx={(theme) => ({
-        '&:hover': {
-          backgroundColor: theme.colors.dark[4],
+      <ActionIcon {...props} sx={(theme) => {
+        // Get passed in sx
+        let sx = {};
+        if (props.sx) {
+          if (typeof props.sx === 'function')
+            sx = props.sx(theme);
+          else
+            sx = props.sx;
         }
-      })}>{props.children}</ActionIcon>
+
+        return {
+          '&:hover': {
+            backgroundColor: theme.colors.dark[4],
+          },
+          ...sx
+        };
+      }}>{props.children}</ActionIcon>
     </Tooltip>
   );
 }

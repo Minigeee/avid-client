@@ -1,7 +1,7 @@
 import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
-import { query, sql } from '@/lib/db';
+import { getDomainCache, id, query, sql } from '@/lib/db';
 import { Channel, Domain, ExpandedProfile, Member, Role } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
@@ -9,9 +9,13 @@ import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { SwrWrapper } from '@/lib/utility/swr-wrapper';
 import { useDbQuery } from './use-db-query';
 
+import axios from 'axios';
+
 
 ////////////////////////////////////////////////////////////
 function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState) {
+	assert(session);
+
 	return {
 		/**
 		 * Create new domain and add user as its first member
@@ -91,6 +95,97 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 				};
 			}, { message: 'An error occurred while joining the domain' }),
 			{ revalidate: false }
+		),
+
+		/**
+		 * Upload and set the specified image as the profile picture.
+		 * 
+		 * @param image The image data to set as profile picture
+		 * @param fname The name of the original image file
+		 * @returns The new profile object
+		 */
+		setPicture: (image: Blob, fname: string) => mutate(
+			swrErrorWrapper(async (profile: ExpandedProfile) => {
+				// Generate form data
+				const formData = new FormData();
+				formData.append('image', image, fname);
+	  
+				// Send image post
+				const results = await axios.post<{ image: string }>(
+				  `/api/upload/profile/${id(profile.id)}`,
+				  formData
+				);
+
+				// Change profile pictures of all domains that are loaded
+				for (const d of profile.domains) {
+					try {
+						const cache = await getDomainCache(d.id, session, true);
+						const obj = cache.cache._data[profile.id];
+						if (obj?.data)
+							obj.data.profile_picture = results.data.image;
+					}
+					catch (err) { }
+				}
+
+				return {
+					...profile,
+					profile_picture: results.data.image,
+				};
+			}, { message: 'An error occurred while setting profile picture' }),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Remove the current profile picture. Performs optimistic update.
+		 * 
+		 * @param old_profile The old profile object used to rollback optimistic updates on error
+		 * @returns The new profile picture
+		 */
+		removePicture: (old_profile: ExpandedProfile) => mutate(
+			swrErrorWrapper(async (profile: ExpandedProfile) => {
+				// Send delete request
+				await axios.delete(`/api/upload/profile/${id(profile.id)}`);
+
+				// Unset profile pictures of all domains that are loaded
+				for (const d of profile.domains) {
+					try {
+						const cache = await getDomainCache(d.id, session, true);
+						const obj = cache.cache._data[profile.id];
+						if (obj?.data)
+							obj.data.profile_picture = null;
+					}
+					catch (err) { }
+				}
+
+				return {
+					...profile,
+					profile_picture: null,
+				};
+			}, {
+				message: 'An error occurred while removing profile picture',
+				onError: async (error) => {
+					// Reset profile image (swr doesn't handle rollback for these values)
+					for (const d of old_profile.domains) {
+						try {
+							const cache = await getDomainCache(d.id, session, true);
+							const obj = cache.cache._data[old_profile.id];
+							if (obj?.data)
+								obj.data.profile_picture = old_profile.profile_picture;
+						}
+						catch (err) { }
+					}
+				}
+			}),
+			{
+				revalidate: false,
+				optimisticData: (profile) => {
+					assert(profile);
+					return {
+						...profile,
+						profile_picture: null,
+					};
+				}
+			}
 		),
 	};
 }

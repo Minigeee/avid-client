@@ -7,6 +7,8 @@ export type Member = {
 	id: string;
 	/** The member's alias within this domain */
 	alias: string;
+	/** The url of the profile picture of the user */
+	profile_picture?: string | null;
 	/** A list of role ids assigned to the member */
 	roles?: string[];
 	/** The color the member should be displayed in, taken from their top role (this isn't stored in database) */

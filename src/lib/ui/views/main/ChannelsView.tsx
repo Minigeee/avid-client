@@ -114,9 +114,7 @@ function SingleChannel(props: SingleChannelProps) {
                       title: 'Delete Channel',
                       labels: { cancel: 'Cancel', confirm: 'Delete' },
                       children: (
-                        <p>
-                          Are you sure you want to delete <b>{props.channel.name}</b>?
-                        </p>
+                        <>Are you sure you want to delete <b>{props.channel.name}</b>?</>
                       ),
                       groupProps: {
                         spacing: 'xs',

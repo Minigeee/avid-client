@@ -7,14 +7,14 @@ import {
 } from '@mantine/core';
 
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
-import CreateProfile from '@/lib/ui/screens/CreateProfile';
 import RtcVoices from '@/lib/ui/components/rtc/RtcVoices';
+import CreateProfile from '@/lib/ui/screens/CreateProfile';
+import Main from '@/lib/ui/screens/Main';
+import JoinDomain from '@/lib/ui/screens/JoinDomain';
 
 import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
 import { useApp, useProfile, useSession } from '@/lib/hooks';
-import Main from '@/lib/ui/screens/Main';
-import JoinDomain from '@/lib/ui/screens/JoinDomain';
 
 
 ////////////////////////////////////////////////////////////
@@ -34,7 +34,7 @@ function ScreenState({ router }: { router: NextRouter }) {
 
   return (
     <>
-      <Main />
+      <Main visible={app.navigation.screen === 'main'} />
 
       {app.rtc?.joined && (
         <>

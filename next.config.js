@@ -11,7 +11,20 @@ const nextConfig = {
         permanent: false,
       }
     ];
-  }
+  },
+
+  images: {
+    loader: 'custom',
+    loaderFile: './image-loader.js',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'avid-spaces.nyc3.digitaloceanspaces.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
 }
 
 module.exports = nextConfig
