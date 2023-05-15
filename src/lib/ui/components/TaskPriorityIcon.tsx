@@ -35,7 +35,7 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
   const theme = useMantineTheme();
 
   const priorities = {
-    critical: { label: 'Critical', color: theme.colors.red[5], icon: ChevronsUp },
+    critical: { label: 'Critical', color: theme.colors.red[4], icon: ChevronsUp },
     high: { label: 'High', color: theme.colors.orange[5], icon: ChevronUp },
     medium: { label: 'Medium', color: theme.colors.yellow[4], icon: Equal },
     low: { label: 'Low', color: theme.colors.blue[4], icon: ChevronDown },

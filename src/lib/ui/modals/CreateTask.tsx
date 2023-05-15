@@ -693,10 +693,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                             sx: { marginTop: '0.5rem' },
                           },
                           confirmProps: {
-                            sx: (theme) => ({
-                              backgroundColor: theme.colors.red[6],
-                              '&:hover': { backgroundColor: theme.colors.red[7] }
-                            }),
+                            color: 'red',
                           },
                           onConfirm: () => {
                             if (!tasks._exists || !task._exists) return;

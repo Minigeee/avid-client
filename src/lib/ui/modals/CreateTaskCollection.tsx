@@ -367,10 +367,7 @@ export function EditTaskCollection({ context, id, innerProps: props }: ContextMo
                   sx: { marginTop: '0.5rem' },
                 },
                 confirmProps: {
-                  sx: (theme) => ({
-                    backgroundColor: theme.colors.red[6],
-                    '&:hover': { backgroundColor: theme.colors.red[7] }
-                  }),
+                  color: 'red',
                 },
                 onConfirm: () => {
                   props.board._mutators.removeCollection(props.collection.id);

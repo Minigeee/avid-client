@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { FunctionLike, Nextable } from 'next-connect/dist/types/types';
 import assert from 'assert';
-import { serialize, parse } from 'cookie';
 
 import passport, { AuthenticateOptions } from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
@@ -11,7 +11,10 @@ import config from '@/config';
 import api_config from '@/api-config';
 import { users } from '@/lib/db';
 
-import { getJwtPrivate } from './keys';
+import { getJwtPrivate, getJwtPublic } from './keys';
+import { serialize, parse } from 'cookie';
+import { RequestHandler } from 'next-connect/dist/types/node';
+import { IncomingMessage, ServerResponse } from 'http';
 
 
 /** Available authentication providers */
@@ -26,6 +29,24 @@ export type JwtPayload = {
 	/** An email associated with user */
 	email?: string;
 };
+
+/** Access token payload */
+export type AccessToken = {
+	/** User id */
+	user_id: string;
+	/** Current profile id */
+	profile_id: string;
+	/** An email associated with user */
+	email?: string;
+};
+
+declare global {
+	namespace Express {
+	  export interface Request {
+		token?: AccessToken;
+	  }
+	}
+  }
 
 
 ////////////////////////////////////////////////////////////
@@ -168,4 +189,29 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		// By default, make user relog if error occurs
 		res.status(401).end();
 	}
+}
+
+
+/** Middleware function for parsing access token */
+export function token(req: NextApiRequest, res: NextApiResponse, next: any) {
+	// Get token from auth header
+	const token = req.headers.authorization?.split(' ').at(-1);
+	if (!token) {
+		res.status(401).end();
+		return;
+	}
+
+	// Decode token and set in req object
+	const pubkey = getJwtPublic();
+	try {
+		// @ts-ignore
+		req.token = verify(token, pubkey);
+	}
+	catch (err) {
+		console.error(err);
+		res.status(403).end();
+		return;
+	}
+
+	next();
 }

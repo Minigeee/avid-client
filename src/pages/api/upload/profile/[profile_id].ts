@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createRouter, expressWrapper } from 'next-connect';
 import assert from 'assert';
 
+import _config from '@/config';
 import { Profile } from '@/lib/types';
 import { query, record, sql } from '@/lib/db';
 import { getImageKey, getImageUrl, s3, upload } from '@/lib/utility/spaces';
@@ -27,7 +28,7 @@ router
 			req.image = getImageUrl(key);
 
 			return key;
-		}).single('image')),
+		}, { fileSize: _config.upload.profile_picture.max_size }).single('image')),
 
 		async (req, res) => {
 			// Update profile

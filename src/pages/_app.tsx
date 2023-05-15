@@ -36,6 +36,18 @@ export default function App(props: AppProps) {
               '#181D23',
               '#111519'
             ],
+            red: [
+              '#FFF5F5',
+              '#FFE3E3',
+              '#FFA8A8',
+              '#FF8787',
+              '#FF6B6B',
+              '#F95555',
+              '#F03E3E',
+              '#E03131',
+              '#C92A2A',
+              '#BA2424',
+            ],
           },
           primaryColor: 'indigo',
           primaryShade: 5,

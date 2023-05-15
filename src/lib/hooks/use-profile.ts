@@ -1,6 +1,7 @@
 import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
+import { deleteProfile, uploadProfile } from '@/lib/api';
 import { getDomainCache, id, query, sql } from '@/lib/db';
 import { Channel, Domain, ExpandedProfile, Member, Role } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
@@ -106,15 +107,8 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 		 */
 		setPicture: (image: Blob, fname: string) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
-				// Generate form data
-				const formData = new FormData();
-				formData.append('image', image, fname);
-	  
-				// Send image post
-				const results = await axios.post<{ image: string }>(
-				  `/api/upload/profile/${id(profile.id)}`,
-				  formData
-				);
+				// Upload profile image
+				const url = await uploadProfile(profile, image, fname, session);
 
 				// Change profile pictures of all domains that are loaded
 				for (const d of profile.domains) {
@@ -122,14 +116,14 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 						const cache = await getDomainCache(d.id, session, true);
 						const obj = cache.cache._data[profile.id];
 						if (obj?.data)
-							obj.data.profile_picture = results.data.image;
+							obj.data.profile_picture = url;
 					}
 					catch (err) { }
 				}
 
 				return {
 					...profile,
-					profile_picture: results.data.image,
+					profile_picture: url,
 				};
 			}, { message: 'An error occurred while setting profile picture' }),
 			{ revalidate: false }
@@ -143,8 +137,8 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 		 */
 		removePicture: (old_profile: ExpandedProfile) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
-				// Send delete request
-				await axios.delete(`/api/upload/profile/${id(profile.id)}`);
+				// Delete profile image
+				await deleteProfile(profile, session);
 
 				// Unset profile pictures of all domains that are loaded
 				for (const d of profile.domains) {

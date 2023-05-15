@@ -121,10 +121,7 @@ function SingleChannel(props: SingleChannelProps) {
                         sx: { marginTop: '0.5rem' },
                       },
                       confirmProps: {
-                        sx: (theme) => ({
-                          backgroundColor: theme.colors.red[6],
-                          '&:hover': { backgroundColor: theme.colors.red[7] }
-                        }),
+                        color: 'red',
                       },
                       onConfirm: () => {
                         props.domain._mutators.removeChannel(props.channel.id);

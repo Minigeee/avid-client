@@ -73,7 +73,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
       <ImageModal
         subtext='Image must not exceed 2MB.'
         maxSize={2 * 1024 ** 2}
-        imgSize={config.app.image_sizes.profile_picture}
+        imgSize={config.upload.profile_picture.image_size}
         size='md'
 
         onUpload={(image, fname) => {
@@ -121,10 +121,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
                         sx: { marginTop: '0.5rem' },
                       },
                       confirmProps: {
-                        sx: (theme) => ({
-                          backgroundColor: theme.colors.red[6],
-                          '&:hover': { backgroundColor: theme.colors.red[7] }
-                        }),
+                        color: 'red',
                       },
 
                       // Optimistic mutation
@@ -139,7 +136,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
                 </ActionButton>
               )}
             </Group>
-            <Text size='xs' color='dimmed'>Profile pictures are resized to {config.app.image_sizes.profile_picture.w}x{config.app.image_sizes.profile_picture.h}</Text>
+            <Text size='xs' color='dimmed'>Profile pictures are resized to {config.upload.profile_picture.image_size.w}x{config.upload.profile_picture.image_size.h}</Text>
           </Stack>
         </Group>
 

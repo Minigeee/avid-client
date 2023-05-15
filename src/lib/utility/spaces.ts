@@ -1,17 +1,17 @@
 import assert from 'assert';
 
 import api_config from '@/api-config';
+import config from '@/config';
 
 import { S3 } from '@aws-sdk/client-s3';
 import multer, { Options } from 'multer';
 import multerS3 from 'multer-s3';
-import config from '@/config';
 
 
 // Url endpoint
-const _urlEndpoint = `https://${api_config.spaces.bucket}.${api_config.spaces.endpoint.split('/').at(-1)}`;
+const _urlEndpoint = `https://${config.spaces.bucket}.${config.spaces.endpoint.split('/').at(-1)}`;
 // Images path
-const _imgPath = 'images/';
+const _imgPath = 'images';
 
 // Adds env
 function _key(key: string) {
@@ -25,7 +25,7 @@ assert(process.env.DIGITAL_OCEAN_SPACES_SECRET);
 /** S3 client */
 const s3client = new S3({
 	forcePathStyle: false, // Configures to use subdomain/virtual calling format.
-	endpoint: api_config.spaces.endpoint,
+	endpoint: config.spaces.endpoint,
 	region: 'us-east-1',
 	credentials: {
 		accessKeyId: process.env.DIGITAL_OCEAN_SPACES_ACCESS_KEY,
@@ -45,7 +45,7 @@ export function upload(key: (req: Express.Request, file: Express.Multer.File) =>
 	return multer({
 		storage: multerS3({
 			s3: s3client,
-			bucket: api_config.spaces.bucket,
+			bucket: config.spaces.bucket,
 			acl: 'public-read',
 			key: (req, file, cb) => {
 				try { cb(null, _key(key(req, file))); }
@@ -89,7 +89,7 @@ export function getResourceKey(url: string) {
  */
 export function getImageUrl(key: string) {
 	assert(key.startsWith(_imgPath));
-	return key.substring(_imgPath.length);
+	return key.substring(_imgPath.length + 1);
 }
 
 /**
@@ -102,7 +102,7 @@ export function getImageUrl(key: string) {
 export function getImageKey(url: string) {
 	if (url.startsWith('/'))
 		url = url.substring(1);
-	return _imgPath + url;
+	return _imgPath + '/' + url;
 }
 
 
@@ -117,7 +117,7 @@ export const s3 = {
 	 * @returns The output promise
 	 */
 	delete: (key: string) => s3client.deleteObject({
-		Bucket: api_config.spaces.bucket,
+		Bucket: config.spaces.bucket,
 		Key: _key(key),
 	}),
 };

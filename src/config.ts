@@ -55,6 +55,30 @@ const config = {
 			'*': ['avid*', 'hljs*'],
 		},
 	} as sanitizeHtml.IOptions,
+
+	/** Digital Ocean Spaces config */
+	spaces: {
+		/** The spaces endpoint */
+		endpoint: 'https://nyc3.digitaloceanspaces.com',
+		/** The spaces bucket */
+		bucket: 'avid-spaces',
+	},
+
+	/** Upload configs */
+	upload: {
+		/** Profile picture config */
+		profile_picture: {
+			/** Image size */
+			image_size: { w: 256, h: 256 },
+			/** Max size (in bytes) */
+			max_size: 1 * 1024 ** 2,
+		},
+		/** Attachment config */
+		attachment: {
+			/** Max attachment size in bytes */
+			max_size: 10 * 1024 ** 2,
+		},
+	},
 	
 	/** Application config */
 	app: {
@@ -62,12 +86,6 @@ const config = {
 		support_message: 'Please contact us if this problem persists.',
 		/** Amount of time to wait before updating navigation state */
 		nav_update_timeout: 10 * 1000,
-
-		/** Standardized image sizes */
-		image_sizes: {
-			/** Profile picture size */
-			profile_picture: { w: 256, h: 256 },
-		},
 
 		/** General ui config */
 		ui: {

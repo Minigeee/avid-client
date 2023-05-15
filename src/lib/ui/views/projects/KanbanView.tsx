@@ -310,6 +310,8 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
 
   // Tag map
   const tagMap = useMemo<Record<string, Label>>(() => {
+    console.log('rerender')
+
     const map: Record<string, Label> = {};
     for (const tag of board.tags)
       map[tag.id] = tag;

@@ -1,4 +1,5 @@
-import { ForwardedRef, Fragment, Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { ForwardedRef, Fragment, Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 
 import {
   ActionIcon,
@@ -39,6 +40,7 @@ import {
 } from '@/lib/hooks';
 
 const AVATAR_SIZE = 36;
+const MAX_IMAGE_WIDTH = 400;
 
 
 ////////////////////////////////////////////////////////////
@@ -105,7 +107,9 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 })}
               />
             )}
-            <Stack spacing={2} sx={(theme) => ({ marginLeft: i !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing.md})` : undefined })}>
+            <Stack spacing={2} sx={(theme) => ({
+              marginLeft: i !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing.md})` : undefined,
+            })}>
               {i === 0 && (
                 <Group align='end' spacing='xs'>
                   <Title order={6} sx={{ color: msg.sender?.color }}>
@@ -115,6 +119,18 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 </Group>
               )}
               <div className={style} style={{ maxWidth: '80ch' }} dangerouslySetInnerHTML={{ __html: msg.message }} />
+              {msg.attachments?.map((attachment, attachment_idx) => {
+                if (attachment.type === 'image') {
+                  return (
+                    <Image
+                      src={attachment.url}
+                      alt={attachment.filename}
+                      width={MAX_IMAGE_WIDTH}
+                      height={attachment.height && attachment.width ? MAX_IMAGE_WIDTH * attachment.height / attachment.width : MAX_IMAGE_WIDTH}
+                    />
+                  );
+                }
+              })}
             </Stack>
           </Group>
         ))}
@@ -233,23 +249,37 @@ export default function MessagesView(props: MessagesViewProps) {
   // States and refs
   const editorRef = useRef<Editor | null>(null);
 
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
 
 
   ////////////////////////////////////////////////////////////
-  function onMessageSubmit() {
+  const onMessageSubmit = useCallback(() => {
     const editor = editorRef.current;
-    if (!channel_id || !sender._exists || !editor?.storage.characterCount.characters() || !messages._exists) return;
+    if (
+      !channel_id ||
+      !sender._exists ||
+      !messages._exists ||
+      !editor ||
+      (!editor.storage.characterCount.characters() && !attachments.length)
+    ) return;
 
     // Add message
-    messages._mutators.addMessage(channel_id, toMarkdown(editor), sender);
+    messages._mutators.addMessage(channel_id, toMarkdown(editor), sender, attachments);
 
     // Clear input
     editor.commands.clearContent();
+    setAttachments([]);
 
     // Reset to default input box
     setUseFormattedEditor(false);
-  }
+  }, [
+    channel_id,
+    sender._exists,
+    messages._exists,
+    editorRef.current,
+    attachments,
+  ]);
 
 
   return (
@@ -285,6 +315,9 @@ export default function MessagesView(props: MessagesViewProps) {
             focusRing={false}
             maxCharacters={2048}
             maxHeight='40ch'
+
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
             
             rightSection={useFormattedEditor ? (
               <Tooltip

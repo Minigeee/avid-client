@@ -3,6 +3,7 @@ import assert from 'assert';
 import useSWR, { KeyedMutator } from 'swr';
 
 import config from '@/config';
+import { AttachmentInfo, uploadAttachment } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { getMember, getMemberSync, getMembers, query, sql } from '@/lib/db';
 import { Channel, Domain, ExpandedDomain, ExpandedMessage, Member, Message, Role } from '@/lib/types';
@@ -395,6 +396,8 @@ function addMessageLocal(messages: GroupedMessages, message: Message, reader: Me
 
 ////////////////////////////////////////////////////////////
 function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: SessionState) {
+	assert(session);
+
 	return {
 		/**
 		 * Add a message to the specified channel
@@ -402,21 +405,44 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 		 * @param channel_id The id of the channel to add a message to
 		 * @param message The message to post to the channel
 		 * @param sender The id of the sender profile
+		 * @param attachments A list of attachments that are attached to message
 		 * @returns The new grouped messages object
 		 */
-		addMessage: (channel_id: string, message: string, sender: Member) => {
+		addMessage: (channel_id: string, message: string, sender: Member, attachments?: File[]) => {
 			// Generate temporary id so we know which message to update with correct id
 			const tempId = (_state.counter++).toString();
 			// Time message is sent
 			const now = new Date().toISOString();
 
+			// TODO : change local globals to globals hook
+
 			return mutate(swrErrorWrapper(async (messages: GroupedMessages) => {
+				const domain_id = _state.channel_to_domain[channel_id]
+				const hasAttachments = domain_id && attachments && attachments.length > 0;
+
+				// Post all attachments
+				const promises: Promise<AttachmentInfo>[] = [];
+				if (hasAttachments && domain_id) {
+					for (const file of attachments)
+						promises.push(uploadAttachment(domain_id, file, session));
+				}
+
+				// Await all uploads
+				const uploads: AttachmentInfo[] = [];
+				for (const promise of promises)
+					uploads.push(await promise);
+
 				// Post message
 				const results = await query<Message[]>(
 					sql.create<Message>('messages', {
 						channel: channel_id,
 						sender: sender.id,
 						message,
+						attachments: hasAttachments ? attachments.map((f, i) => ({
+							type: f.type.startsWith('image') ? 'image' : 'file',
+							filename: f.name,
+							...uploads[i],
+						})) : undefined,
 						created_at: now,
 					}),
 					{ session }
@@ -433,6 +459,11 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 						channel: channel_id,
 						sender: sender.id,
 						message,
+						attachments: attachments?.map(f => ({
+							type: f.type.startsWith('image') ? 'image' : 'file',
+							filename: f.name,
+							url: f.type.startsWith('image') ? URL.createObjectURL(f) : '',
+						})),
 						created_at: now,
 					}, sender);
 				},
@@ -482,7 +513,8 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedM
  * @returns A list of messages sorted oldest first
  */
 export function useMessages(channel_id: string, reader: MemberWrapper<false>) {
-	const session = useSession();
+	const session = useSession()
+
 	const swr = useSWR<GroupedMessages | null>(
 		reader._exists && channel_id && session.token ? `${channel_id}.messages` : null,
 		fetcher(session, reader)

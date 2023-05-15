@@ -16,14 +16,6 @@ const api_config = {
 		/** JWT signing algorithm */
 		jwt_algorithm: 'RS256' as Algorithm,
 	},
-
-	/** Digital Ocean Spaces config */
-	spaces: {
-		/** The spaces endpoint */
-		endpoint: 'https://nyc3.digitaloceanspaces.com',
-		/** The spaces bucket */
-		bucket: 'avid-spaces',
-	},
 };
 
 export default api_config;

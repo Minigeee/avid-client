@@ -45,6 +45,8 @@ export async function getDomainCache(domain_id: string, session: SessionState, t
 
 	try {
 		if (!data) {
+			console.log('refetch members')
+
 			// Throw if specified
 			if (throwOnMissing) throw new Error('domain cache missing');
 

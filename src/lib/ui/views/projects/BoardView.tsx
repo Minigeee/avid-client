@@ -299,7 +299,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
         </Button>
       </Group>
 
-      {type === 'list' && (
+      <div style={{ display: type === 'list' ? undefined : 'none' }}>
         <ListView
           board={board}
           tasks={props.tasks}
@@ -310,8 +310,9 @@ function TabView({ board, type, ...props }: TabViewProps) {
           setFiltered={setFiltered}
           grouper={grouperLagged}
         />
-      )}
-      {type === 'kanban' && (
+      </div>
+
+      <div style={{ display: type === 'kanban' ? undefined : 'none' }}>
         <KanbanView
           board={board}
           tasks={props.tasks}
@@ -322,7 +323,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
           setFiltered={setFiltered}
           grouper={grouperLagged}
         />
-      )}
+      </div>
     </Stack>
   );
 }
@@ -444,8 +445,6 @@ export default function BoardView(props: BoardViewProps) {
   const collection = collectionId ? collectionMap[collectionId] : null;
 
   if (!board._exists || !tasks._exists) return null;
-
-  // WIP : Pfp! + move all tasks from old board
 
   return (
     <ScrollArea sx={{
@@ -588,6 +587,7 @@ export default function BoardView(props: BoardViewProps) {
 
               <Tabs.Panel value='list' mt={16}>
                 <TabView
+                  key={collectionId}
                   board={board}
                   tasks={tasks}
                   domain={props.domain}
@@ -597,6 +597,7 @@ export default function BoardView(props: BoardViewProps) {
               </Tabs.Panel>
               <Tabs.Panel value='kanban' mt={16}>
                 <TabView
+                  key={collectionId}
                   board={board}
                   tasks={tasks}
                   domain={props.domain}

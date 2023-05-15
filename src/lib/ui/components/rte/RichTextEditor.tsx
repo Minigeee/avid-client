@@ -4,10 +4,12 @@ import {
   ActionIcon,
   Box,
   Button,
+  CloseButton,
   ColorPicker,
   DEFAULT_THEME,
   Divider,
   Group,
+  Image,
   Popover,
   ScrollArea,
   Stack,
@@ -35,7 +37,6 @@ import { useEditor, EditorContent, Editor, Extension, ReactRenderer, JSONContent
 import BulletList from '@tiptap/extension-bullet-list';
 import CharacterCount from '@tiptap/extension-character-count';
 import Color from '@tiptap/extension-color';
-import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import OrderedList from '@tiptap/extension-ordered-list';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -49,6 +50,8 @@ import PingMention from './PingMention';
 
 import config from '@/config';
 import { DomainWrapper, useChatStyles, useSession } from '@/lib/hooks';
+
+import { uid } from 'uid';
 
 
 ////////////////////////////////////////////////////////////
@@ -266,6 +269,9 @@ const CustomOrderedList = OrderedList.extend({
 
 ////////////////////////////////////////////////////////////
 export type RichTextEditorProps = {
+  editorRef?: MutableRefObject<Editor | null | undefined>;
+
+  // UI
   variant?: 'minimal' | 'full' | 'inline';
   placeholder?: string;
   autofocus?: boolean;
@@ -277,14 +283,18 @@ export type RichTextEditorProps = {
 
   domain?: DomainWrapper;
 
-  editorRef?: MutableRefObject<Editor | null | undefined>;
+  // Text
   value?: string;
-  onChange?: (value: string) => unknown;
-  onSubmit?: () => unknown;
+  onChange?: (value: string) => void;
+  onSubmit?: () => void;
+
+  // Attachments
+  attachments?: File[];
+  onAttachmentsChange?: (files: File[]) => void;
 }
 
 ////////////////////////////////////////////////////////////
-export default function RichTextEditor(props: RichTextEditorProps) {
+export default function RichTextEditor({ attachments, onAttachmentsChange, ...props }: RichTextEditorProps) {
   const variant = props.variant || 'full';
 
   const session = useSession();
@@ -296,7 +306,6 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       BulletList,
       CharacterCount.configure({ limit: props.maxCharacters }),
       Color,
-      Image,
       Link.configure({ openOnClick: false }),
       ...(props.domain?._exists ? [
         PingMention.configure({
@@ -321,6 +330,93 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         props.onChange(editor.getHTML());
     },
     autofocus: props.autofocus || false,
+
+    editorProps: {
+      handlePaste: (view, event, slice) => {
+        // Don't handle anything if no attachments storage
+        if (!onAttachmentsChange) return false;
+
+        // Set attachments
+        const setAttachments = (files: File[]) => {
+          // If any files are default named, assign them a random uid
+          for (let i = 0; i < files.length; ++i) {
+            const f = files[i];
+
+            if (f.name === 'image.png')
+              files[i] = new File([f], `${uid(16)}.png`, { type: f.type });
+          }
+
+          // Add all files
+          onAttachmentsChange((attachments || []).concat(files));
+        };
+
+        // Async handler
+        const renameImgs = async (files: Record<number, File>) => {
+          // Get items to get image text
+          const items = Array.from(event.clipboardData?.items || []);
+          for (let i = 0; i < items.length; ++i) {
+            const item = items[i];
+
+            if (item.type === 'text/html') {
+              // Get html
+              const html: string = await new Promise(res => {
+                items[0].getAsString(e => {
+                  res(e);
+                });
+              });
+
+              // Check if there is an image source
+              const match = html.match(/src\s*=\s*"(.+?)"/);
+              const file = files[i + 1];
+              if (match && file) {
+                // Rename file
+                const fname = (match[1].split('/').at(-1) || 'image.png').split('.')[0];
+                files[i + 1] = new File([file], `${fname}.png`, { type: file.type });
+              }
+            }
+          }
+
+          // Add all images
+          setAttachments(Object.values(files));
+        };
+
+        // Handle file attachments
+        if (event.clipboardData?.files.length) {
+          // Get files
+          const items = Array.from(event.clipboardData?.items || []);
+          const files: Record<number, File> = {};
+          let hasRename = false;
+
+          for (let i = 0; i < items.length; ++i) {
+            const item = items[i];
+
+            if (item.kind === 'file') {
+              // TODO : Support non image attachments
+              if (!item.type.startsWith('image')) continue;
+
+              let file = item.getAsFile();
+              if (file)
+                files[i] = file;
+            }
+
+            else if (item.type === 'text/html')
+              hasRename = true;
+          }
+
+          // Rename images asynchronously if there are any renames
+          if (hasRename)
+            renameImgs(files);
+          else
+            // Add all images
+            setAttachments(Object.values(files));
+
+          return true;
+        }
+
+        // Not handled, use default behavior
+        return false;
+      }
+    },
   });
 
   useEffect(() => {
@@ -334,7 +430,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
 
       return false;
     };
-  }, [variant, editor?.storage.characterCount.characters()]);
+  }, [props.onSubmit, variant]);
 
   if (props.editorRef)
     props.editorRef.current = editor;
@@ -498,6 +594,62 @@ export default function RichTextEditor(props: RichTextEditorProps) {
             {props.rightSection}
           </Group>
         </Box>
+      )}
+      {attachments && attachments.length > 0 && (
+        <Group sx={(theme) => ({
+          padding: '0.5rem',
+          backgroundColor: theme.colors.dark[6],
+          borderBottom: `1px solid ${theme.colors.dark[5]}`
+        })}>
+          {attachments.map((file, i) => {
+            // Display image attachments as previews
+            if (file.type.startsWith('image')) {
+              const url = URL.createObjectURL(file);
+              return (
+                <Box sx={{ position: 'relative' }}>
+                <Image
+                  src={url}
+                  caption={file.name}
+                  styles={(theme) => ({
+                    root: {
+                      padding: '0.5rem 0.5rem 0.2rem 0.5rem',
+                      maxWidth: '18ch',
+                      backgroundColor: theme.colors.dark[7],
+                      borderRadius: theme.radius.sm,
+                    },
+                    imageWrapper: { backgroundColor: theme.colors.dark[0] },
+                    caption: {
+                      overflow: 'hidden',
+                      textAlign: 'left',
+                      textOverflow: 'ellipsis',
+                    },
+                  })}
+                />
+                  <CloseButton
+                    variant='filled'
+                    color='red'
+                    size='sm'
+                    radius='lg'
+                    sx={{
+                      position: 'absolute',
+                      top: -5,
+                      right: -5,
+                    }}
+                    onClick={() => {
+                      const copy = attachments.slice();
+                      copy.splice(i, 1);
+                      onAttachmentsChange?.(copy);
+                    }}
+                  />
+                </Box>
+              );
+            }
+
+            // TODO : Handle other file attachments
+
+            return null;
+          })}
+        </Group>
       )}
       <Group spacing={2} sx={(theme) => ({
         padding: 2,
