@@ -26,7 +26,19 @@ export type SwrWrapper<T, Mutators extends SwrMutators = {}, Seperate extends bo
 	(Loaded extends true ? never : ((Seperate extends true ? { data?: T } : Partial<T>) & SwrObject<T> & { _exists: false }));
 
 /** The type signature of a mutator factory function */
-export type SwrMutatorFactory<T, Mutators extends SwrMutators> = (mutate: KeyedMutator<T>, session?: SessionState) => Mutators;
+export type SwrMutatorFactory<T, Mutators extends SwrMutators> = (mutate: KeyedMutator<T>, session: SessionState, ...args: any[]) => Mutators;
+
+/** Wrapper options */
+export type SwrWrapperOptions<T, Mutators extends SwrMutators = {}, Seperate extends boolean = false> = {
+	/** A factory function that constructs the set of mutators for the swr object */
+	mutators?: SwrMutatorFactory<T, Mutators>;
+	/** Any extra parameters that should be passed to the mutator factory */
+	mutatorParams?: any[];
+	/** If the swr data should be put into a separate `data` field */
+	seperate?: Seperate;
+	/** The current user session used to authorize remote mutations */
+	session?: SessionState;
+};
 
 
 /**
@@ -36,7 +48,7 @@ export type SwrMutatorFactory<T, Mutators extends SwrMutators> = (mutate: KeyedM
  * @returns A wrapped object containing all data returned by a swr hoook
  */
 export function wrapSwrData<T, Mutators extends SwrMutators = {}, Seperate extends boolean = false>
-	(response: SWRResponse<T | null>, mutatorFactory?: SwrMutatorFactory<T, Mutators>, seperate?: Seperate, session?: SessionState):
+	(response: SWRResponse<T | null>, options?: SwrWrapperOptions<T, Mutators, Seperate>):
 	SwrWrapper<T, Mutators, Seperate> {
 
 	const swr = {
@@ -47,13 +59,13 @@ export function wrapSwrData<T, Mutators extends SwrMutators = {}, Seperate exten
 			const { _exists, _loading, _error, _refresh, _update, _mutators, ...filtered } = data as SwrWrapper<T, {}, false, true>;
 			await response.mutate(filtered as T, { revalidate });
 		},
-		_mutators: response.data !== undefined && response.data !== null && mutatorFactory ?
-			mutatorFactory(response.mutate as KeyedMutator<T>, session) :
+		_mutators: response.data !== undefined && response.data !== null && options?.mutators && options?.session ?
+		options?.mutators(response.mutate as KeyedMutator<T>, options.session, ...(options?.mutatorParams || [])) :
 			undefined,
 	} as SwrObject<T> & { _mutators: Mutators };
 
 	// Bundle data seperately
-	const data = seperate ? { data: response.data } : response.data || {};
+	const data = options?.seperate ? { data: response.data } : response.data || {};
 
 	if (response.data !== undefined && response.data !== null)
 		return { ...data, ...swr, _exists: true };

@@ -217,7 +217,11 @@ export function useTasks(board_id?: string) {
 		fetcher(session)
 	);
 
-	return wrapSwrData<ExpandedTask[], TasksMutators, true>(swr, tasksMutators(board_id || ''), true, session);
+	return wrapSwrData<ExpandedTask[], TasksMutators, true>(swr, {
+		mutators: tasksMutators(board_id || ''),
+		seperate: true,
+		session,
+	});
 }
 
 

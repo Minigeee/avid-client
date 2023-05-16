@@ -30,7 +30,7 @@ export function useMember(domain_id: string, member_id: string) {
 		() => getMember(domain_id, member_id, session)
 	);
 
-	return wrapSwrData(response, undefined, false, session);
+	return wrapSwrData(response, { session });
 }
 
 
@@ -48,5 +48,5 @@ export function useMemberQuery(domain_id: string, search: string = '') {
 		() => listMembers(domain_id, search, session)
 	);
 
-	return wrapSwrData<Member[], {}, true>(response, undefined, true, session);
+	return wrapSwrData<Member[], {}, true>(response, { seperate: true, session });
 }

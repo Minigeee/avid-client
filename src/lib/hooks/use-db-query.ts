@@ -2,22 +2,20 @@ import useSWR, { BareFetcher } from 'swr';
 import assert from 'assert';
 
 import { FetcherOptions, fetcher } from '@/lib/db';
-import { SwrMutatorFactory, SwrMutators, wrapSwrData } from '@/lib/utility/swr-wrapper';
+import { SwrMutatorFactory, SwrMutators, SwrWrapperOptions, wrapSwrData } from '@/lib/utility/swr-wrapper';
 
 import { useSession } from './use-session';
 
 
 ////////////////////////////////////////////////////////////
-type SwrDbQueryOptions<T, Mutators extends SwrMutators, Separate extends boolean> = FetcherOptions<any, T> & {
-	/** Custom fetcher */
-	fetcher?: BareFetcher<T>;
-	/** Data mutators */
-	mutators?: SwrMutatorFactory<T, Mutators>;
-	/** Determines if data should be separated in its own `data` field */
-	separate?: Separate;
-	/** Optional fallback data */
-	fallback?: T;
-};
+type SwrDbQueryOptions<T, Mutators extends SwrMutators, Separate extends boolean> =
+	FetcherOptions<any, T> &
+	Omit<SwrWrapperOptions<T, Mutators, Separate>, 'session'> & {
+		/** Custom fetcher */
+		fetcher?: BareFetcher<T>;
+		/** Optional fallback data */
+		fallback?: T;
+	};
 
 /**
  * A hook used to retrieve database data using swr
@@ -38,5 +36,10 @@ export function useDbQuery<T, Mutators extends SwrMutators = {}, Separate extend
 	return wrapSwrData<T, Mutators, Separate>({
 		...swr,
 		data: swr.isLoading || swr.error ? options?.fallback : swr.data,
-	}, options?.mutators, options?.separate, session);
+	}, {
+		mutators: options?.mutators,
+		mutatorParams: options?.mutatorParams,
+		seperate: options?.seperate,
+		session,
+	});
 }

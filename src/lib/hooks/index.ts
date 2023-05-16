@@ -8,4 +8,5 @@ export * from './use-messages';
 export * from './use-profile';
 export * from './use-rtc';
 export * from './use-session';
+export * from './use-storage';
 export * from './use-tasks';

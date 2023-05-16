@@ -10,6 +10,7 @@ import { Channel, Domain, ExpandedDomain, ExpandedMessage, Member, Message, Role
 
 import { MemberWrapper } from './use-members';
 import { useSession } from './use-session';
+import { useStorage } from './use-storage';
 
 import { SyncCache } from '@/lib/utility/cache';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
@@ -134,15 +135,15 @@ const _md = new MarkdownIt({
 
 
 /** Shared mutable state */
-const _state = {
+type _State = {
 	/** Counter for generating ids */
-	counter: 0,
+	counter: number,
 	/** Message cache */
-	msg_cache: {} as Record<string, { hash: number, rendered: string }>,
+	msg_cache: Record<string, { hash: number, rendered: string }>,
 	/** Env cache */
-	env_cache: new SyncCache<MarkdownEnv>(),
+	env_cache: SyncCache<MarkdownEnv>,
 	/** Channel to domain map */
-	channel_to_domain: {} as Record<string, string>,
+	channel_to_domain: Record<string, string>,
 };
 
 
@@ -184,7 +185,7 @@ function findMentions(message: string) {
 }
 	
 /** Render a single message */
-function renderMessage(id: string, message: string, env: MarkdownEnv) {
+function renderMessage(id: string, message: string, env: MarkdownEnv, storage: _State) {
 	// Keep only random part of message id
 	id = id.split(':').at(-1) || '';
 	assert(id);
@@ -193,14 +194,14 @@ function renderMessage(id: string, message: string, env: MarkdownEnv) {
 	const hash = shash(message);
 
 	// Return cached value if it exists and hasn't changed
-	if (_state.msg_cache[id] && _state.msg_cache[id].hash === hash)
-		return _state.msg_cache[id].rendered;
+	if (storage.msg_cache[id] && storage.msg_cache[id].hash === hash)
+		return storage.msg_cache[id].rendered;
 
 	// Render new message
 	const rendered = _md.render(message, env);
 
 	// Add to cache
-	_state.msg_cache[id] = { hash, rendered };
+	storage.msg_cache[id] = { hash, rendered };
 
 	return rendered;
 }
@@ -229,9 +230,9 @@ function addMessageToDayGroup(group: ExpandedMessageWithPing[][], msg: ExpandedM
 }
 
 /** Group a list of messages */
-function groupAllMessages(messages: ExpandedMessageWithPing[], env: MarkdownEnv): GroupedMessages {
+function groupAllMessages(messages: ExpandedMessageWithPing[], env: MarkdownEnv, storage: _State): GroupedMessages {
 	// Render messages
-	const rendered = messages.map(msg => ({ ...msg, message: renderMessage(msg.id, msg.message, env) }));
+	const rendered = messages.map(msg => ({ ...msg, message: renderMessage(msg.id, msg.message, env, storage) }));
 
 	// Group by day
 	const groupedByDay = groupBy(rendered, (msg) => moment(msg.created_at).startOf('day').format());
@@ -252,7 +253,7 @@ function groupAllMessages(messages: ExpandedMessageWithPing[], env: MarkdownEnv)
 }
 
 /** Message fetcher */
-function fetcher(session: SessionState, reader: MemberWrapper<false>) {
+function fetcher(session: SessionState, storage: _State, reader: MemberWrapper<false>) {
 	return async (key: string) => {
 		// Member should be loaded by the time the fetcher is called
 		assert(reader._exists);
@@ -262,8 +263,8 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>) {
 		// Get markdown env if cached
 		let env = null;
 		{
-			const domain_id = _state.channel_to_domain[channel_id];
-			env = domain_id && _state.env_cache.isValid(domain_id) ? _state.env_cache.get(domain_id) : null;
+			const domain_id = storage.channel_to_domain[channel_id];
+			env = domain_id && storage.env_cache.isValid(domain_id) ? storage.env_cache.get(domain_id) : null;
 		}
 		
 		// Construct db query statements
@@ -301,8 +302,8 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>) {
 			};
 
 			// Cache env
-			_state.env_cache.add(domain.id, env);
-			_state.channel_to_domain[channel_id] = domain.id;
+			storage.env_cache.add(domain.id, env);
+			storage.channel_to_domain[channel_id] = domain.id;
 		}
 
 		const messages = results[0];
@@ -342,16 +343,16 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>) {
 		}));
 
 		// Return grouped messages
-		return groupAllMessages(expanded, env);
+		return groupAllMessages(expanded, env, storage);
 	};
 }
 
 
 ////////////////////////////////////////////////////////////
-function addMessageLocal(messages: GroupedMessages, message: Message, reader: Member) {
+function addMessageLocal(messages: GroupedMessages, message: Message, reader: Member, storage: _State) {
 	// Get markdown env if cached
-	const domain_id = _state.channel_to_domain[message.channel];
-	let env = domain_id ? _state.env_cache.get(domain_id) : null;
+	const domain_id = storage.channel_to_domain[message.channel];
+	let env = domain_id ? storage.env_cache.get(domain_id) : null;
 
 	// Don't add message if env does not exist. If env does not exist, then the channel's messages
 	// have not been loaded, and adding the message locally would be redundant because an initial load
@@ -370,7 +371,7 @@ function addMessageLocal(messages: GroupedMessages, message: Message, reader: Me
 	// Render message
 	const rendered: ExpandedMessageWithPing = {
 		...message,
-		message: renderMessage(message.id, message.message, env),
+		message: renderMessage(message.id, message.message, env, storage),
 		sender: message.sender ? getMemberSync(domain_id, message.sender) : null,
 		pinged,
 	};
@@ -395,7 +396,7 @@ function addMessageLocal(messages: GroupedMessages, message: Message, reader: Me
 
 
 ////////////////////////////////////////////////////////////
-function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: SessionState) {
+function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, storage: _State) {
 	assert(session);
 
 	return {
@@ -410,14 +411,14 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 		 */
 		addMessage: (channel_id: string, message: string, sender: Member, attachments?: File[]) => {
 			// Generate temporary id so we know which message to update with correct id
-			const tempId = (_state.counter++).toString();
+			const tempId = (storage.counter++).toString();
 			// Time message is sent
 			const now = new Date().toISOString();
 
-			// TODO : change local globals to globals hook
+			// WIP : Add global use-storage and use-cache
 
 			return mutate(swrErrorWrapper(async (messages: GroupedMessages) => {
-				const domain_id = _state.channel_to_domain[channel_id]
+				const domain_id = storage.channel_to_domain[channel_id]
 				const hasAttachments = domain_id && attachments && attachments.length > 0;
 
 				// Post all attachments
@@ -450,7 +451,7 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 				assert(results);
 
 				// Update message with the correct id
-				return addMessageLocal(messages, results[0], sender);
+				return addMessageLocal(messages, results[0], sender, storage);
 			}, { message: 'An error occurred while posting message' }), {
 				optimisticData: (messages) => {
 					// Add message locally with temp id
@@ -465,7 +466,7 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 							url: f.type.startsWith('image') ? URL.createObjectURL(f) : '',
 						})),
 						created_at: now,
-					}, sender);
+					}, sender, storage);
 				},
 				revalidate: false,
 			});
@@ -483,11 +484,11 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 			swrErrorWrapper(
 				async (messages) => {
 					// Load sender if needed
-					const domain_id = _state.channel_to_domain[message.channel];
+					const domain_id = storage.channel_to_domain[message.channel];
 					if (session && message.sender && domain_id)
 						await getMember(domain_id, message.sender, session);
 						
-					return addMessageLocal(messages || {}, message, reader);
+					return addMessageLocal(messages || {}, message, reader, storage);
 				},
 				{ message: 'An error occurred while displaying a message' }
 			),
@@ -498,7 +499,7 @@ function mutatorFactory(mutate: KeyedMutator<GroupedMessages>, session?: Session
 
 
 /** Mutators that will be attached to the grouped messages swr wrapper */
-export type MessageMutators = ReturnType<typeof mutatorFactory>;
+export type MessageMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for grouped messages */
 export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedMessages, MessageMutators, true, Loaded>;
 
@@ -513,12 +514,23 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedM
  * @returns A list of messages sorted oldest first
  */
 export function useMessages(channel_id: string, reader: MemberWrapper<false>) {
-	const session = useSession()
+	const session = useSession();
+	const storage = useStorage<_State>('use-messages', {
+		counter: 0,
+		msg_cache: {},
+		env_cache: new SyncCache<MarkdownEnv>(),
+		channel_to_domain: {},
+	});
 
 	const swr = useSWR<GroupedMessages | null>(
 		reader._exists && channel_id && session.token ? `${channel_id}.messages` : null,
-		fetcher(session, reader)
+		fetcher(session, storage, reader)
 	);
 
-	return wrapSwrData<GroupedMessages, MessageMutators, true>(swr, mutatorFactory, true, session);
+	return wrapSwrData<GroupedMessages, MessageMutators, true>(swr, {
+		mutators,
+		mutatorParams: [storage],
+		seperate: true,
+		session,
+	});
 }

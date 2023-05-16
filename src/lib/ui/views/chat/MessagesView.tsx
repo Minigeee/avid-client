@@ -40,7 +40,10 @@ import {
 } from '@/lib/hooks';
 
 const AVATAR_SIZE = 36;
-const MAX_IMAGE_WIDTH = 400;
+const MIN_IMAGE_WIDTH = 400;
+const MIN_IMAGE_HEIGHT = 400;
+const MAX_IMAGE_WIDTH = 600;
+const MAX_IMAGE_HEIGHT = 1000;
 
 
 ////////////////////////////////////////////////////////////
@@ -121,12 +124,35 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
               <div className={style} style={{ maxWidth: '80ch' }} dangerouslySetInnerHTML={{ __html: msg.message }} />
               {msg.attachments?.map((attachment, attachment_idx) => {
                 if (attachment.type === 'image') {
+                  if (!attachment.width || !attachment.height) return null;
+
+                  // Determine if width or height should be filled
+                  let w = 0, h = 0;
+                  if (attachment.width > attachment.height) {
+                    // Wide image, fill height
+                    h = MIN_IMAGE_HEIGHT;
+                    w = h * attachment.width / attachment.height;
+                  }
+                  else {
+                    // Tall image, fill width
+                    w = MIN_IMAGE_WIDTH;
+                    h = w * attachment.height / attachment.width;
+                  }
+
+                  // Scale image down if too large
+                  const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
+                  if (scale < 1) {
+                    w *= scale;
+                    h *= scale;
+                  }
+
                   return (
                     <Image
                       src={attachment.url}
                       alt={attachment.filename}
-                      width={MAX_IMAGE_WIDTH}
-                      height={attachment.height && attachment.width ? MAX_IMAGE_WIDTH * attachment.height / attachment.width : MAX_IMAGE_WIDTH}
+                      width={w}
+                      height={h}
+                      style={{ borderRadius: 6 }}
                     />
                   );
                 }
