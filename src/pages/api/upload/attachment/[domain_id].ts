@@ -8,7 +8,7 @@ import { token } from '@/lib/utility/authenticate';
 import { getImageUrl, getResourceUrl, upload } from '@/lib/utility/spaces';
 
 
-const router = createRouter<NextApiRequest & { url: string }, NextApiResponse>();
+const router = createRouter<NextApiRequest & { urls: string[] }, NextApiResponse>();
 
 router
 	.use(token)
@@ -26,15 +26,17 @@ router
 			const profile_id = req.token.profile_id;
 			const key = `${prefix}attachments/${domain_id}/${id(profile_id)}/${file.originalname}`;
 
-			// Set image url
-			req.url = isImage ? getImageUrl(key) : getResourceUrl(key);
+			// Add resource url
+			if (!req.urls)
+				req.urls = [];
+			req.urls.push(isImage ? getImageUrl(key) : getResourceUrl(key));
 
 			return key;
-		}, { fileSize: _config.upload.attachment.max_size }).single('attachment')),
+		}, { fileSize: _config.upload.attachment.max_size }).array('attachments', _config.upload.attachment.max_number)),
 
 		async (req, res) => {
 			// Send resource url
-			res.json({ url: req.url });
+			res.json({ urls: req.urls });
 		}
 	);
 

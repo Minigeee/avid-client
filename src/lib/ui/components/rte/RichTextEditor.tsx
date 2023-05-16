@@ -10,6 +10,7 @@ import {
   Divider,
   Group,
   Image,
+  MantineNumberSize,
   Popover,
   ScrollArea,
   Stack,
@@ -276,6 +277,8 @@ export type RichTextEditorProps = {
   placeholder?: string;
   autofocus?: boolean;
   markdown?: boolean;
+  leftSection?: JSX.Element;
+  leftWidth?: MantineNumberSize;
   rightSection?: JSX.Element;
   maxCharacters?: number;
   maxHeight?: string | number;
@@ -655,6 +658,8 @@ export default function RichTextEditor({ attachments, onAttachmentsChange, ...pr
         padding: 2,
         backgroundColor: theme.colors.dark[6],
       })}>
+        {variant === 'minimal' && props.leftSection}
+
         <ScrollArea.Autosize mah={props.maxHeight || '60ch'} sx={{
           flexGrow: 1,
           margin: '0.35rem 0.1rem 0.3rem 0.6rem',

@@ -347,7 +347,7 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
     return (
       <div ref={ref} {...others}>
         <Group spacing={3} align='center'>
-          {current && <ChevronRight size={18} style={{ marginLeft: -4, marginTop: 2 }} />}
+          {current && <ChevronRight size={18} style={{ marginLeft: -4, marginTop: 1 }} />}
           <Text weight={600}>{label}</Text>
         </Group>
         {(start_date || end_date) && (

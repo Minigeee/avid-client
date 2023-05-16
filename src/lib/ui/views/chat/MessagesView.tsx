@@ -7,6 +7,7 @@ import {
   Divider,
   Flex,
   Group,
+  Menu,
   ScrollArea,
   Stack,
   Text,
@@ -16,9 +17,11 @@ import {
 } from '@mantine/core';
 
 import {
-  Pencil, PencilPlus, Send,
+  Paperclip,
+  Pencil, PencilPlus, Plus, Send,
 } from 'tabler-icons-react';
 
+import ActionButton from '@/lib/ui/components/ActionButton';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
 
@@ -38,6 +41,7 @@ import {
   useMessages,
   useSession,
 } from '@/lib/hooks';
+import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 const AVATAR_SIZE = 36;
 const MIN_IMAGE_WIDTH = 400;
@@ -274,6 +278,7 @@ export default function MessagesView(props: MessagesViewProps) {
 
   // States and refs
   const editorRef = useRef<Editor | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [attachments, setAttachments] = useState<File[]>([]);
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
@@ -329,6 +334,17 @@ export default function MessagesView(props: MessagesViewProps) {
       <Box sx={{
         margin: '0rem 1.2rem 1.5rem 1.2rem',
       }}>
+        <input
+          ref={fileInputRef}
+          type='file'
+          accept={IMAGE_MIME_TYPE.join(',')}
+          onChange={(event) => {
+            // Add all chosen files
+            if (event.target.files)
+              setAttachments([...attachments, ...Array.from(event.target.files)]);
+          }}
+          style={{ display: 'none' }}
+        />
         {props.domain._exists && (
           <RichTextEditor
             editorRef={editorRef}
@@ -344,39 +360,40 @@ export default function MessagesView(props: MessagesViewProps) {
 
             attachments={attachments}
             onAttachmentsChange={setAttachments}
-            
-            rightSection={useFormattedEditor ? (
-              <Tooltip
-                label='Send'
-                position='top'
-                withArrow
-                openDelay={500}
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
-              >
-                <ActionIcon
+
+            rightSection={(
+              <Group spacing={2} mr={useFormattedEditor ? 2 : 3}>
+                <ActionButton
+                  tooltip='Add Attachment'
+                  tooltipProps={{ position: 'top-end', withArrow: true }}
                   variant='transparent'
-                  onClick={onMessageSubmit}
-                  mr={2}
-                >
-                  <Send size={20} />
-                </ActionIcon>
-              </Tooltip>
-            ) : (
-              <Tooltip
-                label='Formatted Message'
-                position='top-end'
-                withArrow
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
-              >
-                <ActionIcon
-                  variant='transparent'
-                  mr={3}
                   sx={(theme) => ({ color: theme.colors.dark[1] })}
-                  onClick={() => setUseFormattedEditor(true)}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <PencilPlus size={18} />
-                </ActionIcon>
-              </Tooltip>
+                  <Paperclip size={useFormattedEditor ? 19 : 17} />
+                </ActionButton>
+
+                {useFormattedEditor ? (
+                  <ActionButton
+                    tooltip='Send'
+                    tooltipProps={{ position: 'top-end', withArrow: true }}
+                    variant='transparent'
+                    onClick={onMessageSubmit}
+                  >
+                    <Send size={20} />
+                  </ActionButton>
+                ) : (
+                  <ActionButton
+                    tooltip='Formatted Message'
+                    tooltipProps={{ position: 'top-end', withArrow: true }}
+                    variant='transparent'
+                    sx={(theme) => ({ color: theme.colors.dark[1] })}
+                    onClick={() => setUseFormattedEditor(true)}
+                  >
+                    <PencilPlus size={18} />
+                  </ActionButton>
+                )}
+              </Group>
             )}
 
             onSubmit={onMessageSubmit}

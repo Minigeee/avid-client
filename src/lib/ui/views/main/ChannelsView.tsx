@@ -8,9 +8,11 @@ import {
   ScrollArea,
   Stack,
   Text,
+  TextInput,
   UnstyledButton,
 } from '@mantine/core';
-import { openConfirmModal } from '@mantine/modals'
+import { openConfirmModal } from '@mantine/modals';
+import { useForm } from '@mantine/form';
 
 import {
   Bell,
@@ -40,7 +42,12 @@ type SingleChannelProps = {
 
 ////////////////////////////////////////////////////////////
 function SingleChannel(props: SingleChannelProps) {
+  const form = useForm({
+    initialValues: { name: props.channel.name },
+  });
+
   const [showMenu, setShowMenu] = useState<boolean>(false);
+  const [renaming, setRenaming] = useState<boolean>(false);
 
   return (
     <Draggable draggableId={props.channel.id} index={props.index}>
@@ -50,7 +57,7 @@ function SingleChannel(props: SingleChannelProps) {
           sx={(theme) => ({
             display: 'block',
             width: '100%',
-            padding: '0.2rem 0.3rem 0.2rem 0.5rem',
+            padding: `0.2rem 0.3rem 0.2rem 0.5rem`,
             borderRadius: theme.radius.sm,
             backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
             boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
@@ -68,13 +75,41 @@ function SingleChannel(props: SingleChannelProps) {
         >
           <Group spacing='xs' align='center'>
             <ChannelIcon type={props.channel.type} size={17} />
-            <Text
-              size='sm'
-              weight={600}
-              sx={{ flexGrow: 1 }}
-            >
-              {props.channel.name}
-            </Text>
+
+            {!renaming && (
+              <Text
+                size='sm'
+                weight={600}
+                sx={{ flexGrow: 1 }}
+              >
+                {props.channel.name}
+              </Text>
+            )}
+            {renaming && (
+              <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
+                // Rename channel
+                props.domain._mutators.renameChannel(props.channel.id, values.name);
+                // Go back to default view
+                setRenaming(false);
+              })}>
+                <TextInput
+                  size='xs'
+                  mt={0}
+                  styles={(theme) => ({
+                    wrapper: { marginTop: 0, maxWidth: '20ch' },
+                    input: { fontSize: theme.fontSizes.sm, fontWeight: 600 },
+                  })}
+                  {...form.getInputProps('name')}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={() => setRenaming(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  autoFocus
+                />
+              </form>
+            )}
+
             <Menu
               width={180}
               withinPortal
@@ -101,9 +136,13 @@ function SingleChannel(props: SingleChannelProps) {
                   setShowMenu(false);
                 }}>
                 <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
-                <Menu.Item icon={<Settings size={16} />}>Settings</Menu.Item>
-                <Menu.Item icon={<Bell size={16} />}>Notifications</Menu.Item>
-                <Menu.Item icon={<Pencil size={16} />}>Rename</Menu.Item>
+                <Menu.Item icon={<Settings size={16} />} disabled>Settings</Menu.Item>
+                <Menu.Item icon={<Bell size={16} />} disabled>Notifications</Menu.Item>
+                <Menu.Item icon={<Pencil size={16} />} onClick={() => {
+                  // Reset form value to channel name
+                  form.setFieldValue('name', props.channel.name);
+                  setRenaming(true);
+                }}>Rename</Menu.Item>
 
                 <Menu.Divider />
                 <Menu.Item

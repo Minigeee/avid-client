@@ -77,6 +77,8 @@ const config = {
 		attachment: {
 			/** Max attachment size in bytes */
 			max_size: 10 * 1024 ** 2,
+			/** Max number of upload items */
+			max_number: 10,
 		},
 	},
 	

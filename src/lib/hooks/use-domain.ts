@@ -60,6 +60,46 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		),
 
 		/**
+		 * Rename a channel
+		 * 
+		 * @param channel_id The id of the channel to remove
+		 * @param name The new name to assign the channel
+		 * @returns The new domain object
+		 */
+		renameChannel: (channel_id: string, name: string) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				const results = await query<Channel[]>(
+					sql.update<Channel>(channel_id, {
+						set: { name },
+						return: ['name'],
+					}),
+					{ session }
+				);
+				assert(results && results.length > 0);
+
+				// Replace channel with new object
+				const channels = domain.channels.slice();
+				const idx = channels.findIndex(x => x.id === channel_id);
+				channels[idx] = { ...channels[idx], name: results[0].name };
+
+				return { ...domain, channels };
+			}, { message: 'An error occurred while renaming channel' }),
+			{
+				revalidate: false,
+				optimisticData: (domain) => {
+					if (!domain) throw new Error('trying to rename channel from domain that is undefined');
+
+					// Replace channel with new object
+					const channels = domain.channels.slice();
+					const idx = channels.findIndex(x => x.id === channel_id);
+					channels[idx] = { ...channels[idx], name };
+	
+					return { ...domain, channels };
+				}
+			}
+		),
+
+		/**
 		 * Remove a channel from the domain object
 		 * 
 		 * @param channel_id The id of the channel to remove

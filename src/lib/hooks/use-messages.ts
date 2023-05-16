@@ -3,7 +3,7 @@ import assert from 'assert';
 import useSWR, { KeyedMutator } from 'swr';
 
 import config from '@/config';
-import { AttachmentInfo, uploadAttachment } from '@/lib/api';
+import { AttachmentInfo, uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { getMember, getMemberSync, getMembers, query, sql } from '@/lib/db';
 import { Channel, Domain, ExpandedDomain, ExpandedMessage, Member, Message, Role } from '@/lib/types';
@@ -422,16 +422,7 @@ function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, 
 				const hasAttachments = domain_id && attachments && attachments.length > 0;
 
 				// Post all attachments
-				const promises: Promise<AttachmentInfo>[] = [];
-				if (hasAttachments && domain_id) {
-					for (const file of attachments)
-						promises.push(uploadAttachment(domain_id, file, session));
-				}
-
-				// Await all uploads
-				const uploads: AttachmentInfo[] = [];
-				for (const promise of promises)
-					uploads.push(await promise);
+				const uploads = hasAttachments ? await uploadAttachments(domain_id, attachments, session) : [];
 
 				// Post message
 				const results = await query<Message[]>(
