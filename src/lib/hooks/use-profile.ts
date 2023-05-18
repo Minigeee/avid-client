@@ -7,10 +7,9 @@ import { Channel, Domain, ExpandedProfile, Member, Role } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
-import { SwrWrapper } from '@/lib/utility/swr-wrapper';
-import { useDbQuery } from './use-db-query';
 
-import axios from 'axios';
+import { SwrWrapper } from './use-swr-wrapper';
+import { useDbQuery } from './use-db-query';
 
 
 ////////////////////////////////////////////////////////////
@@ -188,7 +187,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 /** Mutators that will be attached to the profile swr wrapper */
 export type ProfileMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for a profile object */
-export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedProfile, ProfileMutators, false, Loaded>;
+export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedProfile, Loaded, ProfileMutators>;
 
 
 /**
@@ -200,22 +199,24 @@ export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedP
 export function useProfile(profile_id: string | undefined) {
 	assert(!profile_id || profile_id.startsWith('profiles:'));
 
-	return useDbQuery<ExpandedProfile, ProfileMutators>(profile_id, (key) => {
-		assert(profile_id);
+	return useDbQuery<ExpandedProfile, ProfileMutators>(profile_id, {
+		builder: (key) => {
+			assert(profile_id);
 
-		return sql.select([
-			'*',
-			sql.wrap(sql.select<Domain>(
-				['id', 'name', 'time_created'],
-				{ from: '->member_of->domains' }
-			), { alias: 'domains' }),
-		], { from: profile_id });
-	}, {
+			return sql.select([
+				'*',
+				sql.wrap(sql.select<Domain>(
+					['id', 'name', 'time_created'],
+					{ from: '->member_of->domains' }
+				), { alias: 'domains' }),
+			], { from: profile_id });
+		},
 		then: (results) => results?.length ? {
 			...results[0],
 			// TODO : Make domains draggable
 			domains: results[0].domains.sort((a: Domain, b: Domain) => new Date(a.time_created).getTime() - new Date(b.time_created).getTime()),
-		 } : null,
-		 mutators,
+		} : null,
+		
+		mutators,
 	});
 }

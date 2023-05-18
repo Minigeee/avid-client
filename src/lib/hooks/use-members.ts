@@ -4,16 +4,15 @@ import assert from 'assert';
 import { Member } from '@/lib/types';
 import { getMember, listMembers } from '@/lib/db';
 
-import { SwrWrapper, wrapSwrData } from '@/lib/utility/swr-wrapper';
-
 import { useSession } from './use-session';
+import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
 
 /** Swr data wrapper for a member object */
-export type MemberWrapper<Loaded extends boolean = true> = SwrWrapper<Member, {}, false, Loaded>;
+export type MemberWrapper<Loaded extends boolean = true> = SwrWrapper<Member, Loaded>;
 
 /** Swr data wrapper for a list of members */
-export type MemberListWrapper<Loaded extends boolean = true> = SwrWrapper<Member[], {}, true, Loaded>;
+export type MemberListWrapper<Loaded extends boolean = true> = SwrWrapper<Member[], Loaded>;
 
 
 /**
@@ -30,7 +29,7 @@ export function useMember(domain_id: string, member_id: string) {
 		() => getMember(domain_id, member_id, session)
 	);
 
-	return wrapSwrData(response, { session });
+	return useSwrWrapper<Member>(response, { session });
 }
 
 
@@ -48,5 +47,5 @@ export function useMemberQuery(domain_id: string, search: string = '') {
 		() => listMembers(domain_id, search, session)
 	);
 
-	return wrapSwrData<Member[], {}, true>(response, { seperate: true, session });
+	return useSwrWrapper<Member[]>(response, { session });
 }

@@ -6,9 +6,9 @@ import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
 import { Board, ExpandedTask, Label, NoId, Task, TaskCollection, WithId } from '@/lib/types'; 
 import { useDbQuery } from '@/lib/hooks/use-db-query';
+import { SwrWrapper } from '@/lib/hooks/use-swr-wrapper';
 
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
-import { SwrWrapper } from '@/lib/utility/swr-wrapper';
 
 import sanitizeHtml from 'sanitize-html';
 
@@ -222,7 +222,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 /** Mutators that will be attached to the board swr wrapper */
 export type BoardMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for a domain object */
-export type BoardWrapper<Loaded extends boolean = true> = SwrWrapper<Board, BoardMutators, false, Loaded>;
+export type BoardWrapper<Loaded extends boolean = true> = SwrWrapper<Board, Loaded, BoardMutators>;
 
 /**
  * A swr hook that performs an db query to retrieve a project board.
@@ -235,10 +235,11 @@ export type BoardWrapper<Loaded extends boolean = true> = SwrWrapper<Board, Boar
 export function useBoard(board_id?: string) {
 	assert(!board_id || board_id.startsWith('boards:'));
 
-	return useDbQuery(board_id, (key) => {
-		return sql.select<Board[]>('*', { from: board_id || '' });
-	}, {
-		then: (results) => results?.length ? _sanitize(results[0]) : null,
+	return useDbQuery(board_id, {
+		builder: (key) => {
+			return sql.select<Board[]>('*', { from: board_id || '' });
+		},
+		then: (results: Board[]) => results?.length ? _sanitize(results[0]) : null,
 		mutators,
 	});
 }

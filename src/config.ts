@@ -95,6 +95,8 @@ const config = {
 			short_input_width: '40ch',
 			/** Width for medium length input */
 			med_input_width: '60ch',
+			/** The viewport position threshold the user must be at to trigger more data fetching (px) */
+			load_next_treshold: 1200,
 		},
 
 		/** Message config */
@@ -107,6 +109,8 @@ const config = {
 			member_mention_chars: '{}',
 			/** Characters used for role mentions */
 			role_mention_chars: '[]',
+			/** Number of seconds before messages view should be reset to a single page of data */
+			multiple_pages_time: 5 * 60,
 		},
 
 		/** Project board config */
@@ -166,7 +170,7 @@ const config = {
 			cache_lifetime: 60 * 60,
 			/** The maximum number of members returned in any given query */
 			query_limit: 200,
-			/** The number of seconds for which a member query is considered to have updated data */
+			/** The number of seconds for which a member query is considered to be stale */
 			query_interval: 3 * 60,
 			/** The number of members under which a new query should be requested when searching members */
 			new_query_threshold: 5,

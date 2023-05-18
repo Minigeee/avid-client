@@ -1,26 +1,29 @@
+import { useMemo } from 'react';
 import assert from 'assert';
 
 import useSWR, { KeyedMutator } from 'swr';
+import useSWRInfinite from 'swr/infinite';
 
 import config from '@/config';
 import { AttachmentInfo, uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { getMember, getMemberSync, getMembers, query, sql } from '@/lib/db';
-import { Channel, Domain, ExpandedDomain, ExpandedMessage, Member, Message, Role } from '@/lib/types';
+import { ExpandedMessage, Member, Message, Role } from '@/lib/types';
 
+import { DomainWrapper } from './use-domain';
 import { MemberWrapper } from './use-members';
 import { useSession } from './use-session';
-import { useStorage } from './use-storage';
+import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
 import { SyncCache } from '@/lib/utility/cache';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
-import { SwrWrapper, wrapSwrData } from '@/lib/utility/swr-wrapper';
 
 import hljs from 'highlight.js';
 import { groupBy } from 'lodash';
 import MarkdownIt from 'markdown-it';
 import moment from 'moment';
 import shash from 'string-hash';
+import { v4 as uuid } from 'uuid';
 
 import sanitizeHtml from 'sanitize-html';
 
@@ -134,17 +137,10 @@ const _md = new MarkdownIt({
 	});
 
 
-/** Shared mutable state */
-type _State = {
-	/** Counter for generating ids */
-	counter: number,
-	/** Message cache */
-	msg_cache: Record<string, { hash: number, rendered: string }>,
-	/** Env cache */
-	env_cache: SyncCache<MarkdownEnv>,
-	/** Channel to domain map */
-	channel_to_domain: Record<string, string>,
-};
+/** Caches */
+let _cache = {
+	message: {} as Record<string, { hash: number, rendered: string }>,
+}
 
 
 /** Finds all mentions in message */
@@ -185,7 +181,7 @@ function findMentions(message: string) {
 }
 	
 /** Render a single message */
-function renderMessage(id: string, message: string, env: MarkdownEnv, storage: _State) {
+function renderMessage(id: string, message: string, env: MarkdownEnv) {
 	// Keep only random part of message id
 	id = id.split(':').at(-1) || '';
 	assert(id);
@@ -194,14 +190,14 @@ function renderMessage(id: string, message: string, env: MarkdownEnv, storage: _
 	const hash = shash(message);
 
 	// Return cached value if it exists and hasn't changed
-	if (storage.msg_cache[id] && storage.msg_cache[id].hash === hash)
-		return storage.msg_cache[id].rendered;
+	if (_cache.message[id] && _cache.message[id].hash === hash)
+		return _cache.message[id].rendered;
 
 	// Render new message
 	const rendered = _md.render(message, env);
 
 	// Add to cache
-	storage.msg_cache[id] = { hash, rendered };
+	_cache.message[id] = { hash, rendered };
 
 	return rendered;
 }
@@ -230,12 +226,9 @@ function addMessageToDayGroup(group: ExpandedMessageWithPing[][], msg: ExpandedM
 }
 
 /** Group a list of messages */
-function groupAllMessages(messages: ExpandedMessageWithPing[], env: MarkdownEnv, storage: _State): GroupedMessages {
-	// Render messages
-	const rendered = messages.map(msg => ({ ...msg, message: renderMessage(msg.id, msg.message, env, storage) }));
-
+function groupAllMessages(messages: ExpandedMessageWithPing[]): GroupedMessages {
 	// Group by day
-	const groupedByDay = groupBy(rendered, (msg) => moment(msg.created_at).startOf('day').format());
+	const groupedByDay = groupBy(messages, (msg) => moment(msg.created_at).startOf('day').format());
 
 	const grouped: GroupedMessages = {};
 	for (const [group, msgs] of Object.entries(groupedByDay)) {
@@ -253,60 +246,31 @@ function groupAllMessages(messages: ExpandedMessageWithPing[], env: MarkdownEnv,
 }
 
 /** Message fetcher */
-function fetcher(session: SessionState, storage: _State, reader: MemberWrapper<false>) {
-	return async (key: string) => {
-		// Member should be loaded by the time the fetcher is called
-		assert(reader._exists);
+function fetcher(session: SessionState, reader: MemberWrapper<false>, env: MarkdownEnv | undefined) {
+	return async (key: string) => {	
+		// Domain and member should be loaded by the time the fetcher is called
+		assert(env && reader._exists);
 
 		const channel_id = key.split('.')[0];
+		const page = parseInt(key.split('=').at(-1) as string);
 
-		// Get markdown env if cached
-		let env = null;
-		{
-			const domain_id = storage.channel_to_domain[channel_id];
-			env = domain_id && storage.env_cache.isValid(domain_id) ? storage.env_cache.get(domain_id) : null;
-		}
-		
-		// Construct db query statements
-		const statements = [
+		// Get messages, sorted by creation time
+		const results = await query<Message[]>(
 			sql.select<Message>('*', {
 				from: 'messages',
 				where: sql.match({ channel: channel_id }),
-				sort: 'created_at',
+				sort: [{ field: 'created_at', order: 'DESC' }],
 				limit: config.app.message.query_limit,
+				start: page * config.app.message.query_limit,
 			}),
-		];
-		// Retrieve domain data if markdown env not cached
-		if (!env)
-			statements.push(sql.select<Channel>(['domain.id', 'domain.roles'], { from: channel_id, fetch: ['domain.roles'] }));
-
-		// Get messages, sorted by creation time
-		const results = await query<[Message[], { domain: ExpandedDomain }[]]>(
-			sql.multi(statements),
-			{ session, complete: true }
+			{ session }
 		);
-		if (!results) return null;
+		if (!results?.length) return [];
+		
 
-		// Construct markdown env
-		if (!env) {
-			const domain = results[1][0].domain;
-
-			// Construct roles map
-			const roleMap: Record<string, Role> = {};
-			for (const r of (domain.roles || []))
-				roleMap[r.id] = r;
-
-			// Create env object
-			env = {
-				domain: { id: domain.id, roles: roleMap },
-			};
-
-			// Cache env
-			storage.env_cache.add(domain.id, env);
-			storage.channel_to_domain[channel_id] = domain.id;
-		}
-
-		const messages = results[0];
+		// Messages are an array ordered newest first. To make appending messages easy, reverse page order
+		// so that new messages are appended
+		const messages = results.reverse();
 
 		// Get set of senders and determine if each message has a ping aimed at user
 		const senders: Record<string, Member | null> = {};
@@ -330,29 +294,28 @@ function fetcher(session: SessionState, storage: _State, reader: MemberWrapper<f
 			mentions.members.forEach(m => senders[m] = null);
 		}
 
-		// Get members
+		// Get members data
 		const members = await getMembers(env.domain.id, Object.keys(senders), session);
 		for (const member of members)
 			senders[member.id] = member;
 
-		// Attach senders and pings to message
+		// Render messages, attach senders and pings to message
 		const expanded: ExpandedMessageWithPing[] = messages.map((msg, i) => ({
 			...msg,
+			message: renderMessage(msg.id, msg.message, env),
 			sender: msg.sender ? senders[msg.sender] : null,
 			pinged: hasPing[i],
 		}));
 
-		// Return grouped messages
-		return groupAllMessages(expanded, env, storage);
+		// Return expanded messages
+		return expanded;
 	};
 }
 
 
 ////////////////////////////////////////////////////////////
-function addMessageLocal(messages: GroupedMessages, message: Message, reader: Member, storage: _State) {
-	// Get markdown env if cached
-	const domain_id = storage.channel_to_domain[message.channel];
-	let env = domain_id ? storage.env_cache.get(domain_id) : null;
+function addMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, message: Message, reader: Member, env: MarkdownEnv) {
+	const domain_id = env.domain.id;
 
 	// Don't add message if env does not exist. If env does not exist, then the channel's messages
 	// have not been loaded, and adding the message locally would be redundant because an initial load
@@ -371,33 +334,20 @@ function addMessageLocal(messages: GroupedMessages, message: Message, reader: Me
 	// Render message
 	const rendered: ExpandedMessageWithPing = {
 		...message,
-		message: renderMessage(message.id, message.message, env, storage),
+		message: renderMessage(message.id, message.message, env),
 		sender: message.sender ? getMemberSync(domain_id, message.sender) : null,
 		pinged,
 	};
 
-	// Get message day group
-	const dayGroup = moment(message.created_at).startOf('day').format();
-
-	// Create group array
-	const group = [...(messages[dayGroup] || [])];
-	if (messages[dayGroup]) {
-		// If day group didn't exist, make copy of last sender group in case the new message will be added to it
-		group[group.length - 1] = group[group.length - 1].slice();
-
-		addMessageToDayGroup(group, rendered);
-	}
-	else
-		// Simple way to add new message
-		group.push([rendered]);
-
-	return { ...messages, [dayGroup]: group };
+	// Return message list with appended message
+	const last = messages?.length ? messages[messages.length - 1] : [];
+	return [...(messages?.slice(0, -1) || []), [...last, rendered]];
 }
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, storage: _State) {
-	assert(session);
+function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: SessionState, env: MarkdownEnv | undefined) {
+	assert(env);
 
 	return {
 		/**
@@ -411,14 +361,14 @@ function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, 
 		 */
 		addMessage: (channel_id: string, message: string, sender: Member, attachments?: File[]) => {
 			// Generate temporary id so we know which message to update with correct id
-			const tempId = (storage.counter++).toString();
+			const tempId = uuid();
 			// Time message is sent
 			const now = new Date().toISOString();
 
-			// WIP : Add global use-storage and use-cache
+			// WIP : Change swr wrapper, implement swr infinite
 
-			return mutate(swrErrorWrapper(async (messages: GroupedMessages) => {
-				const domain_id = storage.channel_to_domain[channel_id]
+			return mutate(swrErrorWrapper(async (messages: ExpandedMessageWithPing[][]) => {
+				const domain_id = env.domain.id;
 				const hasAttachments = domain_id && attachments && attachments.length > 0;
 
 				// Post all attachments
@@ -442,11 +392,11 @@ function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, 
 				assert(results);
 
 				// Update message with the correct id
-				return addMessageLocal(messages, results[0], sender, storage);
+				return addMessageLocal(messages, results[0], sender, env);
 			}, { message: 'An error occurred while posting message' }), {
 				optimisticData: (messages) => {
 					// Add message locally with temp id
-					return addMessageLocal(messages || {}, {
+					return addMessageLocal(messages, {
 						id: tempId,
 						channel: channel_id,
 						sender: sender.id,
@@ -457,7 +407,7 @@ function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, 
 							url: f.type.startsWith('image') ? URL.createObjectURL(f) : '',
 						})),
 						created_at: now,
-					}, sender, storage);
+					}, sender, env) || [];
 				},
 				revalidate: false,
 			});
@@ -473,13 +423,13 @@ function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, 
 		 */
 		addMessageLocal: (message: Message, reader: Member) => mutate(
 			swrErrorWrapper(
-				async (messages) => {
+				async (messages: ExpandedMessageWithPing[][]) => {
 					// Load sender if needed
-					const domain_id = storage.channel_to_domain[message.channel];
+					const domain_id = env.domain.id;
 					if (session && message.sender && domain_id)
 						await getMember(domain_id, message.sender, session);
 						
-					return addMessageLocal(messages || {}, message, reader, storage);
+					return addMessageLocal(messages, message, reader, env);
 				},
 				{ message: 'An error occurred while displaying a message' }
 			),
@@ -492,7 +442,7 @@ function mutators(mutate: KeyedMutator<GroupedMessages>, session: SessionState, 
 /** Mutators that will be attached to the grouped messages swr wrapper */
 export type MessageMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for grouped messages */
-export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedMessages, MessageMutators, true, Loaded>;
+export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedMessages, Loaded, MessageMutators, true, true>;
 
 
 /**
@@ -501,27 +451,57 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedM
  * All messages are fully rendered to html.
  * 
  * @param channel_id The id of the channel to retrieve messages from
+ * @param domain The domain the channel belongs to (used to correctly render mentions, emotes, etc.)
  * @param reader The member that is viewing the messages (used to highlight member pings)
  * @returns A list of messages sorted oldest first
  */
-export function useMessages(channel_id: string, reader: MemberWrapper<false>) {
+export function useMessages(channel_id: string, domain: DomainWrapper<false>, reader: MemberWrapper<false>) {
 	const session = useSession();
-	const storage = useStorage<_State>('use-messages', {
-		counter: 0,
-		msg_cache: {},
-		env_cache: new SyncCache<MarkdownEnv>(),
-		channel_to_domain: {},
-	});
 
-	const swr = useSWR<GroupedMessages | null>(
-		reader._exists && channel_id && session.token ? `${channel_id}.messages` : null,
-		fetcher(session, storage, reader)
+	// Env object for markdown rendering
+	const env = useMemo<MarkdownEnv | undefined>(() => {
+		if (!domain._exists) return;
+
+		// Construct roles map
+		const roleMap: Record<string, Role> = {};
+		for (const r of (domain.roles || []))
+			roleMap[r.id] = r;
+
+		return {
+			domain: { id: domain.id, roles: roleMap }
+		};
+	}, [domain.id, domain.roles]);
+
+	// Infinite loader
+	const swr = useSWRInfinite<ExpandedMessageWithPing[]>(
+		(idx, prevData: ExpandedMessageWithPing[]) => {
+			// Don't retrieve if reached end
+			if (prevData && prevData.length < config.app.message.query_limit) return;
+			if (!session.token || !domain._exists || !reader._exists || !env || !channel_id) return;
+
+			// Return key with page number
+			return `${channel_id}.messages?page=${idx}`;
+		},
+		fetcher(session, reader, env),
+		{ revalidateFirstPage: false }
 	);
 
-	return wrapSwrData<GroupedMessages, MessageMutators, true>(swr, {
+	// Wrapper
+	const wrapper = useSwrWrapper<ExpandedMessageWithPing[], MessageMutators, true, GroupedMessages, true>(swr, {
+		transform: (messages) => {
+			// Flatten array
+			let flattened: ExpandedMessageWithPing[] = [];
+			for (let p = messages.length - 1; p >= 0; --p)
+				flattened = flattened.concat(messages[p]);
+
+			// Group messages
+			return groupAllMessages(flattened);
+		},
+		pageSize: config.app.message.query_limit,
 		mutators,
-		mutatorParams: [storage],
-		seperate: true,
+		mutatorParams: [env],
+		separate: true,
 		session,
 	});
+	return wrapper;
 }

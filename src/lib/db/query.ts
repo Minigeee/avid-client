@@ -184,6 +184,8 @@ export type SqlSelectOptions<T extends object> = {
 	where?: string;
 	/** Limit number of returned entries */
 	limit?: number;
+	/** The offset of entries to select */
+	start?: number;
 	/** Sort option */
 	sort?: Selectables<T> | {
 		/** The field to sort on */
@@ -380,6 +382,8 @@ export const sql = {
 		
 		if (options.limit)
 			q += `LIMIT ${options.limit} `;
+		if (options.start)
+			q += `START ${options.start} `;
 		if (options.fetch)
 			q += `FETCH ${options.fetch.join(',')} `;
 

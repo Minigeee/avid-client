@@ -15,7 +15,6 @@ import JoinDomain from '@/lib/ui/screens/JoinDomain';
 import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
 import { useApp, useProfile, useSession } from '@/lib/hooks';
-import StorageProvider from '@/lib/contexts/storage';
 
 
 ////////////////////////////////////////////////////////////
@@ -90,11 +89,9 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <StorageProvider>
-        <AppProvider>
-          <ScreenState router={router} />
-        </AppProvider>
-      </StorageProvider>
+      <AppProvider>
+        <ScreenState router={router} />
+      </AppProvider>
     </ErrorBoundary>
   );
 }

@@ -6,9 +6,9 @@ import { SessionState } from '@/lib/contexts';
 import { addChannel, query, removeChannel, sql } from '@/lib/db';
 import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
-import { SwrWrapper } from '@/lib/utility/swr-wrapper';
 
 import { useDbQuery } from './use-db-query';
+import { SwrWrapper } from './use-swr-wrapper';
 
 
 ////////////////////////////////////////////////////////////
@@ -161,7 +161,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 /** Mutators that will be attached to the domain swr wrapper */
 export type DomainMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for a domain object */
-export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDomain, DomainMutators, false, Loaded>;
+export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDomain, Loaded, DomainMutators>;
 
 
 /**
@@ -171,10 +171,11 @@ export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDo
  * @returns A swr wrapper object containing the requested domain
  */
 export function useDomain(domain_id: string) {
-	return useDbQuery<ExpandedDomain, DomainMutators>(domain_id, (key) => {
-		return sql.select<Domain>('*', { from: domain_id, fetch: ['roles', 'channels'] });
-	}, {
-		then: (results) => results?.length ? results[0] : null,
+	return useDbQuery<ExpandedDomain, DomainMutators>(domain_id, {
+		builder: (key) => {
+			return sql.select<Domain>('*', { from: domain_id, fetch: ['roles', 'channels'] });
+		},
+		then: (results: ExpandedDomain[]) => results?.length ? results[0] : null,
 		mutators,
 	});
 }

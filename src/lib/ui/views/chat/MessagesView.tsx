@@ -4,9 +4,12 @@ import Image from 'next/image';
 import {
   ActionIcon,
   Box,
+  Button,
+  Center,
   Divider,
   Flex,
   Group,
+  Loader,
   Menu,
   ScrollArea,
   Stack,
@@ -17,6 +20,7 @@ import {
 } from '@mantine/core';
 
 import {
+  ChevronsDown,
   Paperclip,
   Pencil, PencilPlus, Plus, Send,
 } from 'tabler-icons-react';
@@ -36,12 +40,14 @@ import {
   DomainWrapper,
   ExpandedMessageWithPing,
   MemberWrapper,
+  MessagesWrapper,
   useChatStyles,
   useMember,
   useMessages,
   useSession,
 } from '@/lib/hooks';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
+import config from '@/config';
 
 const AVATAR_SIZE = 36;
 const MIN_IMAGE_WIDTH = 400;
@@ -174,22 +180,32 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 type MessagesViewportProps = {
   channel_id: string;
   domain: DomainWrapper;
+  messages: MessagesWrapper;
   sender: MemberWrapper;
 }
 
 ////////////////////////////////////////////////////////////
-function MessagesViewport(props: MessagesViewportProps) {
+function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
   const { classes } = useChatStyles();
-
-  const messages = useMessages(props.channel_id, props.sender);
 
   const viewport = useRef<HTMLDivElement>();
 
+  const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false);
+  const [viewportSizeLagged, setViewportSizeLagged] = useState<number>(0);
 
-  ////////////////////////////////////////////////////////////
+
+  // Keep current position when new messages are added (doubles as setting scroll to bottom at beginning)
   useEffect(() => {
-    if (messages)
-      scrollToBottom();
+    if (!viewport.current) return;
+    
+    // Maintain constant distance from bottom
+    const pos = viewportSizeLagged - viewport.current.scrollTop;
+    viewport.current.scrollTo({
+      top: viewport.current.scrollHeight - pos,
+    });
+
+    // Update viewport size
+    setViewportSizeLagged(viewport.current.scrollHeight);
   }, [messages]);
 
 
@@ -224,36 +240,74 @@ function MessagesViewport(props: MessagesViewportProps) {
 
   ////////////////////////////////////////////////////////////
   return (
-    <ScrollArea
-      viewportRef={viewport as ForwardedRef<HTMLDivElement>}
-      styles={{
-        viewport: {
-          padding: '0rem 1.2rem 0rem 0rem',
-        }
-      }}
-    >
-      <Stack spacing='sm'>
+    <>
+      <ScrollArea
+        viewportRef={viewport as ForwardedRef<HTMLDivElement>}
+        onScrollPositionChange={(e) => {
+          if (!viewport.current) return;
 
-        {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
-          <Fragment>
-            <Divider
-              label={moment(day).format('LL')}
-              labelPosition='center'
-              sx={(theme) => ({ marginLeft: '1.2rem', color: theme.colors.dark[2] })}
-            />
-            {grouped.map((consec, j) => (
-              <MessageGroup
-                msgs={consec}
-                profile_id={props.sender.id}
-                style={classes.typography}
+          // Load more if approaching top
+          if (e.y < config.app.ui.load_next_treshold)
+            messages._next();
+
+          // Show scroll to bottom button if getting far from bottom
+          if (e.y < viewport.current.scrollHeight - viewport.current.clientHeight - 500) {
+            if (!showScrollBottom)
+              setShowScrollBottom(true);
+          }
+          else if (showScrollBottom)
+            setShowScrollBottom(false);
+        }}
+        styles={{
+          viewport: {
+            padding: '0rem 1.2rem 0rem 0rem',
+          }
+        }}
+      >
+        <Stack spacing='sm'>
+          {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
+            <Fragment>
+              <Divider
+                label={moment(day).format('LL')}
+                labelPosition='center'
+                sx={(theme) => ({ marginLeft: '1.2rem', color: theme.colors.dark[2] })}
               />
-            ))}
-          </Fragment>
-        ))}
+              {grouped.map((consec, j) => (
+                <MessageGroup
+                  msgs={consec}
+                  profile_id={props.sender.id}
+                  style={classes.typography}
+                />
+              ))}
+            </Fragment>
+          ))}
 
-        <div style={{ height: '0.5rem' }} />
-      </Stack>
-    </ScrollArea>
+          <div style={{ height: '0.5rem' }} />
+        </Stack>
+      </ScrollArea>
+
+      {showScrollBottom && (
+        <ActionButton
+          tooltip='Scroll To Bottom'
+          tooltipProps={{ position: 'left', openDelay: 500 }}
+          variant='filled'
+          size='xl'
+          radius='xl'
+          sx={(theme) => ({
+            position: 'absolute',
+            bottom: '5.2rem',
+            right: '1.4rem',
+            backgroundColor: theme.colors.dark[8],
+            '&:hover': {
+              backgroundColor: theme.colors.dark[6],
+            },
+          })}
+          onClick={scrollToBottom}
+        >
+          <ChevronsDown />
+        </ActionButton>
+      )}
+    </>
   );
 }
 
@@ -274,7 +328,7 @@ export default function MessagesView(props: MessagesViewProps) {
   // Data
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(props.channel_id, sender);
+  const messages = useMessages(props.channel_id, props.domain, sender);
 
   // States and refs
   const editorRef = useRef<Editor | null>(null);
@@ -316,6 +370,7 @@ export default function MessagesView(props: MessagesViewProps) {
   return (
     <Box sx={(theme) => ({
       display: 'flex',
+      position: 'relative',
       flexFlow: 'column',
       width: '100%',
       height: '100%',
@@ -323,10 +378,11 @@ export default function MessagesView(props: MessagesViewProps) {
     })}>
       {/* Work around to broken justify-content: flex-end */}
       <div style={{ flexGrow: 1 }} />
-      {sender._exists && (
+      {sender._exists && messages._exists && (
         <MessagesViewport
           channel_id={channel_id}
           domain={props.domain}
+          messages={messages}
           sender={sender}
         />
       )}
