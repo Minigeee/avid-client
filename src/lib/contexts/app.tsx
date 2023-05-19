@@ -6,20 +6,40 @@ import { useTimeout } from '@mantine/hooks';
 import config from '@/config';
 import { query, sql } from '@/lib/db';
 import { RtcMutators, RtcState, useRtc, useSession } from '@/lib/hooks';
+import { DeepPartial } from '@/lib/types';
+
 import { SessionState } from './session';
 
+import { merge } from 'lodash';
 
-////////////////////////////////////////////////////////////
+
+/** Get app state id from session */
 function _id(session: SessionState) {
-	return `nav_states:${session.profile_id.split(':').at(-1)}`;
+	return `app_states:${session.profile_id.split(':').at(-1)}`;
 }
 
-////////////////////////////////////////////////////////////
-function _rmPrefix(x: Record<string, string>) {
-	const remapped: Record<string, string> = {};
-	for (const [k, v] of Object.entries(x))
-		remapped[k.split(':').at(-1) || k] = v.split(':').at(-1) || v;
-	return remapped;
+/** Recursively remove record parts of ids */
+function _rmPrefix(x: any): any {
+	if (typeof x === 'string') {
+		return x.split(':').at(-1) || x;
+	}
+
+	else if (typeof x === 'object') {
+		if (Array.isArray(x)) {
+			return x.map(x => _rmPrefix(x));
+		}
+		else {
+			const remapped: Record<string, string> = {};
+			for (const [k, v] of Object.entries<any>(x))
+				remapped[k.split(':').at(-1) || k] = _rmPrefix(v);
+	
+			return remapped;
+		}
+	}
+
+	else {
+		return x;
+	}
 }
 
 ////////////////////////////////////////////////////////////
@@ -31,18 +51,25 @@ function _addPrefix(x: Record<string, string>, kpre?: string, vpre?: string) {
 }
 
 
-/** Screen state types */
-type ScreenStates = 'main' | 'settings';
+/** State used for saving app state */
+type _SaveState = {
+	/** Indicates if app state fetch is still loading */
+	_loading: boolean;
+	/** Indicates if remote app state exists */
+	_exists: boolean;
+
+	/** Changes since last save */
+	_diff: any;
+};
+
+/** General (miscellaneous) states */
+type _GeneralState = {
+	/** A map of channels to stale status */
+	stale: Record<string, boolean>;
+};
 
 /** Holds navigation context state */
 type _NavState = {
-	/** Indicates if nav state fetch is still loading */
-	_loading: boolean;
-	/** Indicates if remote nav state exists */
-	_exists: boolean;
-
-	/** The screen the user is currently viewing */
-	screen: ScreenStates;
 	/** The current domain the user is viewing */
 	domain?: string;
 	/** The ids of the current channel the user is viewing per domain */
@@ -57,14 +84,19 @@ type _NavState = {
 		/** The board view the user is viewing per board id */
 		views: Record<string, 'list' | 'kanban'>;
 	};
-
-	/** Changes since last save */
-	_diff: {
-		domain?: string;
-		channels?: Record<string, string>;
-		expansions?: Record<string, string>;
-	};
 };
+
+/** All subparts put together */
+type _AppState = {
+	general: _GeneralState,
+	navigation: _NavState,
+	rtc?: RtcState,
+};
+
+
+/** Save function used to save app state */
+type SaveFunc = <K extends keyof _AppState>(section: K, diff: DeepPartial<_AppState[K]>) => void;
+
 
 ////////////////////////////////////////////////////////////
 async function _saveAll(nav: _NavState, session: SessionState) {
@@ -72,35 +104,46 @@ async function _saveAll(nav: _NavState, session: SessionState) {
 	if (!session.profile_id) return;
 
 	// Id equal to profile id
-	const id = `nav_states:${session.profile_id.split(':').at(-1)}`;
+	const id = _id(session);
 
-	// Update state
-	const data: Partial<_NavState> = {
-		_exists: undefined,
-		_loading: undefined,
-		domain: nav.domain?.split(':').at(-1),
-		channels: _rmPrefix(nav.channels || {}),
-		expansions: _rmPrefix(nav.expansions || {}),
-	};
-	
 	await query(
-		sql.update(id, { content: data, merge: false }),
+		sql.update(id, {
+			content: {
+				// Nav state
+				navigation: {
+					domain: nav.domain?.split(':').at(-1),
+					channels: _rmPrefix(nav.channels || {}),
+					expansions: _rmPrefix(nav.expansions || {}),
+				},
+			}, merge: false
+		}),
 		{ session }
 	);
 }
 
 ////////////////////////////////////////////////////////////
-function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown, session: SessionState, save: () => void) {
+function generalMutatorFactory(general: _GeneralState, setGeneral: (state: _GeneralState) => unknown, save: SaveFunc) {
 	return {
 		/**
-		 * Switch to viewing specified screen
+		 * Mark or unmark a channel as containing stale data.
 		 * 
-		 * @param screen The screen to switch to
+		 * @param channel_id The channel to mark as (un)stale
 		 */
-		setScreen: (screen: ScreenStates) => {
-			setNav({ ...nav, screen });
-		},
+		setStale: (channel_id: string, stale: boolean) => {
+			// Don't set if already the same
+			if (general.stale[channel_id] === stale) return;
 
+			setGeneral({
+				...general,
+				stale: { ...general.stale, [channel_id]: stale },
+			});
+		},
+	};
+}
+
+////////////////////////////////////////////////////////////
+function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown, save: SaveFunc) {
+	return {
 		/**
 		 * Switch to viewing the given domain.
 		 * This function saves the new navigation state to the database.
@@ -108,16 +151,13 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 		 * @param domain_id The id of the domain to switch to
 		 */
 		setDomain: (domain_id: string) => {
-			setNav({
-				...nav,
-				domain: domain_id,
-				_diff: {
-					...nav._diff,
-					domain: domain_id,
-				},
-			});
+			// Don't set if already the same
+			if (nav.domain === domain_id) return;
 
-			save();
+			const diff = { domain: domain_id };
+			setNav(merge(nav, diff));
+			
+			save('navigation', diff);
 		},
 
 		/**
@@ -133,22 +173,15 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			domain_id = domain_id || nav.domain
 			if (!domain_id) return;
 
-			setNav({
-				...nav,
-				channels: {
-					...nav.channels,
-					[domain_id]: channel_id,
-				},
-				_diff: {
-					...nav._diff,
-					channels: {
-						...nav._diff.channels,
-						[domain_id]: channel_id,
-					},
-				}
-			});
+			// Don't set if already the same
+			if (nav.channels?.[domain_id] === channel_id) return;
 
-			save();
+			const diff: DeepPartial<_NavState> = {
+				channels: { [domain_id]: channel_id },
+			};
+			setNav(merge(nav, diff));
+
+			save('navigation', diff);
 		},
 
 		/**
@@ -164,21 +197,15 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			domain_id = domain_id || nav.domain
 			if (!domain_id) return;
 
-			setNav({ ...nav,
-				expansions: {
-					...nav.channels,
-					[domain_id]: expansion_id,
-				},
-				_diff: {
-					...nav._diff,
-					expansions: {
-						...nav._diff.channels,
-						[domain_id]: expansion_id,
-					},
-				}
-			});
+			// Don't set if already the same
+			if (nav.expansions?.[domain_id] === expansion_id) return;
 
-			save();
+			const diff: DeepPartial<_NavState> = {
+				expansions: { [domain_id]: expansion_id },
+			};
+			setNav(merge(nav, diff));
+
+			save('navigation', diff);
 		},
 		
 		/** Board navigation mutators */
@@ -228,11 +255,9 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 
 
 /** Session context state */
-export type AppState = {
-	navigation: _NavState,
-	rtc?: RtcState,
-} & {
+export type AppState = _SaveState & _AppState & {
 	_mutators: {
+		general: ReturnType<typeof generalMutatorFactory>,
 		navigation: ReturnType<typeof navMutatorFactory>,
 		rtc: RtcMutators,
 	}
@@ -247,93 +272,97 @@ export const AppContext = createContext<AppState>();
 export default function AppProvider({ children }: PropsWithChildren) {
 	const session = useSession();
 
-	const [nav, setNav] = useState<_NavState>({
+	const [save, setSave] = useState<_SaveState>({
 		_loading: true,
 		_exists: false,
-		screen: 'main',
+		_diff: {},
+	});
+
+	const [general, setGeneral] = useState<_GeneralState>({
+		stale: {},
+	});
+	const [nav, setNav] = useState<_NavState>({
 		board: {
 			collections: {},
 			views: {},
 		},
-		_diff: {},
 	});
 	const rtc = useRtc(session);
 	
 	// Timeout used to save nav state
 	const timeout = useTimeout(async () => {
 		// Check if there is stuff to save
-		if (Object.keys(nav._diff).length === 0) return;
+		if (Object.keys(save._diff).length === 0) return;
 
 		// Update everything in diff object
 		await query(
-			sql.update<_NavState>(_id(session), {
-				content: {
-					domain: nav._diff.domain?.split(':').at(-1),
-					channels: _rmPrefix(nav._diff.channels || {}),
-					expansions: _rmPrefix(nav._diff.expansions || {}),
-				},
+			sql.update<_AppState>(_id(session), {
+				content: _rmPrefix(save._diff),
 			}),
 			{ session }
 		);
 
 		// Reset diff
-		setNav({ ...nav, _diff: {} });
+		setSave({ ...save, _diff: {} });
 	}, config.app.nav_update_timeout);
+	
+	// Save function
+	const saveFunc: SaveFunc = (section, diff) => {
+		// Set diff
+		const netDiff = { [section]: diff };
+		setSave({ ...save, _diff: merge(save._diff, netDiff) });
+
+		// Start save timer
+		timeout.clear();
+		timeout.start();
+	};
 
 	// Set initial nav state
 	useEffect(() => {
 		if (!session._exists) return;
 
-		const id = `nav_states:${session.profile_id.split(':').at(-1)}`;
-		query<(_NavState & { id: string })[]>(
+		const id = _id(session);
+		query<(_AppState & { id: string })[]>(
 			sql.select('*', { from: id }),
 			{ session }
 		)
 			.then((results) => {
-				if (results && results.length > 0) {
+				const _exists = results && results.length > 0 || false;
+				if (results && _exists) {
 					const data = results[0];
 
 					// Set state if it exists
+					const remoteNav = data.navigation || {};
 					setNav({
 						...nav,
-						_loading: false,
-						_exists: true,
-						domain: data.domain ? `domains:${data.domain}` : undefined,
-						channels: _addPrefix(data.channels || {}, 'domains', 'channels'),
-						expansions: _addPrefix(data.expansions || {}, 'domains'),
+						domain: remoteNav.domain ? `domains:${remoteNav.domain}` : undefined,
+						channels: _addPrefix(remoteNav.channels || {}, 'domains', 'channels'),
+						expansions: _addPrefix(remoteNav.expansions || {}, 'domains'),
 					});
 				}
 				else {
-					// Indicate that db version does not exist
-					setNav({
-						...nav,
-						_loading: false,
-						_exists: false,
-					});
-
-					// Save for initial state
+					// Save doesn't exist on db, save to push initial state
 					_saveAll(nav, session);
 				}
+
+				// Set save state
+				setSave({ ...save, _exists, _loading: false });
 			})
 			.catch((error) => {
 				// Indicate that db version does not exist
-				setNav({
-					...nav,
-					_loading: false,
-					_exists: false,
-				});
+				setSave({ ...save, _exists: false, _loading: false });
 			});
 	}, [session.profile_id]);
 
 	return (
 		<AppContext.Provider value={{
+			...save,
+			general,
 			navigation: nav,
 			rtc: rtc.rtc,
 			_mutators: {
-				navigation: navMutatorFactory(nav, setNav, session, () => {
-					timeout.clear();
-					timeout.start();
-				}),
+				general: generalMutatorFactory(general, setGeneral, saveFunc),
+				navigation: navMutatorFactory(nav, setNav, saveFunc),
 				rtc: rtc.mutators,
 			},
 		}}>

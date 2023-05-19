@@ -1,4 +1,4 @@
-import { PropsWithChildren, MutableRefObject, useEffect, useImperativeHandle, useState, forwardRef } from 'react';
+import { PropsWithChildren, MutableRefObject, useEffect, useImperativeHandle, useState, forwardRef, useRef } from 'react';
 
 import {
   ActionIcon,
@@ -19,6 +19,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
+import { useTimeout } from '@mantine/hooks';
 
 import {
   Bold,
@@ -34,7 +35,7 @@ import {
   Underline as IconUnderline,
 } from 'tabler-icons-react';
 
-import { useEditor, EditorContent, Editor, Extension, ReactRenderer, JSONContent } from '@tiptap/react';
+import { useEditor, Editor, EditorContent, EditorOptions, Extension, ReactRenderer, JSONContent } from '@tiptap/react';
 import BulletList from '@tiptap/extension-bullet-list';
 import CharacterCount from '@tiptap/extension-character-count';
 import Color from '@tiptap/extension-color';
@@ -290,18 +291,157 @@ export type RichTextEditorProps = {
   value?: string;
   onChange?: (value: string) => void;
   onSubmit?: () => void;
+  onStartTyping?: () => void;
+  onStopTyping?: () => void;
 
   // Attachments
   attachments?: File[];
   onAttachmentsChange?: (files: File[]) => void;
 }
 
+
 ////////////////////////////////////////////////////////////
-export default function RichTextEditor({ attachments, onAttachmentsChange, ...props }: RichTextEditorProps) {
+type _Funcs = {
+  handlePaste: EditorOptions['editorProps']['handlePaste'];
+  handleTextInput: EditorOptions['editorProps']['handleTextInput'];
+};
+
+////////////////////////////////////////////////////////////
+function useFunctions(props: RichTextEditorProps) {
+  // Ref for keeping updated function versions
+  const funcsRef = useRef<Partial<_Funcs>>({});
+
+  // Used to track if user is typing
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | undefined>();
+
+
+  // Paste handler
+  useEffect(() => {
+    funcsRef.current.handlePaste = (view, event, slice) => {
+      // Don't handle anything if no attachments storage
+      if (!props.onAttachmentsChange) return false;
+
+      // Set attachments
+      const setAttachments = (files: File[]) => {
+        // If any files are default named, assign them a random uid
+        for (let i = 0; i < files.length; ++i) {
+          const f = files[i];
+
+          if (f.name === 'image.png')
+            files[i] = new File([f], `${uid(16)}.png`, { type: f.type });
+        }
+
+        // Add all files
+        props.onAttachmentsChange?.((props.attachments || []).concat(files));
+      };
+
+      // Async handler
+      const renameImgs = async (files: Record<number, File>) => {
+        // Get items to get image text
+        const items = Array.from(event.clipboardData?.items || []);
+        for (let i = 0; i < items.length; ++i) {
+          const item = items[i];
+
+          if (item.type === 'text/html') {
+            // Get html
+            const html: string = await new Promise(res => {
+              items[0].getAsString(e => {
+                res(e);
+              });
+            });
+
+            // Check if there is an image source
+            const match = html.match(/src\s*=\s*"(.+?)"/);
+            const file = files[i + 1];
+            if (match && file) {
+              // Rename file
+              const fname = (match[1].split('/').at(-1) || 'image.png').split('.')[0];
+              files[i + 1] = new File([file], `${fname}.png`, { type: file.type });
+            }
+          }
+        }
+
+        // Add all images
+        setAttachments(Object.values(files));
+      };
+
+      // Handle file attachments
+      if (event.clipboardData?.files.length) {
+        // Get files
+        const items = Array.from(event.clipboardData?.items || []);
+        const files: Record<number, File> = {};
+        let hasRename = false;
+
+        for (let i = 0; i < items.length; ++i) {
+          const item = items[i];
+
+          if (item.kind === 'file') {
+            // TODO : Support non image attachments
+            if (!item.type.startsWith('image')) continue;
+
+            let file = item.getAsFile();
+            if (file)
+              files[i] = file;
+          }
+
+          else if (item.type === 'text/html')
+            hasRename = true;
+        }
+
+        // Rename images asynchronously if there are any renames
+        if (hasRename)
+          renameImgs(files);
+        else
+          // Add all images
+          setAttachments(Object.values(files));
+
+        return true;
+      }
+
+      // Not handled, use default behavior
+      return false;
+    };
+  }, [props.attachments]);
+
+  // Handle text input
+  useEffect(() => {
+    // Disable func if callbacks not given
+    if (!props.onStartTyping || !props.onStopTyping) {
+      funcsRef.current.handleTextInput = undefined;
+    }
+    else {
+      funcsRef.current.handleTextInput = (view, from, to, text) => {
+        if (!typingTimeout) {
+          // Started typing
+          props.onStartTyping?.();
+        }
+        else {
+          // Was typing, clear prev timeout
+          clearTimeout(typingTimeout);
+        }
+
+        // Start new timer
+        setTypingTimeout(setTimeout(() => {
+          props.onStopTyping?.();
+          setTypingTimeout(undefined);
+        }, 2000));
+      };
+    }
+  }, [props.onStartTyping, props.onStopTyping, typingTimeout]);
+
+  return funcsRef;
+}
+
+
+////////////////////////////////////////////////////////////
+export default function RichTextEditor(props: RichTextEditorProps) {
   const variant = props.variant || 'full';
 
   const session = useSession();
   const { classes } = useChatStyles();
+
+  const funcsRef = useFunctions(props);
+
 
   const editor = useEditor({
     extensions: [
@@ -336,89 +476,11 @@ export default function RichTextEditor({ attachments, onAttachmentsChange, ...pr
 
     editorProps: {
       handlePaste: (view, event, slice) => {
-        // Don't handle anything if no attachments storage
-        if (!onAttachmentsChange) return false;
-
-        // Set attachments
-        const setAttachments = (files: File[]) => {
-          // If any files are default named, assign them a random uid
-          for (let i = 0; i < files.length; ++i) {
-            const f = files[i];
-
-            if (f.name === 'image.png')
-              files[i] = new File([f], `${uid(16)}.png`, { type: f.type });
-          }
-
-          // Add all files
-          onAttachmentsChange((attachments || []).concat(files));
-        };
-
-        // Async handler
-        const renameImgs = async (files: Record<number, File>) => {
-          // Get items to get image text
-          const items = Array.from(event.clipboardData?.items || []);
-          for (let i = 0; i < items.length; ++i) {
-            const item = items[i];
-
-            if (item.type === 'text/html') {
-              // Get html
-              const html: string = await new Promise(res => {
-                items[0].getAsString(e => {
-                  res(e);
-                });
-              });
-
-              // Check if there is an image source
-              const match = html.match(/src\s*=\s*"(.+?)"/);
-              const file = files[i + 1];
-              if (match && file) {
-                // Rename file
-                const fname = (match[1].split('/').at(-1) || 'image.png').split('.')[0];
-                files[i + 1] = new File([file], `${fname}.png`, { type: file.type });
-              }
-            }
-          }
-
-          // Add all images
-          setAttachments(Object.values(files));
-        };
-
-        // Handle file attachments
-        if (event.clipboardData?.files.length) {
-          // Get files
-          const items = Array.from(event.clipboardData?.items || []);
-          const files: Record<number, File> = {};
-          let hasRename = false;
-
-          for (let i = 0; i < items.length; ++i) {
-            const item = items[i];
-
-            if (item.kind === 'file') {
-              // TODO : Support non image attachments
-              if (!item.type.startsWith('image')) continue;
-
-              let file = item.getAsFile();
-              if (file)
-                files[i] = file;
-            }
-
-            else if (item.type === 'text/html')
-              hasRename = true;
-          }
-
-          // Rename images asynchronously if there are any renames
-          if (hasRename)
-            renameImgs(files);
-          else
-            // Add all images
-            setAttachments(Object.values(files));
-
-          return true;
-        }
-
-        // Not handled, use default behavior
-        return false;
-      }
+        funcsRef.current.handlePaste?.(view, event, slice);
+      },
+      handleTextInput: (view, from, to , text) => {
+        funcsRef.current.handleTextInput?.(view, from, to , text);
+      },
     },
   });
 
@@ -467,6 +529,8 @@ export default function RichTextEditor({ attachments, onAttachmentsChange, ...pr
       '&:focus-within': props.focusRing === false ? undefined : {
         border: `1px solid ${theme.colors[theme.primaryColor][5]}`,
       },
+
+      position: 'relative',
     })}>
       {variant === 'full' && (
         <Box sx={(theme) => ({
@@ -598,13 +662,13 @@ export default function RichTextEditor({ attachments, onAttachmentsChange, ...pr
           </Group>
         </Box>
       )}
-      {attachments && attachments.length > 0 && (
+      {props.attachments && props.attachments.length > 0 && (
         <Group sx={(theme) => ({
           padding: '0.5rem',
           backgroundColor: theme.colors.dark[6],
           borderBottom: `1px solid ${theme.colors.dark[5]}`
         })}>
-          {attachments.map((file, i) => {
+          {props.attachments.map((file, i) => {
             // Display image attachments as previews
             if (file.type.startsWith('image')) {
               const url = URL.createObjectURL(file);
@@ -639,9 +703,9 @@ export default function RichTextEditor({ attachments, onAttachmentsChange, ...pr
                       right: -5,
                     }}
                     onClick={() => {
-                      const copy = attachments.slice();
+                      const copy = props.attachments?.slice() || [];
                       copy.splice(i, 1);
-                      onAttachmentsChange?.(copy);
+                      props.onAttachmentsChange?.(copy);
                     }}
                   />
                 </Box>

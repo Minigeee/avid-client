@@ -1,4 +1,4 @@
-import { KeyedMutator, SWRResponse } from 'swr';
+import { KeyedMutator, SWRResponse, mutate } from 'swr';
 import { SWRInfiniteResponse } from 'swr/infinite'; 
 
 import { SessionState } from '@/lib/contexts';
@@ -9,17 +9,19 @@ import { useMemo } from 'react';
 export type SwrMutators = Record<string, (...args: any[]) => void>;
 
 /** An object containing swr metadata */
-export type SwrObject = {
+export type SwrObject<T> = {
 	/** Indicates if data exists */
 	_exists: boolean;
 	/** Indicates if data is still loading */
 	_loading: boolean;
 	/** Contains any errors that occurred while fetching data with swr */
 	_error: any;
+	/** Refresh data (refetch) */
+	_refresh: () => void;
 };
 
 type _Data<T, Separate extends boolean> = Separate extends true ? { data: T } : T extends any[] ? { data: T } : T extends object ? T : { data: T };
-type _LoadedWrapper<T, Mutators extends SwrMutators, Infinite extends boolean, Separate extends boolean> = _Data<T, Separate> & SwrObject & {
+type _LoadedWrapper<T, Mutators extends SwrMutators, Infinite extends boolean, Separate extends boolean> = _Data<T, Separate> & SwrObject<T> & {
 	_exists: true;
 	/** A set of data mutators for this swr data */
 	_mutators: Mutators;
@@ -38,7 +40,7 @@ type _LoadedWrapper<T, Mutators extends SwrMutators, Infinite extends boolean, S
 	 */
 	_next: (n?: number) => void;
 } : {});
-type _UnloadedWrapper<T, Separate extends boolean> = Partial<_Data<T, Separate>> & SwrObject & { _exists: false };
+type _UnloadedWrapper<T, Separate extends boolean> = Partial<_Data<T, Separate>> & SwrObject<T> & { _exists: false };
 
 /** A wrapper for an object returned by a swr hook */
 export type SwrWrapper<T, Loaded extends boolean = false, Mutators extends SwrMutators = {}, Infinite extends boolean = false, Separate extends boolean = false> =
@@ -84,6 +86,9 @@ export function useSwrWrapper<In, Mutators extends SwrMutators = {}, Infinite ex
 		const swr = {
 			_loading: response.isLoading || response.data === undefined && !response.error,
 			_error: response.error,
+			_refresh: async () => {
+				await response.mutate();
+			},
 			_mutators: response.data !== undefined && response.data !== null && options?.mutators && options?.session ?
 				options?.mutators(response.mutate as KeyedMutator<Infinite extends true ? In[] : In>, options.session, ...(options?.mutatorParams || [])) :
 				undefined,
@@ -100,7 +105,7 @@ export function useSwrWrapper<In, Mutators extends SwrMutators = {}, Infinite ex
 			_setPageCount: infinite ?
 				(n) => (response as SWRInfiniteResponse).setSize(n) :
 				undefined,
-		} as Omit<SwrObject, '_exists'> & { _mutators: Mutators; _next: (n?: number) => void; _setPageCount: (count: number) => void };
+		} as Omit<SwrObject<Out>, '_exists'> & { _mutators: Mutators; _next: (n?: number) => void; _setPageCount: (count: number) => void };
 	
 		// Bundle data seperately
 		const transformed = options?.transform && response.data ? options.transform(response.data as In & In[]) : response.data;

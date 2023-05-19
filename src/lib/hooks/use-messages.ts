@@ -17,6 +17,7 @@ import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
 import { SyncCache } from '@/lib/utility/cache';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
+import { socket } from '@/lib/utility/realtime';
 
 import hljs from 'highlight.js';
 import { groupBy } from 'lodash';
@@ -346,20 +347,19 @@ function addMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, mess
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: SessionState, env: MarkdownEnv | undefined) {
+function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: SessionState, channel_id: string, env: MarkdownEnv | undefined) {
 	assert(env);
 
 	return {
 		/**
 		 * Add a message to the specified channel
 		 * 
-		 * @param channel_id The id of the channel to add a message to
 		 * @param message The message to post to the channel
 		 * @param sender The id of the sender profile
 		 * @param attachments A list of attachments that are attached to message
 		 * @returns The new grouped messages object
 		 */
-		addMessage: (channel_id: string, message: string, sender: Member, attachments?: File[]) => {
+		addMessage: (message: string, sender: Member, attachments?: File[]) => {
 			// Generate temporary id so we know which message to update with correct id
 			const tempId = uuid();
 			// Time message is sent
@@ -390,6 +390,9 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 					{ session }
 				);
 				assert(results);
+
+				// Send event to realtime server
+				socket().emit('chat:message', results[0]);
 
 				// Update message with the correct id
 				return addMessageLocal(messages, results[0], sender, env);
@@ -499,7 +502,7 @@ export function useMessages(channel_id: string, domain: DomainWrapper<false>, re
 		},
 		pageSize: config.app.message.query_limit,
 		mutators,
-		mutatorParams: [env],
+		mutatorParams: [channel_id, env],
 		separate: true,
 		session,
 	});

@@ -21,6 +21,7 @@ type SettingsProps = PropsWithChildren & {
   values: Record<string, { value: string; label: string }[]>;
   value: string;
   onChange: (value: string) => void;
+  onClose: () => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -126,7 +127,7 @@ export default function Settings({ onChange, ...props }: SettingsProps) {
             <CloseButton
               size='lg'
               iconSize={24}
-              onClick={() => app._mutators.navigation.setScreen('main')}
+              onClick={props.onClose}
             />
           </Flex>
           {props.children}

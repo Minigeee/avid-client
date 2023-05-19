@@ -182,15 +182,17 @@ export async function listMembers(domain_id: string, search: string, session: Se
  * 
  * @param domain_id The id of the domain to retrieve the member from
  * @param member_id The id of the member to retrieve
+ * @param refresh Indicates if cache stale check should be proc'd
  * @returns The member if it exists, otherwise null
  */
-export function getMemberSync(domain_id: string, member_id: string) {
+export function getMemberSync(domain_id: string, member_id: string, refresh: boolean = true) {
 	const data = _caches[domain_id];
 	if (!data) return null;
 
 	// Get cache data to proc validation check
 	assert(member_id.startsWith('profiles:'));
-	data.cache.get(member_id);
+	if (refresh)
+		data.cache.get(member_id);
 
 	return data.cache._data[member_id]?.data || null;
 }

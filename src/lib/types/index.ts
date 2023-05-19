@@ -9,4 +9,4 @@ export * from './role';
 export * from './socket';
 export * from './task';
 export * from './user';
-export type { NoId, WithId } from './util';
+export type { DeepPartial, NoId, WithId } from './util';

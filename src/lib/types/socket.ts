@@ -1,13 +1,19 @@
+import { Message } from './message';
+
 
 /** All events signatures that are sent from server to client */
 export interface ServerToClientEvents {
-	
+	'error': (message: string, status?: number) => void,
+
+	'chat:message': (domain_id: string, message: Message) => void;
+	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
 }
 
 
 /** All events signatures that are sent from client to server */
 export interface ClientToServerEvents {
-	
+	'chat:message': (message: Message) => void;
+	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
 }
 
 

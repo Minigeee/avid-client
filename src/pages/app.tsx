@@ -15,11 +15,15 @@ import JoinDomain from '@/lib/ui/screens/JoinDomain';
 import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
 import { useApp, useProfile, useSession } from '@/lib/hooks';
+import { connect, useRealtimeHandlers } from '@/lib/utility/realtime';
 
 
 ////////////////////////////////////////////////////////////
 function ScreenState({ router }: { router: NextRouter }) {
   const app = useApp();
+
+  // Attach realtime event handlers
+  useRealtimeHandlers();
 
   // Show join domain screen if specified
   if (router.query.join) {
@@ -34,7 +38,7 @@ function ScreenState({ router }: { router: NextRouter }) {
 
   return (
     <>
-      <Main visible={app.navigation.screen === 'main'} />
+      <Main visible />
 
       {app.rtc?.joined && (
         <>
@@ -67,6 +71,12 @@ export default function App() {
         router.replace(`/login?redirect=${encodeURIComponent(router.asPath)}`);
     });
   }, []);
+
+  // Realtime server
+  useEffect(() => {
+    if (!session.token) return;
+    connect(session);
+  }, [session.token])
 
 
   // Loading screen

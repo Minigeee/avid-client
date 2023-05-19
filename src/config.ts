@@ -35,7 +35,7 @@ const config = {
 	/** Fetcher config */
 	swr: {
 		/** Minimum amount of time in between requesting any given key twice (seconds) */
-		dedupe_interval: 5 * 60,
+		dedupe_interval: 5,
 		/** Minimum amount of time in between revalidating data (seconds) */
 		focus_throttle_interval: 2 * 60,
 	},

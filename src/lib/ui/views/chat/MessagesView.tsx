@@ -17,7 +17,9 @@ import {
   Textarea,
   Title,
   Tooltip,
+  Transition,
 } from '@mantine/core';
+import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 import {
   ChevronsDown,
@@ -29,25 +31,28 @@ import ActionButton from '@/lib/ui/components/ActionButton';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
 
-import moment from 'moment';
-import { Editor } from '@tiptap/react';
 
-import 'katex/dist/katex.min.css';
-import 'highlight.js/styles/vs2015.css';
-
-
+import config from '@/config';
+import { getMembers } from '@/lib/db';
 import {
   DomainWrapper,
   ExpandedMessageWithPing,
   MemberWrapper,
   MessagesWrapper,
+  useApp,
   useChatStyles,
   useMember,
   useMessages,
   useSession,
 } from '@/lib/hooks';
-import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
-import config from '@/config';
+import { Member, Message } from '@/lib/types';
+import { socket } from '@/lib/utility/realtime';
+
+import moment from 'moment';
+import { Editor } from '@tiptap/react';
+
+import 'katex/dist/katex.min.css';
+import 'highlight.js/styles/vs2015.css';
 
 const AVATAR_SIZE = 36;
 const MIN_IMAGE_WIDTH = 400;
@@ -218,25 +223,6 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
     }
   }
 
-  ////////////////////////////////////////////////////////////
-  /* TODO : function onNewMessage(result) {
-    // Don't add message if sender is self
-    for (const msg of result.messages) {
-      if (msg.sender && msg.sender !== props.sender._id && messages._exists) {
-        messages._update(addMessageLocal(messages.data || {}, msg, result), false);
-      }
-    }
-  } */
-
-
-  ////////////////////////////////////////////////////////////
-  /* TODO : useEffect(() => {
-    socket.on('chat:message', onNewMessage);
-    return () => {
-      socket.off('chat:message', onNewMessage);
-    }
-  }, [props.channel_id, messages]); */
-
 
   ////////////////////////////////////////////////////////////
   return (
@@ -282,7 +268,7 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
             </Fragment>
           ))}
 
-          <div style={{ height: '0.5rem' }} />
+          <div style={{ height: '1.0rem' }} />
         </Stack>
       </ScrollArea>
 
@@ -326,6 +312,7 @@ export default function MessagesView(props: MessagesViewProps) {
   } = props;
 
   // Data
+  const app = useApp();
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
   const messages = useMessages(props.channel_id, props.domain, sender);
@@ -334,13 +321,113 @@ export default function MessagesView(props: MessagesViewProps) {
   const editorRef = useRef<Editor | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Lagged flag, used to delay rendering message viewport until after editor is rendered (takes 1 rotation for editor to show)
+  const [lagged, setLagged] = useState<boolean>(false);
+
   const [attachments, setAttachments] = useState<File[]>([]);
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
 
+  // List of members that are typing
+  const [typingMembers, setTypingMembers] = useState<Member[]>([]);
+  // Used to store last member that was typing because transition takes a while to go off
+  const [lastTyping, setLastTyping] = useState<Member | null>(null);
+
+
+  // Refresh on stale data
+  useEffect(() => {
+    if (!app.general.stale[channel_id]) return;
+
+    if (!messages._exists)
+      // If a channel is stale, but data not even loaded, reset stale flag
+      app._mutators.general.setStale(channel_id, false);
+
+    else if (messages._exists) {
+      // Refresh data and unset stale flag
+      messages._refresh();
+      app._mutators.general.setStale(channel_id, false);
+    }
+  }, []);
+
+  // New message event
+  useEffect(() => {
+    function onNewMessage(domain_id: string, message: Message) {
+      // Ignore if message isn't in this channel, it is handled by another handler
+      if (!messages._exists || !sender._exists || message.channel !== props.channel_id) return;
+  
+      // Add message locally
+      messages._mutators.addMessageLocal(message, sender);
+
+      // Remove from typing list
+      const idx = typingMembers.findIndex(m => m.id === message.sender);
+      if (idx >= 0) {
+        // Set list
+        const copy = typingMembers.slice();
+        copy.splice(idx, 1);
+        setTypingMembers(copy);
+
+        // Set last member
+        if (copy.length === 1)
+          setLastTyping(copy[0]);
+      }
+    }
+
+    socket().on('chat:message', onNewMessage);
+
+    return () => {
+      socket().off('chat:message', onNewMessage);
+    }
+  }, [props.channel_id, messages, typingMembers]);
+
+  // Displaying members that are typing
+  useEffect(() => {
+    function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
+      // Only care about members in this channel
+      if (typing_channel_id !== channel_id) return;
+
+      // Index of member in list
+      const ids = typingMembers.map(x => x.id);
+      const idx = ids.findIndex(x => x === profile_id);
+      
+      // Different actions based on if user started or stopped
+      if (type === 'start' && idx < 0) {
+        ids.push(profile_id);
+
+        // Fetch members
+        getMembers(domain.id, ids, session).then((members) => {
+          // Set list
+          setTypingMembers(members);
+          // Set last member
+          if (members.length === 1)
+            setLastTyping(members[0]);
+        });
+      }
+
+      else if (type === 'stop' && idx >= 0) {
+        // Set list
+        const copy = typingMembers.slice();
+        copy.splice(idx, 1);
+        setTypingMembers(copy);
+
+        // Set last member
+        if (copy.length === 1)
+          setLastTyping(copy[0]);
+      }
+    }
+
+    socket().on('chat:typing', onChatTyping);
+
+    return () => {
+      socket().off('chat:typing', onChatTyping);
+    };
+  }, [typingMembers]);
+
 
   ////////////////////////////////////////////////////////////
-  const onMessageSubmit = useCallback(() => {
+  function onMessageSubmit() {
     const editor = editorRef.current;
+
+    // console.log(channel_id, sender._exists, messages._exists, editor?.storage.characterCount.characters(), attachments.length)
+
     if (
       !channel_id ||
       !sender._exists ||
@@ -350,7 +437,7 @@ export default function MessagesView(props: MessagesViewProps) {
     ) return;
 
     // Add message
-    messages._mutators.addMessage(channel_id, toMarkdown(editor), sender, attachments);
+    messages._mutators.addMessage(toMarkdown(editor), sender, attachments);
 
     // Clear input
     editor.commands.clearContent();
@@ -358,13 +445,12 @@ export default function MessagesView(props: MessagesViewProps) {
 
     // Reset to default input box
     setUseFormattedEditor(false);
-  }, [
-    channel_id,
-    sender._exists,
-    messages._exists,
-    editorRef.current,
-    attachments,
-  ]);
+  };
+
+  // Lagged flag
+  useEffect(() => {
+    setLagged(true);
+  }, []);
 
 
   return (
@@ -378,7 +464,7 @@ export default function MessagesView(props: MessagesViewProps) {
     })}>
       {/* Work around to broken justify-content: flex-end */}
       <div style={{ flexGrow: 1 }} />
-      {sender._exists && messages._exists && (
+      {lagged && sender._exists && messages._exists && (
         <MessagesViewport
           channel_id={channel_id}
           domain={props.domain}
@@ -388,8 +474,36 @@ export default function MessagesView(props: MessagesViewProps) {
       )}
 
       <Box sx={{
+        position: 'relative',
         margin: '0rem 1.2rem 1.5rem 1.2rem',
       }}>
+        <Transition mounted={typingMembers.length > 0} transition='slide-up' duration={200}>
+          {(styles) => (
+            <Group spacing='sm' sx={(theme) => ({
+              position: 'absolute',
+              top: '-1.5rem',
+              padding: '1px 6px 1px 4px',
+              backgroundColor: `${theme.colors.dark[7]}bb`,
+              borderRadius: 3,
+              zIndex: 0,
+            })} style={styles}>
+              <Loader variant='dots' size='xs' />
+              <Text size='xs'>
+                {typingMembers.length <= 1 && (
+                  <><b>{lastTyping?.alias}</b> is typing...</>
+                )}
+                {typingMembers.length > 1 && typingMembers.length <= 4 && typingMembers.map((m, i) => (
+                  <>
+                    <b>{m.alias}</b>
+                    {i === typingMembers.length - 2 ? ', and ' : i === typingMembers.length - 1 ? ' are typing...' : ', '}
+                  </>
+                ))}
+                {typingMembers.length > 4 && 'Several people are typing...'}
+              </Text>
+            </Group>
+          )}
+        </Transition>
+
         <input
           ref={fileInputRef}
           type='file'
@@ -453,6 +567,12 @@ export default function MessagesView(props: MessagesViewProps) {
             )}
 
             onSubmit={onMessageSubmit}
+            onStartTyping={() => {
+              socket().emit('chat:typing', session.profile_id, props.channel_id, 'start');
+            }}
+            onStopTyping={() => {
+              socket().emit('chat:typing', session.profile_id, props.channel_id, 'stop');
+            }}
           />
         )}
       </Box>
