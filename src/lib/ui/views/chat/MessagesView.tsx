@@ -1,4 +1,4 @@
-import { ForwardedRef, Fragment, Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ForwardedRef, Fragment, MutableRefObject, Ref, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 import {
@@ -44,6 +44,7 @@ import {
   useMember,
   useMessages,
   useSession,
+  useTimeout,
 } from '@/lib/hooks';
 import { Member, Message } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
@@ -104,7 +105,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
           <Group className='msg-body' align='start' noWrap sx={(theme) => ({
-            padding: '0.2rem 0rem 0.2rem calc(1.2rem - 4px)',
+            padding: '0.25rem 0rem 0.25rem calc(1.2rem - 4px)',
             backgroundColor: hasPing ? '#2B293A' : undefined,
             transition: 'background-color 0.08s',
 
@@ -268,7 +269,7 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
             </Fragment>
           ))}
 
-          <div style={{ height: '1.0rem' }} />
+          <div style={{ height: '0.9rem' }} />
         </Stack>
       </ScrollArea>
 
@@ -299,6 +300,122 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
 
 
 ////////////////////////////////////////////////////////////
+type TextEditorProps = {
+  channel_id: string;
+  domain: DomainWrapper;
+  profile_id: string;
+
+  editorRef: RefObject<Editor>;
+  onSubmit: (message: string, attachments: File[]) => boolean;
+};
+
+////////////////////////////////////////////////////////////
+function TextEditor(props: TextEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Indicates if formatted editor should be used
+  const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
+
+  // List of file attachments
+  const [attachments, setAttachments] = useState<File[]>([]);
+
+  // Timeout object used to detect typing
+  const typingTimeout = useTimeout(() => {
+    socket().emit('chat:typing', props.profile_id, props.channel_id, 'stop');
+  }, 2000);
+
+
+  ////////////////////////////////////////////////////////////
+  function onMessageSubmit() {
+    const editor = props.editorRef.current;
+
+    // console.log(channel_id, sender._exists, messages._exists, editor?.storage.characterCount.characters(), attachments.length)
+
+    if (
+      !editor ||
+      (!editor.storage.characterCount.characters() && !attachments.length)
+    ) return;
+
+    // Add message
+    const handled = props.onSubmit(toMarkdown(editor), attachments)
+    if (!handled) return;
+
+    // Clear input
+    editor.commands.clearContent();
+    setAttachments([]);
+
+    // Reset to default input box
+    setUseFormattedEditor(false);
+
+    // Reset typing timer
+    typingTimeout.clear();
+  };
+
+
+  return (
+    <RichTextEditor
+      editorRef={props.editorRef}
+      domain={props.domain}
+
+      variant={useFormattedEditor ? 'full' : 'minimal'}
+      placeholder='Message'
+      markdown
+      autofocus
+      focusRing={false}
+      maxCharacters={2048}
+      maxHeight='40ch'
+
+      fileInputRef={fileInputRef}
+      attachments={attachments}
+      onAttachmentsChange={setAttachments}
+
+      rightSection={(
+        <Group spacing={2} mr={useFormattedEditor ? 2 : 3}>
+          <ActionButton
+            tooltip='Add Attachment'
+            tooltipProps={{ position: 'top-end', withArrow: true }}
+            variant='transparent'
+            sx={(theme) => ({ color: theme.colors.dark[1] })}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip size={useFormattedEditor ? 19 : 17} />
+          </ActionButton>
+
+          {useFormattedEditor ? (
+            <ActionButton
+              tooltip='Send'
+              tooltipProps={{ position: 'top-end', withArrow: true }}
+              variant='transparent'
+              onClick={onMessageSubmit}
+            >
+              <Send size={20} />
+            </ActionButton>
+          ) : (
+            <ActionButton
+              tooltip='Formatted Message'
+              tooltipProps={{ position: 'top-end', withArrow: true }}
+              variant='transparent'
+              sx={(theme) => ({ color: theme.colors.dark[1] })}
+              onClick={() => setUseFormattedEditor(true)}
+            >
+              <PencilPlus size={18} />
+            </ActionButton>
+          )}
+        </Group>
+      )}
+
+      onSubmit={onMessageSubmit}
+
+      typingTimeout={typingTimeout}
+      onStartTyping={() => {
+        socket().emit('chat:typing', props.profile_id, props.channel_id, 'start');
+      }}
+    />
+  );
+}
+
+
+////////////////////////////////////////////////////////////
 type MessagesViewProps = {
   channel_id: string;
   domain: DomainWrapper;
@@ -317,20 +434,16 @@ export default function MessagesView(props: MessagesViewProps) {
   const sender = useMember(domain.id, session.profile_id);
   const messages = useMessages(props.channel_id, props.domain, sender);
 
-  // States and refs
-  const editorRef = useRef<Editor | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Lagged flag, used to delay rendering message viewport until after editor is rendered (takes 1 rotation for editor to show)
-  const [lagged, setLagged] = useState<boolean>(false);
-
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
+  // Editor ref
+  const editorRef = useRef<Editor>(null);
 
   // List of members that are typing
   const [typingMembers, setTypingMembers] = useState<Member[]>([]);
-  // Used to store last member that was typing because transition takes a while to go off
+  // Last typing member, because transition makes typing text stay for longer than the member stay in array
   const [lastTyping, setLastTyping] = useState<Member | null>(null);
+
+  // Lagged flag, used to delay rendering message viewport until after editor is rendered (takes 1 rotation for editor to show)
+  const [lagged, setLagged] = useState<boolean>(false);
 
 
   // Refresh on stale data
@@ -365,7 +478,7 @@ export default function MessagesView(props: MessagesViewProps) {
         copy.splice(idx, 1);
         setTypingMembers(copy);
 
-        // Set last member
+        // Set last typing
         if (copy.length === 1)
           setLastTyping(copy[0]);
       }
@@ -396,7 +509,8 @@ export default function MessagesView(props: MessagesViewProps) {
         getMembers(domain.id, ids, session).then((members) => {
           // Set list
           setTypingMembers(members);
-          // Set last member
+
+          // Set last typing
           if (members.length === 1)
             setLastTyping(members[0]);
         });
@@ -408,7 +522,7 @@ export default function MessagesView(props: MessagesViewProps) {
         copy.splice(idx, 1);
         setTypingMembers(copy);
 
-        // Set last member
+        // Set last typing
         if (copy.length === 1)
           setLastTyping(copy[0]);
       }
@@ -420,32 +534,6 @@ export default function MessagesView(props: MessagesViewProps) {
       socket().off('chat:typing', onChatTyping);
     };
   }, [typingMembers]);
-
-
-  ////////////////////////////////////////////////////////////
-  function onMessageSubmit() {
-    const editor = editorRef.current;
-
-    // console.log(channel_id, sender._exists, messages._exists, editor?.storage.characterCount.characters(), attachments.length)
-
-    if (
-      !channel_id ||
-      !sender._exists ||
-      !messages._exists ||
-      !editor ||
-      (!editor.storage.characterCount.characters() && !attachments.length)
-    ) return;
-
-    // Add message
-    messages._mutators.addMessage(toMarkdown(editor), sender, attachments);
-
-    // Clear input
-    editor.commands.clearContent();
-    setAttachments([]);
-
-    // Reset to default input box
-    setUseFormattedEditor(false);
-  };
 
   // Lagged flag
   useEffect(() => {
@@ -479,102 +567,47 @@ export default function MessagesView(props: MessagesViewProps) {
       }}>
         <Transition mounted={typingMembers.length > 0} transition='slide-up' duration={200}>
           {(styles) => (
-            <Group spacing='sm' sx={(theme) => ({
+            <Group spacing={9} sx={(theme) => ({
               position: 'absolute',
-              top: '-1.5rem',
-              padding: '1px 6px 1px 4px',
+              top: '-1.45rem',
+              padding: '1px 0.5rem 1px 0.3rem',
               backgroundColor: `${theme.colors.dark[7]}bb`,
               borderRadius: 3,
               zIndex: 0,
             })} style={styles}>
               <Loader variant='dots' size='xs' />
-              <Text size='xs'>
+              <Text size={11.5}>
                 {typingMembers.length <= 1 && (
                   <><b>{lastTyping?.alias}</b> is typing...</>
                 )}
-                {typingMembers.length > 1 && typingMembers.length <= 4 && typingMembers.map((m, i) => (
-                  <>
-                    <b>{m.alias}</b>
-                    {i === typingMembers.length - 2 ? ', and ' : i === typingMembers.length - 1 ? ' are typing...' : ', '}
-                  </>
-                ))}
-                {typingMembers.length > 4 && 'Several people are typing...'}
+                {typingMembers.length == 2 && (
+                  <><b>{typingMembers[0].alias}</b> and <b>{typingMembers[1].alias}</b> are typing...</>
+                )}
+                {typingMembers.length == 3 && (
+                  <><b>{typingMembers[0].alias}</b>, <b>{typingMembers[1].alias}</b>, and <b>{typingMembers[2].alias}</b> are typing...</>
+                )}
+                {typingMembers.length > 3 && 'Several people are typing...'}
               </Text>
             </Group>
           )}
         </Transition>
 
-        <input
-          ref={fileInputRef}
-          type='file'
-          accept={IMAGE_MIME_TYPE.join(',')}
-          onChange={(event) => {
-            // Add all chosen files
-            if (event.target.files)
-              setAttachments([...attachments, ...Array.from(event.target.files)]);
+        <TextEditor
+          channel_id={props.channel_id}
+          domain={props.domain}
+          profile_id={session.profile_id}
+
+          editorRef={editorRef}
+          onSubmit={(message, attachments) => {
+            // If these don't exist, return false to indicate submit was not handled, don't clear input
+            if (!messages._exists || !sender._exists)
+              return false;
+            
+            // Send message
+            messages._mutators.addMessage(message, sender, attachments);
+            return true;
           }}
-          style={{ display: 'none' }}
         />
-        {props.domain._exists && (
-          <RichTextEditor
-            editorRef={editorRef}
-            domain={props.domain}
-
-            variant={useFormattedEditor ? 'full' : 'minimal'}
-            placeholder='Message'
-            markdown
-            autofocus
-            focusRing={false}
-            maxCharacters={2048}
-            maxHeight='40ch'
-
-            attachments={attachments}
-            onAttachmentsChange={setAttachments}
-
-            rightSection={(
-              <Group spacing={2} mr={useFormattedEditor ? 2 : 3}>
-                <ActionButton
-                  tooltip='Add Attachment'
-                  tooltipProps={{ position: 'top-end', withArrow: true }}
-                  variant='transparent'
-                  sx={(theme) => ({ color: theme.colors.dark[1] })}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Paperclip size={useFormattedEditor ? 19 : 17} />
-                </ActionButton>
-
-                {useFormattedEditor ? (
-                  <ActionButton
-                    tooltip='Send'
-                    tooltipProps={{ position: 'top-end', withArrow: true }}
-                    variant='transparent'
-                    onClick={onMessageSubmit}
-                  >
-                    <Send size={20} />
-                  </ActionButton>
-                ) : (
-                  <ActionButton
-                    tooltip='Formatted Message'
-                    tooltipProps={{ position: 'top-end', withArrow: true }}
-                    variant='transparent'
-                    sx={(theme) => ({ color: theme.colors.dark[1] })}
-                    onClick={() => setUseFormattedEditor(true)}
-                  >
-                    <PencilPlus size={18} />
-                  </ActionButton>
-                )}
-              </Group>
-            )}
-
-            onSubmit={onMessageSubmit}
-            onStartTyping={() => {
-              socket().emit('chat:typing', session.profile_id, props.channel_id, 'start');
-            }}
-            onStopTyping={() => {
-              socket().emit('chat:typing', session.profile_id, props.channel_id, 'stop');
-            }}
-          />
-        )}
       </Box>
     </Box>
   );

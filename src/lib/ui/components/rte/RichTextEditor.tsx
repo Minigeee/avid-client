@@ -1,4 +1,4 @@
-import { PropsWithChildren, MutableRefObject, useEffect, useImperativeHandle, useState, forwardRef, useRef } from 'react';
+import { PropsWithChildren, MutableRefObject, useEffect, useImperativeHandle, useState, forwardRef, useRef, RefObject } from 'react';
 
 import {
   ActionIcon,
@@ -19,7 +19,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
-import { useTimeout } from '@mantine/hooks';
 
 import {
   Bold,
@@ -51,9 +50,10 @@ import Underline from '@tiptap/extension-underline';
 import PingMention from './PingMention';
 
 import config from '@/config';
-import { DomainWrapper, useChatStyles, useSession } from '@/lib/hooks';
+import { DomainWrapper, useChatStyles, useSession, useTimeout } from '@/lib/hooks';
 
 import { uid } from 'uid';
+import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 
 ////////////////////////////////////////////////////////////
@@ -291,10 +291,13 @@ export type RichTextEditorProps = {
   value?: string;
   onChange?: (value: string) => void;
   onSubmit?: () => void;
+
+  // Typing
   onStartTyping?: () => void;
-  onStopTyping?: () => void;
+  typingTimeout?: ReturnType<typeof useTimeout>;
 
   // Attachments
+  fileInputRef?: RefObject<HTMLInputElement>;
   attachments?: File[];
   onAttachmentsChange?: (files: File[]) => void;
 }
@@ -310,9 +313,6 @@ type _Funcs = {
 function useFunctions(props: RichTextEditorProps) {
   // Ref for keeping updated function versions
   const funcsRef = useRef<Partial<_Funcs>>({});
-
-  // Used to track if user is typing
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | undefined>();
 
 
   // Paste handler
@@ -406,28 +406,21 @@ function useFunctions(props: RichTextEditorProps) {
   // Handle text input
   useEffect(() => {
     // Disable func if callbacks not given
-    if (!props.onStartTyping || !props.onStopTyping) {
+    if (!props.typingTimeout) {
       funcsRef.current.handleTextInput = undefined;
     }
     else {
       funcsRef.current.handleTextInput = (view, from, to, text) => {
-        if (!typingTimeout) {
-          // Started typing
+        if (!props.typingTimeout?.isActive) {
+          // Send event if the timeout is not active (this means the user was not typing before)
           props.onStartTyping?.();
-        }
-        else {
-          // Was typing, clear prev timeout
-          clearTimeout(typingTimeout);
         }
 
         // Start new timer
-        setTypingTimeout(setTimeout(() => {
-          props.onStopTyping?.();
-          setTypingTimeout(undefined);
-        }, 2000));
+        props.typingTimeout?.start();
       };
     }
-  }, [props.onStartTyping, props.onStopTyping, typingTimeout]);
+  }, [props.onStartTyping, props.typingTimeout]);
 
   return funcsRef;
 }
@@ -532,6 +525,20 @@ export default function RichTextEditor(props: RichTextEditorProps) {
 
       position: 'relative',
     })}>
+      {props.attachments && props.onAttachmentsChange && (
+        <input
+          ref={props.fileInputRef}
+          type='file'
+          accept={IMAGE_MIME_TYPE.join(',')}
+          onChange={(event) => {
+            // Add all chosen files
+            if (event.target.files)
+              props.onAttachmentsChange?.([...(props.attachments || []), ...Array.from(event.target.files)]);
+          }}
+          style={{ display: 'none' }}
+        />
+      )}
+
       {variant === 'full' && (
         <Box sx={(theme) => ({
           padding: '0.35rem 0.55rem',

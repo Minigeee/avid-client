@@ -71,39 +71,39 @@ export default function SidePanelView(props: SidePanelViewProps) {
         </Tabs>
       </Group>
 
-      {tab === 'chat' && (
-        <Box sx={{
-          flexGrow: 1,
-          height: 0,
-        }}>
-          <MessagesView channel_id={props.channel_id} domain={props.domain} />
-        </Box>
-      )}
-      {tab === 'participants' && (
-        <ScrollArea>
-          <Stack spacing={0}>
-            {props.participants.map((member, i) => (
-              <UnstyledButton
-                sx={(theme) => ({
-                  display: 'block',
-                  width: '100%',
-                  padding: '0.2rem 0.3rem 0.2rem 0.5rem',
-                  borderRadius: theme.radius.sm,
-                  transition: 'background-color 0.1s',
-                  '&:hover': {
-                    backgroundColor: theme.colors.dark[6],
-                  },
-                })}
-              >
-                <Group spacing='xs' align='center'>
-                  <MemberAvatar size={36} member={member} />
-                  <Text size='sm' weight={600}>{member.alias}</Text>
-                </Group>
-              </UnstyledButton>
-            ))}
-          </Stack>
-        </ScrollArea>
-      )}
+      <Box sx={{
+        flexGrow: 1,
+        height: 0,
+        display: tab === 'chat' ? undefined : 'none',
+      }}>
+        <MessagesView channel_id={props.channel_id} domain={props.domain} />
+      </Box>
+      
+      <ScrollArea sx={{
+        display: tab === 'participants' ? undefined : 'none',
+      }}>
+        <Stack spacing={0}>
+          {props.participants.map((member, i) => (
+            <UnstyledButton
+              sx={(theme) => ({
+                display: 'block',
+                width: '100%',
+                padding: '0.2rem 0.3rem 0.2rem 0.5rem',
+                borderRadius: theme.radius.sm,
+                transition: 'background-color 0.1s',
+                '&:hover': {
+                  backgroundColor: theme.colors.dark[6],
+                },
+              })}
+            >
+              <Group spacing='xs' align='center'>
+                <MemberAvatar size={36} member={member} />
+                <Text size='sm' weight={600}>{member.alias}</Text>
+              </Group>
+            </UnstyledButton>
+          ))}
+        </Stack>
+      </ScrollArea>
     </Box>
   );
 }
