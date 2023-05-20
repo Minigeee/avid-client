@@ -6,17 +6,15 @@ import {
 } from '@mantine/core';
 
 import {
-  ChevronDown,
-  ChevronUp,
-  ChevronsUp,
-  Equal,
-  GitMerge,
-  Icon,
-  Point,
-  Subtask,
-} from 'tabler-icons-react';
+  IconChevronDown,
+  IconChevronUp,
+  IconChevronsUp,
+  IconEqual,
+  IconPoint,
+} from '@tabler/icons-react';
 
 import { TaskPriority } from '@/lib/types';
+import { useMemo } from 'react';
 
 
 ////////////////////////////////////////////////////////////
@@ -34,14 +32,21 @@ type TaskPriorityIconProps = {
 export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
   const theme = useMantineTheme();
 
-  const priorities = {
-    critical: { label: 'Critical', color: theme.colors.red[4], icon: ChevronsUp },
-    high: { label: 'High', color: theme.colors.orange[5], icon: ChevronUp },
-    medium: { label: 'Medium', color: theme.colors.yellow[4], icon: Equal },
-    low: { label: 'Low', color: theme.colors.blue[4], icon: ChevronDown },
-    none: { label: 'None', color: theme.colors.gray[5], icon: Point },
-  };
-  const priority = priorities[props.priority || 'none'];
+  const priority = useMemo(() => {
+    const id = props.priority || 'none';
+    const size = props.innerSize || 18;
+
+    if (id === 'critical')
+      return { label: 'Critical', color: theme.colors.red[4], icon: <IconChevronsUp size={size} /> };
+    else if (id === 'high')
+      return { label: 'High', color: theme.colors.orange[5], icon: <IconChevronUp size={size} /> };
+    else if (id === 'medium')
+      return { label: 'Medium', color: theme.colors.yellow[4], icon: <IconEqual size={size} /> };
+    else if (id === 'low')
+      return { label: 'Low', color: theme.colors.blue[4], icon: <IconChevronDown size={size} /> };
+    else
+      return { label: 'None', color: theme.colors.gray[5], icon: <IconPoint size={size} /> };
+  }, [props.innerSize, props.priority]);
 
 
   if (props.tooltip === false) {
@@ -62,7 +67,7 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
           ...sx,
         };
       }}>
-        {priority.icon({ size: props.innerSize || 18 })}
+        {priority.icon}
       </ThemeIcon>
     );
   }
@@ -80,7 +85,7 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
           color: priority.color,
           cursor: 'default',
         })}>
-          {priority.icon({ size: props.innerSize || 18 })}
+          {priority.icon}
         </ThemeIcon>
       </Tooltip>
     );

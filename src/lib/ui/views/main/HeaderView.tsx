@@ -7,7 +7,7 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 
-import { Plus } from 'tabler-icons-react';
+import { IconPlus } from '@tabler/icons-react';
 
 import { openCreateChannel } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -61,7 +61,7 @@ export default function HeaderView(props: HeaderViewProps) {
           tooltip='Create Channel'
           onClick={() => openCreateChannel({ domain: props.domain })}
         >
-          <Plus size={18} color={theme.colors.dark[1]} />
+          <IconPlus size={18} color={theme.colors.dark[1]} />
         </ActionButton>
       </Group>
       {props.channel && (

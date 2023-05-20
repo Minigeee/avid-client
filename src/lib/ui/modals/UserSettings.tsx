@@ -14,10 +14,9 @@ import {
   TextInput,
   Title
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { ContextModalProps, openConfirmModal } from '@mantine/modals';
 
-import { Trash } from 'tabler-icons-react';
+import { IconTrash } from '@tabler/icons-react';
 
 import { useImageModal } from '.';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -25,12 +24,8 @@ import ProfileAvatar from '@/lib/ui/components/ProfileAvatar';
 import SettingsMenu from '@/lib/ui/components/SettingsMenu';
 
 import config from '@/config';
-import { getDomainCache } from '@/lib/db';
 import { SessionState } from '@/lib/contexts';
 import { ProfileWrapper, useProfile, useSession } from '@/lib/hooks';
-import { errorWrapper } from '@/lib/utility/error-handler';
-
-import axios from 'axios';
 
 
 ////////////////////////////////////////////////////////////
@@ -45,24 +40,6 @@ type TabProps = {
   session: SessionState;
   profile: ProfileWrapper;
 };
-
-
-// This function changes profile pictures locally
-async function _localSetProfilePicture(session: SessionState, profile: ProfileWrapper, newPictureUrl: string | null) {
-  // Update locally
-  profile._update({ ...profile, profile_picture: newPictureUrl }, false);
-
-  // Change profile pictures of all domains that are loaded
-  for (const d of profile.domains) {
-    try {
-      const cache = await getDomainCache(d.id, session, true);
-      const obj = cache.cache._data[profile.id];
-      if (obj?.data)
-        obj.data.profile_picture = newPictureUrl;
-    }
-    catch (err) { }
-  }
-}
 
 ////////////////////////////////////////////////////////////
 function AccountTab({ session, profile, ...props }: TabProps) {
@@ -132,7 +109,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
                     })
                   }}
                 >
-                  <Trash size={22} />
+                  <IconTrash size={22} />
                 </ActionButton>
               )}
             </Group>

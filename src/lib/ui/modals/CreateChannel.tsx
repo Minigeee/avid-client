@@ -13,7 +13,7 @@ import {
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { Hash } from 'tabler-icons-react';
+import { IconHash } from '@tabler/icons-react';
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
@@ -139,7 +139,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
         <TextInput
           label='Channel Name'
           placeholder='channel-name'
-          icon={<Hash size={16} />}
+          icon={<IconHash size={16} />}
           required
           withAsterisk={false}
           data-autofocus

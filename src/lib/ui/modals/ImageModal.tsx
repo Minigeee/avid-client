@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE, FileWithPath } from '@mantine/dropzone';
 
-import { Photo, Upload, X } from 'tabler-icons-react';
+import { IconPhoto, IconUpload, IconX } from '@tabler/icons-react';
 
 import AvatarEditor from 'react-avatar-editor';
 import { useElementSize } from '@mantine/hooks';
@@ -75,21 +75,21 @@ export default function ImageModal(props: ImageModalProps) {
           >
             <Group position='center' spacing='xl' style={{ minHeight: rem(220), pointerEvents: 'none' }}>
               <Dropzone.Accept>
-                <Upload
+                <IconUpload
                   size='3.2rem'
                   strokeWidth={1.5}
                   color={theme.colors[theme.primaryColor][theme.colorScheme === 'dark' ? 4 : 6]}
                 />
               </Dropzone.Accept>
               <Dropzone.Reject>
-                <X
+                <IconX
                   size='3.2rem'
                   strokeWidth={1.5}
                   color={theme.colors.red[theme.colorScheme === 'dark' ? 4 : 6]}
                 />
               </Dropzone.Reject>
               <Dropzone.Idle>
-                <Photo size='3.2rem' strokeWidth={1.5} />
+                <IconPhoto size='3.2rem' strokeWidth={1.5} />
               </Dropzone.Idle>
 
               <div>

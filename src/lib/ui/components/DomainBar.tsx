@@ -12,7 +12,7 @@ import {
   Transition,
 } from '@mantine/core';
 
-import { Calendar, Message2, Plus, Settings } from 'tabler-icons-react';
+import { IconCalendar, IconMessage2, IconPlus, IconSettings } from '@tabler/icons-react';
 
 import { Domain } from '@/lib/types';
 import { useApp, useProfile, useSession } from '@/lib/hooks';
@@ -92,12 +92,12 @@ const PERSONAL_TABS = [
   {
     id: 'dms',
     name: 'Direct Messages',
-    icon: <Message2 size={25} />,
+    icon: <IconMessage2 size={25} />,
   },
   {
     id: 'calendar',
     name: 'Calendar',
-    icon: <Calendar size={22} />,
+    icon: <IconCalendar size={22} />,
   },
 ];
 
@@ -172,7 +172,7 @@ export default function DomainBar() {
             }
           }}
         >
-          <Plus size={26} />
+          <IconPlus size={26} />
         </Avatar>
       </Tooltip>
 
@@ -200,7 +200,7 @@ export default function DomainBar() {
           })}
           onClick={() => openUserSettings({})}
         >
-          <Settings size={24} />
+          <IconSettings size={24} />
         </Avatar>
       </Tooltip>
     </Flex>

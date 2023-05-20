@@ -1,6 +1,6 @@
 import { Code, Stack, Text } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
-import { InfoCircle, X } from 'tabler-icons-react';
+import { IconInfoCircle, IconX } from '@tabler/icons-react';
 
 
 ////////////////////////////////////////////////////////////
@@ -38,7 +38,7 @@ export function error(title: string, message: string, error?: Error, cooldown: n
 				</Stack>
 			),
 			color: 'red',
-			icon: <X />,
+			icon: <IconX />,
 			sx: (theme) => ({
 				backgroundColor: theme.colors.dark[5],
 				boxShadow: '#00000020 0px 7px 16px 0px',
@@ -71,7 +71,7 @@ export function info(title: string, message: string, cooldown: number = 60) {
 		title,
 		message,
 		color: 'blue',
-		icon: <InfoCircle />,
+		icon: <IconInfoCircle />,
 	});
 }
 

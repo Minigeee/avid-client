@@ -21,18 +21,18 @@ import {
 } from '@mantine/core';
 
 import {
-  Bold,
-  Italic,
-  Link as IconLink,
-  List,
-  ListNumbers,
-  Palette,
-  PaletteOff,
-  Strikethrough,
-  Subscript as IconSubscript,
-  Superscript as IconSuperscript,
-  Underline as IconUnderline,
-} from 'tabler-icons-react';
+  IconBold,
+  IconItalic,
+  IconLink,
+  IconList,
+  IconListNumbers,
+  IconPalette,
+  IconPaletteOff,
+  IconStrikethrough,
+  IconSubscript,
+  IconSuperscript,
+  IconUnderline,
+} from '@tabler/icons-react';
 
 import { useEditor, Editor, EditorContent, EditorOptions, Extension, ReactRenderer, JSONContent } from '@tiptap/react';
 import BulletList from '@tiptap/extension-bullet-list';
@@ -550,14 +550,14 @@ export default function RichTextEditor(props: RichTextEditorProps) {
               active={editor?.isActive('bold')}
               onClick={() => editor.chain().focus().toggleBold().run()}
             >
-              <Bold size={18} />
+              <IconBold size={18} />
             </EditorButton>
             <EditorButton
               tooltip='Italic'
               active={editor?.isActive('italic')}
               onClick={() => editor.chain().focus().toggleItalic().run()}
             >
-              <Italic size={18} />
+              <IconItalic size={18} />
             </EditorButton>
             <EditorButton
               tooltip='Underline'
@@ -571,7 +571,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
               active={editor?.isActive('strike')}
               onClick={() => editor.chain().focus().toggleStrike().run()}
             >
-              <Strikethrough size={18} />
+              <IconStrikethrough size={18} />
             </EditorButton>
             <EditorButton
               tooltip='Subscript'
@@ -595,14 +595,14 @@ export default function RichTextEditor(props: RichTextEditorProps) {
               active={editor?.isActive('bulletList')}
               onClick={() => editor.chain().focus().toggleBulletList().run()}
             >
-              <List size={19} />
+              <IconList size={19} />
             </EditorButton>
             <EditorButton
               tooltip='Ordered List'
               active={editor?.isActive('orderedList')}
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
             >
-              <ListNumbers size={19} />
+              <IconListNumbers size={19} />
             </EditorButton>
 
             <Divider orientation='vertical' mt={3} mb={3} />
@@ -622,7 +622,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                 >
                   <Popover.Target>
                     <ActionIcon>
-                      <Palette size={18} />
+                      <IconPalette size={18} />
                     </ActionIcon>
                   </Popover.Target>
                   <Popover.Dropdown>
@@ -656,7 +656,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                       .setTextSelection(editor.state.selection.to)
                       .run()
                     }>
-                      <PaletteOff size={18} />
+                      <IconPaletteOff size={18} />
                     </ActionIcon>
                   </Tooltip>
                 )}

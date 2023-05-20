@@ -12,7 +12,18 @@ import {
   Tooltip,
 } from '@mantine/core';
 
-import { ArrowBackUp, Headphones, HeadphonesOff, Microphone, MicrophoneOff, PhoneX, ScreenShare, ScreenShareOff, Settings, Video } from 'tabler-icons-react';
+import {
+  IconArrowBackUp,
+  IconHeadphones,
+  IconHeadphonesOff,
+  IconMicrophone,
+  IconMicrophoneOff,
+  IconPhoneX,
+  IconScreenShare,
+  IconScreenShareOff,
+  IconSettings,
+  IconVideo
+} from '@tabler/icons-react';
 
 import { useApp } from '@/lib/hooks';
 
@@ -87,7 +98,7 @@ export default function RtcControlBar() {
               app._mutators.navigation.setChannel(app.rtc.room_id, app.rtc.domain_id);
             }}
           >
-            <ArrowBackUp size={20} />
+            <IconArrowBackUp size={20} />
           </ControlButton>
 
           <Divider orientation='vertical' mt={3} mb={3} />
@@ -99,7 +110,7 @@ export default function RtcControlBar() {
         onClick={() => {
         }}
       >
-        <Video size={20} />
+        <IconVideo size={20} />
       </ControlButton>
       
       <ControlButton
@@ -112,8 +123,8 @@ export default function RtcControlBar() {
             app._mutators.rtc.screenshare.enable();
         }}
       >
-        {!app.rtc?.is_screen_shared && <ScreenShare size={19} />}
-        {app.rtc?.is_screen_shared && <ScreenShareOff size={19} />}
+        {!app.rtc?.is_screen_shared && <IconScreenShare size={19} />}
+        {app.rtc?.is_screen_shared && <IconScreenShareOff size={19} />}
       </ControlButton>
 
       <ControlButton
@@ -126,8 +137,8 @@ export default function RtcControlBar() {
             app._mutators.rtc.microphone.mute();
         }}
       >
-        {!app.rtc?.is_mic_muted && <Microphone size={20} />}
-        {app.rtc?.is_mic_muted && <MicrophoneOff size={20} />}
+        {!app.rtc?.is_mic_muted && <IconMicrophone size={20} />}
+        {app.rtc?.is_mic_muted && <IconMicrophoneOff size={20} />}
       </ControlButton>
 
       <ControlButton
@@ -139,14 +150,14 @@ export default function RtcControlBar() {
             app._mutators.rtc.audio.deafen();
         }}
       >
-        {!app.rtc?.is_deafened && <Headphones size={20} />}
-        {app.rtc?.is_deafened && <HeadphonesOff size={20} />}
+        {!app.rtc?.is_deafened && <IconHeadphones size={20} />}
+        {app.rtc?.is_deafened && <IconHeadphonesOff size={20} />}
       </ControlButton>
 
       <ControlButton
         tooltip='Settings'
       >
-        <Settings size={20} />
+        <IconSettings size={20} />
       </ControlButton>
       
       <Divider orientation='vertical' mt={3} mb={3} />
@@ -156,7 +167,7 @@ export default function RtcControlBar() {
         color={['red', 5]}
         onClick={() => app._mutators.rtc.disconnect()}
       >
-        <PhoneX size={20} />
+        <IconPhoneX size={20} />
       </ControlButton>
     </Group>
   );

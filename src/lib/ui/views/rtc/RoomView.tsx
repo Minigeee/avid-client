@@ -15,7 +15,7 @@ import {
 } from '@mantine/core';
 import { useElementSize } from '@mantine/hooks';
 
-import { DotsVertical, Volume, Volume2, Volume3 } from 'tabler-icons-react';
+import { IconDotsVertical, IconVolume, IconVolume2, IconVolume3 } from '@tabler/icons-react';
 
 import SidePanelView from './SidePanelView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
@@ -119,15 +119,15 @@ function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
               })}
               onClick={(e) => { e.stopPropagation(); }}
             >
-              <DotsVertical size={20} />
+              <IconDotsVertical size={20} />
             </ActionIcon>
           </Popover.Target>
 
           <Popover.Dropdown onClick={(e) => { e.stopPropagation(); }}>
             <Group noWrap>
-              {volume >= 50 && <Volume size={24} />}
-              {volume > 0 && volume < 50 && <Volume2 size={24} />}
-              {volume === 0 && <Volume3 size={24} />}
+              {volume >= 50 && <IconVolume size={24} />}
+              {volume > 0 && volume < 50 && <IconVolume2 size={24} />}
+              {volume === 0 && <IconVolume3 size={24} />}
               <Slider
                 label={(value) => `${value}%`}
                 value={volume}

@@ -15,17 +15,17 @@ import {
   Transition,
 } from '@mantine/core';
 import {
-  ArrowIteration,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Folders,
-  LayoutKanban,
-  ListDetails,
-  Pencil,
-  Plus,
-  Tag
-} from 'tabler-icons-react';
+  IconArrowIteration,
+  IconChevronDown,
+  IconChevronRight,
+  IconClock,
+  IconFolders,
+  IconLayoutKanban,
+  IconListDetails,
+  IconPencil,
+  IconPlus,
+  IconTag
+} from '@tabler/icons-react';
 
 import KanbanView from './KanbanView';
 import ListView from './ListView';
@@ -281,7 +281,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
           data={Object.values(board.tags).map(x => ({ value: x.id, ...x }))}
           placeholder='Filter by tags'
           label='Filters'
-          icon={<Tag size={16} />}
+          icon={<IconTag size={16} />}
           value={filterTags}
           onChange={setFilterTags}
         />
@@ -347,7 +347,7 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
     return (
       <div ref={ref} {...others}>
         <Group spacing={3} align='center'>
-          {current && <ChevronRight size={18} style={{ marginLeft: -4, marginTop: 1 }} />}
+          {current && <IconChevronRight size={18} style={{ marginLeft: -4, marginTop: 1 }} />}
           <Text weight={600}>{label}</Text>
         </Group>
         {(start_date || end_date) && (
@@ -459,7 +459,7 @@ export default function BoardView(props: BoardViewProps) {
           <Select
             data={collectionSelections}
             itemComponent={GroupSelectItem}
-            rightSection={<ChevronDown size={24} />}
+            rightSection={<IconChevronDown size={24} />}
             size='md'
             styles={(theme) => ({
               input: {
@@ -491,18 +491,18 @@ export default function BoardView(props: BoardViewProps) {
               collection,
               onDelete: () => setCollectionId(config.app.board.default_backlog.id),
             })}>
-              <Pencil />
+              <IconPencil />
             </ActionIcon>
           )}
           <Menu width='20ch' position='bottom-start'>
             <Menu.Target>
               <ActionIcon size='lg' mt={4}>
-                <Plus />
+                <IconPlus />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                icon={<ArrowIteration size={20} />}
+                icon={<IconArrowIteration size={20} />}
                 onClick={() => openCreateTaskCollection({
                   board,
                   domain: props.domain,
@@ -513,7 +513,7 @@ export default function BoardView(props: BoardViewProps) {
                 New Cycle
               </Menu.Item>
               <Menu.Item
-                icon={<Folders size={19} />}
+                icon={<IconFolders size={19} />}
                 onClick={() => openCreateTaskCollection({
                   board,
                   domain: props.domain,
@@ -550,7 +550,7 @@ export default function BoardView(props: BoardViewProps) {
                 })()}
               </Text>
               <Box mt={6} mr={8} ml={6} sx={(theme) => ({ color: theme.colors.dark[2] })}>
-                <Clock size={32} />
+                <IconClock size={32} />
               </Box>
             </>
           )}
@@ -581,8 +581,8 @@ export default function BoardView(props: BoardViewProps) {
                 },
               })}>
               <Tabs.List>
-                <Tabs.Tab value='list' icon={<ListDetails size={18} />}>List</Tabs.Tab>
-                <Tabs.Tab value='kanban' icon={<LayoutKanban size={19} />}>Kanban</Tabs.Tab>
+                <Tabs.Tab value='list' icon={<IconListDetails size={18} />}>List</Tabs.Tab>
+                <Tabs.Tab value='kanban' icon={<IconLayoutKanban size={19} />}>Kanban</Tabs.Tab>
               </Tabs.List>
 
               <Tabs.Panel value='list' mt={16}>

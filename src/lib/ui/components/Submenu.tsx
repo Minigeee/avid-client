@@ -1,7 +1,7 @@
 import { PropsWithChildren } from 'react';
 
 import { MantineColor, Menu, Popover, PopoverDropdownProps, PopoverProps, ScrollArea } from '@mantine/core';
-import { ChevronRight } from 'tabler-icons-react';
+import { IconChevronRight } from '@tabler/icons-react';
 
 import { merge } from 'lodash';
 
@@ -46,12 +46,12 @@ export default function Submenu(props: SubmenuProps) {
           closeMenuOnClick={false}
           icon={props.icon}
           color={props.color}
-          rightSection={<ChevronRight size={16} />}
+          rightSection={<IconChevronRight size={16} />}
           sx={(theme) => ({
             alignItems: 'start',
             paddingBottom: '0.5rem',
 
-            '.icon-tabler-chevron-right': {
+            '.tabler-icon-chevron-right': {
               color: theme.colors.dark[2],
             },
           })}

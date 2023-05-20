@@ -30,7 +30,13 @@ import { DatePickerInput, DatePickerInputProps } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { closeAllModals, ContextModalProps, openConfirmModal } from '@mantine/modals';
 
-import { CalendarEvent, DotsVertical, FileDatabase, Hash, Trash } from 'tabler-icons-react';
+import {
+  IconCalendarEvent,
+  IconDotsVertical,
+  IconFileDatabase,
+  IconHash,
+  IconTrash
+} from '@tabler/icons-react';
 
 import MemberInput from '@/lib/ui/components/MemberInput';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
@@ -482,7 +488,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
 
         <DueDatePicker
           placeholder='None'
-          icon={<CalendarEvent size={19} />}
+          icon={<IconCalendarEvent size={19} />}
           clearable
           sx={{ maxWidth: config.app.ui.med_input_width }}
           {...form.getInputProps('due_date')}
@@ -673,14 +679,14 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                 <Menu shadow='lg' width={200} position='bottom-end'>
                   <Menu.Target>
                     <ActionIcon size='lg' radius={3} sx={(theme) => ({ color: theme.colors.dark[1] })}>
-                      <DotsVertical size={20} />
+                      <IconDotsVertical size={20} />
                     </ActionIcon>
                   </Menu.Target>
 
                   <Menu.Dropdown>
                     <Menu.Item
                       color='red'
-                      icon={<Trash size={16} />}
+                      icon={<IconTrash size={16} />}
                       onClick={() => {
                         openConfirmModal({
                           title: 'Delete Task',
@@ -908,7 +914,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
 
             <DueDatePicker
               placeholder='None'
-              icon={<CalendarEvent size={19} />}
+              icon={<IconCalendarEvent size={19} />}
               clearable
               sx={{ maxWidth: config.app.ui.med_input_width }}
               {...form.getInputProps('due_date')}

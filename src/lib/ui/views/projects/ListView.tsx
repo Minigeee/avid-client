@@ -19,8 +19,16 @@ import {
 } from '@mantine/core';
 import { closeAllModals, openConfirmModal } from '@mantine/modals';
 
-import { IconFolderSymlink, IconUserPlus } from '@tabler/icons-react';
-import { ChevronDown, ChevronRight, Plus, StatusChange, Tag, Trash } from 'tabler-icons-react';
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFolderSymlink,
+  IconPlus,
+  IconStatusChange,
+  IconTag,
+  IconTrash,
+  IconUserPlus
+} from '@tabler/icons-react';
 
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
 import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
@@ -183,7 +191,7 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
 
       <Submenu
         label='Change status'
-        icon={<StatusChange size={16} />}
+        icon={<IconStatusChange size={16} />}
         dropdownProps={{
           sx: { minWidth: '10rem' },
         }}
@@ -201,7 +209,7 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
       <Menu.Divider />
       <Menu.Item
         color='red'
-        icon={<Trash size={16} />}
+        icon={<IconTrash size={16} />}
         onClick={() => {
           openConfirmModal({
             title: 'Delete Task',
@@ -320,7 +328,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               },
             },
           }}
-          sortIcon={<ChevronDown size={10} style={{ marginTop: '5px', marginLeft: '1px' }} />}
+          sortIcon={<IconChevronDown size={10} style={{ marginTop: '5px', marginLeft: '1px' }} />}
 
           columns={[
             {
@@ -454,7 +462,7 @@ function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                     }
                   }}
                 >
-                  <Plus size={19} />
+                  <IconPlus size={19} />
                 </ActionIcon>
               ),
               grow: 0,

@@ -10,7 +10,7 @@ import {
 } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
 
-import { ChevronDown, Copy, Settings } from 'tabler-icons-react';
+import { IconChevronDown, IconCopy, IconSettings } from '@tabler/icons-react';
 
 import MainView from '@/lib/ui/views/main/MainView';
 
@@ -65,13 +65,13 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
               backgroundColor: theme.colors.dark[6],
             }
           })}>
-            <ChevronDown size={22} />
+            <IconChevronDown size={22} />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
-          <Menu.Item icon={<Settings size={16} />} disabled>Settings</Menu.Item>
-          <Menu.Item icon={<Copy size={16} />} onClick={() =>
+          <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
+          <Menu.Item icon={<IconCopy size={16} />} onClick={() =>
             clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}?inviter=${session.profile_id.split(':')[1]}`)
           }>
             Copy Invite URL

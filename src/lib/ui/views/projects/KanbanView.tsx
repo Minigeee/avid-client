@@ -20,13 +20,13 @@ import {
 } from '@mantine/core';
 
 import {
-  ChevronDown,
-  GitMerge,
-  Plus,
-  Search,
-  Subtask,
-  Tag,
-} from 'tabler-icons-react';
+  IconChevronDown,
+  IconGitMerge,
+  IconPlus,
+  IconSearch,
+  IconSubtask,
+  IconTag,
+} from '@tabler/icons-react';
 
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
@@ -102,7 +102,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   cursor: 'default'
                 })}>
                   <Text size='sm'>{task.subtasks.length}</Text>
-                  <Subtask size={15} style={{ marginTop: '2px' }} />
+                  <IconSubtask size={15} style={{ marginTop: '2px' }} />
                 </Group>
               </Tooltip>
             )}
@@ -119,7 +119,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   cursor: 'default'
                 })}>
                   <Text size='sm'>{task.dependencies.length}</Text>
-                  <GitMerge size={15} style={{ marginTop: '2px' }} />
+                  <IconGitMerge size={15} style={{ marginTop: '2px' }} />
                 </Group>
               </Tooltip>
             )}
@@ -241,7 +241,7 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
                 });
               }}
             >
-              <Plus size={19} />
+              <IconPlus size={19} />
             </ActionIcon>
           </Flex>
 

@@ -17,7 +17,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { ContextModalProps, closeAllModals, openConfirmModal } from '@mantine/modals';
 
-import { CalendarEvent, Trash } from 'tabler-icons-react';
+import { IconCalendarEvent, IconTrash } from '@tabler/icons-react';
 
 import RichTextEditor from '../components/rte/RichTextEditor';
 
@@ -123,7 +123,7 @@ export function CreateTaskCollection({ context, id, innerProps: props }: Context
             <DatePickerInput
               label='Start Date'
               placeholder='None'
-              icon={<CalendarEvent size={19} />}
+              icon={<IconCalendarEvent size={19} />}
               popoverProps={{ withinPortal: true }}
               clearable
               required
@@ -148,7 +148,7 @@ export function CreateTaskCollection({ context, id, innerProps: props }: Context
                   return `This cycle lasts ${diff} day${diff === 1 ? '' : 's'}`;
                 })()}
                 placeholder='None'
-                icon={<CalendarEvent size={19} />}
+                icon={<IconCalendarEvent size={19} />}
                 popoverProps={{ withinPortal: true }}
                 clearable
                 required
@@ -284,7 +284,7 @@ export function EditTaskCollection({ context, id, innerProps: props }: ContextMo
             <DatePickerInput
               label='Start Date'
               placeholder='None'
-              icon={<CalendarEvent size={19} />}
+              icon={<IconCalendarEvent size={19} />}
               popoverProps={{ withinPortal: true }}
               clearable
               sx={{ maxWidth: config.app.ui.med_input_width }}
@@ -308,7 +308,7 @@ export function EditTaskCollection({ context, id, innerProps: props }: ContextMo
                   return `This cycle lasts ${diff} day${diff === 1 ? '' : 's'}`;
                 })()}
                 placeholder='None'
-                icon={<CalendarEvent size={19} />}
+                icon={<IconCalendarEvent size={19} />}
                 popoverProps={{ withinPortal: true }}
                 clearable
                 minDate={form.values.start_date || undefined}
@@ -351,7 +351,7 @@ export function EditTaskCollection({ context, id, innerProps: props }: ContextMo
         <Group spacing='xs' mt={16}>
           <Button
             color='red'
-            leftIcon={<Trash size={18} />}
+            leftIcon={<IconTrash size={18} />}
             onClick={() => {
               openConfirmModal({
                 title: `Delete ${isCycle ? 'Cycle' : 'Collection'}`,

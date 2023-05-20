@@ -15,12 +15,12 @@ import { openConfirmModal } from '@mantine/modals';
 import { useForm } from '@mantine/form';
 
 import {
-  Bell,
-  DotsVertical,
-  Pencil,
-  Settings,
-  Trash,
-} from 'tabler-icons-react';
+  IconBell,
+  IconDotsVertical,
+  IconPencil,
+  IconSettings,
+  IconTrash,
+} from '@tabler/icons-react';
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
@@ -126,7 +126,7 @@ function SingleChannel(props: SingleChannelProps) {
                     e.stopPropagation();
                   }) as MouseEventHandler<HTMLButtonElement>}
                 >
-                  <DotsVertical size={16} />
+                  <IconDotsVertical size={16} />
                 </ActionIcon>
               </Menu.Target>
 
@@ -136,9 +136,9 @@ function SingleChannel(props: SingleChannelProps) {
                   setShowMenu(false);
                 }}>
                 <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
-                <Menu.Item icon={<Settings size={16} />} disabled>Settings</Menu.Item>
-                <Menu.Item icon={<Bell size={16} />} disabled>Notifications</Menu.Item>
-                <Menu.Item icon={<Pencil size={16} />} onClick={() => {
+                <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
+                <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
+                <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
                   // Reset form value to channel name
                   form.setFieldValue('name', props.channel.name);
                   setRenaming(true);
@@ -147,7 +147,7 @@ function SingleChannel(props: SingleChannelProps) {
                 <Menu.Divider />
                 <Menu.Item
                   color='red'
-                  icon={<Trash size={16} />}
+                  icon={<IconTrash size={16} />}
                   onClick={() => {
                     openConfirmModal({
                       title: 'Delete Channel',

@@ -22,10 +22,11 @@ import {
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 import {
-  ChevronsDown,
-  Paperclip,
-  Pencil, PencilPlus, Plus, Send,
-} from 'tabler-icons-react';
+  IconChevronsDown,
+  IconPaperclip,
+  IconPencilPlus,
+  IconSend,
+} from '@tabler/icons-react';
 
 import ActionButton from '@/lib/ui/components/ActionButton';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
@@ -291,7 +292,7 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
           })}
           onClick={scrollToBottom}
         >
-          <ChevronsDown />
+          <IconChevronsDown />
         </ActionButton>
       )}
     </>
@@ -378,7 +379,7 @@ function TextEditor(props: TextEditorProps) {
             sx={(theme) => ({ color: theme.colors.dark[1] })}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Paperclip size={useFormattedEditor ? 19 : 17} />
+            <IconPaperclip size={useFormattedEditor ? 19 : 17} />
           </ActionButton>
 
           {useFormattedEditor ? (
@@ -388,7 +389,7 @@ function TextEditor(props: TextEditorProps) {
               variant='transparent'
               onClick={onMessageSubmit}
             >
-              <Send size={20} />
+              <IconSend size={20} />
             </ActionButton>
           ) : (
             <ActionButton
@@ -398,7 +399,7 @@ function TextEditor(props: TextEditorProps) {
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => setUseFormattedEditor(true)}
             >
-              <PencilPlus size={18} />
+              <IconPencilPlus size={18} />
             </ActionButton>
           )}
         </Group>
