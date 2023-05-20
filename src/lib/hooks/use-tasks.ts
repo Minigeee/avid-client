@@ -128,10 +128,10 @@ function tasksMutators(board_id: string) {
 			 * 
 			 * @param task_id The string id of the task to update
 			 * @param task A task object with updated properties
-			 * @param domain_id The domain the task is being added to retrieve assignee data
+			 * @param optimistic Indicates if optimistic update should be performed
 			 * @returns A board object with the updated task
 			 */
-			updateTask: (task_id: string, task: Partial<ExpandedTask>) => mutate(
+			updateTask: (task_id: string, task: Partial<ExpandedTask>, optimistic: boolean = false) => mutate(
 				swrErrorWrapper(async (tasks: ExpandedTask[]) => {
 					if (task.id !== undefined) delete task.id;
 					if (task.sid !== undefined) delete task.sid;
@@ -170,7 +170,20 @@ function tasksMutators(board_id: string) {
 
 					return copy;
 				}, { message: 'An error occurred while modifying task' }),
-				{ revalidate: false }
+				{
+					optimisticData: optimistic ? (tasks) => {
+						if (!tasks) return [];
+
+						// Find index
+						const idx = tasks.findIndex(x => x.id === task_id);
+						if (idx < 0) return [];
+
+						const copy = tasks.slice();
+						copy[idx] = { ...copy[idx], ...task };
+						return copy;
+					} : undefined,
+					revalidate: false,
+				}
 			),
 
 			/**

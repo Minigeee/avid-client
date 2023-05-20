@@ -135,7 +135,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                 return (
                   <Box sx={{
                     padding: '1px 11px 2px 11px',
-                    backgroundColor: tag.color,
+                    backgroundColor: tag.color || 'gray',
                     borderRadius: 15,
                     cursor: 'default',
                   }}>

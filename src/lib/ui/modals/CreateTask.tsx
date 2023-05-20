@@ -57,6 +57,7 @@ import {
 
 import moment from 'moment';
 import { v4 as uuid } from 'uuid';
+import assert from 'assert';
 
 
 ////////////////////////////////////////////////////////////
@@ -273,7 +274,7 @@ function useTaskHooks(board: BoardWrapper<false>) {
     if (!board._exists) return [];
 
     // Get existing tags
-    const existing = Object.entries(board.tags).map(x => ({ value: x[0], ...x[1] }));
+    const existing = board.tags.map(x => ({ value: x.id, ...x }));
 
     // Get created tags
     const created = Object.entries(createdTags).map(x => ({ value: x[0], ...x[1] }));
@@ -320,14 +321,15 @@ async function updateTags(values: FormValues, created: Record<string, Label>, ov
     });
 
     // Generate id map (maps old temp ids to new assigned ones)
-    const newTags = Object.entries(newBoard?.tags || {});
+    const newTags = newBoard?.tags || [];
     const newIdMap: Record<string, string | undefined> = {};
     for (const [k, v] of Object.entries(createdTags)) {
       // Find the corresponding created tag in the new board
-      const newTag = newTags.find(x => x[1].label === v.label && x[1].color === v.color);
+      const newTag = newTags.find(x => x.label === v.label && x.color === v.color);
 
       // Add id to map
-      newIdMap[k] = newTag?.[0];
+      assert(newTag !== undefined);
+      newIdMap[k] = newTag.id;
     }
 
     // Return remapped tag id list
