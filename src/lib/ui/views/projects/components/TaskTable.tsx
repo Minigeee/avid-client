@@ -29,7 +29,6 @@ import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import MemberInput from '@/lib/ui/components/MemberInput';
-import Submenu from '@/lib/ui/components/Submenu';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
 import { GroupableFields } from '../BoardView';
 
@@ -70,6 +69,7 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
 ////////////////////////////////////////////////////////////
 type ContextMenuData = {
   task: ExpandedTask | null;
+  selected?: ExpandedTask[];
 };
 
 ////////////////////////////////////////////////////////////
@@ -82,16 +82,34 @@ type DataTableContextMenuProps = {
   statuses: Record<string, Label & { index: number }>;
 
   task: ExpandedTask | null;
+  selected?: ExpandedTask[];
+  clear?: () => void;
 };
 
 ////////////////////////////////////////////////////////////
-function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuProps) {
+function DataTableContextMenu({ board, task, selected, ...props }: DataTableContextMenuProps) {
   const [assignee, setAssignee] = useState<Member | null>(task?.assignee || null);
+  const [origAssignee, setOrigAssignee] = useState<Member | null | undefined>(task?.assignee || null);
 
   // Reset whenever task changes
   useEffect(() => {
-    if (!task) return;
-    setAssignee(task.assignee || null);
+    let orig: Member | null | undefined = null;
+
+    if (selected?.length) {
+      // Choose one that all have
+      orig = selected[0].assignee || null;
+      for (let i = 1; i < selected.length; ++i) {
+        if ((selected[i].assignee || null) !== orig) {
+          orig = undefined;
+          break;
+        }
+      }
+    }
+    else if (task)
+      orig = task.assignee || null;
+      
+    setAssignee(orig || null);
+    setOrigAssignee(orig);
   }, [task?.id]);
 
   // Collection selections
@@ -103,17 +121,30 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
     );
   }, [board.collections]);
 
+  // Update function
+  function updateHandler(update: Partial<ExpandedTask>) {
+    return () => {
+      if (selected?.length) {
+        props.tasksWrapper._mutators.updateTasks(selected.map(x => x.id), update, true);
+        props.clear?.();
+      }
+      else if (task)
+        props.tasksWrapper._mutators.updateTask(task.id, update, true);
+    };
+  }
 
-  if (!task) {
+
+  if (!task && !selected?.length) {
     return null;
   }
 
   return (
     <>
-      <Menu.Label>{board.prefix}-{task.sid}</Menu.Label>
+      <Menu.Label>{selected?.length ? `${selected.length} SELECTED TASK${selected.length > 1 ? 'S' : ''}` : `${board.prefix}-${task?.sid}`}</Menu.Label>
 
       {board.collections.length > 1 && (
-        <Submenu
+        <ContextMenu.Submenu
+          id='move-to'
           label='Move to'
           icon={<IconFolderSymlink size={16} />}
           dropdownProps={{
@@ -121,7 +152,7 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
           }}
         >
           {collectionSelections.map((c) => c.id !== props.collection ? (
-            <Menu.Item onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { collection: c.id }, true)}>
+            <Menu.Item onClick={updateHandler({ collection: c.id })}>
               <Stack spacing={6}>
                 <Text inline weight={600} size='sm'>{c.name}</Text>
                 {(c.start_date || c.end_date) && (
@@ -132,10 +163,11 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
               </Stack>
             </Menu.Item>
           ) : null)}
-        </Submenu>
+        </ContextMenu.Submenu>
       )}
       
-      <Submenu
+      <ContextMenu.Submenu
+        id='assign-to'
         label='Assign to'
         icon={<IconUserPlus size={16} />}
         dropdownProps={{
@@ -155,49 +187,56 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
         <Button
           variant='gradient'
           fullWidth
-          disabled={assignee?.id === task.assignee?.id}
+          disabled={origAssignee !== undefined && assignee?.id === origAssignee?.id}
           mt={16}
-          onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { assignee }, true)}
+          // @ts-ignore
+          onClick={updateHandler({ assignee })}
+          component={Menu.Item}
         >
           Assign
         </Button>
-      </Submenu>
+      </ContextMenu.Submenu>
 
       <Menu.Divider />
 
-      {task.status === 'todo' && (
-        <Menu.Item
-          icon={<ColorSwatch color={props.statuses['in-progress'].color || ''} size={16} />}
-          onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: 'in-progress' }, true)}
-        >
-          Mark as <b>{props.statuses['in-progress'].label}</b>
-        </Menu.Item>
-      )}
-      {task.status === 'in-progress' && (
-        <Menu.Item
-          icon={<ColorSwatch color={props.statuses['completed'].color || ''} size={16} />}
-          onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: 'completed' }, true)}
-        >
-          Mark as <b>{props.statuses['completed'].label}</b>
-        </Menu.Item>
+      {task && !selected?.length && (
+        <>
+          {task.status === 'todo' && (
+            <Menu.Item
+              icon={<ColorSwatch color={props.statuses['in-progress'].color || ''} size={16} />}
+              onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: 'in-progress' }, true)}
+            >
+              Mark as <b>{props.statuses['in-progress'].label}</b>
+            </Menu.Item>
+          )}
+          {task.status === 'in-progress' && (
+            <Menu.Item
+              icon={<ColorSwatch color={props.statuses['completed'].color || ''} size={16} />}
+              onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: 'completed' }, true)}
+            >
+              Mark as <b>{props.statuses['completed'].label}</b>
+            </Menu.Item>
+          )}
+        </>
       )}
 
-      <Submenu
+      <ContextMenu.Submenu
+        id='change-status'
         label='Change status'
         icon={<IconStatusChange size={16} />}
         dropdownProps={{
           sx: { minWidth: '10rem' },
         }}
       >
-        {Object.entries(props.statuses).map(([status_id, status]) => status_id !== task.status ? (
+        {Object.entries(props.statuses).map(([status_id, status]) => selected?.length || (task && status_id !== task.status) ? (
           <Menu.Item
             icon={<ColorSwatch color={status.color || ''} size={16} />}
-            onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: status_id }, true)}
+            onClick={updateHandler({ status: status_id })}
           >
             {status.label}
           </Menu.Item>
         ) : null)}
-      </Submenu>
+      </ContextMenu.Submenu>
 
       <Menu.Divider />
       <Menu.Item
@@ -209,7 +248,7 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
             labels: { cancel: 'Cancel', confirm: 'Delete' },
             children: (
               <p>
-                Are you sure you want to delete <b>{board.prefix}-{task.sid}</b>?
+                Are you sure you want to delete <b>{selected?.length || `${board.prefix}-${task?.sid}`}</b>{selected?.length ? ' tasks' : ''}?
               </p>
             ),
             groupProps: {
@@ -220,7 +259,8 @@ function DataTableContextMenu({ board, task, ...props }: DataTableContextMenuPro
               color: 'red',
             },
             onConfirm: () => {
-              props.tasksWrapper._mutators.removeTask(task.id);
+              if (task || selected?.length)
+                props.tasksWrapper._mutators.removeTasks(selected?.length ? selected.map(x => x.id) : [task?.id || '']);
               closeAllModals();
             }
           })
@@ -256,6 +296,9 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
 
   // The task currently being hovered
   const [hovered, setHovered] = useState<ExpandedTask | null>(null);
+  // Tasks that are selected
+  const [selected, setSelected] = useState<ExpandedTask[]>([]);
+  const [toggleCleared, setToggleCleared] = useState<boolean>(false);
 
   // Minimize times columns are reconstructed
   const columns = useMemo(() => ([
@@ -414,8 +457,15 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
     <ContextMenu
       width='15rem'
     >
-      <ContextMenu.Dropdown>
-        {({ task }: ContextMenuData) => task ? (
+      <ContextMenu.Dropdown dependencies={[
+        board,
+        props.domain,
+        props.collection,
+        props.tasksWrapper,
+        props.statuses,
+        toggleCleared,
+      ]}>
+        {({ task, selected }: ContextMenuData) => (
           <DataTableContextMenu
             board={board}
             domain={props.domain}
@@ -424,14 +474,21 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             statuses={props.statuses}
 
             task={task}
+            selected={selected}
+            clear={() => {
+              setToggleCleared(!toggleCleared);
+              setSelected([]);
+            }}
           />
-        ) : null}
+        )}
       </ContextMenu.Dropdown>
 
       <ContextMenu.Trigger
         context={{
-          task: hovered
+          task: hovered,
+          selected: selected,
         } as ContextMenuData}
+        disabled={!hovered && !selected.length}
         style={{ marginBottom: '2.5rem' }}
       >
         <DataTable
@@ -510,7 +567,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             noData: {
               style: {
                 height: '10rem',
-                color: theme.colors.dark[3],
+                color: theme.colors.dark[2],
                 backgroundColor: theme.colors.dark[8],
                 borderRadius: 6,
               },
@@ -547,10 +604,12 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
 
           noDataComponent='There are no tasks to display'
 
-          /* selectableRows
+          selectableRows
           // @ts-ignore
           selectableRowsComponent={CustomCheckbox}
-          selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }} */
+          selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }}
+          onSelectedRowsChange={({ selectedRows }) => setSelected(selectedRows)}
+          clearSelectedRows={toggleCleared}
         />
       </ContextMenu.Trigger>
     </ContextMenu>

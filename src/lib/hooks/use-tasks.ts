@@ -144,7 +144,7 @@ function tasksMutators(board_id: string) {
 					const statusUpdated = task.status && task.status !== tasks.find(x => x.id === task_id)?.status;
 
 					// Update task
-					const results = await query<Task[]>(
+					const results = await query<(Task & { _domain: string })[]>(
 						sql.update<Task>(task_id, {
 							content: {
 								..._sanitize(task),
@@ -152,17 +152,22 @@ function tasksMutators(board_id: string) {
 								time_updated: now,
 								time_status_updated: statusUpdated ? now : undefined,
 							},
+							return: ['*', 'board.domain AS _domain'],
 						}),
 						{ session }
 					);
 					assert(results && results.length > 0);
+
+					// Get assignee
+					const assignee = results[0].assignee ? await getMember(results[0]._domain, results[0].assignee, session) : null;
 
 					// Create new updated task list
 					const copy = tasks.slice();
 					const index = copy.findIndex(x => x.id === task_id);
 					copy[index] = _sanitize({
 						...results[0],
-						assignee: task.assignee,
+						assignee,
+						_domain: undefined,
 					});
 
 					// Mutate task hook
@@ -176,7 +181,7 @@ function tasksMutators(board_id: string) {
 
 						// Find index
 						const idx = tasks.findIndex(x => x.id === task_id);
-						if (idx < 0) return [];
+						if (idx < 0) return tasks;
 
 						const copy = tasks.slice();
 						copy[idx] = { ...copy[idx], ...task };
@@ -187,23 +192,111 @@ function tasksMutators(board_id: string) {
 			),
 
 			/**
-			 * Remove a task from the board object
+			 * Update a list of tasks object within the board with the same data
 			 * 
-			 * @param task_id The string id of the task to remove
+			 * @param task_ids A list of task ids to update
+			 * @param task A task object with updated properties
+			 * @param optimistic Indicates if optimistic update should be performed
+			 * @returns A board object with the updated tasks
+			 */
+			updateTasks: (task_ids: string[], task: Partial<ExpandedTask>, optimistic: boolean = false) => mutate(
+				swrErrorWrapper(async (tasks: ExpandedTask[]) => {
+					if (task.id !== undefined) delete task.id;
+					if (task.sid !== undefined) delete task.sid;
+					if (task.board !== undefined) delete task.board;
+
+					// Time the task is updated
+					const now = new Date().toISOString();
+
+					// Extract status value for sql update
+					const newStatus = task.status;
+
+					// Update task
+					const results = await query<[Task[], Board[]]>(sql.multi([
+						sql.update<Task>(task_ids, {
+							content: {
+								..._sanitize(task),
+								assignee: task.assignee === null ? null : task.assignee?.id,
+								time_updated: now,
+								time_status_updated: sql.fn<Task>(function () {
+									return newStatus && newStatus !== this.status ? now : this.time_status_updated;
+								}, { newStatus, now }),
+							},
+						}),
+						sql.select<Board>(['domain'], { from: board_id }),
+					]), { session, complete: true }
+					);
+					assert(results);
+
+					const newTasks = results[0];
+					const { domain } = results[1][0];
+			
+					// Get map of assignees
+					const assignees: Record<string, Member | null> = {};
+					for (const task of newTasks) {
+						if (task.assignee)
+							assignees[task.assignee] = null;
+					}
+			
+					// Get members
+					const members = await getMembers(domain, Object.keys(assignees), session);
+					for (const member of members)
+						assignees[member.id] = member;
+
+					// Map of tasks that are updated
+					const updatedTasks: Record<string, ExpandedTask> = {};
+					for (const updated of newTasks) {
+						updatedTasks[updated.id] = {
+							...updated,
+							assignee: updated.assignee ? assignees[updated.assignee] : null,
+						};
+					}
+
+					// Mutate task hooks
+					for (const [id, x] of Object.entries(updatedTasks))
+						_mutate(id, x, { revalidate: false });
+
+					// Create new updated task list
+					const newList = tasks.map(x => updatedTasks[x.id] || x);
+
+					return newList;
+				}, { message: 'An error occurred while modifying task' }),
+				{
+					optimisticData: optimistic ? (tasks) => {
+						if (!tasks) return [];
+
+						// Make set of ids updated
+						const ids = new Set<string>(task_ids);
+
+						// Create new updated task list
+						const newList = tasks.map(x => ids.has(x.id) ? { ...x, ...task } : x);
+
+						return newList;
+					} : undefined,
+					revalidate: false,
+				}
+			),
+
+			/**
+			 * Remove a list of tasks from the board object
+			 * 
+			 * @param task_ids A list of tasks to remove
 			 * @returns The new board object
 			 */
-			removeTask: (task_id: string) => mutate(
+			removeTasks: (task_ids: string[]) => mutate(
 				swrErrorWrapper(async (tasks: ExpandedTask[]) => {
 					// Send delete task
-					await query(sql.delete(task_id), { session });
+					await query(sql.delete(task_ids), { session });
 
-					return tasks.filter(x => x.id !== task_id);
-				}, { message: 'An error occurred while deleting task' }),
+					const ids = new Set<string>(task_ids);
+					return tasks.filter(x => !ids.has(x.id));
+				}, { message: 'An error occurred while deleting tasks' }),
 				{
 					revalidate: false,
 					rollbackOnError: true,
 					optimisticData: (tasks) => {
-						return tasks?.filter(x => x.id !== task_id) || [];
+						const ids = new Set<string>(task_ids);
+						return tasks?.filter(x => !ids.has(x.id)) || [];
 					}
 				}
 			),

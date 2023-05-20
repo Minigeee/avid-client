@@ -201,7 +201,7 @@ type _SqlUpdateBaseOptions<T extends object> = {
 	/** Update condition */
 	where?: string;
 	/** Return mode */
-	return?: SqlReturn | Selectables<T>[];
+	return?: SqlReturn | (Selectables<T> | (string & {}))[];
 };
 
 type _SqlUpdateContentOptions<T extends object> = {
@@ -391,8 +391,8 @@ export const sql = {
 	},
 
 	/** Update statement */
-	update: <T extends object>(record: string, options: SqlUpdateOptions<T>) => {
-		let q = `UPDATE ${record} `;
+	update: <T extends object>(records: string | string[], options: SqlUpdateOptions<T>) => {
+		let q = `UPDATE ${typeof records === 'string' ? records : records.join(',')} `;
 
 		// Check if SET should be used
 		if ((options as _SqlUpdateSetOptions<T>).set) {

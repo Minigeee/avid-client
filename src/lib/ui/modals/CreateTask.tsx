@@ -705,7 +705,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                           },
                           onConfirm: () => {
                             if (!tasks._exists || !task._exists) return;
-                            tasks._mutators.removeTask(task.id);
+                            tasks._mutators.removeTasks([task.id]);
                             closeAllModals();
                           }
                         })
