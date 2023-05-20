@@ -259,7 +259,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
     return grouped;
 
-  }, [props.tasks, filterTags, grouper]);
+  }, [props.tasks.data, filterTags, grouper, props.collection]);
 
 
   return (

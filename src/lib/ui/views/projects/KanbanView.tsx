@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import assert from 'assert';
 
 import {
@@ -181,6 +181,8 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
   );
 }
 
+const MemoTaskCard = memo(TaskCard);
+
 
 ////////////////////////////////////////////////////////////
 type KanbanProps = {
@@ -259,7 +261,7 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
                 {...provided.droppableProps}
               >
                 {tasks && tasks[status.id]?.map((task, j) => (
-                  <TaskCard
+                  <MemoTaskCard
                     task={task}
                     prefix={board?.prefix || ''}
                     tags={props.tagMap}
@@ -310,8 +312,6 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
 
   // Tag map
   const tagMap = useMemo<Record<string, Label>>(() => {
-    console.log('rerender')
-
     const map: Record<string, Label> = {};
     for (const tag of board.tags)
       map[tag.id] = tag;

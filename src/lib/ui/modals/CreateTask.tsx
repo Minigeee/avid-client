@@ -379,7 +379,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       due_date: props.due_date ? new Date(props.due_date) : null,
       assignee: props.assignee || null,
       collection: props.collection || config.app.board.default_backlog.id,
-      tags: props.tag !== undefined ? [props.tag] : [],
+      tags: props.tag !== undefined ? [props.tag.trim()] : [],
     } as FormValues,
   });
 
