@@ -11,6 +11,8 @@ export type ChannelData<Type extends ChannelTypes> =
 	Type extends 'rtc' ? {
 		/** Maximum number of participants that can join an rtc channel */
 		max_participants: number;
+		/** Current participants (ids) in the room */
+		participants: string[];
 	} :
 	Type extends 'board' ? {
 		/** The id of the board */

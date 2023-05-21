@@ -118,7 +118,10 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
     let options: ChannelOptions<ChannelTypes> | undefined;
 
     if (type === 'rtc') {
-      data = { max_participants: form.values.rtc_max_participants };
+      data = {
+        max_participants: form.values.rtc_max_participants,
+        participants: [],
+      };
     }
     else if (type === 'board') {
       options = { prefix: form.values.board_prefix };

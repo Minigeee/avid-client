@@ -80,16 +80,39 @@ export async function addChannel<T extends ChannelTypes>(channel: Partial<Channe
  * any special operations required for each channel type.
  * 
  * @param channel_id The id of the channel to remove
+ * @param type The channel type, required to determine the correct delete actions
  * @param session The session used to access database
- * @returns The new domain object
  */
-export async function removeChannel(channel_id: string, session: SessionState) {
-	// Delete channel, while taking any extra actions necessary
-	await query(sql.transaction([
-		sql.let('$channel', sql.delete(channel_id, { return: 'BEFORE' })),
-		sql.delete(sql.if({
-			cond: '$channel.type = "board"',
-			body: '$channel.data.board',
-		})),
-	]), { session });
+export async function removeChannel(channel_id: string, type: ChannelTypes, session: SessionState) {
+	let str = '';
+
+	// Board
+	if (type === 'board') {
+		str = sql.transaction([
+			sql.let('$channel', sql.delete(channel_id, { return: 'BEFORE' })),
+			sql.delete('$channel.data.board'),
+		]);
+	}
+
+	// Default
+	else {
+		str = sql.delete(channel_id);
+	}
+
+	// Execute query
+	await query(str, { session });
+}
+
+
+/**
+ * Retrieve a channel from the database
+ * 
+ * @param channel_id The channel to retrieve
+ * @param session The session used to access database
+ * @returns The channel object
+ */
+export async function getChannel<T extends ChannelTypes = ChannelTypes>(channel_id: string, session?: SessionState) {
+	const results = await query<Channel<T>[]>(sql.select('*', { from: channel_id }), { session });
+	assert(results && results.length);
+	return results[0];
 }

@@ -107,10 +107,12 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		removeChannel: (channel_id: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				if (!domain) return;
+				// Get channel type
+				const channel = domain.channels.find(x => x.id === channel_id);
+				if (!channel) return domain;
 
 				// Delete channel
-				await removeChannel(channel_id, session);
+				await removeChannel(channel_id, channel.type, session);
 
 				// Filter out channels that aren't removed
 				const channels = domain.channels.filter(x => x.id !== channel_id);

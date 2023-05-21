@@ -22,9 +22,9 @@ export interface Media_ServerToClientEvents {
 	'error': (message: string, status?: number) => void,
 
 	'config': (capabilities: any, producerConfig: any, consumerConfig: any) => void;
-	'joined': () => void;
+	'joined': (participant_ids: string[], callback: () => void) => void;
 	'make-consumer': (options: any, callback: (success: boolean) => void) => void;
-	'participant-joined': (participant_id: string, device: any) => void;
+	'participant-joined': (participant_id: string) => void;
 	'participant-left': (participant_id: string) => void;
 	'consumer-closed': (consumer_id: string) => void;
 	'consumer-paused': (consumer_id: string) => void;

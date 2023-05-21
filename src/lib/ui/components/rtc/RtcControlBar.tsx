@@ -129,9 +129,12 @@ export default function RtcControlBar() {
 
       <ControlButton
         tooltip={app.rtc?.is_mic_muted ? 'Unmute' : 'Mute'}
-        disabled={!app.rtc?.is_mic_enabled}
         onClick={() => {
-          if (app.rtc?.is_mic_muted)
+          // Enable if not enabled first
+          if (!app.rtc?.is_mic_enabled)
+            app._mutators.rtc.microphone.enable();
+            
+          else if (app.rtc?.is_mic_muted)
             app._mutators.rtc.microphone.unmute();
           else
             app._mutators.rtc.microphone.mute();
@@ -156,6 +159,7 @@ export default function RtcControlBar() {
 
       <ControlButton
         tooltip='Settings'
+        disabled
       >
         <IconSettings size={20} />
       </ControlButton>

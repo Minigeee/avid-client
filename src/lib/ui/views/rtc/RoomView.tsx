@@ -1,27 +1,45 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
   AspectRatio,
   Avatar,
   Box,
+  Button,
   Center,
+  Flex,
   Group,
   Popover,
   ScrollArea,
   Slider,
   Stack,
+  Switch,
   Text,
+  Title,
 } from '@mantine/core';
-import { useElementSize } from '@mantine/hooks';
 
-import { IconDotsVertical, IconVolume, IconVolume2, IconVolume3 } from '@tabler/icons-react';
+import {
+  IconHeadphones,
+  IconHeadphonesOff,
+  IconDotsVertical,
+  IconMicrophone,
+  IconMicrophoneOff,
+  IconPhoneX,
+  IconScreenShare,
+  IconScreenShareOff,
+  IconSettings,
+  IconVideo,
+  IconVolume,
+  IconVolume2,
+  IconVolume3,
+} from '@tabler/icons-react';
 
 import SidePanelView from './SidePanelView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
+import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
 import { AppState } from '@/lib/contexts';
-import { getMembers } from '@/lib/db';
+import { getChannel, getMembers } from '@/lib/db';
 import {
   DomainWrapper,
   useApp,
@@ -95,11 +113,11 @@ function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
                 height: '100%',
               }}
             />
-            <Text size={Math.max(props.textSize * 0.8, 15)} sx={(theme) => ({
+            <Text size={Math.max(props.textSize * 0.6, 15)} weight={600} sx={(theme) => ({
               position: 'absolute',
               left: 2,
               bottom: 2,
-              padding: '1px 6px 1px 6px',
+              padding: '0.1rem 0.5rem 0.1rem 0.5rem',
               borderRadius: 3,
               backgroundColor: theme.colors.dark[9] + '80',
             })}>
@@ -153,22 +171,132 @@ type RoomViewProps = {
 }
 
 ////////////////////////////////////////////////////////////
-export default function RoomView(props: RoomViewProps) {
-  const app = useApp();
+type SubviewProps = RoomViewProps & {
+  app: AppState;
+};
+
+
+////////////////////////////////////////////////////////////
+function JoinScreen({ app, ...props }: SubviewProps) {
   const session = useSession();
 
-  const { ref: viewportRef, height: viewportHeight } = useElementSize();
+  const [loading, setLoading] = useState<boolean>(false);
 
+  // Load channel data directly (need latest data always)
+  const [participants, setParticipants] = useState<Member[] | null>(null);
   useEffect(() => {
-    // If domain provided, it must be loaded
-    if (props.domain && !props.domain._exists) return;
-
-    // Connect to room if not connected
-    if (!app.rtc?.joined || app.rtc?.room_id !== props.channel.id) {
-      // Connect
-      app._mutators.rtc.connect(props.channel.id, props.domain.id);
-    }
+    getChannel<'rtc'>(props.channel.id, session)
+      .then((channel) => {
+        const filtered = channel.data?.participants.filter(x => x !== session.profile_id);
+        return filtered ? getMembers(props.domain.id, filtered, session) : [];
+      })
+      .then(setParticipants);
   }, []);
+
+  return (
+    <Center w='100%' h='100%'>
+      <Stack spacing='lg' align='center' sx={(theme) => ({
+        padding: '2rem',
+        width: '30rem',
+        maxWidth: '100%',
+        backgroundColor: theme.colors.dark[8],
+        borderRadius: theme.radius.md,
+        boxShadow: '0px 6px 20px #00000030',
+      })}>
+        <Stack spacing={0} align='center'>
+          <Text size='sm' color='dimmed'>You are about to join</Text>
+          <Group align='center' spacing='sm'>
+            <ChannelIcon type='rtc' size={24} />
+            <Title order={3} mb={6}>{props.channel.name}</Title>
+          </Group>
+        </Stack>
+
+        {participants && (
+          <Stack spacing={6} align='center'>
+            {participants.length === 0 && (
+              <>
+                <Avatar size={48} radius={100} sx={{ backgroundColor: '#333333' }} />
+                <Text size='xs' color='dimmed'>
+                  There are no participants in this room
+                </Text>
+              </>
+            )}
+            {participants.length > 0 && (
+              <>
+                <Avatar.Group spacing='md'>
+                  {participants.slice(0, 3).map((member, i) => (
+                    <MemberAvatar
+                      size={48}
+                      member={member}
+                      sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
+                    />
+                  ))}
+                  {participants.length > 3 && (
+                    <Avatar
+                      size={48}
+                      radius={48}
+                      sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
+                    >
+                      +{participants.length - 3}
+                    </Avatar>
+                  )}
+                </Avatar.Group>
+                <Text size='xs' color='dimmed'>
+                  {participants.length} Participant{participants.length > 1 ? 's' : ''}
+                </Text>
+              </>
+            )}
+          </Stack>
+        )}
+
+        <Group mt={8}>
+          <Group spacing={6}>
+            {!app.rtc?.is_mic_muted && <IconMicrophone size={20} />}
+            {app.rtc?.is_mic_muted && <IconMicrophoneOff size={20} />}
+            <Switch
+              checked={!app.rtc?.is_mic_muted}
+              onChange={() => {
+                if (app.rtc?.is_mic_muted)
+                  app._mutators.rtc.microphone.unmute();
+                else
+                  app._mutators.rtc.microphone.mute();
+              }}
+            />
+          </Group>
+          <Group spacing={6}>
+            {!app.rtc?.is_deafened && <IconHeadphones size={20} />}
+            {app.rtc?.is_deafened && <IconHeadphonesOff size={20} />}
+            <Switch
+              checked={!app.rtc?.is_deafened}
+              onChange={() => {
+                if (app.rtc?.is_deafened)
+                  app._mutators.rtc.audio.undeafen();
+                else
+                  app._mutators.rtc.audio.deafen();
+              }}
+            />
+          </Group>
+        </Group>
+
+        <Button
+          variant='gradient'
+          loading={loading}
+          w='8rem'
+          onClick={() => {
+            setLoading(true)
+            app._mutators.rtc.connect(props.channel.id, props.domain.id);
+          }}
+        >
+          Join
+        </Button>
+      </Stack>
+    </Center>
+  );
+}
+
+////////////////////////////////////////////////////////////
+function RoomScreen({ app, ...props }: SubviewProps) {
+  const session = useSession();
 
   // Get list of participants
   const [participants, setParticipants] = useState<Member[]>([]);
@@ -183,44 +311,53 @@ export default function RoomView(props: RoomViewProps) {
       setParticipants([]);
   }, [app.rtc?.participants]);
 
-  const gridWidth = Math.min(Math.ceil(Math.sqrt(participants.length - 1)), 5) || 1;
-  const cellWidth = (1 / gridWidth) * 100;
-  const avatarSize = 36 + 30 * (1 / gridWidth);
-  const textSize = 12 + 10 * (1 / gridWidth);
+  // Calculate sizes based on number of participants
+  const {
+    cellWidth,
+    avatarSize,
+    textSize,
+  } = useMemo(() => {
+    let gridWidth = 1;
+    if (participants.length > 6)
+      gridWidth = 3
+    else if (participants.length > 1)
+      gridWidth = 2;
+    const cellWidth = (1 / gridWidth) * 100;
+    const avatarSize = 28 + 20 * (1 / gridWidth);
+    const textSize = 12 + 6 * (1 / gridWidth);
 
-  console.log(participants)
+    return {
+      gridWidth,
+      cellWidth,
+      avatarSize,
+      textSize,
+    };
+  }, [participants.length]);
 
 
   return (
-    <Box sx={{
-      display: 'flex',
-      height: '100%',
-    }}>
-      {participants.length === 1 && (
-        <Center sx={{
-          flexGrow: 1,
-          height: '100%',
-        }}>
+    <Flex h='100%' align='stretch'>
+      {!participants.length && (
+        <Center sx={{ flexGrow: 1 }}>
           <Stack align='center' spacing='xl'>
             <Avatar size={avatarSize} radius={100} sx={{ backgroundColor: '#333333' }} />
             <Text size={18}>Waiting for more members to join...</Text>
           </Stack>
         </Center>
       )}
-      {participants.length > 1 && (
-        <ScrollArea viewportRef={viewportRef} sx={{
-          flexGrow: 1,
-          height: '100%',
-        }}>
-          <Box sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            alignContent: 'center',
-            padding: 6,
-            minHeight: viewportHeight,
-          }}>
-            {participants.map((member, i) => member.id === session.profile_id ? undefined : (
+      {participants.length > 0 && (
+        <ScrollArea
+          h='100%'
+          sx={{ flexGrow: 1 }}
+        >
+          <Flex
+            wrap='wrap'
+            justify='center'
+            mih='calc(100vh - 2.8rem - 2.8rem)' // This is taken from hardcoded values of header heights
+            p={6}
+            sx={{ alignContent: 'center' }}
+          >
+            {participants.map((member, i) => (
               <ParticipantView
                 member={member}
                 app={app}
@@ -230,13 +367,12 @@ export default function RoomView(props: RoomViewProps) {
                 textSize={textSize}
               />
             ))}
-          </Box>
+          </Flex>
         </ScrollArea>
       )}
 
       <Box sx={(theme) => ({
         flexBasis: '45ch',
-        height: '100%',
         boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`,
       })}>
         <SidePanelView
@@ -245,6 +381,29 @@ export default function RoomView(props: RoomViewProps) {
           participants={participants}
         />
       </Box>
-    </Box>
+    </Flex>
   );
+}
+
+
+////////////////////////////////////////////////////////////
+export default function RoomView(props: RoomViewProps) {
+  const app = useApp();
+
+  if (!app.rtc?.joined || app.rtc?.room_id !== props.channel.id) {
+    return (
+      <JoinScreen
+        {...props}
+        app={app}
+      />
+    );
+  }
+  else {
+    return (
+      <RoomScreen
+        {...props}
+        app={app}
+      />
+    );
+  }
 }

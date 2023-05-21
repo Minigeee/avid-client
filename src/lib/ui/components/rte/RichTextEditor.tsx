@@ -8,6 +8,7 @@ import {
   ColorPicker,
   DEFAULT_THEME,
   Divider,
+  Flex,
   Group,
   Image,
   MantineNumberSize,
@@ -725,7 +726,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
           })}
         </Group>
       )}
-      <Group spacing={2} sx={(theme) => ({
+      <Flex wrap='nowrap' gap={2} sx={(theme) => ({
         padding: 2,
         backgroundColor: theme.colors.dark[6],
       })}>
@@ -739,7 +740,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         </ScrollArea.Autosize>
 
         {variant === 'minimal' && props.rightSection}
-      </Group>
+      </Flex>
     </Box>
   );
 }

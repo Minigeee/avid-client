@@ -21,6 +21,8 @@ import { Media_ClientToServerEvents, Media_ServerToClientEvents } from '@/lib/ty
 import { notifyError, errorWrapper } from '@/lib/utility/error-handler';
 import notification from '@/lib/utility/notification';
 
+import { merge } from 'lodash';
+
 
 /** Consumer type (from server) */
 type ConsumerType = 'simple' | 'simulcast' | 'svc' | 'pipe';
@@ -353,6 +355,7 @@ async function enableMic(emit: RtcSetState) {
 		emit({
 			..._state,
 			is_mic_enabled: true,
+			is_mic_muted: false,
 		});
 	}
 	catch (error: any) {
@@ -391,15 +394,13 @@ async function disableMic(emit: RtcSetState) {
 
 /** Mute microphone */
 async function muteMic(emit: RtcSetState) {
-	assert(_.socket);
+	if (_.producers.microphone) {
+		// Pause producer
+		_.producers.microphone.pause();
 
-	if (!_.producers.microphone) return;
-
-	// Pause producer
-	_.producers.microphone.pause();
-
-	// Send event
-	_.socket.emit('producer-paused', _.producers.microphone.id);
+		// Send event
+		_.socket?.emit('producer-paused', _.producers.microphone.id);
+	}
 
 	// Update state
 	emit({
@@ -410,15 +411,13 @@ async function muteMic(emit: RtcSetState) {
 
 /** Unmute microphone */
 async function unmuteMic(emit: RtcSetState) {
-	assert(_.socket);
-	
-	if (!_.producers.microphone) return;
+	if (_.producers.microphone) {
+		// Resume producer
+		_.producers.microphone.resume();
 
-	// Resume producer
-	_.producers.microphone.resume();
-
-	// Send event
-	_.socket.emit('producer-resumed', _.producers.microphone.id);
+		// Send event
+		_.socket?.emit('producer-resumed', _.producers.microphone.id);
+	}
 
 	// Update state
 	emit({
@@ -430,8 +429,6 @@ async function unmuteMic(emit: RtcSetState) {
 
 /** Deafen */
 async function deafen(emit: RtcSetState) {
-	assert(_.socket);
-	
 	// A new map of participants that have their states changed
 	const newParticipantState: Record<string, RtcParticipant> = {};
 
@@ -439,7 +436,7 @@ async function deafen(emit: RtcSetState) {
 	const paused: string[] = [];
 
 	// Pause all audio streams
-	for (const [pid, participant] of Object.entries(_state.participants)) {
+	for (const [pid, participant] of Object.entries(_state?.participants || {})) {
 		if (participant.audio) {
 			// Get consumer
 			const { consumer } = _.consumers[participant.audio.id];
@@ -465,7 +462,7 @@ async function deafen(emit: RtcSetState) {
 	}
 
 	// Send event
-	if (paused.length > 0)
+	if (_.socket && paused.length > 0)
 		_.socket.emit('consumers-paused', paused);
 
 	// Set state
@@ -478,8 +475,6 @@ async function deafen(emit: RtcSetState) {
 
 /** Undeafen */
 async function undeafen(emit: RtcSetState) {
-	assert(_.socket);
-	
 	// A new map of participants that have their states changed
 	const newParticipantState: Record<string, RtcParticipant> = {};
 
@@ -487,7 +482,7 @@ async function undeafen(emit: RtcSetState) {
 	const resumed: string[] = [];
 
 	// Resume all audio streams
-	for (const [pid, participant] of Object.entries(_state.participants)) {
+	for (const [pid, participant] of Object.entries(_state?.participants || {})) {
 		if (participant.audio) {
 			// Get consumer
 			const { consumer } = _.consumers[participant.audio.id];
@@ -513,7 +508,7 @@ async function undeafen(emit: RtcSetState) {
 	}
 
 	// Send event
-	if (resumed.length > 0)
+	if (_.socket && resumed.length > 0)
 		_.socket.emit('consumers-resumed', resumed);
 
 	// Set state
@@ -871,12 +866,23 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 
 	// Called after server has received client's capabilities and the client has been flagged as joined
 	// The client is now able to enable microphone, webcam, and screen share
-	_.socket.on('joined', errorWrapper(async () => {
-		// Mark as joined
-		emit({ ..._state, joined: true });
+	_.socket.on('joined', errorWrapper(async (participant_ids: string[], callback: () => void) => {
+		// Create map of participants
+		const participants: Record<string, { id: string; volume: number }> = {};
+		for (const id of participant_ids)
+			participants[id] = { id, volume: 100 };
+
+		// Mark as joined, and add initial participants
+		emit({
+			..._state,
+			joined: true,
+			participants,
+		});
 
 		// Enable microphone
-		enableMic(emit);
+		console.log(_state.is_mic_muted)
+		if (!_state.is_mic_muted)
+			enableMic(emit);
 
 		// TODO : Enable webcam
 	}, { message: 'An error occurred while setting up RTC data producers' }));
@@ -964,7 +970,11 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 				participants: {
 					..._state.participants,
 					[peerId]: {
-						...(_state.participants[peerId] || {}),
+						...(_state.participants[peerId] || {
+							// Default new consumer state
+							id: peerId,
+							volume: 100,
+						}),
 						[field]: cdata,
 					},
 				},
@@ -983,7 +993,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 	}, { message: 'An error occurred while creating RTC consumer' }));
 
 	// Called when a new participant joins the room
-	_.socket.on('participant-joined', errorWrapper((participant_id: string, device: Device) => {
+	_.socket.on('participant-joined', errorWrapper((participant_id: string) => {
 		// Create a new entry in rtc state
 		emit({
 			..._state,
@@ -992,7 +1002,6 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 				[participant_id]: {
 					..._state.participants[participant_id],
 					id: participant_id,
-					device,
 					volume: 100,
 				}
 			},
@@ -1202,8 +1211,7 @@ export function useRtc(session: SessionState) {
 				}
 
 				// Reset state
-				_state = {
-					...(state || {}),
+				_state = merge({
 					room_id,
 					domain_id: domain_id || '',
 					server: url,
@@ -1214,7 +1222,7 @@ export function useRtc(session: SessionState) {
 					is_mic_enabled: false,
 					is_mic_muted: false,
 					is_deafened: false,
-				};
+				}, _state || {});
 
 				// Connect to server
 				makeRtcSocket(url, room_id, session, emit);
