@@ -1,45 +1,36 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
   Box,
-  Button,
   Checkbox,
   CheckboxProps,
-  ColorSwatch,
   Group,
-  Menu,
-  Stack,
   Text,
   useMantineTheme,
 } from '@mantine/core';
-import { closeAllModals, openConfirmModal } from '@mantine/modals';
 
 import {
   IconChevronDown,
-  IconFolderSymlink,
   IconPlus,
-  IconStatusChange,
-  IconTrash,
-  IconUserPlus
 } from '@tabler/icons-react';
 
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
 import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
-import MemberInput from '@/lib/ui/components/MemberInput';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
+
 import { GroupableFields } from '../BoardView';
+import { TaskMenuContext } from './TaskMenu';
 
 import config from '@/config';
 import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
-  useMemoState,
 } from '@/lib/hooks';
-import { ExpandedTask, Label, Member } from '@/lib/types';
+import { ExpandedTask, Label } from '@/lib/types';
 
 import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
@@ -64,213 +55,6 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
     </>
   )
 })
-
-
-////////////////////////////////////////////////////////////
-type ContextMenuData = {
-  task: ExpandedTask | null;
-  selected?: ExpandedTask[];
-};
-
-////////////////////////////////////////////////////////////
-type DataTableContextMenuProps = {
-  board: BoardWrapper;
-  domain: DomainWrapper;
-  collection: string;
-  tasksWrapper: TasksWrapper;
-  
-  statuses: Record<string, Label & { index: number }>;
-
-  task: ExpandedTask | null;
-  selected?: ExpandedTask[];
-  clear?: () => void;
-};
-
-////////////////////////////////////////////////////////////
-function DataTableContextMenu({ board, task, selected, ...props }: DataTableContextMenuProps) {
-  const [assignee, setAssignee] = useState<Member | null>(task?.assignee || null);
-  const [origAssignee, setOrigAssignee] = useState<Member | null | undefined>(task?.assignee || null);
-
-  // Reset whenever task changes
-  useEffect(() => {
-    let orig: Member | null | undefined = null;
-
-    if (selected?.length) {
-      // Choose one that all have
-      orig = selected[0].assignee || null;
-      for (let i = 1; i < selected.length; ++i) {
-        if ((selected[i].assignee || null) !== orig) {
-          orig = undefined;
-          break;
-        }
-      }
-    }
-    else if (task)
-      orig = task.assignee || null;
-      
-    setAssignee(orig || null);
-    setOrigAssignee(orig);
-  }, [task?.id]);
-
-  // Collection selections
-  const collectionSelections = useMemo(() => {
-    return board.collections.sort((a, b) =>
-      a.end_date ?
-        b.end_date ? new Date(b.end_date).getTime() - new Date(a.end_date).getTime() : 1 :
-        b.end_date ? -1 : a.name.localeCompare(b.name)
-    );
-  }, [board.collections]);
-
-  // Update function
-  function updateHandler(update: Partial<ExpandedTask>) {
-    return () => {
-      if (selected?.length) {
-        props.tasksWrapper._mutators.updateTasks(selected.map(x => x.id), update, true);
-        props.clear?.();
-      }
-      else if (task)
-        props.tasksWrapper._mutators.updateTask(task.id, update, true);
-    };
-  }
-
-
-  if (!task && !selected?.length) {
-    return null;
-  }
-
-  return (
-    <>
-      <Menu.Label>{selected?.length ? `${selected.length} SELECTED TASK${selected.length > 1 ? 'S' : ''}` : `${board.prefix}-${task?.sid}`}</Menu.Label>
-
-      {board.collections.length > 1 && (
-        <ContextMenu.Submenu
-          id='move-to'
-          label='Move to'
-          icon={<IconFolderSymlink size={16} />}
-          dropdownProps={{
-            sx: { minWidth: '15rem' },
-          }}
-        >
-          {collectionSelections.map((c) => c.id !== props.collection ? (
-            <Menu.Item onClick={updateHandler({ collection: c.id })}>
-              <Stack spacing={6}>
-                <Text inline weight={600} size='sm'>{c.name}</Text>
-                {(c.start_date || c.end_date) && (
-                  <Text inline size='xs' color='dimmed'>
-                    {c.start_date ? moment(c.start_date).format('l') : ''} - {c.end_date ? moment(c.end_date).format('l') : ''}
-                  </Text>
-                )}
-              </Stack>
-            </Menu.Item>
-          ) : null)}
-        </ContextMenu.Submenu>
-      )}
-      
-      <ContextMenu.Submenu
-        id='assign-to'
-        label='Assign to'
-        icon={<IconUserPlus size={16} />}
-        dropdownProps={{
-          p: 8,
-          sx: { minWidth: '20rem' },
-        }}
-      >
-        <MemberInput
-          domain_id={props.domain.id}
-          placeholder='Start typing to get a list of users'
-          clearable
-          withinPortal
-          value={assignee}
-          onChange={setAssignee}
-        />
-
-        <Button
-          variant='gradient'
-          fullWidth
-          disabled={origAssignee !== undefined && assignee?.id === origAssignee?.id}
-          mt={16}
-          // @ts-ignore
-          onClick={updateHandler({ assignee })}
-          component={Menu.Item}
-        >
-          Assign
-        </Button>
-      </ContextMenu.Submenu>
-
-      <Menu.Divider />
-
-      {task && !selected?.length && (
-        <>
-          {task.status === 'todo' && (
-            <Menu.Item
-              icon={<ColorSwatch color={props.statuses['in-progress'].color || ''} size={16} />}
-              onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: 'in-progress' }, true)}
-            >
-              Mark as <b>{props.statuses['in-progress'].label}</b>
-            </Menu.Item>
-          )}
-          {task.status === 'in-progress' && (
-            <Menu.Item
-              icon={<ColorSwatch color={props.statuses['completed'].color || ''} size={16} />}
-              onClick={() => props.tasksWrapper._mutators.updateTask(task.id, { status: 'completed' }, true)}
-            >
-              Mark as <b>{props.statuses['completed'].label}</b>
-            </Menu.Item>
-          )}
-        </>
-      )}
-
-      <ContextMenu.Submenu
-        id='change-status'
-        label='Change status'
-        icon={<IconStatusChange size={16} />}
-        dropdownProps={{
-          sx: { minWidth: '10rem' },
-        }}
-      >
-        {Object.entries(props.statuses).map(([status_id, status]) => selected?.length || (task && status_id !== task.status) ? (
-          <Menu.Item
-            icon={<ColorSwatch color={status.color || ''} size={16} />}
-            onClick={updateHandler({ status: status_id })}
-          >
-            {status.label}
-          </Menu.Item>
-        ) : null)}
-      </ContextMenu.Submenu>
-
-      <Menu.Divider />
-      <Menu.Item
-        color='red'
-        icon={<IconTrash size={16} />}
-        onClick={() => {
-          openConfirmModal({
-            title: 'Delete Task',
-            labels: { cancel: 'Cancel', confirm: 'Delete' },
-            children: (
-              <p>
-                Are you sure you want to delete <b>{selected?.length || `${board.prefix}-${task?.sid}`}</b>{selected?.length ? ' tasks' : ''}?
-              </p>
-            ),
-            groupProps: {
-              spacing: 'xs',
-              sx: { marginTop: '0.5rem' },
-            },
-            confirmProps: {
-              color: 'red',
-            },
-            onConfirm: () => {
-              if (task || selected?.length)
-                props.tasksWrapper._mutators.removeTasks(selected?.length ? selected.map(x => x.id) : [task?.id || '']);
-              closeAllModals();
-            }
-          })
-        }}
-      >
-        Delete task
-      </Menu.Item>
-    </>
-  );
-}
 
 
 ////////////////////////////////////////////////////////////
@@ -449,169 +233,146 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
     props.tags,
   ]);
 
+  // Task menu action
+  const onMenuAction = useCallback(() => {
+    setToggleCleared(!toggleCleared);
+    setSelected([]);
+  }, [toggleCleared]);
+
 
   // Only display if tasks is array
   if (!Array.isArray(tasks)) return null;
 
   return (
-    <ContextMenu
-      width='15rem'
+    <ContextMenu.Trigger
+      context={{
+        task: hovered,
+        selected: selected,
+        onAction: onMenuAction,
+      } as TaskMenuContext}
+      disabled={!hovered && !selected.length}
+      style={{ marginBottom: '2.5rem' }}
     >
-      <ContextMenu.Dropdown dependencies={[
-        board,
-        props.domain,
-        props.collection,
-        props.tasksWrapper,
-        props.statuses,
-        toggleCleared,
-      ]}>
-        {({ task, selected }: ContextMenuData) => (
-          <DataTableContextMenu
-            board={board}
-            domain={props.domain}
-            collection={props.collection}
-            tasksWrapper={props.tasksWrapper}
-            statuses={props.statuses}
-
-            task={task}
-            selected={selected}
-            clear={() => {
-              setToggleCleared(!toggleCleared);
-              setSelected([]);
-            }}
-          />
-        )}
-      </ContextMenu.Dropdown>
-
-      <ContextMenu.Trigger
-        context={{
-          task: hovered,
-          selected: selected,
-        } as ContextMenuData}
-        disabled={!hovered && !selected.length}
-        style={{ marginBottom: '2.5rem' }}
-      >
-        <DataTable
-          customStyles={{
-            table: {
-              style: {
-                borderRadius: '6px',
-                backgroundColor: theme.colors.dark[8],
-                color: theme.colors.dark[0],
-              }
+      <DataTable
+        customStyles={{
+          table: {
+            style: {
+              borderRadius: '6px',
+              backgroundColor: theme.colors.dark[8],
+              color: theme.colors.dark[0],
+            }
+          },
+          headRow: {
+            style: {
+              fontSize: `${theme.fontSizes.sm}px`,
+              fontWeight: 600,
+              backgroundColor: 'transparent',
+              color: theme.colors.dark[0],
+              borderBottom: `1px solid ${theme.colors.dark[4]}`,
+            }
+          },
+          rows: {
+            style: {
+              padding: '0.5rem 0rem',
+              fontSize: `${theme.fontSizes.sm}px`,
+              color: theme.colors.dark[0],
+              backgroundColor: theme.colors.dark[7],
+              borderTop: `1px solid ${theme.colors.dark[4]}`,
+              borderBottom: `1px solid ${theme.colors.dark[4]}`,
             },
-            headRow: {
-              style: {
-                fontSize: `${theme.fontSizes.sm}px`,
-                fontWeight: 600,
-                backgroundColor: 'transparent',
-                color: theme.colors.dark[0],
-                borderBottom: `1px solid ${theme.colors.dark[4]}`,
-              }
-            },
-            rows: {
-              style: {
-                padding: '0.5rem 0rem',
-                fontSize: `${theme.fontSizes.sm}px`,
-                color: theme.colors.dark[0],
-                backgroundColor: theme.colors.dark[7],
-                borderTop: `1px solid ${theme.colors.dark[4]}`,
-                borderBottom: `1px solid ${theme.colors.dark[4]}`,
+            highlightOnHoverStyle: {
+              color: theme.colors.dark[0],
+              backgroundColor: theme.colors.dark[6],
+              transitionDuration: '0.08s',
+              transitionProperty: 'background-color',
+              borderBottomColor: 'transparent',
+              outlineWidth: '0px',
+              '&:last-child': {
+                borderBottomColor: theme.colors.dark[4],
               },
-              highlightOnHoverStyle: {
-                color: theme.colors.dark[0],
+            },
+          },
+          pagination: {
+            style: {
+              color: theme.colors.dark[0],
+              fontSize: '13px',
+              fontWeight: 600,
+              minHeight: '3.0rem',
+              backgroundColor: theme.colors.dark[8],
+              borderTop: `solid 1px ${theme.colors.dark[5]}`,
+              borderBottomLeftRadius: '6px',
+              borderBottomRightRadius: '6px',
+            },
+            pageButtonsStyle: {
+              borderRadius: '6px',
+              height: '2.4rem',
+              width: '2.4rem',
+              cursor: 'pointer',
+              transition: '0.18s',
+              color: theme.colors.dark[1],
+              fill: theme.colors.dark[1],
+              backgroundColor: 'transparent',
+              '&:disabled': {
+                cursor: 'unset',
+                color: theme.colors.dark[4],
+                fill: theme.colors.dark[4],
+              },
+              '&:hover:not(:disabled)': {
                 backgroundColor: theme.colors.dark[6],
-                transitionDuration: '0.08s',
-                transitionProperty: 'background-color',
-                borderBottomColor: 'transparent',
-                outlineWidth: '0px',
-                '&:last-child': {
-                  borderBottomColor: theme.colors.dark[4],
-                },
+              },
+              '&:focus': {
+                outline: 'none',
+                backgroundColor: theme.colors.dark[6],
               },
             },
-            pagination: {
-              style: {
-                color: theme.colors.dark[0],
-                fontSize: '13px',
-                fontWeight: 600,
-                minHeight: '3.0rem',
-                backgroundColor: theme.colors.dark[8],
-                borderTop: `solid 1px ${theme.colors.dark[5]}`,
-                borderBottomLeftRadius: '6px',
-                borderBottomRightRadius: '6px',
-              },
-              pageButtonsStyle: {
-                borderRadius: '6px',
-                height: '2.4rem',
-                width: '2.4rem',
-                cursor: 'pointer',
-                transition: '0.18s',
-                color: theme.colors.dark[1],
-                fill: theme.colors.dark[1],
-                backgroundColor: 'transparent',
-                '&:disabled': {
-                  cursor: 'unset',
-                  color: theme.colors.dark[4],
-                  fill: theme.colors.dark[4],
-                },
-                '&:hover:not(:disabled)': {
-                  backgroundColor: theme.colors.dark[6],
-                },
-                '&:focus': {
-                  outline: 'none',
-                  backgroundColor: theme.colors.dark[6],
-                },
-              },
+          },
+          noData: {
+            style: {
+              height: '10rem',
+              color: theme.colors.dark[2],
+              backgroundColor: theme.colors.dark[8],
+              borderRadius: 6,
             },
-            noData: {
-              style: {
-                height: '10rem',
-                color: theme.colors.dark[2],
-                backgroundColor: theme.colors.dark[8],
-                borderRadius: 6,
-              },
-            },
-          }}
-          sortIcon={<IconChevronDown size={10} style={{ marginTop: '5px', marginLeft: '1px' }} />}
+          },
+        }}
+        sortIcon={<IconChevronDown size={10} style={{ marginTop: '5px', marginLeft: '1px' }} />}
 
-          columns={columns}
-          data={tasks}
+        columns={columns}
+        data={tasks}
 
-          responsive={false}
-          pointerOnHover
-          highlightOnHover
-          onRowClicked={(task) => {
-            if (board._exists)
-              openEditTask({
-                board_id: board.id,
-                board_prefix: board.prefix,
-                domain: props.domain,
-                task: task,
-              });
-          }}
-          onRowMouseEnter={setHovered}
-          onRowMouseLeave={(row) => {
-            if (hovered?.id === row.id)
-              setHovered(null);
-          }}
+        responsive={false}
+        pointerOnHover
+        highlightOnHover
+        onRowClicked={(task) => {
+          if (board._exists)
+            openEditTask({
+              board_id: board.id,
+              board_prefix: board.prefix,
+              domain: props.domain,
+              task: task,
+            });
+        }}
+        onRowMouseEnter={setHovered}
+        onRowMouseLeave={(row) => {
+          if (hovered?.id === row.id)
+            setHovered(null);
+        }}
 
-          pagination={tasks.length > 20}
-          paginationPerPage={20}
-          paginationComponentOptions={{
-            noRowsPerPage: true,
-          }}
+        pagination={tasks.length > 20}
+        paginationPerPage={20}
+        paginationComponentOptions={{
+          noRowsPerPage: true,
+        }}
 
-          noDataComponent='There are no tasks to display'
+        noDataComponent='There are no tasks to display'
 
-          selectableRows
-          // @ts-ignore
-          selectableRowsComponent={CustomCheckbox}
-          selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }}
-          onSelectedRowsChange={({ selectedRows }) => setSelected(selectedRows)}
-          clearSelectedRows={toggleCleared}
-        />
-      </ContextMenu.Trigger>
-    </ContextMenu>
+        selectableRows
+        // @ts-ignore
+        selectableRowsComponent={CustomCheckbox}
+        selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }}
+        onSelectedRowsChange={({ selectedRows }) => setSelected(selectedRows)}
+        clearSelectedRows={toggleCleared}
+      />
+    </ContextMenu.Trigger>
   );
 }

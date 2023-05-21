@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import assert from 'assert';
 
 import {
@@ -28,6 +28,7 @@ import {
   IconTag,
 } from '@tabler/icons-react';
 
+import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
 import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
@@ -35,6 +36,7 @@ import TaskGroupAccordion from '@/lib/ui/components/TaskGroupAccordion';
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
 import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 
+import { TaskContextMenu, TaskMenuContext } from './components/TaskMenu';
 import { DoubleGrouped, GroupableFields, SingleGrouped } from './BoardView';
 
 import config from '@/config';
@@ -69,115 +71,117 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
   const diff = moment(task.due_date || 0).diff([today.getFullYear(), today.getMonth(), today.getDate()], 'days');
 
   return (
-    <Draggable draggableId={task.id.toString()} index={props.index}>
-      {(provided) => (
-        <Stack
-          ref={provided.innerRef}
-          spacing={6}
-          sx={(theme) => ({
-            padding: '0.7rem 0.8rem',
-            marginBottom: 9,
-            backgroundColor: theme.colors.dark[6],
-            borderRadius: 3,
-            boxShadow: '0px 0px 10px #00000033',
-          })}
-          onClick={props.onClick}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-        >
-          <Group spacing={6}>
-            <Text size={15} weight={600} sx={(theme) => ({ color: theme.colors.violet[0], marginRight: 4 })}>
-              {prefix}-{task.sid}
-            </Text>
+    <ContextMenu.Trigger context={{ task } as TaskMenuContext}>
+      <Draggable draggableId={task.id.toString()} index={props.index}>
+        {(provided) => (
+          <Stack
+            ref={provided.innerRef}
+            spacing={6}
+            mb={9}
+            sx={(theme) => ({
+              padding: '0.7rem 0.8rem',
+              backgroundColor: theme.colors.dark[6],
+              borderRadius: 3,
+              boxShadow: '0px 0px 10px #00000033',
+            })}
+            onClick={props.onClick}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+          >
+            <Group spacing={6}>
+              <Text size={15} weight={600} sx={(theme) => ({ color: theme.colors.violet[0], marginRight: 4 })}>
+                {prefix}-{task.sid}
+              </Text>
 
-            {task.subtasks && task.subtasks.length > 0 && (
-              <Tooltip
-                label={`${task.subtasks.length} subtask${task.subtasks.length > 1 ? 's' : ''}`}
-                position='right'
-                withArrow
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
-              >
-                <Group spacing={1} align='center' sx={(theme) => ({
-                  color: theme.colors.dark[2],
-                  cursor: 'default'
-                })}>
-                  <Text size='sm'>{task.subtasks.length}</Text>
-                  <IconSubtask size={15} style={{ marginTop: '2px' }} />
-                </Group>
-              </Tooltip>
+              {task.subtasks && task.subtasks.length > 0 && (
+                <Tooltip
+                  label={`${task.subtasks.length} subtask${task.subtasks.length > 1 ? 's' : ''}`}
+                  position='right'
+                  withArrow
+                  sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+                >
+                  <Group spacing={1} align='center' sx={(theme) => ({
+                    color: theme.colors.dark[2],
+                    cursor: 'default'
+                  })}>
+                    <Text size='sm'>{task.subtasks.length}</Text>
+                    <IconSubtask size={15} style={{ marginTop: '2px' }} />
+                  </Group>
+                </Tooltip>
+              )}
+
+              {task.dependencies && task.dependencies.length > 0 && (
+                <Tooltip
+                  label={`${task.dependencies.length} dependenc${task.dependencies.length > 1 ? 'ies' : 'y'}`}
+                  position='right'
+                  withArrow
+                  sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+                >
+                  <Group spacing={1} align='center' sx={(theme) => ({
+                    color: theme.colors.dark[2],
+                    cursor: 'default'
+                  })}>
+                    <Text size='sm'>{task.dependencies.length}</Text>
+                    <IconGitMerge size={15} style={{ marginTop: '2px' }} />
+                  </Group>
+                </Tooltip>
+              )}
+            </Group>
+
+            <Text size='sm' sx={(theme) => ({ marginBottom: '0.4rem', color: theme.colors.dark[0] })}>{task.summary}</Text>
+
+            {tags && task.tags && task.tags.length > 0 && (
+              <Group spacing={6} mb={task.assignee ? 0 : 5}>
+                {task.tags.sort().map((id, i) => {
+                  const tag = tags[id];
+
+                  return (
+                    <Box sx={{
+                      padding: '1px 11px 2px 11px',
+                      backgroundColor: tag.color || 'gray',
+                      borderRadius: 15,
+                      cursor: 'default',
+                    }}>
+                      <Text size='xs' weight={500}>{tag.label}</Text>
+                    </Box>
+                  );
+                })}
+              </Group>
             )}
 
-            {task.dependencies && task.dependencies.length > 0 && (
-              <Tooltip
-                label={`${task.dependencies.length} dependenc${task.dependencies.length > 1 ? 'ies' : 'y'}`}
-                position='right'
-                withArrow
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
-              >
-                <Group spacing={1} align='center' sx={(theme) => ({
-                  color: theme.colors.dark[2],
-                  cursor: 'default'
-                })}>
-                  <Text size='sm'>{task.dependencies.length}</Text>
-                  <IconGitMerge size={15} style={{ marginTop: '2px' }} />
-                </Group>
-              </Tooltip>
-            )}
-          </Group>
-
-          <Text size='sm' sx={(theme) => ({ marginBottom: '0.4rem', color: theme.colors.dark[0] })}>{task.summary}</Text>
-
-          {tags && task.tags && task.tags.length > 0 && (
-            <Group spacing={6} mb={task.assignee ? 0 : 5}>
-              {task.tags.sort().map((id, i) => {
-                const tag = tags[id];
-
-                return (
-                  <Box sx={{
-                    padding: '1px 11px 2px 11px',
-                    backgroundColor: tag.color || 'gray',
+            <Group spacing={6}>
+              <TaskPriorityIcon priority={task.priority} />
+              {task.due_date && (
+                <Tooltip
+                  label={moment(task.due_date).format('ll')}
+                  position='right'
+                  withArrow
+                  sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+                >
+                  <Text size='xs' sx={(theme) => ({
+                    padding: '1px 8px',
+                    backgroundColor: theme.colors.dark[4],
                     borderRadius: 15,
                     cursor: 'default',
-                  }}>
-                    <Text size='xs' weight={500}>{tag.label}</Text>
-                  </Box>
-                );
-              })}
+                  })}>
+                    {Math.max(diff, 0)}
+                  </Text>
+                </Tooltip>
+              )}
+
+              <Box sx={{ flexGrow: 1 }} />
+
+              {task.assignee && (
+                <MemberAvatar
+                  member={task.assignee}
+                  size={32}
+                />
+              )}
             </Group>
-          )}
-
-          <Group spacing={6}>
-            <TaskPriorityIcon priority={task.priority} />
-            {task.due_date && (
-              <Tooltip
-                label={moment(task.due_date).format('ll')}
-                position='right'
-                withArrow
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
-              >
-                <Text size='xs' sx={(theme) => ({
-                  padding: '1px 8px',
-                  backgroundColor: theme.colors.dark[4],
-                  borderRadius: 15,
-                  cursor: 'default',
-                })}>
-                  {Math.max(diff, 0)}
-                </Text>
-              </Tooltip>
-            )}
-
-            <Box sx={{ flexGrow: 1 }} />
-
-            {task.assignee && (
-              <MemberAvatar
-                member={task.assignee}
-                size={32}
-              />
-            )}
-          </Group>
-        </Stack>
-      )}
-    </Draggable>
+          </Stack>
+        )}
+      </Draggable>
+    </ContextMenu.Trigger>
   );
 }
 
@@ -408,43 +412,50 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
         props.tasks._mutators.updateTask(task.id, updates);
       }
     }}>
-      {grouper && (
-        <TaskGroupAccordion
-          domain={props.domain}
-          groups={groups}
-          expanded={expanded}
-          setExpanded={setExpanded}
+      <TaskContextMenu
+        board={board}
+        tasks={props.tasks}
+        domain={props.domain}
+        collection={props.collection}
+      >
+        {grouper && (
+          <TaskGroupAccordion
+            domain={props.domain}
+            groups={groups}
+            expanded={expanded}
+            setExpanded={setExpanded}
 
-          component={(group) => (
-            <Kanban
-              board={board}
-              domain={props.domain}
-              collection={props.collection}
-              tasks={(filtered as DoubleGrouped)[group]}
-              grouper={grouper}
-              group={group}
+            component={(group) => (
+              <Kanban
+                board={board}
+                domain={props.domain}
+                collection={props.collection}
+                tasks={(filtered as DoubleGrouped)[group]}
+                grouper={grouper}
+                group={group}
 
-              tagMap={tagMap}
-            />
-          )}
+                tagMap={tagMap}
+              />
+            )}
 
-          tagMap={tagMap}
-          collection={props.collection}
-          grouper={grouper}
-        />
-      )}
-      {!grouper && (
-        <Kanban
-          board={board}
-          domain={props.domain}
-          collection={props.collection}
-          tasks={filtered as SingleGrouped}
-          grouper={grouper}
-          group={null}
+            tagMap={tagMap}
+            collection={props.collection}
+            grouper={grouper}
+          />
+        )}
+        {!grouper && (
+          <Kanban
+            board={board}
+            domain={props.domain}
+            collection={props.collection}
+            tasks={filtered as SingleGrouped}
+            grouper={grouper}
+            group={null}
 
-          tagMap={tagMap}
-        />
-      )}
+            tagMap={tagMap}
+          />
+        )}
+      </TaskContextMenu>
     </DragDropContext>
   );
 }

@@ -195,17 +195,17 @@ function TabView({ board, type, ...props }: TabViewProps) {
         for (const [status, newTasks] of Object.entries(newGroups)) {
           const group: ExpandedTask[] = [];
           const added = new Set<number>();
-          const existing = new Set<number>();
+          const existing: Record<string, ExpandedTask> = {};
 
-          // Make list of existing tasks in the (new) status group
+          // Make map of existing tasks in the (new) status group
           for (const task of newTasks)
-            existing.add(task.sid);
+            existing[task.sid] = task;
 
           // Iterate (old) status group and add tasks in order they appear, while keeping track of which tasks are added
           if (!Array.isArray(oldGroups)) {
             for (const task of (oldGroups[status] || [])) {
-              if (existing.has(task.sid)) {
-                group.push(task);
+              if (existing[task.sid]) {
+                group.push(existing[task.sid]);
                 added.add(task.sid);
               }
             }

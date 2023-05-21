@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import TaskGroupAccordion from '@/lib/ui/components/TaskGroupAccordion';
+import { TaskContextMenu } from './components/TaskMenu';
 import TaskTable from './components/TaskTable';
 import { GroupableFields, NoGrouped, SingleGrouped } from './BoardView';
 
@@ -53,7 +54,13 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
 
 
   return (
-    <>
+    <TaskContextMenu
+      board={board}
+      tasks={props.tasks}
+      domain={props.domain}
+      collection={props.collection}
+      statuses={statusMap}
+    >
       {grouper && (
         <TaskGroupAccordion
           domain={props.domain}
@@ -94,6 +101,6 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
           tags={tagMap}
         />
       )}
-    </>
+    </TaskContextMenu>
   );
 }

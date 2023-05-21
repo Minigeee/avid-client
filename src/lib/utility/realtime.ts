@@ -33,15 +33,17 @@ export function connect(session: SessionState) {
 	
 	// Socket connection error handler
 	_socket.on('connect_error', errorWrapper((error) => {
+		// Stop trying to connect
+		_socket.disconnect();
+
+		if (config.dev_mode) return;
 		notifyError(
 			error, {
 			title: 'Network Error',
 			message: `Failed to establish a connection with the realtime server. ${config.app.support_message}`,
 			cooldown: 5,
 		});
-
-		// Stop trying to connect
-		_socket.disconnect();
+		
 	}, { message: 'An error occurred while handling realtime server connection error' }));
 
 	// Server side error notification

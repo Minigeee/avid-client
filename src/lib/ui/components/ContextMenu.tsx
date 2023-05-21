@@ -1,6 +1,8 @@
-import { DependencyList, HTMLProps, PropsWithChildren, ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { DependencyList, PropsWithChildren, ReactNode, createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
+  Box,
+  BoxProps,
   MantineColor,
   Menu,
   MenuDropdownProps,
@@ -65,7 +67,10 @@ export function ContextMenu(props: ContextMenuProps) {
 
   return (
     <>
-      <Portal>
+      <Portal onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}>
         <SubmenuContext.Provider value={{ submenu, setSubmenu }}>
           <Menu
             {...props}
@@ -116,7 +121,14 @@ export function ContextMenu(props: ContextMenuProps) {
 
 
 ////////////////////////////////////////////////////////////
-export function ContextMenuDropdown(props: { dependencies?: DependencyList; children: (data: any) => ReactNode }) {
+export type ContextMenuDropdownProps = {
+  /** A list of variables the dropdown menu depends on. This is equivalent to `useEffect()` dependency list */
+  dependencies?: DependencyList;
+  children: (data: any) => ReactNode;
+};
+
+////////////////////////////////////////////////////////////
+export function ContextMenuDropdown(props: ContextMenuDropdownProps) {
   const context = useContext(ContextMenuContext);
 
   // Child function should never change
@@ -131,7 +143,7 @@ ContextMenu.Dropdown = ContextMenuDropdown;
 
 
 ////////////////////////////////////////////////////////////
-type ContextMenuTriggerProps = PropsWithChildren & HTMLProps<HTMLDivElement> & {
+type ContextMenuTriggerProps = PropsWithChildren & BoxProps & {
   /** Context data that gets passed to the context menu */
   context?: any;
   /** Set this to true to prevent context menu from trigger, does default behavior instead */
@@ -139,11 +151,11 @@ type ContextMenuTriggerProps = PropsWithChildren & HTMLProps<HTMLDivElement> & {
 };
 
 ////////////////////////////////////////////////////////////
-export function ContextMenuTrigger(props: ContextMenuTriggerProps) {
+export const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>((props, ref) => {
   const context = useContext(ContextMenuContext);
 
   return (
-    <div {...props} onContextMenu={(e) => {
+    <Box ref={ref} {...props} onContextMenu={(e) => {
       if (props.disabled) return;
 
       // Prevent default
@@ -160,9 +172,9 @@ export function ContextMenuTrigger(props: ContextMenuTriggerProps) {
       });
     }}>
       {props.children}
-    </div>
+    </Box>
   );
-}
+});
 
 ContextMenu.Trigger = ContextMenuTrigger;
 
