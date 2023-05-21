@@ -5,10 +5,10 @@ import useSWR, { KeyedMutator } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
 import config from '@/config';
-import { AttachmentInfo, uploadAttachments } from '@/lib/api';
+import { uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { getMember, getMemberSync, getMembers, query, sql } from '@/lib/db';
-import { ExpandedMessage, Member, Message, Role } from '@/lib/types';
+import { ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
 
 import { DomainWrapper } from './use-domain';
 import { MemberWrapper } from './use-members';
@@ -359,7 +359,7 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 		 * @param attachments A list of attachments that are attached to message
 		 * @returns The new grouped messages object
 		 */
-		addMessage: (message: string, sender: Member, attachments?: File[]) => {
+		addMessage: (message: string, sender: Member, attachments?: FileAttachment[]) => {
 			// Generate temporary id so we know which message to update with correct id
 			const tempId = uuid();
 			// Time message is sent
@@ -380,11 +380,7 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 						channel: channel_id,
 						sender: sender.id,
 						message,
-						attachments: hasAttachments ? attachments.map((f, i) => ({
-							type: f.type.startsWith('image') ? 'image' : 'file',
-							filename: f.name,
-							...uploads[i],
-						})) : undefined,
+						attachments: hasAttachments ? uploads : undefined,
 						created_at: now,
 					}),
 					{ session }
@@ -405,9 +401,10 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 						sender: sender.id,
 						message,
 						attachments: attachments?.map(f => ({
-							type: f.type.startsWith('image') ? 'image' : 'file',
-							filename: f.name,
-							url: f.type.startsWith('image') ? URL.createObjectURL(f) : '',
+							...f,
+							filename: f.file.name,
+							url: f.type === 'image' ? URL.createObjectURL(f.file) : '',
+							file: undefined,
 						})),
 						created_at: now,
 					}, sender, env) || [];

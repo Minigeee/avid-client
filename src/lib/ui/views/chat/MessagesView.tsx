@@ -1,4 +1,4 @@
-import { ForwardedRef, Fragment, MutableRefObject, Ref, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ForwardedRef, Fragment, MutableRefObject, Ref, RefObject, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 import {
@@ -47,7 +47,7 @@ import {
   useSession,
   useTimeout,
 } from '@/lib/hooks';
-import { Member, Message } from '@/lib/types';
+import { FileAttachment, Member, Message } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
 
 import moment from 'moment';
@@ -182,6 +182,8 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
   );
 }
 
+const MemoMessageGroup = memo(MessageGroup);
+
 
 ////////////////////////////////////////////////////////////
 type MessagesViewportProps = {
@@ -261,7 +263,7 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
                 sx={(theme) => ({ marginLeft: '1.2rem', color: theme.colors.dark[2] })}
               />
               {grouped.map((consec, j) => (
-                <MessageGroup
+                <MemoMessageGroup
                   msgs={consec}
                   profile_id={props.sender.id}
                   style={classes.typography}
@@ -307,7 +309,7 @@ type TextEditorProps = {
   profile_id: string;
 
   editorRef: RefObject<Editor>;
-  onSubmit: (message: string, attachments: File[]) => boolean;
+  onSubmit: (message: string, attachments: FileAttachment[]) => boolean;
 };
 
 ////////////////////////////////////////////////////////////
@@ -318,7 +320,7 @@ function TextEditor(props: TextEditorProps) {
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
 
   // List of file attachments
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   // Timeout object used to detect typing
   const typingTimeout = useTimeout(() => {

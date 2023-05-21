@@ -1,6 +1,6 @@
 import { id } from '@/lib/db';
 import { SessionState } from '@/lib/contexts';
-import { ExpandedProfile } from '@/lib/types';
+import { Attachment, ExpandedProfile, FileAttachment } from '@/lib/types';
 
 import axios from 'axios';
 import { withAccessToken } from './utility';
@@ -43,36 +43,6 @@ export async function deleteProfile(profile: ExpandedProfile, session: SessionSt
 }
 
 
-/** Attachment info returned with the `uploadAttachment()` function */
-export type AttachmentInfo = {
-	/** The url location of the attachment */
-	url: string;
-	/** The width of the attachment if it is an image */
-	width?: number;
-	/** The height of the attachment if it is an image */
-	height?: number;
-};
-
-/** Get dimensions of image file */
-async function _getImageDims(f: File): Promise<{ width: number; height: number }> {
-	return new Promise(res => {
-		const fr = new FileReader;
-
-		fr.onload = function () { // file is loaded
-			const img = new Image;
-
-			img.onload = function () {
-				res({ width: img.width, height: img.height });
-			};
-
-			if (typeof fr.result === 'string')
-				img.src = fr.result; // is the data URL because called with readAsDataURL
-		};
-
-		fr.readAsDataURL(f);
-	});
-}
-
 /**
  * Upload message attachments
  * 
@@ -81,20 +51,11 @@ async function _getImageDims(f: File): Promise<{ width: number; height: number }
  * @param session Session used to authenticate request
  * @returns The urls of the uploaded files, and their dimensions if the file is an image
  */
-export async function uploadAttachments(domain_id: string, files: File[], session: SessionState) {
+export async function uploadAttachments(domain_id: string, files: FileAttachment[], session: SessionState): Promise<Attachment[]> {
 	// Generate form data
 	const formData = new FormData();
 	for (const f of files)
-		formData.append('attachments', f, f.name);
-
-	// Get image dimensions
-	const dims: { width?: number; height?: number }[] = [];
-	for (const f of files) {
-		if (f.type.startsWith('image'))
-			dims.push(await _getImageDims(f));
-		else
-			dims.push({});
-	}
+		formData.append('attachments', f.file, f.file.name);
 
 	// Send image post
 	const results = await axios.post<{ urls: string[] }>(
@@ -104,7 +65,9 @@ export async function uploadAttachments(domain_id: string, files: File[], sessio
 	);
 
 	return results.data.urls.map((url, i) => ({
+		...files[i],
 		url,
-		...dims[i],
+		filename: files[i].file.name,
+		file: undefined,
 	}));
 }

@@ -1,3 +1,4 @@
+export * from './attachment';
 export * from './board';
 export * from './channel';
 export * from './common';

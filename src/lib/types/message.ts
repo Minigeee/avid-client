@@ -1,5 +1,6 @@
-import { Date } from './util';
+import { Attachment } from './attachment';
 import { Member } from './member';
+import { Date } from './util';
 
 
 /** A type representing a channel message */
@@ -13,18 +14,7 @@ export type Message = {
 	/** The content of the message */
 	message: string;
 	/** A list of attachments */
-	attachments?: {
-		/** The type of attachment */
-		type: 'image' | 'file';
-		/** The url of the attachment */
-		url: string;
-		/** Original filename */
-		filename: string;
-		/** The width of the attachment if it is an image */
-		width?: number;
-		/** The height of the attachment if it is an image */
-		height?: number;
-	}[];
+	attachments?: Attachment[];
 	/** The time the message was created */
 	created_at: Date;
 };

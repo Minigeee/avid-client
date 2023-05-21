@@ -1,4 +1,4 @@
-import { PropsWithChildren, MutableRefObject, useEffect, useImperativeHandle, useState, forwardRef, useRef, RefObject } from 'react';
+import { PropsWithChildren, MutableRefObject, useEffect, useImperativeHandle, useState, forwardRef, useRef, RefObject, useCallback, useMemo } from 'react';
 
 import {
   ActionIcon,
@@ -10,7 +10,7 @@ import {
   Divider,
   Flex,
   Group,
-  Image,
+  Image as MantineImage,
   MantineNumberSize,
   Popover,
   ScrollArea,
@@ -55,6 +55,7 @@ import { DomainWrapper, useChatStyles, useSession, useTimeout } from '@/lib/hook
 
 import { uid } from 'uid';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
+import { FileAttachment } from '@/lib/types';
 
 
 ////////////////////////////////////////////////////////////
@@ -299,8 +300,8 @@ export type RichTextEditorProps = {
 
   // Attachments
   fileInputRef?: RefObject<HTMLInputElement>;
-  attachments?: File[];
-  onAttachmentsChange?: (files: File[]) => void;
+  attachments?: FileAttachment[];
+  onAttachmentsChange?: (files: FileAttachment[]) => void;
 }
 
 
@@ -310,8 +311,28 @@ type _Funcs = {
   handleTextInput: EditorOptions['editorProps']['handleTextInput'];
 };
 
+/** Get dimensions of image file */
+async function _getImageDims(f: File): Promise<{ width: number; height: number }> {
+	return new Promise(res => {
+		const fr = new FileReader;
+
+		fr.onload = function () { // file is loaded
+			const img = new Image;
+
+			img.onload = function () {
+				res({ width: img.width, height: img.height });
+			};
+
+			if (typeof fr.result === 'string')
+				img.src = fr.result; // is the data URL because called with readAsDataURL
+		};
+
+		fr.readAsDataURL(f);
+	});
+}
+
 ////////////////////////////////////////////////////////////
-function useFunctions(props: RichTextEditorProps) {
+function useFunctions(props: RichTextEditorProps, setAttachments: (files: File[]) => Promise<void>) {
   // Ref for keeping updated function versions
   const funcsRef = useRef<Partial<_Funcs>>({});
 
@@ -321,20 +342,6 @@ function useFunctions(props: RichTextEditorProps) {
     funcsRef.current.handlePaste = (view, event, slice) => {
       // Don't handle anything if no attachments storage
       if (!props.onAttachmentsChange) return false;
-
-      // Set attachments
-      const setAttachments = (files: File[]) => {
-        // If any files are default named, assign them a random uid
-        for (let i = 0; i < files.length; ++i) {
-          const f = files[i];
-
-          if (f.name === 'image.png')
-            files[i] = new File([f], `${uid(16)}.png`, { type: f.type });
-        }
-
-        // Add all files
-        props.onAttachmentsChange?.((props.attachments || []).concat(files));
-      };
 
       // Async handler
       const renameImgs = async (files: Record<number, File>) => {
@@ -434,7 +441,36 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   const session = useSession();
   const { classes } = useChatStyles();
 
-  const funcsRef = useFunctions(props);
+
+  // Set attachments
+  const setAttachments = useCallback(async (files: File[]) => {
+    // If any files are default named, assign them a random uid
+    for (let i = 0; i < files.length; ++i) {
+      const f = files[i];
+      if (f.name === 'image.png')
+        files[i] = new File([f], `${uid(16)}.png`, { type: f.type });
+    }
+
+    // Construct file attachment objects
+    const fileAttachments: FileAttachment[] = [];
+    for (const f of files) {
+      if (f.type.startsWith('image')) {
+        const dims = await _getImageDims(f);
+        fileAttachments.push({ file: f, type: 'image', ...dims });
+      }
+
+      // Default attachment
+      else {
+        fileAttachments.push({ file: f, type: 'file' });
+      }
+    }
+
+    // Add all files
+    props.onAttachmentsChange?.((props.attachments || []).concat(fileAttachments));
+  }, [props.attachments]);
+
+  // Editor handler functions
+  const funcsRef = useFunctions(props, setAttachments);
 
 
   const editor = useEditor({
@@ -478,6 +514,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
     },
   });
 
+  // Handle submit
   useEffect(() => {
     if (!editor) return;
     editor.storage.newline.onEnter = () => {
@@ -491,11 +528,61 @@ export default function RichTextEditor(props: RichTextEditorProps) {
     };
   }, [props.onSubmit, variant]);
 
+  // Handle attachment previews render (without memo this, the image would rerender from file every time input changed)
+  const previews = useMemo(() => props.attachments?.map((f, i) => {
+    // Display image attachments as previews
+    if (f.type === 'image') {
+      const url = URL.createObjectURL(f.file);
+      return (
+        <Box sx={{ position: 'relative' }}>
+          <MantineImage
+            src={url}
+            caption={f.file.name}
+            styles={(theme) => ({
+              root: {
+                padding: '0.5rem 0.5rem 0.2rem 0.5rem',
+                maxWidth: '18ch',
+                backgroundColor: theme.colors.dark[7],
+                borderRadius: theme.radius.sm,
+              },
+              imageWrapper: { backgroundColor: theme.colors.dark[0] },
+              caption: {
+                overflow: 'hidden',
+                textAlign: 'left',
+                textOverflow: 'ellipsis',
+              },
+            })}
+          />
+          <CloseButton
+            variant='filled'
+            color='red'
+            size='sm'
+            radius='lg'
+            sx={{
+              position: 'absolute',
+              top: -5,
+              right: -5,
+            }}
+            onClick={() => {
+              const copy = props.attachments?.slice() || [];
+              copy.splice(i, 1);
+              props.onAttachmentsChange?.(copy);
+            }}
+          />
+        </Box>
+      );
+    }
+
+    // TODO : Handle other file attachments
+
+    return null;
+  }), [props.attachments]);
+
   if (props.editorRef)
     props.editorRef.current = editor;
 
-  if (!editor) return (null);
 
+  if (!editor) return (null);
 
   return (
     <Box sx={(theme) => ({
@@ -534,7 +621,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
           onChange={(event) => {
             // Add all chosen files
             if (event.target.files)
-              props.onAttachmentsChange?.([...(props.attachments || []), ...Array.from(event.target.files)]);
+              setAttachments(Array.from(event.target.files));
           }}
           style={{ display: 'none' }}
         />
@@ -670,60 +757,13 @@ export default function RichTextEditor(props: RichTextEditorProps) {
           </Group>
         </Box>
       )}
-      {props.attachments && props.attachments.length > 0 && (
+      {previews && previews.length > 0 && (
         <Group sx={(theme) => ({
           padding: '0.5rem',
           backgroundColor: theme.colors.dark[6],
           borderBottom: `1px solid ${theme.colors.dark[5]}`
         })}>
-          {props.attachments.map((file, i) => {
-            // Display image attachments as previews
-            if (file.type.startsWith('image')) {
-              const url = URL.createObjectURL(file);
-              return (
-                <Box sx={{ position: 'relative' }}>
-                <Image
-                  src={url}
-                  caption={file.name}
-                  styles={(theme) => ({
-                    root: {
-                      padding: '0.5rem 0.5rem 0.2rem 0.5rem',
-                      maxWidth: '18ch',
-                      backgroundColor: theme.colors.dark[7],
-                      borderRadius: theme.radius.sm,
-                    },
-                    imageWrapper: { backgroundColor: theme.colors.dark[0] },
-                    caption: {
-                      overflow: 'hidden',
-                      textAlign: 'left',
-                      textOverflow: 'ellipsis',
-                    },
-                  })}
-                />
-                  <CloseButton
-                    variant='filled'
-                    color='red'
-                    size='sm'
-                    radius='lg'
-                    sx={{
-                      position: 'absolute',
-                      top: -5,
-                      right: -5,
-                    }}
-                    onClick={() => {
-                      const copy = props.attachments?.slice() || [];
-                      copy.splice(i, 1);
-                      props.onAttachmentsChange?.(copy);
-                    }}
-                  />
-                </Box>
-              );
-            }
-
-            // TODO : Handle other file attachments
-
-            return null;
-          })}
+          {previews}
         </Group>
       )}
       <Flex wrap='nowrap' gap={2} sx={(theme) => ({

@@ -211,43 +211,41 @@ function JoinScreen({ app, ...props }: SubviewProps) {
           </Group>
         </Stack>
 
-        {participants && (
-          <Stack spacing={6} align='center'>
-            {participants.length === 0 && (
-              <>
-                <Avatar size={48} radius={100} sx={{ backgroundColor: '#333333' }} />
-                <Text size='xs' color='dimmed'>
-                  There are no participants in this room
-                </Text>
-              </>
-            )}
-            {participants.length > 0 && (
-              <>
-                <Avatar.Group spacing='md'>
-                  {participants.slice(0, 3).map((member, i) => (
-                    <MemberAvatar
-                      size={48}
-                      member={member}
-                      sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
-                    />
-                  ))}
-                  {participants.length > 3 && (
-                    <Avatar
-                      size={48}
-                      radius={48}
-                      sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
-                    >
-                      +{participants.length - 3}
-                    </Avatar>
-                  )}
-                </Avatar.Group>
-                <Text size='xs' color='dimmed'>
-                  {participants.length} Participant{participants.length > 1 ? 's' : ''}
-                </Text>
-              </>
-            )}
-          </Stack>
-        )}
+        <Stack spacing={6} align='center'>
+          {!participants?.length && (
+            <>
+              <Avatar size={48} radius={100} sx={{ backgroundColor: '#333333' }} />
+              <Text size='xs' color='dimmed'>
+                There are no participants in this room
+              </Text>
+            </>
+          )}
+          {participants && participants.length > 0 && (
+            <>
+              <Avatar.Group spacing='md'>
+                {participants.slice(0, 3).map((member, i) => (
+                  <MemberAvatar
+                    size={48}
+                    member={member}
+                    sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
+                  />
+                ))}
+                {participants.length > 3 && (
+                  <Avatar
+                    size={48}
+                    radius={48}
+                    sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
+                  >
+                    +{participants.length - 3}
+                  </Avatar>
+                )}
+              </Avatar.Group>
+              <Text size='xs' color='dimmed'>
+                {participants.length} Participant{participants.length > 1 ? 's' : ''}
+              </Text>
+            </>
+          )}
+        </Stack>
 
         <Group mt={8}>
           <Group spacing={6}>
