@@ -10,6 +10,20 @@ const config = {
 	/** Indicates if server is in development mode */
 	dev_mode,
 
+	/** Version info */
+	version: {
+		/** Major version number */
+		major: 0,
+		/** Minor version number */
+		minor: 1,
+		/** Patch version number */
+		patch: 0,
+		/** Revision number */
+		revision: 0,
+		/** Build metadata */
+		metadata: ['alpha'],
+	},
+
 	/** Domain address values */
 	domains: {
 		/** API address */

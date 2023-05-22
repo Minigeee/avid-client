@@ -2,6 +2,7 @@ import {} from 'react';
 
 import {
   Box,
+  Divider,
   Flex,
   ScrollArea,
   ScrollAreaProps,
@@ -84,6 +85,8 @@ export default function SettingsMenu(props: SettingsMenuProps) {
                 onClick={() => props.onChange(tab.value, tab.label)}
               />
             ))}
+
+            {/* <Divider mt={6} mr={8} ml={8} /> */}
           </>
         ))}
       </Stack>

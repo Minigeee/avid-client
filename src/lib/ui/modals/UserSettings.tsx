@@ -144,19 +144,24 @@ export default function UserSettings({ context, id, innerProps: props }: Context
 
   return (
     <Flex w='100%' h='100%'>
-      <SettingsMenu
-        values={TABS}
-        value={tab.value}
-        onChange={(label, value) => setTab({ label, value })}
-        scrollAreaProps={{
-          w: '30ch',
-          pt: 10,
-          sx: (theme) => ({
-            flexShrink: 0,
-            backgroundColor: theme.colors.dark[6],
-          }),
-        }}
-      />
+      <Flex h='100%' direction='column' sx={(theme) => ({
+        flexShrink: 0,
+        backgroundColor: theme.colors.dark[6],
+      })}>
+        <SettingsMenu
+          values={TABS}
+          value={tab.value}
+          onChange={(label, value) => setTab({ label, value })}
+          scrollAreaProps={{
+            w: '30ch',
+            pt: 10,
+            sx: { flexGrow: 1 },
+          }}
+        />
+        <Text size='xs' color='dimmed' ml={6} mb={2}>
+          v{config.version.major}.{config.version.minor}.{config.version.patch}-r{config.version.revision}.{config.version.metadata.join('+')}
+        </Text>
+      </Flex>
 
       <Flex h='100%' direction='column' sx={(theme) => ({
         flexGrow: 1,

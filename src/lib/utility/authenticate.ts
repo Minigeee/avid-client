@@ -131,10 +131,10 @@ export function authenticate(method: AuthProviders, options: AuthenticateOptions
 export async function signin(user: JwtPayload, res: NextApiResponse, redirect?: string) {
 	// Create/get user object
 	const full_user = await users.getByProvider(user.provider_id, user.provider, user.email);
+	assert(full_user);
 
 	// Create id token
-	if (full_user)
-		_setIdCookie(full_user.id, full_user._id_key, res);
+	_setIdCookie(full_user.id, full_user._id_key, res);
 
 	// Redirect
 	res.redirect(redirect || `${config.domains.site}${config.domains.app_path}`);

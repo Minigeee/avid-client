@@ -14,6 +14,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	// Get user
 	const user = await authenticate('google', { failureRedirect: '/fail' }, req, res);
 
-	// Complete sign in
-	await signin(user, res, req.query.state as string | undefined);
+	try {
+		// Complete sign in
+		await signin(user, res, req.query.state as string | undefined);
+	}
+	catch (err) {
+		res.status(500).end();
+	}
 }

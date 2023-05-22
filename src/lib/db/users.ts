@@ -47,6 +47,7 @@ function factory(session?: SessionState) {
 					cond: '$user',
 					body: '$user[0]',
 				}, {
+					cond: `_system:${process.env.NODE_ENV}.locked = false`,
 					body: sql.create('users', {
 						time_created: new Date().toISOString(),
 						provider_id,
@@ -58,6 +59,8 @@ function factory(session?: SessionState) {
 		
 						_id_key: uid(),
 					} as NoId<User>),
+				}, {
+					body: 'null',
 				}),
 			]), { session });
 		},
