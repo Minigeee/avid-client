@@ -35,7 +35,7 @@ export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...
   // Create controls once
   const controls = useMemo(() => {
     return props.groups.map((group, group_idx) => (
-      <Group noWrap>
+      <Group key={group} noWrap>
         {grouper === 'assignee' && (
           <MemberAvatar member={group === '_' ? null : getMemberSync(props.domain.id, group)} size={32} />
         )}
@@ -78,7 +78,7 @@ export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...
     })}
   >
     {props.groups.map((group, group_idx) => (
-      <Accordion.Item value={group}>
+      <Accordion.Item key={group} value={group}>
         <Accordion.Control>
           {controls[group_idx]}
         </Accordion.Control>

@@ -534,7 +534,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
     if (f.type === 'image') {
       const url = URL.createObjectURL(f.file);
       return (
-        <Box sx={{ position: 'relative' }}>
+        <Box key={f.file.name} sx={{ position: 'relative' }}>
           <MantineImage
             src={url}
             caption={f.file.name}

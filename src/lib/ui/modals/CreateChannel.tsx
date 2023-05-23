@@ -52,6 +52,7 @@ const TypeSelectItem = forwardRef<HTMLDivElement, TypeSelectItemProps>(
     </div>
   )
 );
+TypeSelectItem.displayName = 'TypeSelectItem';
 
 
 ////////////////////////////////////////////////////////////

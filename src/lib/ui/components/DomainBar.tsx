@@ -116,6 +116,7 @@ export default function DomainBar() {
         <Stack spacing={0} sx={{ marginTop: '0.18rem' }}>
           {PERSONAL_TABS.map((tab, i) => (
             <DomainAvatar
+              key={tab.id}
               domain={{
                 id: tab.id,
                 name: tab.name,
@@ -128,6 +129,7 @@ export default function DomainBar() {
           <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
           {profile.domains?.map((domain, i) => (
             <DomainAvatar
+              key={domain.id}
               domain={domain}
               active={app.navigation.domain === domain.id}
               onClick={() => app._mutators.navigation.setDomain(domain.id)}

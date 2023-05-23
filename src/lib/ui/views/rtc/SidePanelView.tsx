@@ -85,6 +85,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <Stack spacing={0}>
           {props.participants.map((member, i) => (
             <UnstyledButton
+              key={member.id}
               sx={(theme) => ({
                 display: 'block',
                 width: '100%',

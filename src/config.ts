@@ -27,23 +27,23 @@ const config = {
 	/** Domain address values */
 	domains: {
 		/** API address */
-		api: dev_mode ? 'http://localhost:3001' : '',
+		api: dev_mode ? 'http://localhost:3001' : 'https://api.avidapp.io',
 		/** Site address */
-		site: dev_mode ? 'http://localhost:3000' : '',
+		site: dev_mode ? 'http://localhost:3000' : 'https://avidapp.io',
 		/** App path */
-		app_path: '/app',
+		app_path: '/_',
 	},
 
 	/** Database config */
 	db: {
 		/** Database url */
-		url: dev_mode ? 'http://127.0.0.1:8000/sql' : '',
+		url: dev_mode ? 'http://127.0.0.1:8000/sql' : 'https://db.avidapp.io/sql',
 		/** Default namespace */
 		namespace: dev_mode ? 'test' : 'main',
 		/** Default databse */
 		database: dev_mode ? 'test' : 'main',
 		/** Default token */
-		token: 'main',
+		token: dev_mode ? 'main' : 'client',
 	},
 
 	/** Fetcher config */
@@ -194,7 +194,7 @@ const config = {
 		rtc: {
 			/** List of available rtc servers */
 			servers: [
-				'localhost:3002',
+				dev_mode ? 'localhost:3002' : 'https://rtc.avidapp.io',
 			],
 		},
 	},

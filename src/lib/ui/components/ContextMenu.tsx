@@ -175,7 +175,7 @@ export const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerP
     </Box>
   );
 });
-
+ContextMenuTrigger.displayName = 'ContextMenu.Trigger';
 ContextMenu.Trigger = ContextMenuTrigger;
 
 

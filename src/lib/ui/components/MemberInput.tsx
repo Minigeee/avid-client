@@ -64,6 +64,7 @@ export default function MemberInput({ domain_id, ...props }: MemberInputProps) {
       );
     }
   );
+  SelectItem.displayName = 'MemberInput.SelectItem';
 
 
   return (

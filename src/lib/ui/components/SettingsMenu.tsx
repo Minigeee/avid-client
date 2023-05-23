@@ -80,6 +80,7 @@ export default function SettingsMenu(props: SettingsMenuProps) {
             </Text>
             {values.map((tab, i) => (
               <SettingsTab
+                key={tab.value}
                 {...tab}
                 selected={props.value === tab.value}
                 onClick={() => props.onChange(tab.value, tab.label)}

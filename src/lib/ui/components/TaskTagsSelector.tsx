@@ -35,6 +35,7 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
     </div>
   )
 );
+TagSelectItem.displayName = 'TagSelectItem';
 
 
 ////////////////////////////////////////////////////////////

@@ -29,7 +29,7 @@ export default function Login() {
       })}>
         <Title order={3} align='center'>Log In</Title>
         <Alert icon={<IconAlertCircle size={18} />} color='yellow' mt={6} mb={8}>
-          Email + password login isn't supported yet. Please use Google login for now.
+          Email + password login isn&apos;t supported yet. Please use Google login for now.
         </Alert>
 
         <TextInput

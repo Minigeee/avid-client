@@ -136,7 +136,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   const tag = tags[id];
 
                   return (
-                    <Box sx={{
+                    <Box key={id} sx={{
                       padding: '1px 11px 2px 11px',
                       backgroundColor: tag.color || 'gray',
                       borderRadius: 15,
@@ -210,7 +210,7 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
       }}
     >
       {Object.values(board.statuses).map((status, i) => (
-        <Flex direction='column'>
+        <Flex key={status.id} direction='column'>
           <Flex gap='xs' align='center' sx={(theme) => ({
             padding: '0.4rem 0.5rem 0.4rem 0.8rem',
             backgroundColor: theme.colors.dark[4],

@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -7,7 +8,7 @@ const nextConfig = {
     return [
       {
         source: '/join/:domain_id',
-        destination: '/app?join=:domain_id',
+        destination: `/_?join=:domain_id`,
         permanent: false,
       }
     ];

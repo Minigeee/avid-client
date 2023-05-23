@@ -85,7 +85,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
         {expansions.map((expansion, i) => {
           const active = expansion_id === expansion.value;
           return (
-            <UnstyledButton onClick={() => {
+            <UnstyledButton key={expansion.value} onClick={() => {
               app._mutators.navigation.setExpansion(expansion.value);
             }}>
               <div>

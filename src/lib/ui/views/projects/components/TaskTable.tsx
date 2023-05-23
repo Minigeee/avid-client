@@ -54,7 +54,8 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
       />
     </>
   )
-})
+});
+CustomCheckbox.displayName = 'CustomTaskTableCheckbox';
 
 
 ////////////////////////////////////////////////////////////
@@ -178,7 +179,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               if (!tag) return;
 
               return (
-                <Box sx={{
+                <Box key={id} sx={{
                   padding: '1px 11px 2px 11px',
                   backgroundColor: tag.color,
                   borderRadius: 15,

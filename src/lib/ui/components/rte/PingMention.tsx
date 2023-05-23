@@ -186,6 +186,7 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
     </ScrollArea.Autosize>
   )
 });
+MentionList.displayName = 'MentionList';
 
 
 ////////////////////////////////////////////////////////////

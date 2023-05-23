@@ -225,6 +225,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
               <Avatar.Group spacing='md'>
                 {participants.slice(0, 3).map((member, i) => (
                   <MemberAvatar
+                    key={member.id}
                     size={48}
                     member={member}
                     sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
@@ -357,6 +358,7 @@ function RoomScreen({ app, ...props }: SubviewProps) {
           >
             {participants.map((member, i) => (
               <ParticipantView
+                key={member.id}
                 member={member}
                 app={app}
 

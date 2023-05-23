@@ -57,7 +57,7 @@ export default function RtcVoices() {
   return (
     <>
       {participants.map((participant, i) => (
-        <RtcVoice participant={participant} />
+        <RtcVoice key={participant.id} participant={participant} />
       ))}
     </>
   );

@@ -9,7 +9,9 @@ export default class _Document extends Document {
   render() {
     return (
       <Html>
-        <Head />
+        <Head>
+          <meta name='robots' content='noindex' />
+        </Head>
         <body>
           <Main />
           <NextScript />

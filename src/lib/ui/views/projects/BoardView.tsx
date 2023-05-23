@@ -359,6 +359,7 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
     );
   }
 );
+GroupSelectItem.displayName = 'GroupSelectItem';
 
 
 ////////////////////////////////////////////////////////////

@@ -93,7 +93,7 @@ export function CreateTaskCollection({ context, id, innerProps: props }: Context
         )}
         {props.mode === 'collection' && (
           <Text size='xs' color='dimmed'>
-            A collection is a general set of tasks. It is useful for organizing tasks that don't belong
+            A collection is a general set of tasks. It is useful for organizing tasks that don&apos;t belong
             in a cycle into categories.
           </Text>
         )}

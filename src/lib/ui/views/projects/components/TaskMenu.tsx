@@ -142,7 +142,7 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
           }}
         >
           {collectionSelections.map((c) => c.id !== props.collection ? (
-            <Menu.Item onClick={updateHandler({ collection: c.id })}>
+            <Menu.Item key={c.id} onClick={updateHandler({ collection: c.id })}>
               <Stack spacing={6}>
                 <Text inline weight={600} size='sm'>{c.name}</Text>
                 {(c.start_date || c.end_date) && (
@@ -224,6 +224,7 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
           >
             {Object.entries(props.statuses).map(([status_id, status]) => selected?.length || (task && status_id !== task.status) ? (
               <Menu.Item
+                key={status_id}
                 icon={<ColorSwatch color={status.color || ''} size={16} />}
                 onClick={updateHandler({ status: status_id })}
               >

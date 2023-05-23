@@ -86,6 +86,7 @@ const PrioritySelectItem = forwardRef<HTMLDivElement, PriorityItemProps>(
     </div>
   )
 );
+PrioritySelectItem.displayName = 'PrioritySelectItem';
 
 
 ////////////////////////////////////////////////////////////
@@ -109,6 +110,7 @@ const StatusSelectItem = forwardRef<HTMLDivElement, StatusItemProps>(
     </div>
   )
 );
+StatusSelectItem.displayName = 'StatusSelectItem';
 
 
 ////////////////////////////////////////////////////////////
@@ -133,6 +135,7 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
     </div>
   )
 );
+TagSelectItem.displayName = 'TagSelectItem';
 
 const PRESET_COLORS: string[] = [];
 for (const [name, colors] of Object.entries(DEFAULT_THEME.colors)) {
@@ -145,7 +148,7 @@ PRESET_COLORS.push(DEFAULT_THEME.colors.gray[6]);
 
 ////////////////////////////////////////////////////////////
 function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
-  return ({ value, label, color, onRemove, ...others }: MultiSelectValueProps & { value: string, color: string }) => {
+  function TagSelectValueComponent({ value, label, color, onRemove, ...others }: MultiSelectValueProps & { value: string, color: string }) {
     const [tagColor, setTagColor] = useState<string>('');
 
     return (
@@ -192,6 +195,8 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
       </div>
     );
   }
+
+  return TagSelectValueComponent;
 }
 
 
@@ -246,6 +251,7 @@ const CollectionSelectItem = forwardRef<HTMLDivElement, CollectionSelectItemProp
     </div>
   )
 );
+CollectionSelectItem.displayName = 'CollectionSelectItem';
 
 
 ////////////////////////////////////////////////////////////

@@ -105,7 +105,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
-          <Group className='msg-body' align='start' noWrap sx={(theme) => ({
+          <Group key={msg.id} className='msg-body' align='start' noWrap sx={(theme) => ({
             padding: '0.25rem 0rem 0.25rem calc(1.2rem - 4px)',
             backgroundColor: hasPing ? '#2B293A' : undefined,
             transition: 'background-color 0.08s',
@@ -165,6 +165,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 
                   return (
                     <Image
+                      key={attachment.filename}
                       src={attachment.url}
                       alt={attachment.filename}
                       width={w}
@@ -256,7 +257,7 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
       >
         <Stack spacing='sm'>
           {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
-            <Fragment>
+            <Fragment key={day}>
               <Divider
                 label={moment(day).format('LL')}
                 labelPosition='center'
@@ -264,6 +265,7 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
               />
               {grouped.map((consec, j) => (
                 <MemoMessageGroup
+                  key={j}
                   msgs={consec}
                   profile_id={props.sender.id}
                   style={classes.typography}
