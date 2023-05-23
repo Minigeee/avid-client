@@ -19,7 +19,11 @@ export function notifyError(error: Error, options?: { title?: string, message?: 
 
 	// Save error
 	if (options?.notify !== false) {
-		setExtra('error', error)
+		if (error instanceof AxiosError)
+			setExtra('error', error.config);
+		else
+			setExtra('error', error);
+			
 		captureException(error);
 	}
 }
