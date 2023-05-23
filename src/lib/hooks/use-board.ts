@@ -80,7 +80,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 				const results = await query<Board[]>(
 					sql.update<Board>(board.id, {
 						set: {
-							collections: sql.fn<Board>(function() {
+							collections: sql.fn<Board>('update_collection', function() {
 								// Find index
 								const idx = this.collections.findIndex(x => x.id === collection_id);
 								if (idx >= 0)
@@ -116,7 +116,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 				const results = await query<[Board[], Task[]]>(sql.transaction([
 					sql.update<Board>(board.id, {
 						set: {
-							collections: sql.fn<Board>(function() {
+							collections: sql.fn<Board>('remove_collection', function() {
 								return this.collections.filter(x => x.id !== collection_id);
 							}, { collection_id }),
 						},
@@ -187,7 +187,7 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 					sql.update<Board>(board.id, {
 						set: {
 							// Function that updates existing tags and adds new ones
-							tags: sql.fn<Board>(function() {
+							tags: sql.fn<Board>('add_tags', function() {
 								// Merge updates
 								for (const tag of update) {
 									const idx = this.tags.findIndex(x => x.id === tag.id);

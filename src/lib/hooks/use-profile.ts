@@ -38,7 +38,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 					sql.let('$domain', sql.create<Domain>('domains', {
 						name,
 						roles: [sql.$('$role.id')],
-						channels: sql.fn<Domain>(function(channels: Channel[]) {
+						channels: sql.fn<Domain>('add_domain', function(channels: Channel[]) {
 							return channels.map(x => x.id);
 						}),
 						time_created: now,

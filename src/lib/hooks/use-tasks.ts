@@ -218,7 +218,7 @@ function tasksMutators(board_id: string) {
 								..._sanitize(task),
 								assignee: task.assignee === null ? null : task.assignee?.id,
 								time_updated: now,
-								time_status_updated: sql.fn<Task>(function () {
+								time_status_updated: sql.fn<Task>('update_tasks', function () {
 									return newStatus && newStatus !== this.status ? now : this.time_status_updated;
 								}, { newStatus, now }),
 							},

@@ -35,7 +35,7 @@ function addBoardChannel(channel: Partial<Channel>, options: ChannelOptions<'boa
 			time_created: channel.time_created,
 
 			_task_counter: 0,
-			_id_counter: 0,
+			_id_counter: 1,
 		}, ['id'])),
 		sql.let('$channel', sql.create<Channel>('channels', {
 			...channel,

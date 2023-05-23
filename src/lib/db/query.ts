@@ -9,6 +9,8 @@ import { debug } from '../utility';
 
 /** Db query options */
 export type QueryOptions = {
+	/** Force root (dev only) */
+	root?: boolean;
 	/** Session object used for credentials */
 	session?: SessionState;
 	/** If full results should be returned. By default only the results of the last statement are returned. */
@@ -28,7 +30,7 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 		assert(process.env.SURREAL_USERNAME);
 		assert(process.env.SURREAL_PASSWORD);
 	}
-	else {
+	else if (!options?.root) {
 		assert(options?.session?.token);
 	}
 
@@ -44,11 +46,12 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 			// DB query
 			const results = await axios.post(config.db.url, sql.trim(), {
 				// Use username password auth if on server
-				auth: is_server && process.env.SURREAL_USERNAME && process.env.SURREAL_PASSWORD ? {
-					username: process.env.SURREAL_USERNAME,
-					password: process.env.SURREAL_PASSWORD,
-				} : undefined,
-		
+				auth: options?.root ? { username: 'root', password: 'root' } :
+					is_server && process.env.SURREAL_USERNAME && process.env.SURREAL_PASSWORD ? {
+						username: process.env.SURREAL_USERNAME,
+						password: process.env.SURREAL_PASSWORD,
+					} : undefined,
+
 				headers: {
 					// Use bearer token if on client
 					Authorization: !is_server ? `Bearer ${token}` : undefined,
@@ -271,18 +274,38 @@ export const sql = {
 	$: (expr: string) => ({ __esc__: expr }),
 
 	/** Create string from function */
-	fn: <This extends object>(fn: (this: This, ...args: any[]) => any, hardcode?: Record<string, any>) => {
-		let { params, body } = _fnstr(fn);
-	
-		// Replace parameters
-		for (let i = 0; i < params.length; ++i)
-			body = _replace(body, params[i], `arguments[${i}]`);
-	
-		// Replace hardcodes
-		for (const [k, v] of Object.entries(hardcode || {}))
-			body = _replace(body, k, _json(v, false));
-	
-		return { __esc__: `function(${params.map(x => `$${x}`).join(', ')}) {${body}}` };
+	fn: <This extends object>(key: string, fn: (this: This, ...args: any[]) => any, hardcode?: Record<string, any>) => {
+		// If in production, use pregenerated function string
+		if (!config.dev_mode) {
+			// Function builder
+			const builder = config.db.fns[key];
+			assert(builder);
+
+			// Make all hardcodes the correct format
+			hardcode = hardcode || {};
+			for (const [k, v] of Object.entries(hardcode))
+				hardcode[k] = _json(v);
+
+			return { __esc__: builder(hardcode) };
+		}
+
+		else {
+			let { params, body } = _fnstr(fn);
+
+			// Replace parameters
+			for (let i = 0; i < params.length; ++i)
+				body = _replace(body, params[i], `arguments[${i}]`);
+
+			// Replace hardcodes
+			let template = body;
+			for (const [k, v] of Object.entries(hardcode || {})) {
+				body = _replace(body, k, _json(v, false));
+				template = _replace(template, k, `\${${k}}`);
+			}
+
+			query(`UPDATE _fn:${key} SET value = 'function(${params.map(x => `$${x}`).join(', ')}) {${template}}'`, { root: true });
+			return { __esc__: `function(${params.map(x => `$${x}`).join(', ')}) {${body}}` };
+		}
 	},
 
 	/** Join a list of expressions with "and" */

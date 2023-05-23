@@ -44,6 +44,14 @@ const config = {
 		database: dev_mode ? 'test' : 'main',
 		/** Default token */
 		token: dev_mode ? 'main' : 'client',
+
+		/** Functions */
+		fns: {
+			add_domain: ({}) => `function($channels) { return arguments[0].map((x)=>x.id); }`,
+			remove_collection: ({ collection_id }) => `function() { return this.collections.filter((x)=>x.id !== ${collection_id}); }`,
+			update_collection: ({ collection_id, collection }) => `function() { const idx = this.collections.findIndex((x)=>x.id === ${collection_id}); if (idx >= 0) this.collections[idx] = { ...this.collections[idx], ...${collection} }; return this.collections; }`,
+			update_tasks: ({ newStatus, now }) => `function() { return ${newStatus} && ${newStatus} !== this.status ? ${now} : this.time_status_updated; }`,
+		} as Record<string, (hardcodes: any) => string>,
 	},
 
 	/** Fetcher config */
