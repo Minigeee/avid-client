@@ -46,7 +46,7 @@ function mutatorFactory(session: _SessionState, setSession: (state: _SessionStat
 			let token: string;
 			try {
 				const result = await axios.post(
-					`${config.domains.site}/api/login/refresh`,
+					'/api/login/refresh',
 					undefined,
 					{ withCredentials: true }
 				);
