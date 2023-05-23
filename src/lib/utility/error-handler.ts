@@ -19,7 +19,7 @@ export function notifyError(error: Error, options?: { title?: string, message?: 
 
 	// Save error
 	if (options?.notify !== false) {
-		setExtra('error', error);
+		setExtra('error', error)
 		captureException(error);
 	}
 }
