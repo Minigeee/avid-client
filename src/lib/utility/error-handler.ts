@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import { captureException } from '@sentry/nextjs';
+import { captureException, setExtra } from '@sentry/nextjs';
 
 import config from '@/config';
 import notification from './notification';
@@ -18,8 +18,10 @@ export function notifyError(error: Error, options?: { title?: string, message?: 
 	);
 
 	// Save error
-	if (options?.notify !== false)
+	if (options?.notify !== false) {
+		setExtra('error', error);
 		captureException(error);
+	}
 }
 
 
