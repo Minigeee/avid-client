@@ -7,10 +7,15 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/join/:domain_id',
-        destination: `/_?join=:domain_id`,
+        source: '/',
+        destination: `/app`,
         permanent: false,
-      }
+      },
+      {
+        source: '/join/:domain_id',
+        destination: `/app?join=:domain_id`,
+        permanent: false,
+      },
     ];
   },
 

@@ -31,7 +31,7 @@ const config = {
 		/** Site address */
 		site: dev_mode ? 'http://localhost:3000' : 'https://avidapp.io',
 		/** App path */
-		app_path: '/_',
+		app_path: '/app',
 	},
 
 	/** Database config */
