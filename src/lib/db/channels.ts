@@ -84,23 +84,18 @@ export async function addChannel<T extends ChannelTypes>(channel: Partial<Channe
  * @param session The session used to access database
  */
 export async function removeChannel(channel_id: string, type: ChannelTypes, session: SessionState) {
-	let str = '';
+	let transaction: string[] = [sql.let('$channel', sql.delete(channel_id, { return: 'BEFORE' }))];
 
 	// Board
 	if (type === 'board') {
-		str = sql.transaction([
-			sql.let('$channel', sql.delete(channel_id, { return: 'BEFORE' })),
+		transaction = transaction.concat([
 			sql.delete('$channel.data.board'),
 		]);
 	}
 
-	// Default
-	else {
-		str = sql.delete(channel_id);
-	}
-
 	// Execute query
-	await query(str, { session });
+	transaction.push(sql.update<Domain>('($channel.domain)', { set: { channels: ['-=', channel_id] } }));
+	await query(sql.transaction(transaction), { session });
 }
 
 
