@@ -37,6 +37,10 @@ const TABS = {
   'App Settings': [
     { value: 'rtc', label: 'Voice & Video' },
   ],
+  'Help & Feedback': [
+    { value: 'contact', label: 'Contact' },
+    { value: 'feedback', label: 'Feedback', link: config.app.contact.feedback_form },
+  ],
 };
 let FLATTENED: { value: string; label: string }[] = [];
 for (const tabs of Object.values(TABS))
@@ -218,6 +222,17 @@ function RtcTab({ app, ...props }: TabProps) {
 
 
 ////////////////////////////////////////////////////////////
+function ContactTab({ ...props }: TabProps) {
+  return (
+    <Stack spacing={6}>
+      <Title order={5}>Email</Title>
+      <Text>{config.app.contact.email}</Text>
+    </Stack>
+  );
+}
+
+
+////////////////////////////////////////////////////////////
 export type UserSettingsProps = {
   /** Used to modify app state */
   app: AppState;
@@ -281,6 +296,7 @@ export default function UserSettings({ context, id, innerProps: props }: Context
         <ScrollArea sx={{ flexGrow: 1, padding: '1.0rem 1.5rem' }}>
           {tab?.value === 'account' && (<AccountTab {...tabProps} />)}
           {tab?.value === 'rtc' && (<RtcTab {...tabProps} />)}
+          {tab?.value === 'contact' && (<ContactTab {...tabProps} />)}
         </ScrollArea>
       </Flex>
     </Flex>

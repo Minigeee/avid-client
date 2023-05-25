@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Box,
+  Center,
   Flex,
   Group,
   Menu,
@@ -148,6 +149,11 @@ export default function DomainView({ domain_id }: DomainViewProps) {
         borderTopRightRadius: 6,
       }}>
         {expansion_id === 'home' && (<MainView />)}
+        {expansion_id !== 'home' && (
+          <Center w='100%' h='100%'>
+            <Text>Coming soon :&#41;</Text>
+          </Center>
+        )}
       </Box>
     </Flex>
   )

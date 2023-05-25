@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 
 import {
   Box,
+  Center,
   Flex,
+  Text,
 } from '@mantine/core';
 
 import DomainBar from '@/lib/ui/components/DomainBar';
@@ -38,6 +40,11 @@ export default function Main(props: { visible: boolean }) {
       }}>
         {/* Actual domains */}
         {app.navigation.domain?.startsWith('domains') && (<DomainView domain_id={app.navigation.domain} />)}
+        {app.navigation.domain && !app.navigation.domain.startsWith('domains') && (
+          <Center w='100%' h='100%'>
+            <Text>Coming soon :&#41;</Text>
+          </Center>
+        )}
       </Box>
     </Flex>
   );

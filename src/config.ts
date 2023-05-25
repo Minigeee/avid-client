@@ -107,7 +107,14 @@ const config = {
 	/** Application config */
 	app: {
 		/** Message used to notify user to contact/report issue */
-		support_message: 'Please contact us if this problem persists.',
+		support_message: 'Please contact us if issue keeps happening.',
+		/** Contact info */
+		contact: {
+			/** Feedback google form */
+			feedback_form: 'https://forms.gle/b6Sq6nzFan43nXD16',
+			/** Contact email */
+			email: 'minigeee0@gmail.com',
+		},
 		/** Amount of time to wait before updating navigation state */
 		nav_update_timeout: 10 * 1000,
 

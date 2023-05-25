@@ -98,7 +98,7 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary height='90vh'>
       <AppProvider>
         <ScreenState router={router} />
       </AppProvider>
