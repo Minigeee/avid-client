@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useState } from 'react';
 
 import {
   Alert,
@@ -10,12 +11,50 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconBrandGoogle, IconLock, IconMail } from '@tabler/icons-react';
 
 
 export default function Login() {
   const router = useRouter();
   const redirect = router.query.redirect ? `&redirect=${encodeURIComponent(router.query.redirect as string)}` : '';
+
+  const [alphaKey, setAlphaKey] = useState<string>('');
+  const form = useForm({
+    initialValues: {
+      alpha_key: '',
+    }
+  });
+  if (!alphaKey) {
+    return (
+      <form onSubmit={form.onSubmit((values) => {
+        setAlphaKey(values.alpha_key);
+      })}>
+        <Center w='100vw' h='100vh'>
+          <Stack spacing='lg' sx={(theme) => ({
+            padding: '2.2rem 1.8rem',
+            width: '50ch',
+            maxWidth: '100%',
+            backgroundColor: theme.colors.dark[5],
+            borderRadius: theme.radius.sm,
+            boxShadow: '0px 10px 20px #00000030',
+          })}>
+            <TextInput
+              label='Enter Alpha Key'
+              {...form.getInputProps('alpha_key')}
+            />
+            <Button
+              variant='gradient'
+              type='submit'
+            >
+              Enter
+            </Button>
+          </Stack>
+        </Center>
+      </form>
+    );
+  }
+
 
   return (
     <Center w='100vw' h='100vh'>
@@ -59,7 +98,7 @@ export default function Login() {
           color='blue'
           leftIcon={<IconBrandGoogle size={18} strokeWidth={2} />}
           component='a'
-          href={`/api/login?provider=google${redirect}`}
+          href={`/api/login?provider=google&alpha_key=${alphaKey}${redirect}`}
         >
           Continue with Google
         </Button>

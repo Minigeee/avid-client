@@ -34,7 +34,8 @@ function factory(session?: SessionState) {
 		 * @param email An email that should be provided if first sign up to store data
 		 * @returns The corresponding user object
 		 */
-		getByProvider: (provider_id: string, provider: AuthProviders, email?: string) => {
+		getByProvider: (provider_id: string, provider: AuthProviders, email: string | undefined, alpha_key: string) => {
+			console.log(alpha_key);
 			return query<User>(sql.multi([
 				// Select user that matches provider info
 				sql.let('$user', sql.select('*', {
@@ -47,7 +48,7 @@ function factory(session?: SessionState) {
 					cond: '$user',
 					body: '$user[0]',
 				}, {
-					cond: `_system:${process.env.NODE_ENV}.locked = false`,
+					cond: `_system:${process.env.NODE_ENV}.alpha_key = '${alpha_key}'`,
 					body: sql.create('users', {
 						time_created: new Date().toISOString(),
 						provider_id,

@@ -16,7 +16,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 	try {
 		// Complete sign in
-		await signin(user, res, req.query.state as string | undefined);
+		const stateStr = typeof req.query.state === 'string' ? Buffer.from(req.query.state, 'base64').toString() : undefined;
+		const state = stateStr ? JSON.parse(stateStr) as { redirect?: string; alpha_key?: string } : undefined
+		await signin(user, res, state?.redirect, state?.alpha_key || '');
 	}
 	catch (err) {
 		res.status(500).end();

@@ -128,9 +128,9 @@ export function authenticate(method: AuthProviders, options: AuthenticateOptions
  * @param redirect The redirect url
  * @returns The signed jwt string
  */
-export async function signin(user: JwtPayload, res: NextApiResponse, redirect?: string) {
+export async function signin(user: JwtPayload, res: NextApiResponse, redirect: string | undefined, alpha_key: string) {
 	// Create/get user object
-	const full_user = await users.getByProvider(user.provider_id, user.provider, user.email);
+	const full_user = await users.getByProvider(user.provider_id, user.provider, user.email, alpha_key);
 	assert(full_user);
 
 	// Create id token
