@@ -112,6 +112,8 @@ export type RtcState = {
 	/** A map of participants */
 	participants: Record<string, RtcParticipant>;
 	
+	/** The currently selected audio input device id */
+	audio_input_device?: string;
 	/** Indicates if screen is being shared */
 	is_screen_shared: boolean;
 	/** Indicates if mic is enabled (connected and available) */
@@ -277,7 +279,7 @@ function getConsumerField(consumer: Consumer) {
 
 
 /** Enable mic */
-async function enableMic(emit: RtcSetState) {
+async function enableMic(deviceId: string | undefined, emit: RtcSetState) {
 	assert(_.device);
 
 	// Quit if producer already exists
@@ -300,7 +302,8 @@ async function enableMic(emit: RtcSetState) {
 		assert(_.sendTransport);
 
 		// Get mic track
-		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		const stream = await navigator.mediaDevices.getUserMedia(deviceId ? { audio: { deviceId } } : { audio: true });
+		stream.getTrackById
 		const tracks = stream.getAudioTracks();
 
 		if (tracks.length === 0) {
@@ -880,9 +883,8 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 		});
 
 		// Enable microphone
-		console.log(_state.is_mic_muted)
 		if (!_state.is_mic_muted)
-			enableMic(emit);
+			enableMic(_state.audio_input_device, emit);
 
 		// TODO : Enable webcam
 	}, { message: 'An error occurred while setting up RTC data producers' }));
@@ -1211,18 +1213,21 @@ export function useRtc(session: SessionState) {
 				}
 
 				// Reset state
-				_state = merge({
+				_state = {
+					// Keep certain options
+					...merge({
+						is_screen_shared: false,
+						is_mic_enabled: false,
+						is_mic_muted: false,
+						is_deafened: false,
+					}, _state || {}),
+
 					room_id,
 					domain_id: domain_id || '',
 					server: url,
 					joined: false,
 					participants: {},
-
-					is_screen_shared: false,
-					is_mic_enabled: false,
-					is_mic_muted: false,
-					is_deafened: false,
-				}, _state || {});
+				};
 
 				// Connect to server
 				makeRtcSocket(url, room_id, session, emit);
@@ -1292,8 +1297,10 @@ export function useRtc(session: SessionState) {
 				/**
 				 * Enables microphone. Must be connected to a room to enable.
 				 * Does nothing if microphone is already enabled.
+				 * 
+				 * @param device_id The id of the input device to use
 				 */
-				enable: () => enableMic((state) => { _state = state; setState(state); }),
+				enable: (device_id?: string) => enableMic(device_id, (state) => { _state = state; setState(state); }),
 
 				/**
 				 * Disables microphone. Does nothing if microphone is already disabled.
@@ -1311,6 +1318,13 @@ export function useRtc(session: SessionState) {
 				 * If microphone is not enabled, it will be unmuted when it is enabled.
 				 */
 				unmute: () => unmuteMic((state) => { _state = state; setState(state); }),
+
+				/**
+				 * Choose an audio input device
+				 * 
+				 * @param device_id The id of the audio input device
+				 */
+				set_device: (device_id: string | undefined) => setState({ ..._state, audio_input_device: device_id }),
 			},
 		},
 	};
@@ -1318,3 +1332,5 @@ export function useRtc(session: SessionState) {
 
 /** Rtc context state mutators */
 export type RtcMutators = ReturnType<typeof useRtc>['mutators'];
+
+export function rtcIo() { return _.socket; }

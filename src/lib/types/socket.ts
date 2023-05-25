@@ -26,6 +26,7 @@ export interface Media_ServerToClientEvents {
 	'make-consumer': (options: any, callback: (success: boolean) => void) => void;
 	'participant-joined': (participant_id: string) => void;
 	'participant-left': (participant_id: string) => void;
+	'participant-talk': (participant_id: string, status: 'start' | 'stop') => void;
 	'consumer-closed': (consumer_id: string) => void;
 	'consumer-paused': (consumer_id: string) => void;
 	'consumer-resumed': (consumer_id: string) => void;

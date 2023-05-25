@@ -74,9 +74,9 @@ export default function App() {
 
   // Realtime server
   useEffect(() => {
-    if (!session.token) return;
+    if (!session.token || !session.profile_id) return;
     connect(session);
-  }, [session.token])
+  }, [session.token, session.profile_id]);
 
 
   // Loading screen

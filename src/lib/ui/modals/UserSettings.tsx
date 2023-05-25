@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 
 import {
   Box,
@@ -9,6 +9,7 @@ import {
   Flex,
   Group,
   ScrollArea,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -24,8 +25,8 @@ import ProfileAvatar from '@/lib/ui/components/ProfileAvatar';
 import SettingsMenu from '@/lib/ui/components/SettingsMenu';
 
 import config from '@/config';
-import { SessionState } from '@/lib/contexts';
-import { ProfileWrapper, useProfile, useSession } from '@/lib/hooks';
+import { AppState, SessionState } from '@/lib/contexts';
+import { ProfileWrapper, useApp, useMemoState, useProfile, useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -33,13 +34,21 @@ const TABS = {
   'Account Settings': [
     { value: 'account', label: 'Account' },
   ],
+  'App Settings': [
+    { value: 'rtc', label: 'Voice & Video' },
+  ],
 };
+let FLATTENED: { value: string; label: string }[] = [];
+for (const tabs of Object.values(TABS))
+  FLATTENED = FLATTENED.concat(tabs);
 
 ////////////////////////////////////////////////////////////
 type TabProps = {
+  app: AppState;
   session: SessionState;
   profile: ProfileWrapper;
 };
+
 
 ////////////////////////////////////////////////////////////
 function AccountTab({ session, profile, ...props }: TabProps) {
@@ -131,16 +140,105 @@ function AccountTab({ session, profile, ...props }: TabProps) {
   );
 }
 
+
 ////////////////////////////////////////////////////////////
-export type UserSettingsProps = { };
+function RtcTab({ app, ...props }: TabProps) {
+  const [rescan, setRescan] = useState<boolean>(false);
+  const [audioInputDevices, setAudioInputDevices] = useState<{ value: string; label: string }[]>([]);
+
+  // For populating media device lists
+  useEffect(() => {
+    function setMediaDevices() {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        // Check if any devices returned
+        if (!devices.length) {
+          if (!rescan) {
+            // Request device access
+            navigator.mediaDevices.getUserMedia({ audio: true });
+            setRescan(!rescan);
+          }
+
+          return;
+        }
+
+        const audioInput: MediaDeviceInfo[] = [];
+  
+        // Iterate devices
+        for (const device of devices) {
+          if (device.kind == 'audioinput') {
+            // If no label, request access
+            if (!device.label) {
+              navigator.mediaDevices.getUserMedia({ audio: true });
+              setRescan(!rescan);
+              return;
+            }
+
+            audioInput.push(device);
+          }
+        }
+  
+        // Set states
+        setAudioInputDevices(audioInput
+          .map(x => ({ value: x.deviceId, label: x.label.replace(/\([0-9a-fA-F]{4}:[0-9a-fA-F]{4}\)/g, '') }))
+        );
+      });
+    }
+    setMediaDevices();
+
+    // Update whenever devices change
+    navigator.mediaDevices.ondevicechange = (event) => {
+      setMediaDevices();
+    };
+
+    // Reset handler on unload
+    return () => {
+      navigator.mediaDevices.ondevicechange = null;
+    };
+  }, [rescan]);
+
+
+  return (
+    <Stack>
+      <Title order={3}>Audio Settings</Title>
+
+      <Select
+        label='Input Device'
+        placeholder='None'
+        data={audioInputDevices}
+        value={app.rtc?.audio_input_device || 'default'}
+        onChange={(value) => app._mutators.rtc.microphone.set_device(value || undefined)}
+        sx={{ width: config.app.ui.med_input_width }}
+        styles={{
+          item: { whiteSpace: 'normal' },
+        }}
+      />
+    </Stack>
+  );
+}
+
+
+////////////////////////////////////////////////////////////
+export type UserSettingsProps = {
+  /** Used to modify app state */
+  app: AppState;
+
+  /** The starting tab */
+  tab?: string;
+};
 
 ////////////////////////////////////////////////////////////
 export default function UserSettings({ context, id, innerProps: props }: ContextModalProps<UserSettingsProps>) {
   const session = useSession();
   const profile = useProfile(session.profile_id);
 
-  const [tab, setTab] = useState(TABS['Account Settings'][0]);
+  const [tab, setTab] = useMemoState(() => {
+    const tabId = props.tab || 'account';
+    return FLATTENED.find(x => x.value === tabId);
+  }, [props.tab]);
 
+
+  if (!profile._exists) return null;
+  const tabProps = { app: props.app, session, profile };
 
   return (
     <Flex w='100%' h='100%'>
@@ -150,8 +248,8 @@ export default function UserSettings({ context, id, innerProps: props }: Context
       })}>
         <SettingsMenu
           values={TABS}
-          value={tab.value}
-          onChange={(label, value) => setTab({ label, value })}
+          value={tab?.value || ''}
+          onChange={(value, label) => setTab({ label, value })}
           scrollAreaProps={{
             w: '30ch',
             pt: 10,
@@ -171,7 +269,7 @@ export default function UserSettings({ context, id, innerProps: props }: Context
           padding: '1.0rem 1.5rem',
           borderBottom: `1px solid ${theme.colors.dark[5]}`,
         })}>
-          <Title order={2}>{tab.label}</Title>
+          <Title order={2}>{tab?.label}</Title>
           <div style={{ flexGrow: 1 }} />
           <CloseButton
             size='lg'
@@ -180,11 +278,10 @@ export default function UserSettings({ context, id, innerProps: props }: Context
           />
         </Flex>
 
-        {profile._exists && (
-          <ScrollArea sx={{ flexGrow: 1, padding: '1.0rem 1.5rem' }}>
-            {tab.value === 'account' && (<AccountTab session={session} profile={profile} />)}
-          </ScrollArea>
-        )}
+        <ScrollArea sx={{ flexGrow: 1, padding: '1.0rem 1.5rem' }}>
+          {tab?.value === 'account' && (<AccountTab {...tabProps} />)}
+          {tab?.value === 'rtc' && (<RtcTab {...tabProps} />)}
+        </ScrollArea>
       </Flex>
     </Flex>
   );

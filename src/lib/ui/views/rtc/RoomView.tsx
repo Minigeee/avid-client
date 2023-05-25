@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Center,
+  Divider,
   Flex,
   Group,
   Popover,
@@ -16,6 +17,7 @@ import {
   Switch,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core';
 
 import {
@@ -34,6 +36,7 @@ import {
   IconVolume3,
 } from '@tabler/icons-react';
 
+import { openUserSettings } from '@/lib/ui/modals';
 import SidePanelView from './SidePanelView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
@@ -42,6 +45,7 @@ import { AppState } from '@/lib/contexts';
 import { getChannel, getMembers } from '@/lib/db';
 import {
   DomainWrapper,
+  rtcIo,
   useApp,
   useSession,
 } from '@/lib/hooks';
@@ -49,8 +53,13 @@ import { Channel, Member } from '@/lib/types';
 
 
 ////////////////////////////////////////////////////////////
+type Participant = Member & {
+  is_talking: boolean;
+};
+
+////////////////////////////////////////////////////////////
 type ParticipantViewProps = {
-  member: Member;
+  member: Participant;
   app: AppState;
 
   cellWidth: number;
@@ -85,6 +94,7 @@ function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
       sx={(theme) => ({
         flex: `0 0 calc(${props.cellWidth}% - 10px)`,
         margin: 5,
+        border: member.is_talking ? `solid 3px ${theme.colors.grape[6]}` : 'none',
         backgroundColor: theme.colors.dark[8],
         borderRadius: 6,
         boxShadow: 'rgba(0, 0, 0, 0.1) 0px 4px 12px',
@@ -193,6 +203,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
       .then(setParticipants);
   }, []);
 
+
   return (
     <Center w='100%' h='100%'>
       <Stack spacing='lg' align='center' sx={(theme) => ({
@@ -248,8 +259,8 @@ function JoinScreen({ app, ...props }: SubviewProps) {
           )}
         </Stack>
 
-        <Group mt={8}>
-          <Group spacing={6}>
+        <Group spacing='sm' mt={8}>
+          <Group spacing={6} mr={4}>
             {!app.rtc?.is_mic_muted && <IconMicrophone size={20} />}
             {app.rtc?.is_mic_muted && <IconMicrophoneOff size={20} />}
             <Switch
@@ -262,7 +273,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
               }}
             />
           </Group>
-          <Group spacing={6}>
+          <Group spacing={6} mr={4}>
             {!app.rtc?.is_deafened && <IconHeadphones size={20} />}
             {app.rtc?.is_deafened && <IconHeadphonesOff size={20} />}
             <Switch
@@ -275,6 +286,13 @@ function JoinScreen({ app, ...props }: SubviewProps) {
               }}
             />
           </Group>
+
+          <Divider orientation='vertical' />
+          <Tooltip label='Settings' position='right' withArrow>
+            <ActionIcon onClick={() => openUserSettings({ app, tab: 'rtc' })}>
+              <IconSettings size={24} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
 
         <Button
@@ -283,7 +301,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
           w='8rem'
           onClick={() => {
             setLoading(true)
-            app._mutators.rtc.connect(props.channel.id, props.domain.id);
+            app._mutators.rtc.connect(props.channel.id, props.domain.id).finally(() => setLoading(false));
           }}
         >
           Join
@@ -298,17 +316,40 @@ function RoomScreen({ app, ...props }: SubviewProps) {
   const session = useSession();
 
   // Get list of participants
-  const [participants, setParticipants] = useState<Member[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   useEffect(() => {
     if (!props.domain._exists || !app.rtc) return;
 
     // Get members
     const ids = Object.keys(app.rtc.participants);
     if (ids.length > 0)
-      getMembers(props.domain.id, ids, session).then(setParticipants);
+      getMembers(props.domain.id, ids, session).then((members) => setParticipants(members.map(m => ({ ...m, is_talking: false }))));
     else
       setParticipants([]);
   }, [app.rtc?.participants]);
+
+  // Handle talking indicators
+  useEffect(() => {
+    function onTalk(participant_id: string, status: 'start' | 'stop') {
+
+      const idx = participants.findIndex(p => p.id === participant_id);
+      if (idx < 0) return;
+
+      // Update particpant talking status if different
+      const p = participants[idx];
+      if ((p.is_talking && status === 'stop') || (!p.is_talking && status === 'start')) {
+        const copy = participants.slice();
+        copy[idx] = { ...p, is_talking: status === 'start' };
+        setParticipants(copy);
+      }
+    }
+
+    rtcIo()?.on('participant-talk', onTalk);
+
+    return () => {
+      rtcIo()?.off('participant-talk', onTalk);
+    };
+  }, [participants]);
 
   // Calculate sizes based on number of participants
   const {

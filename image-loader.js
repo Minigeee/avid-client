@@ -8,7 +8,7 @@ export default function myImageLoader({ src, width, quality }) {
 		params.push(`q-${quality}`);
 		
 	const paramsString = params.join(',');
-	var urlEndpoint = `https://ik.imagekit.io/kefqhvcjr`;
+	var urlEndpoint = `https://ik.imagekit.io/kefqhvcjr${process.env.NODE_ENV === 'development' ? '/dev' : ''}`;
 	if (urlEndpoint[urlEndpoint.length - 1] === '/')
 		urlEndpoint = urlEndpoint.substring(0, urlEndpoint.length - 1);
 

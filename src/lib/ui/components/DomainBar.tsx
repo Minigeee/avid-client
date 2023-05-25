@@ -200,7 +200,7 @@ export default function DomainBar() {
               transform: 'translateY(1px)',
             }
           })}
-          onClick={() => openUserSettings({})}
+          onClick={() => openUserSettings({ app })}
         >
           <IconSettings size={24} />
         </Avatar>
