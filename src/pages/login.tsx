@@ -19,45 +19,15 @@ export default function Login() {
   const router = useRouter();
   const redirect = router.query.redirect ? `&redirect=${encodeURIComponent(router.query.redirect as string)}` : '';
 
-  const [alphaKey, setAlphaKey] = useState<string>('');
   const form = useForm({
     initialValues: {
       alpha_key: '',
     }
   });
-  if (!alphaKey) {
-    return (
-      <form onSubmit={form.onSubmit((values) => {
-        setAlphaKey(values.alpha_key);
-      })}>
-        <Center w='100vw' h='100vh'>
-          <Stack spacing='lg' sx={(theme) => ({
-            padding: '2.2rem 1.8rem',
-            width: '50ch',
-            maxWidth: '100%',
-            backgroundColor: theme.colors.dark[5],
-            borderRadius: theme.radius.sm,
-            boxShadow: '0px 10px 20px #00000030',
-          })}>
-            <TextInput
-              label='Enter Alpha Key'
-              {...form.getInputProps('alpha_key')}
-            />
-            <Button
-              variant='gradient'
-              type='submit'
-            >
-              Enter
-            </Button>
-          </Stack>
-        </Center>
-      </form>
-    );
-  }
 
 
   return (
-    <Center w='100vw' h='100vh'>
+    <Center w='100vw' h='90vh'>
       <Stack spacing='xs' sx={(theme) => ({
         padding: '3.2rem 2.8rem',
         width: '50ch',
@@ -67,6 +37,14 @@ export default function Login() {
         boxShadow: '0px 10px 20px #00000030',
       })}>
         <Title order={3} align='center'>Log In</Title>
+        <TextInput
+          label='Alpha Key'
+          description='An alpha key is not needed if you already have an account'
+          {...form.getInputProps('alpha_key')}
+        />
+
+        <Divider labelPosition='center' mt={8} mb={8} />
+
         <Alert icon={<IconAlertCircle size={18} />} color='yellow' mt={6} mb={8}>
           Email + password login isn&apos;t supported yet. Please use Google login for now.
         </Alert>
@@ -98,7 +76,7 @@ export default function Login() {
           color='blue'
           leftIcon={<IconBrandGoogle size={18} strokeWidth={2} />}
           component='a'
-          href={`/api/login?provider=google&alpha_key=${alphaKey}${redirect}`}
+          href={`/api/login?provider=google&alpha_key=${form.values.alpha_key}${redirect}`}
         >
           Continue with Google
         </Button>

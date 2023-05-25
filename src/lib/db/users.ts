@@ -35,7 +35,6 @@ function factory(session?: SessionState) {
 		 * @returns The corresponding user object
 		 */
 		getByProvider: (provider_id: string, provider: AuthProviders, email: string | undefined, alpha_key: string) => {
-			console.log(alpha_key);
 			return query<User>(sql.multi([
 				// Select user that matches provider info
 				sql.let('$user', sql.select('*', {

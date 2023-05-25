@@ -499,19 +499,23 @@ export default function MessagesView(props: MessagesViewProps) {
   // Displaying members that are typing
   useEffect(() => {
     function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
+      console.log('detect typing')
       // Only care about members in this channel
       if (typing_channel_id !== channel_id) return;
 
       // Index of member in list
       const ids = typingMembers.map(x => x.id);
       const idx = ids.findIndex(x => x === profile_id);
+      console.log(ids, idx)
       
       // Different actions based on if user started or stopped
       if (type === 'start' && idx < 0) {
+        console.log('detect start')
         ids.push(profile_id);
 
         // Fetch members
         getMembers(domain.id, ids, session).then((members) => {
+          console.log('found members', members)
           // Set list
           setTypingMembers(members);
 

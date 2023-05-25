@@ -882,6 +882,9 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 			participants,
 		});
 
+		// Acknowledge that client is ready to create consumers
+		callback();
+
 		// Enable microphone
 		if (!_state.is_mic_muted)
 			enableMic(_state.audio_input_device, emit);

@@ -15,6 +15,7 @@ import { useForm } from '@mantine/form';
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 
 import { useApp, useDomain, useProfile, useSession } from '@/lib/hooks';
+import { socket } from '@/lib/utility/realtime';
 
 
 ////////////////////////////////////////////////////////////
@@ -50,7 +51,10 @@ export default function JoinDomain(props: Props) {
 
     // Make user join domain
     const domain_id = `domains:${props.domain_id}`;
-    profile._mutators.joinDomain(domain_id, values.alias || profile.username);
+    await profile._mutators.joinDomain(domain_id, values.alias || profile.username);
+
+    // TEMP : Reconnect to realtime server (in future, use socket.io to communicate new domain)
+    socket().disconnect().connect();
 
     // Switch to it
     app._mutators.navigation.setDomain(domain_id);
