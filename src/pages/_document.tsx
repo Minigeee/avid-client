@@ -10,7 +10,6 @@ export default class _Document extends Document {
     return (
       <Html>
         <Head>
-          <title>Avid</title>
           <meta name='robots' content='noindex' />
         </Head>
         <body>
