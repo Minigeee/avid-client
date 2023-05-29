@@ -347,7 +347,8 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
     return (
       <div ref={ref} {...others}>
         <Group spacing={3} align='center'>
-          {current && <IconChevronRight size={18} style={{ marginLeft: -4, marginTop: 1 }} />}
+          {/* TODO : Implement better default/chosen collection */}
+          {/* current && <IconChevronRight size={18} style={{ marginLeft: -4, marginTop: 1 }} /> */}
           <Text weight={600}>{label}</Text>
         </Group>
         {(start_date || end_date) && (
@@ -389,9 +390,9 @@ export default function BoardView(props: BoardViewProps) {
 
     const collections = board.collections.map(x => ({ value: x.id, label: x.name, ...x }));
     return [config.app.board.all_collection, ...collections.sort((a, b) =>
-      a.end_date ?
-        b.end_date ? new Date(b.end_date).getTime() - new Date(a.end_date).getTime() : 1 :
-        b.end_date ? -1 : a.name.localeCompare(b.name)
+      a.start_date ?
+        b.start_date ? new Date(b.start_date).getTime() - new Date(a.start_date).getTime() : 1 :
+        b.start_date ? -1 : a.name.localeCompare(b.name)
     )];
   }, [board.collections]);
 
@@ -407,6 +408,8 @@ export default function BoardView(props: BoardViewProps) {
     map[all.value] = all;
     return map;
   }, [board.collections]);
+  // Get collection object for less typing
+  const collection = collectionId ? collectionMap[collectionId] : null;
 
   // Set default view
   useEffect(() => {
@@ -419,31 +422,71 @@ export default function BoardView(props: BoardViewProps) {
       return;
     }
 
-    // Choose a current cycle
+    // Choose a current objective (choose the one with largest start date before today)
     const today = new Date();
+    let bestCollection = board.collections[0];
     for (const c of board.collections) {
-      if (c.start_date && c.end_date &&
-        today >= new Date(c.start_date) &&
-        today <= moment(c.end_date).add(1, 'day').toDate()
+      if (!c.start_date) continue;
+      const start = new Date(c.start_date);
+
+      if (
+        !bestCollection.start_date ||
+        today >= start &&
+        start >= new Date(bestCollection.start_date)
       ) {
-        // Set collection id of first cycle that is current
-        setCollectionId(c.id);
-        
-        // Set nav state for faster load
-        if (!nav)
-          app._mutators.navigation.board.setCollection(board.id, c.id);
-          
-        return;
+        bestCollection = c;
       }
     }
 
-    // Use backlog as default
-    setCollectionId(config.app.board.default_backlog.id);
+    // Set best collection
+    if (bestCollection.start_date) {
+      // Set collection id of first cycle that is current
+      setCollectionId(bestCollection.id);
+
+      // Set nav state for faster load
+      if (!nav)
+        app._mutators.navigation.board.setCollection(board.id, bestCollection.id);
+    }
+    else
+      // Use backlog as default
+      setCollectionId(config.app.board.default_backlog.id);
   }, [board._exists]);
 
+  // Render time text
+  const timeText = useMemo(() => {
+    if (!collection) return null;
 
-  // Get collection object for less typing
-  const collection = collectionId ? collectionMap[collectionId] : null;
+    return (
+      <>
+        {collection.start_date ? moment(collection.start_date).format('l') : ''} -{' '}
+        {collection.end_date ? moment(collection.end_date).format('l') : ''}{' '}
+        <br />
+        {(() => {
+          const today = new Date();
+          const started = collection.start_date && today >= new Date(collection.start_date);
+          const time = collection.end_date || collection.start_date;
+          if (!time) return '';
+
+          const diff = moment(time).diff(
+            [today.getFullYear(), today.getMonth(), today.getDate()],
+            'days'
+          );
+
+          if (diff < 0) {
+            if (collection.end_date)
+              return 'Passed';
+            else
+              return `${Math.abs(diff)} day${diff === -1 ? '' : 's'} since start`;
+          }
+          else if (diff === 0)
+            return `${started && time === collection.end_date ? 'Ends' : 'Starts'} Today`;
+          else
+            return `${diff} day${diff === 1 ? '' : 's'} ${started || !collection.start_date ? 'remaining' : 'until start'}`;
+        })()}
+      </>
+    );
+  }, [collection?.start_date, collection?.end_date]);
+
 
   if (!board._exists || !tasks._exists) return null;
 
@@ -507,11 +550,11 @@ export default function BoardView(props: BoardViewProps) {
                 onClick={() => openCreateTaskCollection({
                   board,
                   domain: props.domain,
-                  mode: 'cycle',
+                  mode: 'objective',
                   onCreate: (id) => setCollectionId(id),
                 })}
               >
-                New Cycle
+                New Objective
               </Menu.Item>
               <Menu.Item
                 icon={<IconFolders size={19} />}
@@ -531,24 +574,7 @@ export default function BoardView(props: BoardViewProps) {
           {collection && (collection.start_date || collection.end_date) && (
             <>
               <Text size='sm' color='dimmed' weight={600} align='right'>
-                {collection.start_date ? moment(collection.start_date).format('l') : ''} -{' '}
-                {collection.end_date ? moment(collection.end_date).format('l') : ''}{' '}
-                <br />
-                {(() => {
-                  if (!collection.end_date) return '';
-                  const today = new Date();
-                  const started = collection.start_date && today >= new Date(collection.start_date);
-                  const diff = moment(started ? collection.end_date : collection.start_date).diff(
-                    [today.getFullYear(), today.getMonth(), today.getDate()],
-                    'days'
-                  );
-                  if (diff < 0)
-                    return 'Passed';
-                  else if (diff === 0)
-                    return `${started ? 'Ends' : 'Starts'} Today`;
-                  else
-                    return `${diff} day${diff === 1 ? '' : 's'} ${started ? 'remaining' : 'until start'}`;
-                })()}
+                {timeText}
               </Text>
               <Box mt={6} mr={8} ml={6} sx={(theme) => ({ color: theme.colors.dark[2] })}>
                 <IconClock size={32} />

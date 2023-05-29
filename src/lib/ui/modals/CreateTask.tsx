@@ -503,8 +503,8 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
         <Divider />
         
         <Select
-          label='Cycle'
-          description='A cycle is a period of time during which a team works to complete a collection of tasks.'
+          label='Collection'
+          description='Assign a task collection or objective'
           placeholder='None'
           data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
           itemComponent={CollectionSelectItem}
@@ -931,7 +931,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
             />
             
             <Select
-              label='Cycle'
+              label='Collection'
               placeholder='None'
               withinPortal
               data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}

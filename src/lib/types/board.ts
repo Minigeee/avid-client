@@ -11,9 +11,9 @@ export type TaskCollection = {
 	/** Group description */
 	description?: string;
 	/** The start date (if the group is a cycle) */
-	start_date?: Date;
+	start_date?: Date | null;
 	/** The end date (if the group is a cycle) */
-	end_date?: Date;
+	end_date?: Date | null;
 };
 
 

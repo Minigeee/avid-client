@@ -163,14 +163,11 @@ const config = {
 				id: 'backlog',
 				name: 'Backlog',
 				description: 'A backlog is typically used as a collection of tasks, features, or issues ' + 
-					'that have not yet been completed. These items are typically prioritized ' + 
-					'based on their importance and urgency, and are worked on by a team over ' + 
-					'a series of cycles. During each cycle, the team selects a subset of items ' + 
-					'from the backlog to work on, with the goal of completing as many items as ' + 
-					'possible within the cycle period. At the end of each cycle, the team reviews ' + 
-					'their progress and re-prioritizes the items in the backlog based on what they ' + 
-					'have learned. By using a backlog and cycles in this way, teams can stay ' + 
-					'focused on their goals and make steady progress towards completing their work.',
+					'that have not yet been completed. The backlog can be used in many different ways, but ' +
+					'the most common way is to pull tasks from the backlog into a separate collection of tasks ' +
+					'that is worked on during the current period. This process can be started ' +
+					'by creating a new "objective" collection, define your team\'s current focus and priorities in its description, ' +
+					'then move any task that belongs within that objective into it.',
 			},
 			/** All collection */
 			all_collection: {

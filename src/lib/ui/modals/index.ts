@@ -64,7 +64,7 @@ export const openEditTask = (props: EditTaskProps) => openContextModal({
 /** Opens the modal to create task collection */
 export const openCreateTaskCollection = (props: CreateTaskCollectionProps) => openContextModal({
 	modal: 'create-task-collection',
-	title: props.mode === 'cycle' ? 'New Cycle' : 'New Collection',
+	title: props.mode === 'objective' ? 'New Objective' : 'New Collection',
 	innerProps: props,
 	size: 'lg',
 });
