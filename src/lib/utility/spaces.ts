@@ -120,4 +120,15 @@ export const s3 = {
 		Bucket: config.spaces.bucket,
 		Key: _key(key),
 	}),
+
+	/**
+	 * Get a resource
+	 * 
+	 * @param key The key of the resource to retrieve
+	 * @returns The output promise
+	 */
+	get: (key: string) => s3client.getObject({
+		Bucket: config.spaces.bucket,
+		Key: _key(key),
+	}),
 };

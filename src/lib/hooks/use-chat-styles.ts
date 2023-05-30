@@ -2,14 +2,14 @@ import { createStyles } from '@mantine/core';
 
 
 ////////////////////////////////////////////////////////////
-export const useChatStyles = createStyles((theme) => ({
+export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 	typography: {
 		lineHeight: 1.6,
 
 		p: {
 			marginBlockStart: 0,
 			marginBlockEnd: 0,
-			fontSize: 14,
+			fontSize: 14 * scale,
 
 			'&:not(:last-child)': {
 				marginBlockEnd: '0.8em',
@@ -17,6 +17,7 @@ export const useChatStyles = createStyles((theme) => ({
 
 			a: {
 				color: theme.colors.blue[5],
+				textDecoration: 'none',
 			},
 
 			code: {
@@ -31,7 +32,7 @@ export const useChatStyles = createStyles((theme) => ({
 		pre: {
 			marginBlockStart: 0,
 			marginBlockEnd: 0,
-			fontSize: 13,
+			fontSize: 13 * scale,
 			tabSize: '4ch',
 
 			padding: '0.5em 0.5em',
@@ -50,7 +51,7 @@ export const useChatStyles = createStyles((theme) => ({
 		ol: {
 			marginBlockStart: 0,
 			marginBlockEnd: 0,
-			fontSize: 14,
+			fontSize: 14 * scale,
 			
 			'&:not(:last-child)': {
 				marginBlockEnd: '0.8em',
@@ -60,7 +61,7 @@ export const useChatStyles = createStyles((theme) => ({
 		ul: {
 			marginBlockStart: 0,
 			marginBlockEnd: 0,
-			fontSize: 14,
+			fontSize: 14 * scale,
 			
 			'&:not(:last-child)': {
 				marginBlockEnd: '0.8em',
@@ -69,7 +70,7 @@ export const useChatStyles = createStyles((theme) => ({
 
 		table: {
 			minWidth: '60ch',
-			fontSize: 14,
+			fontSize: 14 * scale,
 			borderSpacing: 0,
 
 			tr: {
@@ -197,11 +198,11 @@ export const useChatStyles = createStyles((theme) => ({
 			backgroundColor: theme.colors.dark[8],
 			borderRadius: 4,
 
-			fontSize: 15,
+			fontSize: 15 * scale,
 
 			'eqn': {
 				flexGrow: 1,
-				fontSize: 16,
+				fontSize: 16 * scale,
 			},
 		},
 
@@ -216,4 +217,4 @@ export const useChatStyles = createStyles((theme) => ({
 			fontWeight: 600,
 		},
 	}
-}));
+}))();
