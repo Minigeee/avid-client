@@ -39,6 +39,7 @@ const TABS = {
   ],
   'Help & Feedback': [
     { value: 'contact', label: 'Contact' },
+    { value: 'roadmap', label: 'Roadmap', link: '/roadmap' },
     { value: 'feedback', label: 'Feedback', link: config.app.contact.feedback_form },
   ],
 };
@@ -272,7 +273,7 @@ export default function UserSettings({ context, id, innerProps: props }: Context
           }}
         />
         <Text size='xs' color='dimmed' ml={6} mb={2}>
-          v{config.version.major}.{config.version.minor}.{config.version.patch}-r{config.version.revision}.{config.version.metadata.join('+')}
+          v{config.version.major}.{config.version.minor}.{config.version.patch}-{config.version.revision ? `r${config.version.revision}.` : ''}{config.version.metadata.join('+')}
         </Text>
       </Flex>
 

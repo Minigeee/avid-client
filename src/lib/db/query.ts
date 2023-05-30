@@ -303,7 +303,19 @@ export const sql = {
 				template = _replace(template, k, `\${${k}}`);
 			}
 
-			query(`UPDATE _fn:${key} SET value = 'function(${params.map(x => `$${x}`).join(', ')}) {${template}}'`, { root: true });
+			// TODO : Find out if there is a way to prevent build if a value doesn't match
+			template = `function(${params.map(x => `$${x}`).join(', ')}) {${template}}`;
+			{
+				const hardcodeStrs: Record<string, string> = {};
+				for (const k of Object.keys(hardcode || {}))
+					hardcodeStrs[k] = `\${${k}}`;
+				const currTemplate = config.db.fns[key]?.(hardcodeStrs);
+
+				if (!currTemplate || currTemplate !== template)
+					console.error(`ERROR | fn builders do not match: '${key}'`);
+			}
+
+			query(`UPDATE _fn:${key} SET value = '${template}'`, { root: true });
 			return { __esc__: `function(${params.map(x => `$${x}`).join(', ')}) {${body}}` };
 		}
 	},

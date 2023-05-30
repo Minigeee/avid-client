@@ -19,7 +19,7 @@ const config = {
 		/** Patch version number */
 		patch: 0,
 		/** Revision number */
-		revision: 0,
+		revision: 1,
 		/** Build metadata */
 		metadata: ['alpha'],
 	},
@@ -48,6 +48,7 @@ const config = {
 		/** Functions */
 		fns: {
 			add_domain: ({}) => `function($channels) { return arguments[0].map((x)=>x.id); }`,
+			add_tags: ({ add, update }) => `function() { for (const tag of ${update}){ const idx = this.tags.findIndex((x)=>x.id === tag.id); if (idx >= 0) this.tags[idx] = { ...this.tags[idx], ...tag }; } return this.tags.concat(${add}.map((x, i)=>({ ...x, id: (this._id_counter + i).toString() }))); }`,
 			remove_collection: ({ collection_id }) => `function() { return this.collections.filter((x)=>x.id !== ${collection_id}); }`,
 			update_collection: ({ collection_id, collection }) => `function() { const idx = this.collections.findIndex((x)=>x.id === ${collection_id}); if (idx >= 0) this.collections[idx] = { ...this.collections[idx], ...${collection} }; return this.collections; }`,
 			update_tasks: ({ newStatus, now }) => `function() { return ${newStatus} && ${newStatus} !== this.status ? ${now} : this.time_status_updated; }`,
