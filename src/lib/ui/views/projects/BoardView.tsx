@@ -24,12 +24,14 @@ import {
   IconListDetails,
   IconPencil,
   IconPlus,
+  IconRefresh,
   IconTag
 } from '@tabler/icons-react';
 
 import KanbanView from './KanbanView';
 import ListView from './ListView';
 import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
+import ActionButton from '@/lib/ui/components/ActionButton';
 
 import config from '@/config';
 import {
@@ -48,6 +50,7 @@ import { remap, sortObject } from '@/lib/utility';
 
 import moment from 'moment-business-days';
 import { groupBy } from 'lodash';
+import { useTimeout } from '@mantine/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -76,6 +79,10 @@ function TabView({ board, type, ...props }: TabViewProps) {
   const [grouper, setGrouper] = useState<GroupableFields | null>(null);
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
+  // Refresh enabled
+  const [refreshEnabled, setRefreshEnabled] = useState<boolean>(true);
+  // Refresh cooldown
+  const refreshTimeout = useTimeout(() => setRefreshEnabled(true), 5000);
 
   // Available grouping options
   const groupingOptions = useMemo(() => {
@@ -297,7 +304,26 @@ function TabView({ board, type, ...props }: TabViewProps) {
         >
           Create Task
         </Button>
+
+        <ActionButton
+          tooltip='Refresh'
+          mb={4}
+          onClick={() => {
+            // Rate limit
+            if (!refreshEnabled) return;
+
+            // Refresh tasks
+            props.tasks._refresh();
+
+            // Reset enabled
+            setRefreshEnabled(false);
+            refreshTimeout.start();
+          }}
+        >
+          <IconRefresh size={22} />
+        </ActionButton>
       </Group>
+
 
       <div style={{ display: type === 'list' ? undefined : 'none' }}>
         <ListView
