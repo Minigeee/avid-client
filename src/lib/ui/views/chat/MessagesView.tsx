@@ -56,7 +56,7 @@ import { Editor } from '@tiptap/react';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
 
-const AVATAR_SIZE = 36;
+const AVATAR_SIZE = 40;
 const MIN_IMAGE_WIDTH = 400;
 const MIN_IMAGE_HEIGHT = 400;
 const MAX_IMAGE_WIDTH = 600;
@@ -68,6 +68,8 @@ type MessageGroupProps = {
   msgs: ExpandedMessageWithPing[];
   profile_id: string;
   style: string;
+
+  p: string;
 }
 
 ////////////////////////////////////////////////////////////
@@ -105,78 +107,87 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
-          <Group key={msg.id} className='msg-body' align='start' noWrap sx={(theme) => ({
-            padding: '0.25rem 0rem 0.25rem calc(1.2rem - 4px)',
-            backgroundColor: hasPing ? '#2B293A' : undefined,
-            transition: 'background-color 0.08s',
+          <Stack
+            key={msg.id}
+            className='msg-body'
+            spacing='xs'
+            sx={(theme) => ({
+              padding: `0.3rem 0rem 0.3rem calc(${props.p} - 3px)`,
+              backgroundColor: hasPing ? '#2B293A' : undefined,
+              transition: 'background-color 0.08s',
 
-            '&:hover': {
-              backgroundColor: hasPing ? '#312D46' : theme.colors.dark[6],
-            },
+              '&:hover': {
+                backgroundColor: hasPing ? '#312D46' : theme.colors.dark[6],
+              },
 
-            '&:first-child': { borderTopRightRadius: 3 },
-            '&:last-child': { borderBottomRightRadius: 3 },
-          })}>
+              '&:first-child': { borderTopRightRadius: 3 },
+              '&:last-child': { borderBottomRightRadius: 3 },
+            })}
+          >
             {i === 0 && (
-              <MemberAvatar
-                member={msg.sender}
-                size={AVATAR_SIZE}
-                sx={(theme) => ({
-                  marginTop: '0.25rem',
-                  backgroundColor: theme.colors.dark[5],
-                })}
-              />
-            )}
-            <Stack spacing={2} sx={(theme) => ({
-              marginLeft: i !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing.md})` : undefined,
-            })}>
-              {i === 0 && (
-                <Group align='end' spacing='xs'>
+              <Group align='start'>
+                <MemberAvatar
+                  member={msg.sender}
+                  size={AVATAR_SIZE}
+                  sx={(theme) => ({
+                    backgroundColor: theme.colors.dark[5],
+                  })}
+                />
+
+                <Stack spacing={2}>
                   <Title order={6} sx={{ color: msg.sender?.color }}>
                     {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
                   </Title>
-                  <Text size='xs' color='dimmed'>{moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}</Text>
-                </Group>
-              )}
-              <div className={style} style={{ maxWidth: '80ch' }} dangerouslySetInnerHTML={{ __html: msg.message }} />
-              {msg.attachments?.map((attachment, attachment_idx) => {
-                if (attachment.type === 'image') {
-                  if (!attachment.width || !attachment.height) return null;
+                  <Text size={11} color='dimmed'>
+                    {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
+                  </Text>
+                </Stack>
+              </Group>
+            )}
 
-                  // Determine if width or height should be filled
-                  let w = 0, h = 0;
-                  if (attachment.width > attachment.height) {
-                    // Wide image, fill height
-                    h = MIN_IMAGE_HEIGHT;
-                    w = h * attachment.width / attachment.height;
-                  }
-                  else {
-                    // Tall image, fill width
-                    w = MIN_IMAGE_WIDTH;
-                    h = w * attachment.height / attachment.width;
-                  }
+            <div
+              className={style}
+              style={{ maxWidth: '80ch' }}
+              dangerouslySetInnerHTML={{ __html: msg.message }}
+            />
 
-                  // Scale image down if too large
-                  const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
-                  if (scale < 1) {
-                    w *= scale;
-                    h *= scale;
-                  }
+            {msg.attachments?.map((attachment, attachment_idx) => {
+              if (attachment.type === 'image') {
+                if (!attachment.width || !attachment.height) return null;
 
-                  return (
-                    <Image
-                      key={attachment.filename}
-                      src={attachment.url}
-                      alt={attachment.filename}
-                      width={w}
-                      height={h}
-                      style={{ borderRadius: 6 }}
-                    />
-                  );
+                // Determine if width or height should be filled
+                let w = 0, h = 0;
+                if (attachment.width > attachment.height) {
+                  // Wide image, fill height
+                  h = MIN_IMAGE_HEIGHT;
+                  w = h * attachment.width / attachment.height;
                 }
-              })}
-            </Stack>
-          </Group>
+                else {
+                  // Tall image, fill width
+                  w = MIN_IMAGE_WIDTH;
+                  h = w * attachment.height / attachment.width;
+                }
+
+                // Scale image down if too large
+                const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
+                if (scale < 1) {
+                  w *= scale;
+                  h *= scale;
+                }
+
+                return (
+                  <Image
+                    key={attachment.filename}
+                    src={attachment.url}
+                    alt={attachment.filename}
+                    width={w}
+                    height={h}
+                    style={{ borderRadius: 6 }}
+                  />
+                );
+              }
+            })}
+          </Stack>
         ))}
       </Stack>
     </Flex>
@@ -192,15 +203,18 @@ type MessagesViewportProps = {
   domain: DomainWrapper;
   messages: MessagesWrapper;
   sender: MemberWrapper;
+
+  viewport: RefObject<HTMLDivElement>;
+  showScrollBottom?: boolean;
+  setShowScrollBottom?: (show: boolean) => void;
+
+  p: string;
 }
 
 ////////////////////////////////////////////////////////////
-function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
+function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProps) {
   const { classes } = useChatStyles();
 
-  const viewport = useRef<HTMLDivElement>();
-
-  const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false);
   const [viewportSizeLagged, setViewportSizeLagged] = useState<number>(0);
 
 
@@ -220,16 +234,6 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
 
 
   ////////////////////////////////////////////////////////////
-  function scrollToBottom() {
-    if (viewport.current) {
-      viewport.current.scrollTo({
-        top: viewport.current.scrollHeight,
-      });
-    }
-  }
-
-
-  ////////////////////////////////////////////////////////////
   return (
     <>
       <ScrollArea
@@ -243,25 +247,25 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
 
           // Show scroll to bottom button if getting far from bottom
           if (e.y < viewport.current.scrollHeight - viewport.current.clientHeight - 500) {
-            if (!showScrollBottom)
-              setShowScrollBottom(true);
+            if (!props.showScrollBottom)
+              props.setShowScrollBottom?.(true);
           }
-          else if (showScrollBottom)
-            setShowScrollBottom(false);
+          else if (props.showScrollBottom)
+            props.setShowScrollBottom?.(false);
         }}
         styles={{
           viewport: {
-            padding: '0rem 1.2rem 0rem 0rem',
+            padding: `0rem ${props.p} 0rem 0rem`,
           }
         }}
       >
-        <Stack spacing='sm'>
+        <Stack spacing='lg'>
           {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
             <Fragment key={day}>
               <Divider
                 label={moment(day).format('LL')}
                 labelPosition='center'
-                sx={(theme) => ({ marginLeft: '1.2rem', color: theme.colors.dark[2] })}
+                sx={(theme) => ({ marginLeft: props.p, color: theme.colors.dark[2] })}
               />
               {grouped.map((consec, j) => (
                 <MemoMessageGroup
@@ -269,6 +273,8 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
                   msgs={consec}
                   profile_id={props.sender.id}
                   style={classes.typography}
+
+                  p={props.p}
                 />
               ))}
             </Fragment>
@@ -277,28 +283,6 @@ function MessagesViewport({ messages, ...props }: MessagesViewportProps) {
           <div style={{ height: '0.9rem' }} />
         </Stack>
       </ScrollArea>
-
-      {showScrollBottom && (
-        <ActionButton
-          tooltip='Scroll To Bottom'
-          tooltipProps={{ position: 'left', openDelay: 500 }}
-          variant='filled'
-          size='xl'
-          radius='xl'
-          sx={(theme) => ({
-            position: 'absolute',
-            bottom: '5.2rem',
-            right: '1.4rem',
-            backgroundColor: theme.colors.dark[8],
-            '&:hover': {
-              backgroundColor: theme.colors.dark[6],
-            },
-          })}
-          onClick={scrollToBottom}
-        >
-          <IconChevronsDown />
-        </ActionButton>
-      )}
     </>
   );
 }
@@ -424,6 +408,11 @@ function TextEditor(props: TextEditorProps) {
 type MessagesViewProps = {
   channel_id: string;
   domain: DomainWrapper;
+
+  /** Side padding */
+  p?: string;
+  /** Bottom padding */
+  pb?: string;
 }
 
 ////////////////////////////////////////////////////////////
@@ -432,6 +421,8 @@ export default function MessagesView(props: MessagesViewProps) {
     channel_id,
     domain,
   } = props;
+  const sidePadding = props.p || '2.5rem';
+  const bottomPadding = props.pb || '2.2rem';
 
   // Data
   const app = useApp();
@@ -441,7 +432,11 @@ export default function MessagesView(props: MessagesViewProps) {
 
   // Editor ref
   const editorRef = useRef<Editor>(null);
+  // Viewport ref
+  const viewportRef = useRef<HTMLDivElement>(null);
 
+  // Determines if scroll to bottom button should be shown
+  const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false);
   // List of members that are typing
   const [typingMembers, setTypingMembers] = useState<Member[]>([]);
   // Last typing member, because transition makes typing text stay for longer than the member stay in array
@@ -506,7 +501,6 @@ export default function MessagesView(props: MessagesViewProps) {
       // Index of member in list
       const ids = typingMembers.map(x => x.id);
       const idx = ids.findIndex(x => x === profile_id);
-      console.log(ids, idx)
       
       // Different actions based on if user started or stopped
       if (type === 'start' && idx < 0) {
@@ -550,6 +544,16 @@ export default function MessagesView(props: MessagesViewProps) {
   }, []);
 
 
+  ////////////////////////////////////////////////////////////
+  function scrollToBottom() {
+    if (viewportRef.current) {
+      viewportRef.current.scrollTo({
+        top: viewportRef.current.scrollHeight,
+      });
+    }
+  }
+
+
   return (
     <Box sx={(theme) => ({
       display: 'flex',
@@ -567,12 +571,18 @@ export default function MessagesView(props: MessagesViewProps) {
           domain={props.domain}
           messages={messages}
           sender={sender}
+
+          viewport={viewportRef}
+          showScrollBottom={showScrollBottom}
+          setShowScrollBottom={setShowScrollBottom}
+
+          p={sidePadding}
         />
       )}
 
       <Box sx={{
         position: 'relative',
-        margin: '0rem 1.2rem 1.5rem 1.2rem',
+        margin: `0rem ${sidePadding} ${bottomPadding} ${sidePadding}`,
       }}>
         <Transition mounted={typingMembers.length > 0} transition='slide-up' duration={200}>
           {(styles) => (
@@ -600,6 +610,28 @@ export default function MessagesView(props: MessagesViewProps) {
             </Group>
           )}
         </Transition>
+
+        {showScrollBottom && (
+          <ActionButton
+            tooltip='Scroll To Bottom'
+            tooltipProps={{ position: 'left', openDelay: 500 }}
+            variant='filled'
+            size='xl'
+            radius='xl'
+            sx={(theme) => ({
+              position: 'absolute',
+              top: '-3.75rem',
+              right: '0.25rem',
+              backgroundColor: theme.colors.dark[8],
+              '&:hover': {
+                backgroundColor: theme.colors.dark[6],
+              },
+            })}
+            onClick={scrollToBottom}
+          >
+            <IconChevronsDown />
+          </ActionButton>
+        )}
 
         <TextEditor
           channel_id={props.channel_id}

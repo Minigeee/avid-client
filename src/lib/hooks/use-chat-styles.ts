@@ -10,6 +10,7 @@ export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 			marginBlockStart: 0,
 			marginBlockEnd: 0,
 			fontSize: 14 * scale,
+			overflowWrap: 'anywhere',
 
 			'&:not(:last-child)': {
 				marginBlockEnd: '0.8em',
@@ -85,8 +86,8 @@ export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 				padding: '0.5em 0.9em',
 				textAlign: 'left',
 				fontWeight: 600,
-				borderBottom: `2px solid ${theme.colors.dark[4]}`,
-				backgroundColor: theme.colors.dark[8],
+				borderBottom: `2px solid ${theme.colors.dark[4]}80`,
+				backgroundColor: `${theme.colors.dark[8]}80`,
 
 				'&:first-of-type': { borderTopLeftRadius: 3, },
 				'&:last-of-type': { borderTopRightRadius: 3, },
@@ -212,7 +213,7 @@ export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 		},
 
 		'.avid-mention-member': {
-			backgroundColor: `#50345C`,
+			backgroundColor: theme.colors.gray[7],
 			color: '#F0F0FC',
 			fontWeight: 600,
 		},

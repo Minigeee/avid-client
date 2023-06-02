@@ -76,7 +76,12 @@ export default function SidePanelView(props: SidePanelViewProps) {
         height: 0,
         display: tab === 'chat' ? undefined : 'none',
       }}>
-        <MessagesView channel_id={props.channel_id} domain={props.domain} />
+        <MessagesView
+          channel_id={props.channel_id}
+          domain={props.domain}
+          p='1.25rem'
+          pb='1.5rem'
+        />
       </Box>
       
       <ScrollArea sx={{
