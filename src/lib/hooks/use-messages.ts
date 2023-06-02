@@ -125,7 +125,7 @@ const _md = new MarkdownIt({
 		md.renderer.rules.mention_member = (tokens, idx, opts, env: MarkdownEnv) => {
 			const id = `profiles:${tokens[idx].content}`;
 			const alias = env.domain?.id ? getMemberSync(env.domain.id, id)?.alias || '_' : '_';
-			return `<span class="avid-highlight avid-mention-member">@${alias}</span>`;
+			return `<span class="avid-highlight avid-mention-member" data-type="pingMention" data-id="${id}" data-variant="member" data-label="${alias}">@${alias}</span>`;
 		}
 
 		md.renderer.rules.mention_role = (tokens, idx, opts, env: MarkdownEnv) => {
@@ -133,7 +133,7 @@ const _md = new MarkdownIt({
 			const role = env.domain?.roles?.[id];
 			const name = role?.label || '_';
 			const color = role?.color || '#EAECEF';
-			return `<span class="avid-highlight" style="background-color: ${color}2A; color: ${color}; font-weight: 600;">@${name}</span>`;
+			return `<span class="avid-highlight" data-type="pingMention" data-id="${id}" data-variant="member" data-label="${name}" data-color="${color}" style="background-color: ${color}2A; color: ${color}; font-weight: 600;">@${name}</span>`;
 		}
 	});
 
@@ -180,7 +180,21 @@ function findMentions(message: string) {
 
 	return mentions;
 }
-	
+
+/** Checks message for reader pings */
+function hasPings(message: string, reader: Member) {
+	// Analyze message for mentions
+	const mentions = findMentions(message);
+
+	let pinged = mentions.members.has(reader.id);
+	if (reader.roles) {
+		for (let i = 0; !pinged && i < reader.roles.length; ++i)
+			pinged = mentions.roles.has(reader.roles[i]);
+	}
+
+	return { mentions, pinged };
+}
+
 /** Render a single message */
 function renderMessage(id: string, message: string, env: MarkdownEnv) {
 	// Keep only random part of message id
@@ -323,14 +337,8 @@ function addMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, mess
 	// would still be needed when user first views channel
 	if (!env) return messages;
 
-	// Analyze message for mentions
-	const mentions = findMentions(message.message);
-
-	let pinged = mentions.members.has(reader.id);
-	if (reader.roles) {
-		for (let i = 0; !pinged && i < reader.roles.length; ++i)
-			pinged = mentions.roles.has(reader.roles[i]);
-	}
+	// Check if reader is pinged
+	const { pinged } = hasPings(message.message, reader);
 
 	// Render message
 	const rendered: ExpandedMessageWithPing = {
@@ -345,9 +353,68 @@ function addMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, mess
 	return [...(messages?.slice(0, -1) || []), [...last, rendered]];
 }
 
+////////////////////////////////////////////////////////////
+function editMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, message_id: string, message: string, reader: Member, env: MarkdownEnv) {
+	if (!messages) return undefined;
+	assert(env);
+
+	// Check if reader is pinged
+	const { pinged } = hasPings(message, reader);
+
+	// Find message, search from last
+	let page = messages.length - 1;
+	let idx = -1;
+	for (; page >= 0; --page) {
+		idx = messages[page].findIndex(x => x.id === message_id);
+		if (idx >= 0)
+			break;
+	}
+
+	// Do nothing if message not found
+	if (idx < 0) return messages;
+
+	// Create copies
+	const pagesCopy = messages.slice();
+	const msgsCopy = pagesCopy[page].slice();
+	msgsCopy[idx] = {
+		...msgsCopy[idx],
+		message: renderMessage(message_id, message, env),
+		pinged,
+		edited: true,
+	};
+	pagesCopy[page] = msgsCopy;
+
+	return pagesCopy;
+}
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: SessionState, channel_id: string, env: MarkdownEnv | undefined) {
+function deleteMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, message_id: string) {
+	if (!messages) return undefined;
+
+	// Find message, search from last
+	let page = messages.length - 1;
+	let idx = -1;
+	for (; page >= 0; --page) {
+		idx = messages[page].findIndex(x => x.id === message_id);
+		if (idx >= 0)
+			break;
+	}
+
+	// Do nothing if message not found
+	if (idx < 0) return messages;
+
+	// Create copies
+	const pagesCopy = messages.slice();
+	const msgsCopy = pagesCopy[page].slice();
+	msgsCopy.splice(idx, 1);
+	pagesCopy[page] = msgsCopy;
+
+	return pagesCopy;
+}
+
+
+////////////////////////////////////////////////////////////
+function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: SessionState, channel_id: string, reader: Member, env: MarkdownEnv | undefined) {
 	assert(env);
 
 	return {
@@ -364,8 +431,6 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 			const tempId = uuid();
 			// Time message is sent
 			const now = new Date().toISOString();
-
-			// WIP : Change swr wrapper, implement swr infinite
 
 			return mutate(swrErrorWrapper(async (messages: ExpandedMessageWithPing[][]) => {
 				const domain_id = env.domain.id;
@@ -421,7 +486,7 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 		 * @param reader The member that is viewing the messages (used to highlight member pings)
 		 * @returns The new grouped messages
 		 */
-		addMessageLocal: (message: Message, reader: Member) => mutate(
+		addMessageLocal: (message: Message) => mutate(
 			swrErrorWrapper(
 				async (messages: ExpandedMessageWithPing[][]) => {
 					// Load sender if needed
@@ -434,6 +499,76 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 				{ message: 'An error occurred while displaying a message' }
 			),
 			{ revalidate: false }
+		),
+
+		/**
+		 * Edit a message (only the text parts)
+		 * 
+		 * @param message_id The id of the message to edit
+		 * @param message The new message text to set
+		 * @returns The new message pages
+		 */
+		editMessage: (message_id: string, message: string) => mutate(
+			swrErrorWrapper(
+				async (messages: ExpandedMessageWithPing[][]) => {
+					// Send update query
+					const results = await query<Message[]>(
+						sql.update<Message>(message_id, {
+							set: {
+								message,
+								edited: true,
+							},
+							return: ['message'],
+						}),
+						{ session }
+					);
+					assert(results && results.length > 0);
+
+					// Update message locally
+					return editMessageLocal(messages, message_id, message, reader, env);
+				},
+				{ message: 'An error occurred while editing message' }
+			),
+			{
+				optimisticData: (messages) => {
+					// Add message locally with temp id
+					return editMessageLocal(
+						messages,
+						message_id,
+						message,
+						reader,
+						env
+					) || [];
+				},
+				revalidate: false,
+			}
+		),
+
+		/**
+		 * Delete a message
+		 * 
+		 * @param message_id The id of the message to delete 
+		 * @returns The new message pages
+		 */
+		deleteMessage: (message_id: string) => mutate(
+			swrErrorWrapper(
+				async (messages: ExpandedMessageWithPing[][]) => {
+					assert(message_id.startsWith('messages:'));
+
+					// Send delete query
+					await query<Message[]>(sql.delete(message_id), { session });
+
+					// Update message locally
+					return deleteMessageLocal(messages, message_id);
+				},
+				{ message: 'An error occurred while deleting message' }
+			),
+			{
+				optimisticData: (messages) => {
+					return deleteMessageLocal(messages, message_id) || [];
+				},
+				revalidate: false,
+			}
 		),
 	};
 }
@@ -499,7 +634,7 @@ export function useMessages(channel_id: string, domain: DomainWrapper<false>, re
 		},
 		pageSize: config.app.message.query_limit,
 		mutators,
-		mutatorParams: [channel_id, env],
+		mutatorParams: [channel_id, reader, env],
 		separate: true,
 		session,
 	});

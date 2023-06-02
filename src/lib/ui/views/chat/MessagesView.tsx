@@ -29,8 +29,10 @@ import {
 } from '@tabler/icons-react';
 
 import ActionButton from '@/lib/ui/components/ActionButton';
+import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
+import { MessageContextMenu } from './components/MessageMenu';
 
 
 import config from '@/config';
@@ -64,10 +66,76 @@ const MAX_IMAGE_HEIGHT = 1000;
 
 
 ////////////////////////////////////////////////////////////
+type MessageEditorProps = {
+  domain: DomainWrapper;
+  msgWrapper: MessagesWrapper;
+
+  msg: ExpandedMessageWithPing;
+  setEditingMsg: (id: string | null) => void;
+}
+
+////////////////////////////////////////////////////////////
+function MessageEditor({ msg, ...props }: MessageEditorProps) {
+  const editorRef = useRef<Editor>(null);
+
+  return (
+    <Stack maw='80ch' spacing='xs'>
+      <RichTextEditor
+        editorRef={editorRef}
+        domain={props.domain}
+        value={msg.message}
+        markdown
+        autofocus
+
+        onKey={(e) => {
+          if (e.key === 'Escape') {
+            props.setEditingMsg(null);
+            return true;
+          }
+
+          return false;
+        }}
+      />
+
+      <Group spacing='xs' position='right'>
+        <Button
+          variant='default'
+          onClick={() => props.setEditingMsg(null)}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant='gradient'
+          onClick={() => {
+            if (!editorRef.current) return;
+
+            // Edit message
+            props.msgWrapper._mutators.editMessage(msg.id, toMarkdown(editorRef.current));
+            // Close
+            props.setEditingMsg(null)
+          }}
+        >
+          Save
+        </Button>
+      </Group>
+    </Stack>
+    );
+}
+
+
+////////////////////////////////////////////////////////////
 type MessageGroupProps = {
+  domain: DomainWrapper;
+  msgWrapper: MessagesWrapper;
+
   msgs: ExpandedMessageWithPing[];
   profile_id: string;
   style: string;
+
+  /** Message being edited */
+  editingMsg: string | null;
+  /** Set message being edited */
+  setEditingMsg: (id: string | null) => void;
 
   p: string;
 }
@@ -107,11 +175,15 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
-          <Stack
+          <ContextMenu.Trigger
             key={msg.id}
             className='msg-body'
-            spacing='xs'
+            context={{ msg }}
             sx={(theme) => ({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5625rem',
+
               padding: `0.3rem 0rem 0.3rem calc(${props.p} - 3px)`,
               backgroundColor: hasPing ? '#2B293A' : undefined,
               transition: 'background-color 0.08s',
@@ -145,11 +217,26 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
               </Group>
             )}
 
-            <div
-              className={style}
-              style={{ maxWidth: '80ch' }}
-              dangerouslySetInnerHTML={{ __html: msg.message }}
-            />
+            {props.editingMsg !== msg.id && (
+              <>
+                <div
+                  className={style}
+                  style={{ maxWidth: '80ch' }}
+                  dangerouslySetInnerHTML={{ __html: msg.message }}
+                />
+                {msg.edited && (
+                  <Text size={10} color='dimmed' mt={-10}>{'(edited)'}</Text>
+                )}
+              </>
+            )}
+            {props.editingMsg === msg.id && (
+              <MessageEditor
+                domain={props.domain}
+                msgWrapper={props.msgWrapper}
+                setEditingMsg={props.setEditingMsg}
+                msg={msg}
+              />
+            )}
 
             {msg.attachments?.map((attachment, attachment_idx) => {
               if (attachment.type === 'image') {
@@ -187,7 +274,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 );
               }
             })}
-          </Stack>
+          </ContextMenu.Trigger>
         ))}
       </Stack>
     </Flex>
@@ -215,8 +302,31 @@ type MessagesViewportProps = {
 function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProps) {
   const { classes } = useChatStyles();
 
+  // Message id being edited
+  const [editingMessage, setEditingMessage] = useState<string | null>(null);
+  // Lagged viewport size for scroll pos calculations
   const [viewportSizeLagged, setViewportSizeLagged] = useState<number>(0);
 
+
+  // Calculate editing message to minimize memo component change
+  const editingMessageGroups = useMemo(() => {
+    const map: Record<string, string | null> = {};
+
+    if (!editingMessage) {
+      for (const [day, groups] of Object.entries(messages.data)) {
+        for (let i = 0; i < groups.length; ++i)
+          map[`${day}.${i}`] = null;
+      }
+    }
+    else {
+      for (const [day, groups] of Object.entries(messages.data)) {
+        for (let i = 0; i < groups.length; ++i)
+          map[`${day}.${i}`] = groups[i].findIndex(x => x.id === editingMessage) >= 0 ? editingMessage : null;
+      }
+    }
+
+    return map;
+  }, [messages, editingMessage]);
 
   // Keep current position when new messages are added (doubles as setting scroll to bottom at beginning)
   useEffect(() => {
@@ -259,29 +369,37 @@ function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProp
           }
         }}
       >
-        <Stack spacing='lg'>
-          {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
-            <Fragment key={day}>
-              <Divider
-                label={moment(day).format('LL')}
-                labelPosition='center'
-                sx={(theme) => ({ marginLeft: props.p, color: theme.colors.dark[2] })}
-              />
-              {grouped.map((consec, j) => (
-                <MemoMessageGroup
-                  key={j}
-                  msgs={consec}
-                  profile_id={props.sender.id}
-                  style={classes.typography}
-
-                  p={props.p}
+        <MessageContextMenu messages={messages} viewer={props.sender} setEditing={setEditingMessage}>
+          <Stack spacing='lg'>
+            {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
+              <Fragment key={day}>
+                <Divider
+                  label={moment(day).format('LL')}
+                  labelPosition='center'
+                  sx={(theme) => ({ marginLeft: props.p, color: theme.colors.dark[2] })}
                 />
-              ))}
-            </Fragment>
-          ))}
+                {grouped.map((consec, j) => (
+                  <MemoMessageGroup
+                    key={j}
+                    domain={props.domain}
+                    msgWrapper={messages}
 
-          <div style={{ height: '0.9rem' }} />
-        </Stack>
+                    msgs={consec}
+                    profile_id={props.sender.id}
+                    style={classes.typography}
+
+                    editingMsg={editingMessageGroups[`${day}.${j}`]}
+                    setEditingMsg={setEditingMessage}
+
+                    p={props.p}
+                  />
+                ))}
+              </Fragment>
+            ))}
+
+            <div style={{ height: '0.9rem' }} />
+          </Stack>
+        </MessageContextMenu>
       </ScrollArea>
     </>
   );
@@ -465,10 +583,10 @@ export default function MessagesView(props: MessagesViewProps) {
   useEffect(() => {
     function onNewMessage(domain_id: string, message: Message) {
       // Ignore if message isn't in this channel, it is handled by another handler
-      if (!messages._exists || !sender._exists || message.channel !== props.channel_id) return;
+      if (!messages._exists || message.channel !== props.channel_id) return;
   
       // Add message locally
-      messages._mutators.addMessageLocal(message, sender);
+      messages._mutators.addMessageLocal(message);
 
       // Remove from typing list
       const idx = typingMembers.findIndex(m => m.id === message.sender);

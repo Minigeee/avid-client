@@ -284,6 +284,7 @@ export type RichTextEditorProps = {
   leftWidth?: MantineNumberSize;
   rightSection?: JSX.Element;
   maxCharacters?: number;
+  maxWidth?: string | number;
   maxHeight?: string | number;
   focusRing?: boolean;
 
@@ -293,6 +294,7 @@ export type RichTextEditorProps = {
   value?: string;
   onChange?: (value: string) => void;
   onSubmit?: () => void;
+  onKey?: (e: KeyboardEvent) => boolean;
 
   // Typing
   onStartTyping?: () => void;
@@ -307,6 +309,7 @@ export type RichTextEditorProps = {
 
 ////////////////////////////////////////////////////////////
 type _Funcs = {
+  handleKeyDown: EditorOptions['editorProps']['handleKeyDown'];
   handlePaste: EditorOptions['editorProps']['handlePaste'];
   handleTextInput: EditorOptions['editorProps']['handleTextInput'];
 };
@@ -411,6 +414,14 @@ function useFunctions(props: RichTextEditorProps, setAttachments: (files: File[]
     };
   }, [props.attachments]);
 
+  // Handle key down
+  useEffect(() => {
+    if (props.onKey)
+      funcsRef.current.handleKeyDown = (view, e) => props.onKey?.(e) || false;
+    else
+      funcsRef.current.handleKeyDown = undefined;
+  }, [props.onKey]);
+
   // Handle text input
   useEffect(() => {
     // Disable func if callbacks not given
@@ -505,6 +516,9 @@ export default function RichTextEditor(props: RichTextEditorProps) {
     autofocus: props.autofocus || false,
 
     editorProps: {
+      handleKeyDown: (view, event) => {
+        funcsRef.current.handleKeyDown?.(view, event);
+      },
       handlePaste: (view, event, slice) => {
         funcsRef.current.handlePaste?.(view, event, slice);
       },
@@ -587,6 +601,8 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   return (
     <Box sx={(theme) => ({
       width: '100%',
+      maxWidth: props.maxWidth,
+
       '.ProseMirror': {
         '&:focus': {
           outline: 'none',
@@ -881,7 +897,7 @@ function makeParagraph(node: JSONContent) {
     }
 
     else if (type === 'pingMention') {
-      const parts = doc.attrs?.id.split(':') || ['profiles', ''];
+      const parts = doc.attrs?.['data-id'].split(':') || ['profiles', ''];
       let brackets = config.app.message.member_mention_chars;
       if (parts[0] === 'roles')
         brackets = config.app.message.role_mention_chars;

@@ -49,9 +49,9 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
 
   addAttributes() {
     return {
-      id: '',
-      name: '',
-      type: '',
+      ['data-id']: '',
+      ['data-label']: '',
+      ['data-variant']: '',
     };
   },
 
@@ -81,11 +81,13 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
     
     // Construct attrs
     const finalAttrs: any = {
-      class: `avid-highlight avid-${attrs.type === 'member' ? 'mention-member' : ''}`,
+      ...HTMLAttributes,
+      ['data-type']: 'pingMention',
+      class: `avid-highlight avid-${attrs['data-variant'] === 'member' ? 'mention-member' : ''}`,
     };
 
-    if (attrs.type === 'role') {
-      const color = attrs.color || '#EAECEF';
+    if (attrs['data-variant'] === 'role') {
+      const color = attrs['data-color'] || '#EAECEF';
       finalAttrs['style'] = `background-color: ${color}2A; color: ${color}; font-weight: 600;`;
     }
 
@@ -325,10 +327,10 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
         {
           type: 'pingMention',
           attrs: {
-            id: props.id,
-            name: props.name,
-            type: props.type,
-            color: props.color,
+            ['data-id']: props.id,
+            ['data-label']: props.name,
+            ['data-variant']: props.type,
+            ['data-color']: props.color,
           },
         },
         {
@@ -346,5 +348,5 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
 ////////////////////////////////////////////////////////////
 export default PingMention.configure({
   suggestion: MentionSuggestor,
-  renderLabel: ({ options, node }) => `${options.suggestion.char}${node.attrs.name}`,
+  renderLabel: ({ options, node }) => `${options.suggestion.char}${node.attrs['data-label']}`,
 });

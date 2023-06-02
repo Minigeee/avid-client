@@ -17,6 +17,8 @@ export type Message = {
 	attachments?: Attachment[];
 	/** The time the message was created */
 	created_at: Date;
+	/** Indicates if this message was edited */
+	edited?: boolean;
 };
 
 
