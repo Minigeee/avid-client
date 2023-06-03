@@ -1,4 +1,4 @@
-import { ForwardedRef, Fragment, MutableRefObject, Ref, RefObject, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ForwardedRef, Fragment, MutableRefObject, PropsWithChildren, Ref, RefObject, createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 import {
@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Center,
+  CloseButton,
   Divider,
   Flex,
   Group,
@@ -22,6 +23,7 @@ import {
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 import {
+  IconArrowForwardUp,
   IconChevronsDown,
   IconPaperclip,
   IconPencilPlus,
@@ -49,7 +51,7 @@ import {
   useSession,
   useTimeout,
 } from '@/lib/hooks';
-import { FileAttachment, Member, Message } from '@/lib/types';
+import { ExpandedMessage, FileAttachment, Member, Message } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
 
 import moment from 'moment';
@@ -66,30 +68,252 @@ const MAX_IMAGE_HEIGHT = 1000;
 
 
 ////////////////////////////////////////////////////////////
-type MessageEditorProps = {
+type MessagesViewProps = {
+  channel_id: string;
   domain: DomainWrapper;
-  msgWrapper: MessagesWrapper;
 
+  /** Side padding */
+  p?: string;
+  /** Bottom padding */
+  pb?: string;
+}
+
+/** Message viewport state */
+type MessageViewState = {
+  /** Current typing members */
+  typing: Member[];
+  /** Member that was typing last */
+  last_typing: Member | null;
+  /** Id of the message that is currently being edited */
+  editing: string | null;
+  /** The message the user is replying to */
+  replying_to: ExpandedMessage | null;
+};
+
+/** Message view context state, used to pass current state within message view */
+export type MessageViewContextState = {
+  /** Domain of the message channel */
+  domain: DomainWrapper;
+  /** Id of the message channel */
+  channel_id: string;
+  /** The sender member */
+  sender: MemberWrapper<false>;
+  /** Grouped messages */
+  messages: MessagesWrapper<false>;
+
+  /** Refs */
+  refs: {
+    /** Main editor ref */
+    editor: RefObject<Editor>;
+    /** Scroll area viewport ref */
+    viewport: RefObject<HTMLDivElement>;
+  },
+
+  /** Message viewport state */
+  state: MessageViewState & {
+    /** State setter */
+    _set: <K extends keyof MessageViewState>(key: K, value: MessageViewState[K]) => void;
+    /** State setter for entire state */
+    _setAll: (value: MessageViewState) => void;
+  },
+
+  /** Viewport style options */
+  style: {
+    /** Side padding */
+    p: string;
+    /** Bottom padding */
+    pb: string;
+  },
+};
+
+/** Message view context with loaded wrappers */
+export type LoadedMessageViewContextState = Omit<MessageViewContextState, 'sender' | 'messages'> & {
+  /** The sender member */
+  sender: MemberWrapper;
+  /** Grouped messages */
+  messages: MessagesWrapper;
+}
+
+/** Message view context */
+// @ts-ignore
+export const MessageViewContext = createContext<MessageViewContextState>();
+
+/** Message view context provider */
+function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesViewProps) {
+  // Default styling
+  const sidePadding = props.p || '2.5rem';
+  const bottomPadding = props.pb || '2.2rem';
+
+  // Data
+  const app = useApp();
+  const session = useSession();
+  const sender = useMember(domain.id, session.profile_id);
+  const messages = useMessages(channel_id, domain, sender);
+
+  // Editor ref
+  const editorRef = useRef<Editor>(null);
+  // Viewport ref
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  // Determines if scroll to bottom button should be shown
+  const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false);
+  // Message user is replying to
+  const [replyingTo, setReplyingTo] = useState<ExpandedMessage | null>(null);
+
+  /** States */
+	const [state, setState] = useState<MessageViewState>({
+    typing: [],
+    last_typing: null,
+    editing: null,
+    replying_to: null,
+	});
+
+  
+  // Refresh on stale data
+  useEffect(() => {
+    if (!app.general.stale[channel_id]) return;
+
+    if (!messages._exists)
+      // If a channel is stale, but data not even loaded, reset stale flag
+      app._mutators.general.setStale(channel_id, false);
+
+    else if (messages._exists) {
+      // Refresh data and unset stale flag
+      messages._refresh();
+      app._mutators.general.setStale(channel_id, false);
+    }
+  }, []);
+
+  // New message event
+  useEffect(() => {
+    function onNewMessage(domain_id: string, message: Message) {
+      // Ignore if message isn't in this channel, it is handled by another handler
+      if (!messages._exists || message.channel !== channel_id) return;
+  
+      // Add message locally
+      messages._mutators.addMessageLocal(message);
+
+      // Remove from typing list
+      const idx = state.typing.findIndex(m => m.id === message.sender);
+      if (idx >= 0) {
+        // Set list
+        const copy = state.typing.slice();
+        copy.splice(idx, 1);
+
+        // Update state
+        setState({
+          ...state,
+          typing: copy,
+          last_typing: copy.length === 1 ? copy[0] : state.last_typing,
+        });
+      }
+    }
+
+    socket().on('chat:message', onNewMessage);
+
+    return () => {
+      socket().off('chat:message', onNewMessage);
+    }
+  }, [channel_id, messages, state.typing]);
+
+  // Displaying members that are typing
+  useEffect(() => {
+    function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
+      // Only care about members in this channel
+      if (typing_channel_id !== channel_id) return;
+
+      // Index of member in list
+      const ids = state.typing.map(x => x.id);
+      const idx = ids.findIndex(x => x === profile_id);
+      
+      // Different actions based on if user started or stopped
+      if (type === 'start' && idx < 0) {
+        ids.push(profile_id);
+
+        // Fetch members
+        getMembers(domain.id, ids, session).then((members) => {
+          // Update state
+          setState({
+            ...state,
+            typing: members,
+            last_typing: members.length === 1 ? members[0] : state.last_typing,
+          });
+        });
+      }
+
+      else if (type === 'stop' && idx >= 0) {
+        // Set list
+        const copy = state.typing.slice();
+        copy.splice(idx, 1);
+
+        // Update state
+        setState({
+          ...state,
+          typing: copy,
+          last_typing: copy.length === 1 ? copy[0] : state.last_typing,
+        });
+      }
+    }
+
+    socket().on('chat:typing', onChatTyping);
+
+    return () => {
+      socket().off('chat:typing', onChatTyping);
+    };
+  }, [state.typing]);
+
+
+  return {
+    domain,
+    channel_id,
+    sender,
+    messages,
+
+    refs: {
+      editor: editorRef,
+      viewport: viewportRef,
+    },
+    state: {
+      ...state,
+      _set: (key, value) => setState({ ...state, [key]: value }),
+      _setAll: setState,
+    },
+    style: {
+      p: sidePadding,
+      pb: bottomPadding,
+    }
+  } as MessageViewContextState;
+}
+
+/** Use message view context */
+function useMessageViewContext<Loaded extends boolean = false>() {
+  return useContext(MessageViewContext) as Loaded extends true ? LoadedMessageViewContextState : MessageViewContextState;
+}
+
+
+////////////////////////////////////////////////////////////
+type MessageEditorProps = {
   msg: ExpandedMessageWithPing;
-  setEditingMsg: (id: string | null) => void;
 }
 
 ////////////////////////////////////////////////////////////
 function MessageEditor({ msg, ...props }: MessageEditorProps) {
+  const context = useMessageViewContext<true>();
+
   const editorRef = useRef<Editor>(null);
 
   return (
     <Stack maw='80ch' spacing='xs'>
       <RichTextEditor
         editorRef={editorRef}
-        domain={props.domain}
+        domain={context.domain}
         value={msg.message}
         markdown
         autofocus
 
         onKey={(e) => {
           if (e.key === 'Escape') {
-            props.setEditingMsg(null);
+            context.state._set('editing', null);
             return true;
           }
 
@@ -100,7 +324,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
       <Group spacing='xs' position='right'>
         <Button
           variant='default'
-          onClick={() => props.setEditingMsg(null)}
+          onClick={() => context.state._set('editing', null)}
         >
           Cancel
         </Button>
@@ -110,9 +334,9 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
             if (!editorRef.current) return;
 
             // Edit message
-            props.msgWrapper._mutators.editMessage(msg.id, toMarkdown(editorRef.current));
+            context.messages._mutators.editMessage(msg.id, toMarkdown(editorRef.current));
             // Close
-            props.setEditingMsg(null)
+            context.state._set('editing', null);
           }}
         >
           Save
@@ -125,26 +349,21 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
 
 ////////////////////////////////////////////////////////////
 type MessageGroupProps = {
-  domain: DomainWrapper;
-  msgWrapper: MessagesWrapper;
-
   msgs: ExpandedMessageWithPing[];
-  profile_id: string;
   style: string;
 
-  /** Message being edited */
-  editingMsg: string | null;
-  /** Set message being edited */
-  setEditingMsg: (id: string | null) => void;
-
+  sender: MemberWrapper;
+  editing: string | null;
   p: string;
 }
 
 ////////////////////////////////////////////////////////////
 function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
+  // Don't use context bc it forces all groups to rerender (bad performance)
+  // console.log('rerender msg')
 
   // Indicates if this group came from the user
-  const fromUser = props.profile_id === msgs[0].sender?.id;
+  const fromUser = props.sender.id === msgs[0].sender?.id;
 
   // Check if any message within group has a ping targetted towrads reader
   const hasPing = useMemo<boolean>(() => {
@@ -217,25 +436,56 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
               </Group>
             )}
 
-            {props.editingMsg !== msg.id && (
-              <>
+            {props.editing !== msg.id && (
+              <div>
+                {msg.reply_to && (
+                  <Group
+                    spacing={6}
+                    ml={2}
+                    mb={-4}
+                    align='start'
+                  >
+                    <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
+                      <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
+                    </Box>
+                    <MemberAvatar
+                      member={msg.reply_to.sender}
+                      size={20}
+                    />
+                    <Text
+                      size={12}
+                      weight={600}
+                      sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
+                    >
+                      {msg.reply_to.sender?.alias}
+                    </Text>
+                    <Text
+                      size={11}
+                      mt={1}
+                      mah='1.25rem'
+                      sx={(theme) => ({
+                        maxWidth: '80ch',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        color: `${theme.colors.dark[0]}C0`,
+                      })}
+                    >
+                      {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                    </Text>
+                  </Group>
+                )}
                 <div
                   className={style}
                   style={{ maxWidth: '80ch' }}
                   dangerouslySetInnerHTML={{ __html: msg.message }}
                 />
                 {msg.edited && (
-                  <Text size={10} color='dimmed' mt={-10}>{'(edited)'}</Text>
+                  <Text size={10} color='dimmed'>{'(edited)'}</Text>
                 )}
-              </>
+              </div>
             )}
-            {props.editingMsg === msg.id && (
-              <MessageEditor
-                domain={props.domain}
-                msgWrapper={props.msgWrapper}
-                setEditingMsg={props.setEditingMsg}
-                msg={msg}
-              />
+            {props.editing === msg.id && (
+              <MessageEditor msg={msg} />
             )}
 
             {msg.attachments?.map((attachment, attachment_idx) => {
@@ -281,38 +531,38 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
   );
 }
 
-const MemoMessageGroup = memo(MessageGroup);
+const MemoMessageGroup = memo(MessageGroup, (a, b) => {
+  // Compare the user objects by their id property
+  return a.style === b.style &&
+    a.sender === b.sender &&
+    a.editing === b.editing &&
+    a.p === b.p &&
+    a.msgs.length === b.msgs.length && a.msgs.every((x, i) => x === b.msgs[i]);
+});
 
 
 ////////////////////////////////////////////////////////////
 type MessagesViewportProps = {
-  channel_id: string;
-  domain: DomainWrapper;
-  messages: MessagesWrapper;
-  sender: MemberWrapper;
-
-  viewport: RefObject<HTMLDivElement>;
   showScrollBottom?: boolean;
   setShowScrollBottom?: (show: boolean) => void;
-
-  p: string;
 }
 
 ////////////////////////////////////////////////////////////
-function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProps) {
+function MessagesViewport(props: MessagesViewportProps) {
+  const context = useMessageViewContext();
+  const { messages } = context;
   const { classes } = useChatStyles();
 
-  // Message id being edited
-  const [editingMessage, setEditingMessage] = useState<string | null>(null);
   // Lagged viewport size for scroll pos calculations
   const [viewportSizeLagged, setViewportSizeLagged] = useState<number>(0);
 
 
   // Calculate editing message to minimize memo component change
   const editingMessageGroups = useMemo(() => {
+    if (!messages._exists) return {};
     const map: Record<string, string | null> = {};
 
-    if (!editingMessage) {
+    if (!context.state.editing) {
       for (const [day, groups] of Object.entries(messages.data)) {
         for (let i = 0; i < groups.length; ++i)
           map[`${day}.${i}`] = null;
@@ -321,42 +571,47 @@ function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProp
     else {
       for (const [day, groups] of Object.entries(messages.data)) {
         for (let i = 0; i < groups.length; ++i)
-          map[`${day}.${i}`] = groups[i].findIndex(x => x.id === editingMessage) >= 0 ? editingMessage : null;
+          map[`${day}.${i}`] = groups[i].findIndex(x => x.id === context.state.editing) >= 0 ? context.state.editing : null;
       }
     }
 
     return map;
-  }, [messages, editingMessage]);
+  }, [messages, context.state.editing]);
 
   // Keep current position when new messages are added (doubles as setting scroll to bottom at beginning)
   useEffect(() => {
-    if (!viewport.current) return;
+    const viewport = context.refs.viewport.current;
+    if (!viewport) return;
     
     // Maintain constant distance from bottom
-    const pos = viewportSizeLagged - viewport.current.scrollTop;
-    viewport.current.scrollTo({
-      top: viewport.current.scrollHeight - pos,
+    const pos = viewportSizeLagged - viewport.scrollTop;
+    viewport.scrollTo({
+      top: viewport.scrollHeight - pos,
     });
 
     // Update viewport size
-    setViewportSizeLagged(viewport.current.scrollHeight);
+    setViewportSizeLagged(viewport.scrollHeight);
   }, [messages]);
 
+
+  // TODO : Show messages skeleton
+  if (!context.sender._exists || !messages._exists) return null;
 
   ////////////////////////////////////////////////////////////
   return (
     <>
       <ScrollArea
-        viewportRef={viewport as ForwardedRef<HTMLDivElement>}
+        viewportRef={context.refs.viewport}
         onScrollPositionChange={(e) => {
-          if (!viewport.current) return;
+          const viewport = context.refs.viewport.current;
+          if (!viewport) return;
 
           // Load more if approaching top
           if (e.y < config.app.ui.load_next_treshold)
             messages._next();
 
           // Show scroll to bottom button if getting far from bottom
-          if (e.y < viewport.current.scrollHeight - viewport.current.clientHeight - 500) {
+          if (e.y < viewport.scrollHeight - viewport.clientHeight - 500) {
             if (!props.showScrollBottom)
               props.setShowScrollBottom?.(true);
           }
@@ -365,33 +620,28 @@ function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProp
         }}
         styles={{
           viewport: {
-            padding: `0rem ${props.p} 0rem 0rem`,
+            padding: `0rem ${context.style.p} 0rem 0rem`,
           }
         }}
       >
-        <MessageContextMenu messages={messages} viewer={props.sender} setEditing={setEditingMessage}>
+        <MessageContextMenu context={context as LoadedMessageViewContextState}>
           <Stack spacing='lg'>
             {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
               <Fragment key={day}>
                 <Divider
                   label={moment(day).format('LL')}
                   labelPosition='center'
-                  sx={(theme) => ({ marginLeft: props.p, color: theme.colors.dark[2] })}
+                  sx={(theme) => ({ marginLeft: context.style.p, color: theme.colors.dark[2] })}
                 />
                 {grouped.map((consec, j) => (
                   <MemoMessageGroup
                     key={j}
-                    domain={props.domain}
-                    msgWrapper={messages}
-
                     msgs={consec}
-                    profile_id={props.sender.id}
                     style={classes.typography}
 
-                    editingMsg={editingMessageGroups[`${day}.${j}`]}
-                    setEditingMsg={setEditingMessage}
-
-                    p={props.p}
+                    sender={context.sender as MemberWrapper}
+                    editing={editingMessageGroups[`${day}.${j}`]}
+                    p={context.style.p}
                   />
                 ))}
               </Fragment>
@@ -408,33 +658,30 @@ function MessagesViewport({ messages, viewport, ...props }: MessagesViewportProp
 
 ////////////////////////////////////////////////////////////
 type TextEditorProps = {
-  channel_id: string;
-  domain: DomainWrapper;
-  profile_id: string;
-
-  editorRef: RefObject<Editor>;
   onSubmit: (message: string, attachments: FileAttachment[]) => boolean;
 };
 
 ////////////////////////////////////////////////////////////
 function TextEditor(props: TextEditorProps) {
+  const context = useMessageViewContext();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Indicates if formatted editor should be used
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
-
   // List of file attachments
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   // Timeout object used to detect typing
   const typingTimeout = useTimeout(() => {
-    socket().emit('chat:typing', props.profile_id, props.channel_id, 'stop');
+    if (context.sender._exists)
+      socket().emit('chat:typing', context.sender.id, context.channel_id, 'stop');
   }, 2000);
 
 
   ////////////////////////////////////////////////////////////
   function onMessageSubmit() {
-    const editor = props.editorRef.current;
+    const editor = context.refs.editor.current;
 
     // console.log(channel_id, sender._exists, messages._exists, editor?.storage.characterCount.characters(), attachments.length)
 
@@ -450,6 +697,8 @@ function TextEditor(props: TextEditorProps) {
     // Clear input
     editor.commands.clearContent();
     setAttachments([]);
+    if (context.state.replying_to)
+      context.state._set('replying_to', null);
 
     // Reset to default input box
     setUseFormattedEditor(false);
@@ -461,8 +710,8 @@ function TextEditor(props: TextEditorProps) {
 
   return (
     <RichTextEditor
-      editorRef={props.editorRef}
-      domain={props.domain}
+      editorRef={context.refs.editor}
+      domain={context.domain}
 
       variant={useFormattedEditor ? 'full' : 'minimal'}
       placeholder='Message'
@@ -515,7 +764,8 @@ function TextEditor(props: TextEditorProps) {
 
       typingTimeout={typingTimeout}
       onStartTyping={() => {
-        socket().emit('chat:typing', props.profile_id, props.channel_id, 'start');
+        if (context.sender._exists)
+          socket().emit('chat:typing', context.sender.id, context.channel_id, 'start');
       }}
     />
   );
@@ -523,138 +773,23 @@ function TextEditor(props: TextEditorProps) {
 
 
 ////////////////////////////////////////////////////////////
-type MessagesViewProps = {
-  channel_id: string;
-  domain: DomainWrapper;
-
-  /** Side padding */
-  p?: string;
-  /** Bottom padding */
-  pb?: string;
-}
-
-////////////////////////////////////////////////////////////
 export default function MessagesView(props: MessagesViewProps) {
-  const {
-    channel_id,
-    domain,
-  } = props;
-  const sidePadding = props.p || '2.5rem';
-  const bottomPadding = props.pb || '2.2rem';
-
   // Data
-  const app = useApp();
-  const session = useSession();
-  const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(props.channel_id, props.domain, sender);
-
-  // Editor ref
-  const editorRef = useRef<Editor>(null);
-  // Viewport ref
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const context = useInitMessageViewContext(props);
+  const { sender, messages } = context;
 
   // Determines if scroll to bottom button should be shown
   const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false);
-  // List of members that are typing
-  const [typingMembers, setTypingMembers] = useState<Member[]>([]);
-  // Last typing member, because transition makes typing text stay for longer than the member stay in array
-  const [lastTyping, setLastTyping] = useState<Member | null>(null);
 
   // Lagged flag, used to delay rendering message viewport until after editor is rendered (takes 1 rotation for editor to show)
   const [lagged, setLagged] = useState<boolean>(false);
 
 
-  // Refresh on stale data
-  useEffect(() => {
-    if (!app.general.stale[channel_id]) return;
-
-    if (!messages._exists)
-      // If a channel is stale, but data not even loaded, reset stale flag
-      app._mutators.general.setStale(channel_id, false);
-
-    else if (messages._exists) {
-      // Refresh data and unset stale flag
-      messages._refresh();
-      app._mutators.general.setStale(channel_id, false);
-    }
-  }, []);
-
-  // New message event
-  useEffect(() => {
-    function onNewMessage(domain_id: string, message: Message) {
-      // Ignore if message isn't in this channel, it is handled by another handler
-      if (!messages._exists || message.channel !== props.channel_id) return;
-  
-      // Add message locally
-      messages._mutators.addMessageLocal(message);
-
-      // Remove from typing list
-      const idx = typingMembers.findIndex(m => m.id === message.sender);
-      if (idx >= 0) {
-        // Set list
-        const copy = typingMembers.slice();
-        copy.splice(idx, 1);
-        setTypingMembers(copy);
-
-        // Set last typing
-        if (copy.length === 1)
-          setLastTyping(copy[0]);
-      }
-    }
-
-    socket().on('chat:message', onNewMessage);
-
-    return () => {
-      socket().off('chat:message', onNewMessage);
-    }
-  }, [props.channel_id, messages, typingMembers]);
-
-  // Displaying members that are typing
-  useEffect(() => {
-    function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
-      console.log('detect typing')
-      // Only care about members in this channel
-      if (typing_channel_id !== channel_id) return;
-
-      // Index of member in list
-      const ids = typingMembers.map(x => x.id);
-      const idx = ids.findIndex(x => x === profile_id);
-      
-      // Different actions based on if user started or stopped
-      if (type === 'start' && idx < 0) {
-        console.log('detect start')
-        ids.push(profile_id);
-
-        // Fetch members
-        getMembers(domain.id, ids, session).then((members) => {
-          console.log('found members', members)
-          // Set list
-          setTypingMembers(members);
-
-          // Set last typing
-          if (members.length === 1)
-            setLastTyping(members[0]);
-        });
-      }
-
-      else if (type === 'stop' && idx >= 0) {
-        // Set list
-        const copy = typingMembers.slice();
-        copy.splice(idx, 1);
-        setTypingMembers(copy);
-
-        // Set last typing
-        if (copy.length === 1)
-          setLastTyping(copy[0]);
-      }
-    }
-
-    socket().on('chat:typing', onChatTyping);
-
-    return () => {
-      socket().off('chat:typing', onChatTyping);
-    };
-  }, [typingMembers]);
+  // Calculate reply message text
+  const replyToMsg = useMemo(() =>
+    context.state.replying_to?.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, ''),
+    [context.state.replying_to]
+  );
 
   // Lagged flag
   useEffect(() => {
@@ -664,110 +799,149 @@ export default function MessagesView(props: MessagesViewProps) {
 
   ////////////////////////////////////////////////////////////
   function scrollToBottom() {
-    if (viewportRef.current) {
-      viewportRef.current.scrollTo({
-        top: viewportRef.current.scrollHeight,
+    if (context.refs.viewport.current) {
+      context.refs.viewport.current.scrollTo({
+        top: context.refs.viewport.current.scrollHeight,
       });
     }
   }
 
-
   return (
-    <Box sx={(theme) => ({
-      display: 'flex',
-      position: 'relative',
-      flexFlow: 'column',
-      width: '100%',
-      height: '100%',
-      backgroundColor: theme.colors.dark[7],
-    })}>
-      {/* Work around to broken justify-content: flex-end */}
-      <div style={{ flexGrow: 1 }} />
-      {lagged && sender._exists && messages._exists && (
-        <MessagesViewport
-          channel_id={channel_id}
-          domain={props.domain}
-          messages={messages}
-          sender={sender}
-
-          viewport={viewportRef}
-          showScrollBottom={showScrollBottom}
-          setShowScrollBottom={setShowScrollBottom}
-
-          p={sidePadding}
-        />
-      )}
-
-      <Box sx={{
+    <MessageViewContext.Provider value={context}>
+      <Box sx={(theme) => ({
+        display: 'flex',
         position: 'relative',
-        margin: `0rem ${sidePadding} ${bottomPadding} ${sidePadding}`,
-      }}>
-        <Transition mounted={typingMembers.length > 0} transition='slide-up' duration={200}>
-          {(styles) => (
-            <Group spacing={9} sx={(theme) => ({
-              position: 'absolute',
-              top: '-1.45rem',
-              padding: '1px 0.5rem 1px 0.3rem',
-              backgroundColor: `${theme.colors.dark[7]}bb`,
-              borderRadius: 3,
-              zIndex: 0,
-            })} style={styles}>
-              <Loader variant='dots' size='xs' />
-              <Text size={11.5}>
-                {typingMembers.length <= 1 && (
-                  <><b>{lastTyping?.alias}</b> is typing...</>
-                )}
-                {typingMembers.length == 2 && (
-                  <><b>{typingMembers[0].alias}</b> and <b>{typingMembers[1].alias}</b> are typing...</>
-                )}
-                {typingMembers.length == 3 && (
-                  <><b>{typingMembers[0].alias}</b>, <b>{typingMembers[1].alias}</b>, and <b>{typingMembers[2].alias}</b> are typing...</>
-                )}
-                {typingMembers.length > 3 && 'Several people are typing...'}
-              </Text>
-            </Group>
-          )}
-        </Transition>
-
-        {showScrollBottom && (
-          <ActionButton
-            tooltip='Scroll To Bottom'
-            tooltipProps={{ position: 'left', openDelay: 500 }}
-            variant='filled'
-            size='xl'
-            radius='xl'
-            sx={(theme) => ({
-              position: 'absolute',
-              top: '-3.75rem',
-              right: '0.25rem',
-              backgroundColor: theme.colors.dark[8],
-              '&:hover': {
-                backgroundColor: theme.colors.dark[6],
-              },
-            })}
-            onClick={scrollToBottom}
-          >
-            <IconChevronsDown />
-          </ActionButton>
+        flexFlow: 'column',
+        width: '100%',
+        height: '100%',
+        backgroundColor: theme.colors.dark[7],
+      })}>
+        {/* Work around to broken justify-content: flex-end */}
+        <div style={{ flexGrow: 1 }} />
+        {lagged && sender._exists && messages._exists && (
+          <MessagesViewport
+            showScrollBottom={showScrollBottom}
+            setShowScrollBottom={setShowScrollBottom}
+          />
         )}
 
-        <TextEditor
-          channel_id={props.channel_id}
-          domain={props.domain}
-          profile_id={session.profile_id}
+        <Box sx={{
+          position: 'relative',
+          margin: `0rem ${context.style.p} ${context.style.pb} ${context.style.p}`,
+        }}>
+          <Transition mounted={context.state.typing.length > 0} transition='slide-up' duration={200}>
+            {(styles) => (
+              <Group spacing={9} sx={(theme) => ({
+                position: 'absolute',
+                top: '-1.45rem',
+                padding: '1px 0.5rem 1px 0.3rem',
+                backgroundColor: `${theme.colors.dark[7]}bb`,
+                borderRadius: 3,
+                zIndex: 0,
+              })} style={styles}>
+                <Loader variant='dots' size='xs' />
+                <Text size={11.5}>
+                  {context.state.typing.length <= 1 && (
+                    <><b>{context.state.last_typing?.alias}</b> is typing...</>
+                  )}
+                  {context.state.typing.length == 2 && (
+                    <><b>{context.state.typing[0].alias}</b> and <b>{context.state.typing[1].alias}</b> are typing...</>
+                  )}
+                  {context.state.typing.length == 3 && (
+                    <><b>{context.state.typing[0].alias}</b>, <b>{context.state.typing[1].alias}</b>, and <b>{context.state.typing[2].alias}</b> are typing...</>
+                  )}
+                  {context.state.typing.length > 3 && 'Several people are typing...'}
+                </Text>
+              </Group>
+            )}
+          </Transition>
 
-          editorRef={editorRef}
-          onSubmit={(message, attachments) => {
-            // If these don't exist, return false to indicate submit was not handled, don't clear input
-            if (!messages._exists || !sender._exists)
-              return false;
-            
-            // Send message
-            messages._mutators.addMessage(message, sender, attachments);
-            return true;
-          }}
-        />
+          {showScrollBottom && (
+            <ActionButton
+              tooltip='Scroll To Bottom'
+              tooltipProps={{ position: 'left', openDelay: 500 }}
+              variant='filled'
+              size='xl'
+              radius='xl'
+              sx={(theme) => ({
+                position: 'absolute',
+                top: '-3.75rem',
+                right: '0.25rem',
+                backgroundColor: theme.colors.dark[8],
+                '&:hover': {
+                  backgroundColor: theme.colors.dark[6],
+                },
+              })}
+              onClick={scrollToBottom}
+            >
+              <IconChevronsDown />
+            </ActionButton>
+          )}
+
+          {context.state.replying_to && (
+            <Group
+              h='1.75rem'
+              p='0.15rem 0.5rem'
+              spacing={6}
+              align='start'
+              sx={(theme) => ({
+                backgroundColor: theme.colors.dark[8],
+                borderTopLeftRadius: 3,
+                borderTopRightRadius: 3,
+              })}
+            >
+              <IconArrowForwardUp size={18} style={{ marginTop: '0.1rem' }} />
+              <MemberAvatar
+                member={context.state.replying_to.sender}
+                size={20}
+                sx={{ marginTop: '0.0625rem' }}
+              />
+              <Text
+                size={12}
+                weight={600}
+                mt={2}
+              >
+                {context.state.replying_to.sender?.alias}
+              </Text>
+              <Text
+                size={11}
+                mt={3}
+                mah='1.25rem'
+                sx={{
+                  maxWidth: '80ch',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {replyToMsg}
+              </Text>
+
+              <div style={{ flexGrow: 1 }} />
+              <CloseButton
+                size={'xs'}
+                iconSize={15}
+                mt={2}
+                onClick={() => context.state._set('replying_to', null)}
+              />
+            </Group>
+          )}
+
+          <TextEditor
+            onSubmit={(message, attachments) => {
+              // If these don't exist, return false to indicate submit was not handled, don't clear input
+              if (!messages._exists || !sender._exists)
+                return false;
+
+              // Send message
+              messages._mutators.addMessage(message, sender, {
+                attachments,
+                reply_to: context.state.replying_to || undefined,
+              });
+              return true;
+            }}
+          />
+        </Box>
       </Box>
-    </Box>
+    </MessageViewContext.Provider>
   );
 }

@@ -144,6 +144,20 @@ let _cache = {
 }
 
 
+/** Find message within pages */
+function findMessage(messages: ExpandedMessageWithPing[][], message_id: string) {
+	// Find message, search from last
+	let page = messages.length - 1;
+	let idx = -1;
+	for (; page >= 0; --page) {
+		idx = messages[page].findIndex(x => x.id === message_id);
+		if (idx >= 0)
+			break;
+	}
+
+	return { page, idx };
+}
+
 /** Finds all mentions in message */
 function findMentions(message: string) {
 	const mtype = config.app.message.member_mention_chars;
@@ -290,6 +304,8 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>, env: Markd
 		// Get set of senders and determine if each message has a ping aimed at user
 		const senders: Record<string, Member | null> = {};
 		const hasPing: boolean[] = [];
+		// Map of messages for quick lookup
+		const messageMap: Record<string, Message> = {};
 
 		for (const msg of messages) {
 			if (msg.sender)
@@ -307,6 +323,9 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>, env: Markd
 
 			// Add member pings to senders list to get fetched
 			mentions.members.forEach(m => senders[m] = null);
+
+			// Add message to map for fast lookup
+			messageMap[msg.id] = msg;
 		}
 
 		// Get members data
@@ -315,12 +334,16 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>, env: Markd
 			senders[member.id] = member;
 
 		// Render messages, attach senders and pings to message
-		const expanded: ExpandedMessageWithPing[] = messages.map((msg, i) => ({
-			...msg,
-			message: renderMessage(msg.id, msg.message, env),
-			sender: msg.sender ? senders[msg.sender] : null,
-			pinged: hasPing[i],
-		}));
+		const expanded: ExpandedMessageWithPing[] = messages.map((msg, i) => {
+			// Modify object in place
+			const expandedMsg = msg as ExpandedMessageWithPing;
+			expandedMsg.message = renderMessage(msg.id, msg.message, env);
+			expandedMsg.sender = msg.sender ? senders[msg.sender] : null;
+			expandedMsg.pinged = hasPing[i];
+			expandedMsg.reply_to = msg.reply_to ? messageMap[msg.reply_to] as ExpandedMessage : undefined;
+
+			return expandedMsg;
+		});
 
 		// Return expanded messages
 		return expanded;
@@ -340,12 +363,22 @@ function addMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, mess
 	// Check if reader is pinged
 	const { pinged } = hasPings(message.message, reader);
 
+	// Find reply to if it exist
+	let reply_to: ExpandedMessage | undefined = undefined;
+	if (messages && message.reply_to) {
+		// Find message this one is replying to
+		const { page, idx } = findMessage(messages, message.reply_to);
+		if (idx >= 0)
+			reply_to = messages[page][idx];
+	}
+
 	// Render message
 	const rendered: ExpandedMessageWithPing = {
 		...message,
 		message: renderMessage(message.id, message.message, env),
 		sender: message.sender ? getMemberSync(domain_id, message.sender) : null,
 		pinged,
+		reply_to,
 	};
 
 	// Return message list with appended message
@@ -361,16 +394,8 @@ function editMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, mes
 	// Check if reader is pinged
 	const { pinged } = hasPings(message, reader);
 
-	// Find message, search from last
-	let page = messages.length - 1;
-	let idx = -1;
-	for (; page >= 0; --page) {
-		idx = messages[page].findIndex(x => x.id === message_id);
-		if (idx >= 0)
-			break;
-	}
-
-	// Do nothing if message not found
+	// Find message
+	const { page, idx } = findMessage(messages, message_id);
 	if (idx < 0) return messages;
 
 	// Create copies
@@ -391,16 +416,8 @@ function editMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, mes
 function deleteMessageLocal(messages: ExpandedMessageWithPing[][] | undefined, message_id: string) {
 	if (!messages) return undefined;
 
-	// Find message, search from last
-	let page = messages.length - 1;
-	let idx = -1;
-	for (; page >= 0; --page) {
-		idx = messages[page].findIndex(x => x.id === message_id);
-		if (idx >= 0)
-			break;
-	}
-
-	// Do nothing if message not found
+	// Find message
+	const { page, idx } = findMessage(messages, message_id);
 	if (idx < 0) return messages;
 
 	// Create copies
@@ -423,10 +440,11 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 		 * 
 		 * @param message The message to post to the channel
 		 * @param sender The id of the sender profile
-		 * @param attachments A list of attachments that are attached to message
+		 * @param options.attachments A list of attachments that are attached to message
+		 * @param options.reply_to The message this one is replying to
 		 * @returns The new grouped messages object
 		 */
-		addMessage: (message: string, sender: Member, attachments?: FileAttachment[]) => {
+		addMessage: (message: string, sender: Member, options?: { attachments?: FileAttachment[]; reply_to?: ExpandedMessage; }) => {
 			// Generate temporary id so we know which message to update with correct id
 			const tempId = uuid();
 			// Time message is sent
@@ -434,16 +452,17 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 
 			return mutate(swrErrorWrapper(async (messages: ExpandedMessageWithPing[][]) => {
 				const domain_id = env.domain.id;
-				const hasAttachments = domain_id && attachments && attachments.length > 0;
+				const hasAttachments = domain_id && options?.attachments && options.attachments.length > 0;
 
 				// Post all attachments
-				const uploads = hasAttachments ? await uploadAttachments(domain_id, attachments, session) : [];
+				const uploads = hasAttachments ? await uploadAttachments(domain_id, options?.attachments || [], session) : [];
 
 				// Post message
 				const results = await query<Message[]>(
 					sql.create<Message>('messages', {
 						channel: channel_id,
 						sender: sender.id,
+						reply_to: options?.reply_to?.id,
 						message,
 						attachments: hasAttachments ? uploads : undefined,
 						created_at: now,
@@ -465,7 +484,7 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 						channel: channel_id,
 						sender: sender.id,
 						message,
-						attachments: attachments?.map(f => ({
+						attachments: options?.attachments?.map(f => ({
 							...f,
 							filename: f.file.name,
 							url: f.type === 'image' ? URL.createObjectURL(f.file) : '',

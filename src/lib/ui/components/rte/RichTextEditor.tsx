@@ -217,39 +217,6 @@ declare module '@tiptap/core' {
   }
 }
 
-////////////////////////////////////////////////////////////
-const CustomNewline = Extension.create<{}, { onEnter: (() => boolean) | null }>({
-  name: 'newline',
-  // priority: 1000,
-  addStorage() {
-    return {
-      onEnter: null,
-    };
-  },
-  addCommands() {
-    return {
-      addNewline:
-        () =>
-          ({ state, dispatch }) => {
-            const { schema, tr } = state;
-            const paragraph = schema.nodes.paragraph;
-
-            const transaction = tr
-              .deleteSelection()
-              .replaceSelectionWith(paragraph.create(), true)
-              .scrollIntoView();
-            if (dispatch) dispatch(transaction);
-            return true;
-          },
-    };
-  },
-  addKeyboardShortcuts() {
-    return {
-      'Enter': () => this.storage.onEnter ? this.storage.onEnter() : false,
-    };
-  },
-});
-
 
 ////////////////////////////////////////////////////////////
 const CustomBulletList = BulletList.extend({
@@ -484,6 +451,23 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   const funcsRef = useFunctions(props, setAttachments);
 
 
+  // New extension for each instance bc shared storage for some reason
+  const CustomNewline = useMemo(() => Extension.create<{}, { onEnter: (() => boolean) | null }>({
+    name: 'newline',
+    // priority: 1000,
+    addStorage() {
+      return {
+        onEnter: null,
+      };
+    },
+    addKeyboardShortcuts() {
+      return {
+        'Enter': () => this.storage.onEnter ? this.storage.onEnter() : false,
+      };
+    },
+  }), []);
+
+  // Editor
   const editor = useEditor({
     extensions: [
       CustomNewline,
@@ -531,16 +515,17 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   // Handle submit
   useEffect(() => {
     if (!editor) return;
-    editor.storage.newline.onEnter = () => {
-      if (variant === 'minimal') {
-        if (props.onSubmit)
-          props.onSubmit();
-        return true;
-      }
 
-      return false;
-    };
-  }, [props.onSubmit, variant]);
+    if (variant === 'minimal' && props.onSubmit) {
+      editor.storage.newline.onEnter = () => {
+        props.onSubmit?.();
+        return true;
+      };
+    }
+    else {
+      editor.storage.newline.onEnter = undefined;
+    }
+  }, [editor, props.onSubmit, variant]);
 
   // Handle attachment previews render (without memo this, the image would rerender from file every time input changed)
   const previews = useMemo(() => props.attachments?.map((f, i) => {

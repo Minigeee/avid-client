@@ -3,15 +3,16 @@ import { PropsWithChildren } from 'react';
 import {
   Menu
 } from '@mantine/core';
+import { openConfirmModal } from '@mantine/modals';
 import { IconArrowBackUp, IconCopy, IconPencil, IconPin, IconTrash } from '@tabler/icons-react';
 
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
+import { LoadedMessageViewContextState } from '../MessagesView';
 
 import { MessagesWrapper } from '@/lib/hooks';
 import { ExpandedMessage, Member } from '@/lib/types';
 
 import moment from 'moment';
-import { openConfirmModal } from '@mantine/modals';
 
 
 ////////////////////////////////////////////////////////////
@@ -22,12 +23,8 @@ export type MessageMenuContext = {
 
 ////////////////////////////////////////////////////////////
 export type MessageMenuProps = PropsWithChildren & {
-  /** Messages wrapper */
-  messages: MessagesWrapper;
-  /** User that is viewing message, used to determine if have perms to edit */
-  viewer?: Member;
-  /** Function to set editing state for message */
-  setEditing?: (message_id: string) => void;
+  /** Message view context */
+  context: LoadedMessageViewContextState;
 };
 
 ////////////////////////////////////////////////////////////
@@ -35,26 +32,35 @@ type MessageMenuDropdownProps = Omit<MessageMenuProps, 'children'> & MessageMenu
 
 
 ////////////////////////////////////////////////////////////
-export function MessageMenuDropdown({ msg, ...props }: MessageMenuDropdownProps) {
+export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropdownProps) {
+  console.log(context.sender.id === msg.sender?.id)
   return (
     <>
       <Menu.Label>{moment(msg.created_at).format('LLL')}</Menu.Label>
 
-      {props.viewer && props.viewer.id === msg.sender?.id && props.setEditing && (
+      {context.sender.id === msg.sender?.id && (
         <Menu.Item
           icon={<IconPencil size={16} />}
-          onClick={() => props.setEditing?.(msg.id)}
+          onClick={() => context.state._set('editing', msg.id)}
         >
           Edit
         </Menu.Item>
       )}
 
-      <Menu.Item icon={<IconArrowBackUp size={17} style={{ marginRight: -1, marginTop: -1 }} />}>
+      <Menu.Item
+        icon={<IconArrowBackUp size={17} style={{ marginRight: -1, marginTop: -1 }} />}
+        onClick={() => {
+          context.state._set('replying_to', msg);
+          context.refs.editor.current?.commands.focus();
+        }}
+      >
         Reply
       </Menu.Item>
+
       <Menu.Item icon={<IconPin size={16} />} disabled>
         Pin
       </Menu.Item>
+
       <Menu.Item
         icon={<IconCopy size={16} />}
         onClick={() => {
@@ -87,7 +93,7 @@ export function MessageMenuDropdown({ msg, ...props }: MessageMenuDropdownProps)
             },
             onConfirm: () => {
               // Delete message
-              props.messages._mutators.deleteMessage(msg.id);
+              context.messages._mutators.deleteMessage(msg.id);
             }
           })
         }}
@@ -106,16 +112,13 @@ export function MessageContextMenu(props: MessageMenuProps) {
       width='12rem'
     >
       <ContextMenu.Dropdown dependencies={[
-        props.messages,
-        props.viewer,
-        props.setEditing,
+        props.context.messages,
+        props.context.sender,
+        props.context.state,
       ]}>
         {(context: MessageMenuContext) => (
           <MessageMenuDropdown
-            messages={props.messages}
-            viewer={props.viewer}
-            setEditing={props.setEditing}
-
+            context={props.context}
             msg={context.msg}
           />
         )}

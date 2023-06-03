@@ -11,6 +11,8 @@ export type Message = {
 	channel: string;
 	/** The id of the sender of the message */
 	sender: string | null;
+	/** The id of the message this message is replying to */
+	reply_to?: string;
 	/** The content of the message */
 	message: string;
 	/** A list of attachments */
@@ -23,7 +25,9 @@ export type Message = {
 
 
 /** Message with expanded fields */
-export type ExpandedMessage = Omit<Message, 'sender'> & {
-	/** THe sender of the message */
+export type ExpandedMessage = Omit<Message, 'sender' | 'reply_to'> & {
+	/** The sender of the message */
 	sender: Member | null;
+	/** The message this message is replying to */
+	reply_to?: ExpandedMessage;
 };
