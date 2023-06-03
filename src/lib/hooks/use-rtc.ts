@@ -24,6 +24,14 @@ import notification from '@/lib/utility/notification';
 import { merge } from 'lodash';
 
 
+/** Video resolution constraints */
+const VIDEO_CONSTRAINTS = {
+	qvga: { width: { ideal: 320 }, height: { ideal: 240 } },
+	vga: { width: { ideal: 640 }, height: { ideal: 480 } },
+	hd: { width: { ideal: 1280 }, height: { ideal: 720 } },
+};
+
+
 /** Consumer type (from server) */
 type ConsumerType = 'simple' | 'simulcast' | 'svc' | 'pipe';
 type ProducerScore = {
@@ -35,6 +43,30 @@ type ConsumerScore = {
     score: number;
     producerScore: number;
     producerScores: number[];
+};
+/** Consumer variants */
+type MediaType = 'audio' | 'video' | 'share';
+
+/** General video options */
+type VideoOptions = {
+	/** Force VP8 codec */
+	force_vp8?: boolean;
+	/** Force H264 codec */
+	force_h264?: boolean;
+	/** Force VP9 codec */
+	force_vp9?: boolean;
+	/** Number of simulcast streams (simulcast disabled if 1) */
+	num_simulcast_streams?: number;
+	/** Scalability mode */
+	scalability_mode?: string;
+	/** Resolution to use */
+	resolution?: keyof typeof VIDEO_CONSTRAINTS;
+};
+
+/** Webcam options */
+type WebcamOptions = VideoOptions & {
+	/** The device to use */
+	device_id?: string;
 };
 
 /** Type representing a consumer's data */
@@ -114,6 +146,13 @@ export type RtcState = {
 	
 	/** The currently selected audio input device id */
 	audio_input_device?: string;
+	/** Webcam options */
+	video_options?: WebcamOptions;
+	
+	/** Indicates if webcam is enabled */
+	is_webcam_enabled: boolean;
+	/** Indicates if webcam should be enabled when joining room */
+	is_webcam_on: boolean;
 	/** Indicates if screen is being shared */
 	is_screen_shared: boolean;
 	/** Indicates if mic is enabled (connected and available) */
@@ -123,20 +162,6 @@ export type RtcState = {
 	/** Indicates if audio is deafened */
 	is_deafened: boolean;
 }
-
-/** Screen share options */
-type ScreenShareOptions = {
-	/** Force VP8 codec */
-	forceVP8?: boolean;
-	/** Force H264 codec */
-	forceH264?: boolean;
-	/** Force VP9 codec */
-	forceVP9?: boolean;
-	/** Number of simulcast streams (simulcast disabled if 1) */
-	numSimulcastStreams?: number;
-	/** Scalability mode */
-	scalabilityMode?: string;
-};
 
 type RtcSetState = (state: RtcState) => any;
 
@@ -158,6 +183,8 @@ const _ = {
 	producers: {
 		/** The mic producer */
 		microphone: null as Producer | null,
+		/** Webcam producer */
+		webcam: null as Producer | null,
 		/** Screen share producer */
 		screenshare: null as Producer | null,
 	},
@@ -278,6 +305,73 @@ function getConsumerField(consumer: Consumer) {
 }
 
 
+/** Pause a consumer locally */
+async function pauseConsumer(emit: RtcSetState, participant_id: string, type: MediaType) {
+	// Get participant
+	const participant = _state.participants[participant_id];
+	const consumerInfo = participant?.[type];
+	if (!consumerInfo) return;
+
+	// Get consumer
+	const { consumer } = _.consumers[consumerInfo.id];
+
+	// Pause consumer
+	consumer.pause();
+	
+	// Send event
+	if (_.socket)
+		_.socket.emit('consumers-paused', [consumer.id]);
+
+	// Set state
+	emit({
+		..._state,
+		participants: {
+			..._state.participants,
+			[participant_id]: {
+				...participant,
+				[type]: {
+					...participant[type],
+					paused: { ...participant[type]?.paused, local: true },
+				},
+			}
+		},
+	});
+}
+
+/** Resume a consumer locally */
+async function resumeConsumer(emit: RtcSetState, participant_id: string, type: MediaType) {
+	// Get participant
+	const participant = _state.participants[participant_id];
+	const consumerInfo = participant?.[type];
+	if (!consumerInfo) return;
+
+	// Get consumer
+	const { consumer } = _.consumers[consumerInfo.id];
+
+	// Resume consumer
+	consumer.resume();
+	
+	// Send event
+	if (_.socket)
+		_.socket.emit('consumers-resumed', [consumer.id]);
+
+	// Set state
+	emit({
+		..._state,
+		participants: {
+			..._state.participants,
+			[participant_id]: {
+				...participant,
+				[type]: {
+					...participant[type],
+					paused: { ...participant[type]?.paused, local: false },
+				},
+			}
+		},
+	});
+}
+
+
 /** Enable mic */
 async function enableMic(deviceId: string | undefined, emit: RtcSetState) {
 	assert(_.device);
@@ -289,7 +383,7 @@ async function enableMic(deviceId: string | undefined, emit: RtcSetState) {
 	if (!_.device.canProduce('audio')) {
 		notification.error(
 			'Failed to enable microphone',
-			'Your device can not produce microphone audio. Please contact us for help.'
+			'Your device can not produce microphone audio.'
 		);
 		
 		return;
@@ -303,7 +397,6 @@ async function enableMic(deviceId: string | undefined, emit: RtcSetState) {
 
 		// Get mic track
 		const stream = await navigator.mediaDevices.getUserMedia(deviceId ? { audio: { deviceId } } : { audio: true });
-		stream.getTrackById
 		const tracks = stream.getAudioTracks();
 
 		if (tracks.length === 0) {
@@ -364,7 +457,8 @@ async function enableMic(deviceId: string | undefined, emit: RtcSetState) {
 	catch (error: any) {
 		notifyError(error, {
 			title: 'Failed to enable microphone',
-			message: `An error occurred while enabling microphone. ${config.app.support_message}`
+			message: `An error occurred while enabling microphone. ${config.app.support_message}`,
+			notify: false,
 		});
 
 		if (track)
@@ -523,8 +617,206 @@ async function undeafen(emit: RtcSetState) {
 }
 
 
+/** Enable webcam */
+async function enableWebcam(emit: RtcSetState, options?: WebcamOptions) {
+	assert(_.device && _.sendTransport);
+	
+	// Quit if producer already exists
+	if (_.producers.webcam) return;
+
+	// Check if video can be produced
+	if (!_.device.canProduce('video')) {
+		notification.error(
+			'Failed to enable webcam',
+			'Your device can not produce video.'
+		);
+		
+		return;
+	}
+
+	// Hold video track
+	let track: MediaStreamTrack | undefined;
+
+	// Defaults
+	options = {
+		...(options || {}),
+		num_simulcast_streams: options?.num_simulcast_streams || 0,
+	};
+
+	try {
+		// Get media stream
+		const stream = await navigator.mediaDevices.getUserMedia({
+			audio: false,
+			video: {
+				deviceId: options.device_id ? { ideal: options.device_id } : undefined,
+				...VIDEO_CONSTRAINTS[options.resolution || 'hd'],
+			}
+		});
+		const tracks = stream.getVideoTracks();
+
+		if (tracks.length === 0) {
+			notification.error(
+				'Failed to enable webcam',
+				'We couldn\'t detect a webcam. Please make sure you have a webcam device connected and try again.'
+			);
+			return;
+		}
+		track = tracks[0];
+		
+		let encodings;
+		let codec;
+		const codecOptions = {
+			videoGoogleStartBitrate: 1000
+		};
+	
+		if (options.force_vp8) {
+			codec = _.device.rtpCapabilities.codecs
+				?.find((c) => c.mimeType.toLowerCase() === 'video/vp8');
+	
+			if (!codec) {
+				throw new Error('desired VP8 codec+configuration is not supported');
+			}
+		}
+		else if (options.force_h264) {
+			codec = _.device.rtpCapabilities.codecs
+				?.find((c) => c.mimeType.toLowerCase() === 'video/h264');
+	
+			if (!codec) {
+				throw new Error('desired H264 codec+configuration is not supported');
+			}
+		}
+		else if (options.force_vp9) {
+			codec = _.device.rtpCapabilities.codecs
+				?.find((c) => c.mimeType.toLowerCase() === 'video/vp9');
+	
+			if (!codec) {
+				throw new Error('desired VP9 codec+configuration is not supported');
+			}
+		}
+
+		if (options.num_simulcast_streams && options.num_simulcast_streams > 0) {
+			// If VP9 is the only available video codec then use SVC.
+			const firstVideoCodec = _.device.rtpCapabilities.codecs?.find((c) => c.kind === 'video');
+
+			// VP9 with SVC.
+			if (
+				(options.force_vp9 && codec) ||
+				firstVideoCodec?.mimeType.toLowerCase() === 'video/vp9'
+			) {
+				encodings = [{
+					maxBitrate: 5000000,
+					scalabilityMode: options.scalability_mode || 'L3T3_KEY',
+				}];
+			}
+			// VP8 or H264 with simulcast.
+			else {
+				encodings = [{
+					scaleResolutionDownBy: 1,
+					maxBitrate: 5000000,
+					scalabilityMode: options.scalability_mode || 'L1T3',
+				}];
+
+				if (options.num_simulcast_streams > 1) {
+					encodings.unshift({
+						scaleResolutionDownBy: 2,
+						maxBitrate: 1000000,
+						scalabilityMode: options.scalability_mode || 'L1T3',
+					});
+				}
+
+				if (options.num_simulcast_streams > 2) {
+					encodings.unshift({
+						scaleResolutionDownBy: 4,
+						maxBitrate: 500000,
+						scalabilityMode: options.scalability_mode || 'L1T3',
+					});
+				}
+			}
+		}
+
+		// Create producer
+		const producer = await _.sendTransport.produce({
+			track,
+			encodings,
+			codecOptions,
+			codec,
+		});
+		
+		/* TODO : if (this._e2eKey && e2e.isSupported())
+			e2e.setupSenderTransform(_.producers._webcamProducer.rtpSender); */
+
+		// Save producer
+		_.producers.webcam = producer;
+
+		// Attach event listeners
+		producer.on('transportclose', () => {
+			if (track && _.producers.webcam) {
+				_.producers.webcam = null;
+
+				// Mark webcam as disabled
+				emit({
+					..._state,
+					is_webcam_enabled: false,
+				});
+			}
+		});
+
+		producer.on('trackended', () => {
+			// Disable webcam
+			disableWebcam(emit);
+			
+			notification.info(
+				'Webcam',
+				'Your webcam has been disconnected.'
+			);
+		});
+
+		// Mark webcam as enabled
+		emit({
+			..._state,
+			is_webcam_enabled: true,
+			is_webcam_on: true,
+		});
+
+	}
+	catch (error: any) {
+		notifyError(error, {
+			title: 'Failed to enable webcam',
+			message: `An error occurred while enabling webcam. ${config.app.support_message}`,
+			notify: false,
+		});
+
+		if (track)
+			track.stop();
+	}
+}
+
+/** Disable webcam */
+async function disableWebcam(emit: RtcSetState) {
+	assert(_.socket);
+
+	if (!_.producers.webcam) return;
+
+	// Close producer
+	_.producers.webcam.close();
+
+	// Send event
+	_.socket.emit('producer-closed', _.producers.webcam.id);
+
+	// Reset
+	_.producers.webcam = null;
+
+	// Update state
+	emit({
+		..._state,
+		is_webcam_enabled: false,
+		is_webcam_on: false,
+	});
+}
+
+
 /** Enable screen share */
-async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
+async function enableShare(emit: RtcSetState, options?: VideoOptions) {
 	assert(_.device && _.sendTransport);
 	
 	// Quit if producer already exists
@@ -534,19 +826,19 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 	if (!_.device.canProduce('video')) {
 		notification.error(
 			'Failed to enable screen share',
-			'Your device can not produce video. Please contact us for help.'
+			'Your device can not produce video.'
 		);
 		
 		return;
 	}
 
-	// Hold audio track
+	// Hold video track
 	let track: MediaStreamTrack | undefined;
 
 	// Defaults
 	options = {
 		...(options || {}),
-		numSimulcastStreams: options?.numSimulcastStreams || 0,
+		num_simulcast_streams: options?.num_simulcast_streams || 0,
 	};
 
 	try {
@@ -568,7 +860,7 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 			videoGoogleStartBitrate: 1000
 		};
 	
-		if (options.forceVP8) {
+		if (options.force_vp8) {
 			codec = _.device.rtpCapabilities.codecs
 				?.find((c) => c.mimeType.toLowerCase() === 'video/vp8');
 	
@@ -576,7 +868,7 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 				throw new Error('desired VP8 codec+configuration is not supported');
 			}
 		}
-		else if (options.forceH264) {
+		else if (options.force_h264) {
 			codec = _.device.rtpCapabilities.codecs
 				?.find((c) => c.mimeType.toLowerCase() === 'video/h264');
 	
@@ -584,7 +876,7 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 				throw new Error('desired H264 codec+configuration is not supported');
 			}
 		}
-		else if (options.forceVP9) {
+		else if (options.force_vp9) {
 			codec = _.device.rtpCapabilities.codecs
 				?.find((c) => c.mimeType.toLowerCase() === 'video/vp9');
 	
@@ -593,18 +885,18 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 			}
 		}
 
-		if (options.numSimulcastStreams && options.numSimulcastStreams > 0) {
+		if (options.num_simulcast_streams && options.num_simulcast_streams > 0) {
 			// If VP9 is the only available video codec then use SVC.
 			const firstVideoCodec = _.device.rtpCapabilities.codecs?.find((c) => c.kind === 'video');
 
 			// VP9 with SVC.
 			if (
-				(options.forceVP9 && codec) ||
+				(options.force_vp9 && codec) ||
 				firstVideoCodec?.mimeType.toLowerCase() === 'video/vp9'
 			) {
 				encodings = [{
 					maxBitrate: 5000000,
-					scalabilityMode: options.scalabilityMode || 'L3T3',
+					scalabilityMode: options.scalability_mode || 'L3T3',
 					dtx: true
 				}];
 			}
@@ -613,24 +905,24 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 				encodings = [{
 					scaleResolutionDownBy: 1,
 					maxBitrate: 5000000,
-					scalabilityMode: options.scalabilityMode || 'L1T3',
+					scalabilityMode: options.scalability_mode || 'L1T3',
 					dtx: true
 				}];
 
-				if (options.numSimulcastStreams > 1) {
+				if (options.num_simulcast_streams > 1) {
 					encodings.unshift({
 						scaleResolutionDownBy: 2,
 						maxBitrate: 1000000,
-						scalabilityMode: options.scalabilityMode || 'L1T3',
+						scalabilityMode: options.scalability_mode || 'L1T3',
 						dtx: true
 					});
 				}
 
-				if (options.numSimulcastStreams > 2) {
+				if (options.num_simulcast_streams > 2) {
 					encodings.unshift({
 						scaleResolutionDownBy: 4,
 						maxBitrate: 500000,
-						scalabilityMode: options.scalabilityMode || 'L1T3',
+						scalabilityMode: options.scalability_mode || 'L1T3',
 						dtx: true
 					});
 				}
@@ -684,7 +976,8 @@ async function enableShare(emit: RtcSetState, options?: ScreenShareOptions) {
 	catch (error: any) {
 		notifyError(error, {
 			title: 'Failed to enable screen share',
-			message: `An error occurred while enabling screen share. ${config.app.support_message}`
+			message: `An error occurred while enabling screen share. ${config.app.support_message}`,
+			notify: false,
 		});
 
 		if (track)
@@ -888,6 +1181,9 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 		// Enable microphone
 		if (!_state.is_mic_muted)
 			enableMic(_state.audio_input_device, emit);
+		// Enable webcam
+		if (_state.is_webcam_on)
+			enableWebcam(emit, _state.video_options);
 
 		// TODO : Enable webcam
 	}, { message: 'An error occurred while setting up RTC data producers' }));
@@ -968,6 +1264,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 
 			// Get field
 			const field = getConsumerField(consumer);
+			console.log(field)
 
 			// Emit state changes
 			emit({
@@ -1065,7 +1362,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 		info.consumer.pause();
 
 		// Update consumer paused state
-		const field = info.consumer.kind;
+		const field = getConsumerField(info.consumer);
 		const participant = _state.participants[info.participant_id];
 
 		if (!participant) return;
@@ -1176,6 +1473,7 @@ function disconnect(emit: RtcSetState) {
 	// Reset data structures
 	_.producers = {
 		microphone: null,
+		webcam: null,
 		screenshare: null,
 	};
 	_.consumers = {};
@@ -1219,6 +1517,8 @@ export function useRtc(session: SessionState) {
 				_state = {
 					// Keep certain options
 					...merge({
+						is_webcam_enabled: false,
+						is_webcam_on: true,
 						is_screen_shared: false,
 						is_mic_enabled: false,
 						is_mic_muted: false,
@@ -1243,14 +1543,64 @@ export function useRtc(session: SessionState) {
 			disconnect: () => disconnect((state) => { _state = state; setState(state); }),
 
 			/** Screen share state mutators */
+			webcam: {
+				/**
+				 * Enable webcam. If not connected to a room, then webcam will be enabled
+				 * when connecting to a room.
+				 * 
+				 * @param options Webcam options. Default state options are used if this is not provided
+				 */
+				enable: (options?: WebcamOptions) => {
+					// Enable if connected
+					if (_state?.joined && !_state?.is_webcam_enabled)
+						enableWebcam((state) => { _state = state; setState(state); }, options || _state.video_options);
+
+					// Otherwise queue webcam enable
+					else {
+						_state = {
+							...(_state || {}),
+							is_webcam_on: true,
+						};
+						setState(_state);
+					}
+				},
+
+				/**
+				 * Disable webcam. If not connected to a room, it will not be enabled when
+				 * connecting to a room.
+				 */
+				disable: () => {
+					// Disable if connected
+					if (_state?.joined && _state?.is_webcam_enabled)
+						disableWebcam((state) => { _state = state; setState(state); });
+
+					// Otherwise queue disable
+					else {
+						_state = {
+							...(_state || {}),
+							is_webcam_on: false,
+						};
+						setState(_state);
+					}
+				},
+
+				/**
+				 * Set webcam options
+				 * 
+				 * @param options Webcam options
+				 */
+				setOptions: (options: WebcamOptions) => setState({ ..._state, video_options: options }),
+			},
+
+			/** Screen share state mutators */
 			screenshare: {
 				/**
 				 * Enable screen sharing. Must be connected to a room to enable.
 				 * Does nothing if screen share is already enabled.
 				 * 
-				 * @param options Technical screenshare options
+				 * @param options Screenshare options
 				 */
-				enable: (options?: ScreenShareOptions) => enableShare((state) => { _state = state; setState(state); }, options),
+				enable: (options?: VideoOptions) => enableShare((state) => { _state = state; setState(state); }, options),
 
 				/**
 				 * Disable screen sharing. Does nothing if screen sharing is not enabled.
@@ -1280,6 +1630,12 @@ export function useRtc(session: SessionState) {
 				setVolume: (participant_id: string, volume: number) => {
 					if (!_state.participants[participant_id]) return;
 
+					// If volume is 0, pause consumer
+					if (volume <= 0 && !_state.participants[participant_id].audio?.paused.local)
+						pauseConsumer((state) => { _state = state; setState(state); }, participant_id, 'audio');
+					else if (volume > 0 && _state.participants[participant_id].audio?.paused.local)
+						resumeConsumer((state) => { _state = state; setState(state); }, participant_id, 'audio');
+
 					// Create new state
 					const newState: RtcState = {
 						..._state,
@@ -1301,9 +1657,9 @@ export function useRtc(session: SessionState) {
 				 * Enables microphone. Must be connected to a room to enable.
 				 * Does nothing if microphone is already enabled.
 				 * 
-				 * @param device_id The id of the input device to use
+				 * @param device_id The id of the input device to use. Default state device is used if this is not provided
 				 */
-				enable: (device_id?: string) => enableMic(device_id, (state) => { _state = state; setState(state); }),
+				enable: (device_id?: string) => enableMic(device_id || _state.audio_input_device, (state) => { _state = state; setState(state); }),
 
 				/**
 				 * Disables microphone. Does nothing if microphone is already disabled.
@@ -1327,8 +1683,28 @@ export function useRtc(session: SessionState) {
 				 * 
 				 * @param device_id The id of the audio input device
 				 */
-				set_device: (device_id: string | undefined) => setState({ ..._state, audio_input_device: device_id }),
+				setDevice: (device_id: string | undefined) => setState({ ..._state, audio_input_device: device_id }),
 			},
+
+			/**
+			 * Pause a consumer for the given participant and consumer variant.
+			 * If the participant does not exist, or the participant is not a producer
+			 * of the given media type, nothing happens.
+			 * 
+			 * @param participant_id The id of the participant to pause
+			 * @param type The media type to pause
+			 */
+			pause: (participant_id: string, type: MediaType) => pauseConsumer((state) => { _state = state; setState(state); }, participant_id, type),
+			
+			/**
+			 * Resume a consumer for the given participant and consumer variant.
+			 * If the participant does not exist, or the participant is not a producer
+			 * of the given media type, nothing happens.
+			 * 
+			 * @param participant_id The id of the participant to resume
+			 * @param type The media type to resume
+			 */
+			resume: (participant_id: string, type: MediaType) => resumeConsumer((state) => { _state = state; setState(state); }, participant_id, type),
 		},
 	};
 }

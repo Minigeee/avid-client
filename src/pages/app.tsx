@@ -4,8 +4,11 @@ import { useEffect } from 'react';
 import {
   Center,
   Loader,
+  ScrollArea,
 } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 
+import { modals } from '@/lib/ui/modals';
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import RtcVoices from '@/lib/ui/components/rtc/RtcVoices';
 import CreateProfile from '@/lib/ui/screens/CreateProfile';
@@ -100,7 +103,9 @@ export default function App() {
   return (
     <ErrorBoundary height='90vh'>
       <AppProvider>
-        <ScreenState router={router} />
+        <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
+          <ScreenState router={router} />
+        </ModalsProvider>
       </AppProvider>
     </ErrorBoundary>
   );

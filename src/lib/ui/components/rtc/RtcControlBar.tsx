@@ -22,7 +22,8 @@ import {
   IconScreenShare,
   IconScreenShareOff,
   IconSettings,
-  IconVideo
+  IconVideo,
+  IconVideoOff
 } from '@tabler/icons-react';
 
 import { useApp } from '@/lib/hooks';
@@ -106,11 +107,16 @@ export default function RtcControlBar() {
       )}
 
       <ControlButton
-        tooltip={'Enable Camera'}
+        tooltip={app.rtc?.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
         onClick={() => {
+          if (app.rtc?.is_webcam_on)
+            app._mutators.rtc.webcam.disable();
+          else
+            app._mutators.rtc.webcam.enable();
         }}
       >
-        <IconVideo size={20} />
+        {app.rtc?.is_webcam_on && <IconVideo size={20} />}
+        {!app.rtc?.is_webcam_on && <IconVideoOff size={20} />}
       </ControlButton>
       
       <ControlButton

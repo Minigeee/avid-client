@@ -150,6 +150,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
 function RtcTab({ app, ...props }: TabProps) {
   const [rescan, setRescan] = useState<boolean>(false);
   const [audioInputDevices, setAudioInputDevices] = useState<{ value: string; label: string }[]>([]);
+  const [videoInputDevices, setVideoInputDevices] = useState<{ value: string; label: string }[]>([]);
 
   // For populating media device lists
   useEffect(() => {
@@ -159,7 +160,7 @@ function RtcTab({ app, ...props }: TabProps) {
         if (!devices.length) {
           if (!rescan) {
             // Request device access
-            navigator.mediaDevices.getUserMedia({ audio: true });
+            navigator.mediaDevices.getUserMedia({ audio: true, video: true });
             setRescan(!rescan);
           }
 
@@ -167,23 +168,31 @@ function RtcTab({ app, ...props }: TabProps) {
         }
 
         const audioInput: MediaDeviceInfo[] = [];
+        const videoInput: MediaDeviceInfo[] = [];
   
         // Iterate devices
         for (const device of devices) {
-          if (device.kind == 'audioinput') {
-            // If no label, request access
-            if (!device.label) {
-              navigator.mediaDevices.getUserMedia({ audio: true });
-              setRescan(!rescan);
-              return;
-            }
-
-            audioInput.push(device);
+          // If no label, request access
+          if (!device.label) {
+            navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            setRescan(!rescan);
+            return;
           }
+
+          // Mic
+          if (device.kind == 'audioinput')
+            audioInput.push(device);
+
+          // Webcam
+          else if (device.kind === 'videoinput')
+            videoInput.push(device);
         }
   
         // Set states
         setAudioInputDevices(audioInput
+          .map(x => ({ value: x.deviceId, label: x.label.replace(/\([0-9a-fA-F]{4}:[0-9a-fA-F]{4}\)/g, '') }))
+        );
+        setVideoInputDevices(videoInput
           .map(x => ({ value: x.deviceId, label: x.label.replace(/\([0-9a-fA-F]{4}:[0-9a-fA-F]{4}\)/g, '') }))
         );
       });
@@ -207,11 +216,26 @@ function RtcTab({ app, ...props }: TabProps) {
       <Title order={3}>Audio Settings</Title>
 
       <Select
-        label='Input Device'
+        label='Microphone'
         placeholder='None'
         data={audioInputDevices}
         value={app.rtc?.audio_input_device || 'default'}
-        onChange={(value) => app._mutators.rtc.microphone.set_device(value || undefined)}
+        onChange={(value) => app._mutators.rtc.microphone.setDevice(value || undefined)}
+        sx={{ width: config.app.ui.med_input_width }}
+        styles={{
+          item: { whiteSpace: 'normal' },
+        }}
+      />
+
+      <Divider />
+      <Title order={3}>Video Settings</Title>
+
+      <Select
+        label='Camera'
+        placeholder='None'
+        data={videoInputDevices}
+        value={app.rtc?.video_options?.device_id || videoInputDevices.at(0)?.value}
+        onChange={(value) => app._mutators.rtc.webcam.setOptions({ ...app.rtc?.video_options, device_id: value || undefined })}
         sx={{ width: config.app.ui.med_input_width }}
         styles={{
           item: { whiteSpace: 'normal' },
@@ -235,15 +259,13 @@ function ContactTab({ ...props }: TabProps) {
 
 ////////////////////////////////////////////////////////////
 export type UserSettingsProps = {
-  /** Used to modify app state */
-  app: AppState;
-
   /** The starting tab */
   tab?: string;
 };
 
 ////////////////////////////////////////////////////////////
 export default function UserSettings({ context, id, innerProps: props }: ContextModalProps<UserSettingsProps>) {
+  const app = useApp();
   const session = useSession();
   const profile = useProfile(session.profile_id);
 
@@ -254,7 +276,7 @@ export default function UserSettings({ context, id, innerProps: props }: Context
 
 
   if (!profile._exists) return null;
-  const tabProps = { app: props.app, session, profile };
+  const tabProps = { app, session, profile };
 
   return (
     <Flex w='100%' h='100%'>

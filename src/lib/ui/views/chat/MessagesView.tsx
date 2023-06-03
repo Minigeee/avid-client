@@ -375,7 +375,7 @@ type MessageGroupProps = {
 ////////////////////////////////////////////////////////////
 function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
   // Don't use context bc it forces all groups to rerender (bad performance)
-  console.log('rerender msg')
+  // console.log('rerender msg')
 
   // Indicates if this group came from the user
   const fromUser = props.sender.id === msgs[0].sender?.id;

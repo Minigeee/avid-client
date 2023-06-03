@@ -6,8 +6,6 @@ import { MantineProvider, ScrollArea } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 
-import { modals } from '@/lib/ui/modals';
-
 import config from '@/config';
 import SessionProvider from '@/lib/contexts/session';
 import { swrHandler } from '@/lib/utility/error-handler';
@@ -148,9 +146,7 @@ export default function App(props: AppProps) {
             focusThrottleInterval: config.swr.focus_throttle_interval * 1000,
           }}>
             <DatesProvider settings={{ firstDayOfWeek: 0 }}>
-              <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
-                <Component {...pageProps} />
-              </ModalsProvider>
+              <Component {...pageProps} />
             </DatesProvider>
           </SWRConfig>
         </MantineProvider>

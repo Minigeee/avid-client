@@ -34,6 +34,7 @@ import {
   IconVolume,
   IconVolume2,
   IconVolume3,
+  IconVideoOff,
 } from '@tabler/icons-react';
 
 import { openUserSettings } from '@/lib/ui/modals';
@@ -80,6 +81,12 @@ function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
 
   useEffect(() => {
     if (!display || !videoRef.current) return;
+
+    // TEMP : Pause webcam while screen sharing
+    if (rtcInfo.share && rtcInfo.video && !rtcInfo.video.paused.local)
+      app._mutators.rtc.pause(rtcInfo.id, 'video');
+    else if (!rtcInfo.share && rtcInfo.video && rtcInfo.video.paused.local)
+      app._mutators.rtc.resume(rtcInfo.id, 'video');
 
     // Set video element source
     const mstream = new MediaStream([display.track]);
@@ -202,6 +209,8 @@ function JoinScreen({ app, ...props }: SubviewProps) {
       })
       .then(setParticipants);
   }, []);
+  
+  const webcamOn = !app.rtc || app.rtc.is_webcam_on;
 
 
   return (
@@ -261,6 +270,19 @@ function JoinScreen({ app, ...props }: SubviewProps) {
 
         <Group spacing='sm' mt={8}>
           <Group spacing={6} mr={4}>
+            {webcamOn && <IconVideo size={20} />}
+            {!webcamOn && <IconVideoOff size={20} />}
+            <Switch
+              checked={webcamOn}
+              onChange={() => {
+                if (!webcamOn)
+                  app._mutators.rtc.webcam.enable();
+                else
+                  app._mutators.rtc.webcam.disable();
+              }}
+            />
+          </Group>
+          <Group spacing={6} mr={4}>
             {!app.rtc?.is_mic_muted && <IconMicrophone size={20} />}
             {app.rtc?.is_mic_muted && <IconMicrophoneOff size={20} />}
             <Switch
@@ -289,7 +311,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
 
           <Divider orientation='vertical' />
           <Tooltip label='Settings' position='right' withArrow>
-            <ActionIcon onClick={() => openUserSettings({ app, tab: 'rtc' })}>
+            <ActionIcon onClick={() => openUserSettings({ tab: 'rtc' })}>
               <IconSettings size={24} />
             </ActionIcon>
           </Tooltip>
