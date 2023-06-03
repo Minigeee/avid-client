@@ -1,17 +1,11 @@
 import assert from 'assert';
 
-import api_config from '@/api-config';
 import config from '@/config';
 
 import { S3 } from '@aws-sdk/client-s3';
 import multer, { Options } from 'multer';
 import multerS3 from 'multer-s3';
 
-
-// Url endpoint
-const _urlEndpoint = `https://${config.spaces.bucket}.${config.spaces.endpoint.split('/').at(-1)}`;
-// Images path
-const _imgPath = 'images';
 
 // Adds env
 function _key(key: string) {
@@ -51,58 +45,17 @@ export function upload(key: (req: Express.Request, file: Express.Multer.File) =>
 				try { cb(null, _key(key(req, file))); }
 				catch (err) { cb(err, undefined); }
 			},
+			contentType: (req, file, cb) => {
+				let type = 'application/octet-stream';
+				// Make images the correct type
+				if (file.mimetype.startsWith('image'))
+					type = file.mimetype;
+
+				cb(null, type);
+			},
 		}),
 		limits: options,
 	});
-}
-
-
-/**
- * Get a resource url from its key
- * 
- * @param key The key of the resource
- * @returns The resource url string
- */
-export function getResourceUrl(key: string) {
-	return `${_urlEndpoint}/${process.env.NODE_ENV}/${key}`;
-}
-
-/**
- * Get a resource key from its url
- * 
- * @param url The url of the resource
- * @returns The resource key
- */
-export function getResourceKey(url: string) {
-	// Resource needs to start with string
-	assert(url.startsWith(_urlEndpoint));
-	return url.substring(_urlEndpoint.length + process.env.NODE_ENV.length + 2);
-}
-
-
-/**
- * Get a image url from its key. The url is the expected `src` value
- * assuming the image optimizer will be used.
- * 
- * @param key The key of the image
- * @returns The image url string
- */
-export function getImageUrl(key: string) {
-	assert(key.startsWith(_imgPath));
-	return key.substring(_imgPath.length + 1);
-}
-
-/**
- * Get a image key from its url. The url is expected to be
- * in the form that the image optimizer uses.
- * 
- * @param url The url of the image
- * @returns The image key
- */
-export function getImageKey(url: string) {
-	if (url.startsWith('/'))
-		url = url.substring(1);
-	return _imgPath + '/' + url;
 }
 
 

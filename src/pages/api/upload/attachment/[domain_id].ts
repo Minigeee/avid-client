@@ -5,7 +5,8 @@ import assert from 'assert';
 import _config from '@/config';
 import { id } from '@/lib/db';
 import { token } from '@/lib/utility/authenticate';
-import { getImageUrl, getResourceUrl, upload } from '@/lib/utility/spaces';
+import { upload } from '@/lib/utility/spaces';
+import { getImageUrl, getResourceUrl } from '@/lib/utility/spaces-util';
 
 
 const router = createRouter<NextApiRequest & { urls: string[] }, NextApiResponse>();

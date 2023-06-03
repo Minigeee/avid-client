@@ -4,7 +4,7 @@ import {
   Menu
 } from '@mantine/core';
 import { openConfirmModal } from '@mantine/modals';
-import { IconArrowBackUp, IconCopy, IconPencil, IconPin, IconTrash } from '@tabler/icons-react';
+import { IconArrowBackUp, IconCopy, IconLink, IconPencil, IconPhoto, IconPin, IconTrash } from '@tabler/icons-react';
 
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import { LoadedMessageViewContextState } from '../MessagesView';
@@ -13,12 +13,15 @@ import { MessagesWrapper } from '@/lib/hooks';
 import { ExpandedMessage, Member } from '@/lib/types';
 
 import moment from 'moment';
+import { config as spacesConfig, getResourceUrl } from '@/lib/utility/spaces-util';
 
 
 ////////////////////////////////////////////////////////////
 export type MessageMenuContext = {
   /** Message to show context menu for */
   msg: ExpandedMessage;
+  /** Url of the image the user right clicked on */
+  img?: string;
 };
 
 ////////////////////////////////////////////////////////////
@@ -33,7 +36,6 @@ type MessageMenuDropdownProps = Omit<MessageMenuProps, 'children'> & MessageMenu
 
 ////////////////////////////////////////////////////////////
 export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropdownProps) {
-  console.log(context.sender.id === msg.sender?.id)
   return (
     <>
       <Menu.Label>{moment(msg.created_at).format('LLL')}</Menu.Label>
@@ -71,6 +73,31 @@ export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropd
       >
         Copy message
       </Menu.Item>
+      {props.img && (
+        <>
+          <Menu.Divider />
+          <Menu.Item
+            icon={<IconPhoto size={16} />}
+            onClick={async () => {
+              const url = getResourceUrl(`${spacesConfig.img_path}/${props.img}`);
+              const response = await fetch(url);
+              const blob = await response.blob();
+              navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            }}
+          >
+            Copy image
+          </Menu.Item>
+          <Menu.Item
+            icon={<IconLink size={16} />}
+            onClick={() => {
+              if (!props.img) return;
+              navigator.clipboard.writeText(getResourceUrl(`${spacesConfig.img_path}/${props.img}`));
+            }}
+          >
+            Copy image address
+          </Menu.Item>
+        </>
+      )}
 
       <Menu.Divider />
       
@@ -119,7 +146,7 @@ export function MessageContextMenu(props: MessageMenuProps) {
         {(context: MessageMenuContext) => (
           <MessageMenuDropdown
             context={props.context}
-            msg={context.msg}
+            {...context}
           />
         )}
       </ContextMenu.Dropdown>

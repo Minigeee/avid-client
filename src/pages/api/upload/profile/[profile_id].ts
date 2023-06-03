@@ -5,7 +5,8 @@ import assert from 'assert';
 import _config from '@/config';
 import { Profile } from '@/lib/types';
 import { query, record, sql } from '@/lib/db';
-import { getImageKey, getImageUrl, s3, upload } from '@/lib/utility/spaces';
+import { s3, upload } from '@/lib/utility/spaces';
+import { getImageKey, getImageUrl } from '@/lib/utility/spaces-util';
 
 import { uid } from 'uid';
 

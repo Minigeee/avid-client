@@ -59,6 +59,7 @@ import { Editor } from '@tiptap/react';
 
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
+import { useScrollIntoView } from '@mantine/hooks';
 
 const AVATAR_SIZE = 40;
 const MIN_IMAGE_WIDTH = 400;
@@ -88,6 +89,8 @@ type MessageViewState = {
   editing: string | null;
   /** The message the user is replying to */
   replying_to: ExpandedMessage | null;
+  /** The id of the message to scroll to */
+  scroll_to: string | null;
 };
 
 /** Message view context state, used to pass current state within message view */
@@ -107,6 +110,8 @@ export type MessageViewContextState = {
     editor: RefObject<Editor>;
     /** Scroll area viewport ref */
     viewport: RefObject<HTMLDivElement>;
+    /** Scroll to element ref */
+    scroll_to: RefObject<HTMLDivElement>;
   },
 
   /** Message viewport state */
@@ -152,13 +157,10 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
 
   // Editor ref
   const editorRef = useRef<Editor>(null);
-  // Viewport ref
-  const viewportRef = useRef<HTMLDivElement>(null);
-
-  // Determines if scroll to bottom button should be shown
-  const [showScrollBottom, setShowScrollBottom] = useState<boolean>(false);
-  // Message user is replying to
-  const [replyingTo, setReplyingTo] = useState<ExpandedMessage | null>(null);
+  // Scroll to
+  const { scrollIntoView, targetRef, scrollableRef } = useScrollIntoView<HTMLDivElement>({
+    duration: 500,
+  });
 
   /** States */
 	const [state, setState] = useState<MessageViewState>({
@@ -166,6 +168,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     last_typing: null,
     editing: null,
     replying_to: null,
+    scroll_to: null,
 	});
 
   
@@ -262,6 +265,13 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     };
   }, [state.typing]);
 
+  // Scroll to message
+  useEffect(() => {
+    if (!targetRef.current) return;
+    scrollIntoView({ alignment: 'center' });
+    setState({ ...state, scroll_to: null });
+  }, [state.scroll_to]);
+
 
   return {
     domain,
@@ -271,7 +281,8 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
 
     refs: {
       editor: editorRef,
-      viewport: viewportRef,
+      viewport: scrollableRef,
+      scroll_to: targetRef,
     },
     state: {
       ...state,
@@ -355,12 +366,16 @@ type MessageGroupProps = {
   sender: MemberWrapper;
   editing: string | null;
   p: string;
+  
+  setState: MutableRefObject<<K extends keyof MessageViewState>(key: K, value: MessageViewState[K]) => void>;
+  scrollToRef: RefObject<HTMLDivElement>;
+  scrollTo: string | null;
 }
 
 ////////////////////////////////////////////////////////////
 function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
   // Don't use context bc it forces all groups to rerender (bad performance)
-  // console.log('rerender msg')
+  console.log('rerender msg')
 
   // Indicates if this group came from the user
   const fromUser = props.sender.id === msgs[0].sender?.id;
@@ -396,6 +411,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
         {msgs.map((msg, i) => (
           <ContextMenu.Trigger
             key={msg.id}
+            ref={props.scrollTo && props.scrollTo === msg.id ? props.scrollToRef : undefined}
             className='msg-body'
             context={{ msg }}
             sx={(theme) => ({
@@ -441,9 +457,20 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 {msg.reply_to && (
                   <Group
                     spacing={6}
-                    ml={2}
-                    mb={-4}
+                    p='0.15rem 0.25rem'
+                    h='1.5rem'
+                    maw='80ch'
                     align='start'
+                    sx={(theme) => ({
+                      borderRadius: 3,
+                      '&:hover': {
+                        backgroundColor: theme.colors.dark[5],
+                        cursor: 'pointer',
+                      },
+                    })}
+                    onClick={() => {
+                      props.setState.current?.('scroll_to', msg.reply_to?.id || null);
+                    }}
                   >
                     <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
                       <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
@@ -513,14 +540,16 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 }
 
                 return (
-                  <Image
-                    key={attachment.filename}
-                    src={attachment.url}
-                    alt={attachment.filename}
-                    width={w}
-                    height={h}
-                    style={{ borderRadius: 6 }}
-                  />
+                  <ContextMenu.Trigger context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
+                    <Image
+                      key={attachment.filename}
+                      src={attachment.url}
+                      alt={attachment.filename}
+                      width={w}
+                      height={h}
+                      style={{ borderRadius: 6 }}
+                    />
+                  </ContextMenu.Trigger>
                 );
               }
             })}
@@ -537,6 +566,7 @@ const MemoMessageGroup = memo(MessageGroup, (a, b) => {
     a.sender === b.sender &&
     a.editing === b.editing &&
     a.p === b.p &&
+    a.scrollTo === b.scrollTo &&
     a.msgs.length === b.msgs.length && a.msgs.every((x, i) => x === b.msgs[i]);
 });
 
@@ -556,27 +586,32 @@ function MessagesViewport(props: MessagesViewportProps) {
   // Lagged viewport size for scroll pos calculations
   const [viewportSizeLagged, setViewportSizeLagged] = useState<number>(0);
 
+  // Update state ref to not activate memo rerender
+  const setStateRef = useRef(context.state._set);
+  useEffect(() => {
+    setStateRef.current = context.state._set;
+  }, [context.state._set]);
+
 
   // Calculate editing message to minimize memo component change
-  const editingMessageGroups = useMemo(() => {
+  const cachedProps = useMemo(() => {
     if (!messages._exists) return {};
-    const map: Record<string, string | null> = {};
+    const map: Record<string, {
+      editing: string | null;
+      scrollTo: string | null;
+    }> = {};
 
-    if (!context.state.editing) {
-      for (const [day, groups] of Object.entries(messages.data)) {
-        for (let i = 0; i < groups.length; ++i)
-          map[`${day}.${i}`] = null;
-      }
-    }
-    else {
-      for (const [day, groups] of Object.entries(messages.data)) {
-        for (let i = 0; i < groups.length; ++i)
-          map[`${day}.${i}`] = groups[i].findIndex(x => x.id === context.state.editing) >= 0 ? context.state.editing : null;
+    for (const [day, groups] of Object.entries(messages.data)) {
+      for (let i = 0; i < groups.length; ++i) {
+        map[`${day}.${i}`] = {
+          editing: context.state.editing && groups[i].findIndex(x => x.id === context.state.editing) >= 0 ? context.state.editing : null,
+          scrollTo: context.state.scroll_to && groups[i].findIndex(x => x.id === context.state.scroll_to) >= 0 ? context.state.scroll_to : null,
+        };
       }
     }
 
     return map;
-  }, [messages, context.state.editing]);
+  }, [messages, context.state]);
 
   // Keep current position when new messages are added (doubles as setting scroll to bottom at beginning)
   useEffect(() => {
@@ -640,8 +675,12 @@ function MessagesViewport(props: MessagesViewportProps) {
                     style={classes.typography}
 
                     sender={context.sender as MemberWrapper}
-                    editing={editingMessageGroups[`${day}.${j}`]}
+                    editing={cachedProps[`${day}.${j}`].editing}
                     p={context.style.p}
+                    
+                    setState={setStateRef}
+                    scrollToRef={context.refs.scroll_to}
+                    scrollTo={cachedProps[`${day}.${j}`].scrollTo}
                   />
                 ))}
               </Fragment>
@@ -802,6 +841,7 @@ export default function MessagesView(props: MessagesViewProps) {
     if (context.refs.viewport.current) {
       context.refs.viewport.current.scrollTo({
         top: context.refs.viewport.current.scrollHeight,
+        behavior: 'smooth',
       });
     }
   }

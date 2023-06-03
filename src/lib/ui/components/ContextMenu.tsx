@@ -155,7 +155,7 @@ export const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerP
   const context = useContext(ContextMenuContext);
 
   return (
-    <Box ref={ref} {...props} onContextMenu={(e) => {
+    <Box ref={ref} {...{ ...props, context: undefined }} onContextMenu={(e) => {
       if (props.disabled) return;
 
       // Prevent default
