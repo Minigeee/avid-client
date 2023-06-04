@@ -490,24 +490,25 @@ export default function BoardView(props: BoardViewProps) {
         {(() => {
           const today = new Date();
           const started = collection.start_date && today >= new Date(collection.start_date);
-          const time = collection.end_date || collection.start_date;
+          const time = started ? (collection.end_date || collection.start_date) : (collection.start_date || collection.end_date);
           if (!time) return '';
 
+          const timeRef = time === collection.end_date ? 'end' : 'start';
           const diff = moment(time).diff(
             [today.getFullYear(), today.getMonth(), today.getDate()],
             'days'
           );
 
           if (diff < 0) {
-            if (collection.end_date)
+            if (timeRef === 'end')
               return 'Passed';
             else
               return `${Math.abs(diff)} day${diff === -1 ? '' : 's'} since start`;
           }
           else if (diff === 0)
-            return `${started && time === collection.end_date ? 'Ends' : 'Starts'} Today`;
+            return `${timeRef === 'end' ? 'Ends' : 'Starts'} Today`;
           else
-            return `${diff} day${diff === 1 ? '' : 's'} ${started || !collection.start_date ? 'remaining' : 'until start'}`;
+            return `${diff} day${diff === 1 ? '' : 's'} ${timeRef === 'end' ? 'remaining' : 'until start'}`;
         })()}
       </>
     );
