@@ -16,6 +16,7 @@ import {
 import { closeAllModals, openConfirmModal } from '@mantine/modals';
 
 import {
+  IconArrowsSort,
   IconChevronDown,
   IconFolderSymlink,
   IconPlus,
@@ -39,9 +40,14 @@ import {
   TasksWrapper,
   useMemoState,
 } from '@/lib/hooks';
-import { ExpandedTask, Label, Member } from '@/lib/types';
+import { ExpandedTask, Label, Member, TaskPriority } from '@/lib/types';
 
 import moment from 'moment';
+import { capitalize } from 'lodash';
+
+
+////////////////////////////////////////////////////////////
+const PRIORITIES: (TaskPriority | null)[] = ['critical', 'high', 'medium', 'low', null];
 
 
 ////////////////////////////////////////////////////////////
@@ -118,7 +124,7 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
         props.tasks._mutators.updateTasks(selected.map(x => x.id), update, true);
       else if (task)
         props.tasks._mutators.updateTask(task.id, update, true);
-        
+
       // Callback
       props.onAction?.();
     };
@@ -188,6 +194,25 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
           </Button>
         </ContextMenu.Submenu>
       )}
+
+      <ContextMenu.Submenu
+        id='change-priority'
+        label='Change priority'
+        icon={<IconArrowsSort size={16} />}
+        dropdownProps={{
+          sx: { minWidth: '10rem' },
+        }}
+      >
+        {PRIORITIES.map((priority, i) => (task?.priority || null) !== priority ? (
+          <Menu.Item
+            key={priority}
+            icon={<TaskPriorityIcon priority={priority} tooltip={false} />}
+            onClick={updateHandler({ priority })}
+          >
+            {capitalize(priority || 'none')}
+          </Menu.Item>
+        ) : null)}
+      </ContextMenu.Submenu>
 
       <Menu.Divider />
 

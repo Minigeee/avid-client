@@ -4,10 +4,13 @@ import {
   ActionIcon,
   Box,
   Button,
+  Center,
   Group,
+  Loader,
   Menu,
   ScrollArea,
   Select,
+  Skeleton,
   Stack,
   Tabs,
   Text,
@@ -41,7 +44,7 @@ import {
   useApp,
   useBoard,
   useChatStyles,
-  useMemoState,
+  useMemoStateAsync,
   useTasks,
 } from '@/lib/hooks';
 import { Channel, ExpandedTask, TaskCollection, TaskPriority } from '@/lib/types';
@@ -101,7 +104,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
 
   // Filter tasks
-  const [filtered, setFiltered] = useMemoState<NoGrouped | SingleGrouped | DoubleGrouped>(() => {
+  const [filtered, setFiltered] = useMemoStateAsync<NoGrouped | SingleGrouped | DoubleGrouped>(`${board.id}.tasks`, async () => {
     // Set the lagged grouper variable
     setGrouperLagged(grouper);
 
@@ -325,31 +328,35 @@ function TabView({ board, type, ...props }: TabViewProps) {
       </Group>
 
 
-      <div style={{ display: type === 'list' ? undefined : 'none' }}>
-        <ListView
-          board={board}
-          tasks={props.tasks}
-          domain={props.domain}
-          collection={props.collection}
+      {filtered && (
+        <>
+          <div style={{ display: type === 'list' ? undefined : 'none' }}>
+            <ListView
+              board={board}
+              tasks={props.tasks}
+              domain={props.domain}
+              collection={props.collection}
 
-          filtered={filtered as NoGrouped | SingleGrouped}
-          setFiltered={setFiltered}
-          grouper={grouperLagged}
-        />
-      </div>
+              filtered={filtered as NoGrouped | SingleGrouped}
+              setFiltered={setFiltered}
+              grouper={grouperLagged}
+            />
+          </div>
 
-      <div style={{ display: type === 'kanban' ? undefined : 'none' }}>
-        <KanbanView
-          board={board}
-          tasks={props.tasks}
-          domain={props.domain}
-          collection={props.collection}
+          <div style={{ display: type === 'kanban' ? undefined : 'none' }}>
+            <KanbanView
+              board={board}
+              tasks={props.tasks}
+              domain={props.domain}
+              collection={props.collection}
 
-          filtered={filtered as SingleGrouped | DoubleGrouped}
-          setFiltered={setFiltered}
-          grouper={grouperLagged}
-        />
-      </div>
+              filtered={filtered as SingleGrouped | DoubleGrouped}
+              setFiltered={setFiltered}
+              grouper={grouperLagged}
+            />
+          </div>
+        </>
+      )}
     </Stack>
   );
 }
@@ -641,7 +648,6 @@ export default function BoardView(props: BoardViewProps) {
 
               <Tabs.Panel value='list' mt={16}>
                 <TabView
-                  key={collectionId}
                   board={board}
                   tasks={tasks}
                   domain={props.domain}
@@ -651,7 +657,6 @@ export default function BoardView(props: BoardViewProps) {
               </Tabs.Panel>
               <Tabs.Panel value='kanban' mt={16}>
                 <TabView
-                  key={collectionId}
                   board={board}
                   tasks={tasks}
                   domain={props.domain}
