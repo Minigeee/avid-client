@@ -243,7 +243,7 @@ function attachSendTransportHandlers(transport: Transport) {
 				kind,
 				rtpParameters,
 				appData
-			}, (id) => { console.log(id); callback({ id }); });
+			}, (id) => { callback({ id }); });
 		}
 		catch (err) { errback(err as Error); }
 	});
@@ -1264,7 +1264,6 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 
 			// Get field
 			const field = getConsumerField(consumer);
-			console.log(field)
 
 			// Emit state changes
 			emit({
@@ -1518,7 +1517,7 @@ export function useRtc(session: SessionState) {
 					// Keep certain options
 					...merge({
 						is_webcam_enabled: false,
-						is_webcam_on: true,
+						is_webcam_on: false,
 						is_screen_shared: false,
 						is_mic_enabled: false,
 						is_mic_muted: false,
@@ -1550,10 +1549,10 @@ export function useRtc(session: SessionState) {
 				 * 
 				 * @param options Webcam options. Default state options are used if this is not provided
 				 */
-				enable: (options?: WebcamOptions) => {
+				enable: async (options?: WebcamOptions) => {
 					// Enable if connected
 					if (_state?.joined && !_state?.is_webcam_enabled)
-						enableWebcam((state) => { _state = state; setState(state); }, options || _state.video_options);
+						await enableWebcam((state) => { _state = state; setState(state); }, options || _state.video_options);
 
 					// Otherwise queue webcam enable
 					else {
@@ -1589,7 +1588,10 @@ export function useRtc(session: SessionState) {
 				 * 
 				 * @param options Webcam options
 				 */
-				setOptions: (options: WebcamOptions) => setState({ ..._state, video_options: options }),
+				setOptions: (options: WebcamOptions) => {
+					_state = { ..._state, video_options: options };
+					setState(_state);
+				},
 			},
 
 			/** Screen share state mutators */
@@ -1683,7 +1685,10 @@ export function useRtc(session: SessionState) {
 				 * 
 				 * @param device_id The id of the audio input device
 				 */
-				setDevice: (device_id: string | undefined) => setState({ ..._state, audio_input_device: device_id }),
+				setDevice: (device_id: string | undefined) => {
+					_state = { ..._state, audio_input_device: device_id };
+					setState(_state);
+				},
 			},
 
 			/**

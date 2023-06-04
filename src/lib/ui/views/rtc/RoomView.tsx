@@ -210,7 +210,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
       .then(setParticipants);
   }, []);
   
-  const webcamOn = !app.rtc || app.rtc.is_webcam_on;
+  const webcamOn = app.rtc?.is_webcam_on;
 
 
   return (

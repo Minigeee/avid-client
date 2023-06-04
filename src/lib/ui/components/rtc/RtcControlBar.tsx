@@ -1,8 +1,9 @@
-import { PropsWithChildren, useState } from 'react';
+import { PropsWithChildren, useCallback, useState } from 'react';
 import assert from 'assert';
 
 import {
   ActionIcon,
+  ActionIconProps,
   Affix,
   Box,
   Divider,
@@ -36,11 +37,13 @@ type ControlButtonProps = PropsWithChildren & {
   tooltip?: string;
   color?: [MantineColor, number];
   onClick?: () => unknown,
+
+  buttonProps?: ActionIconProps;
 }
 
 ////////////////////////////////////////////////////////////
 function ControlButton({ active, disabled, tooltip, color, ...props }: ControlButtonProps) {
-  return (
+  const CustomTooltip = useCallback(({ children }: PropsWithChildren) => (
     <Tooltip
       label={tooltip || ''}
       position='top'
@@ -48,6 +51,12 @@ function ControlButton({ active, disabled, tooltip, color, ...props }: ControlBu
       openDelay={500}
       sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
     >
+      {children}
+    </Tooltip>
+  ), [tooltip]);
+
+  return (
+    <CustomTooltip>
       <ActionIcon
         sx={(theme) => ({
           backgroundColor: theme.colors.dark[active ? 4 : 7],
@@ -62,10 +71,11 @@ function ControlButton({ active, disabled, tooltip, color, ...props }: ControlBu
         })}
         disabled={disabled}
         onClick={props.onClick}
+        {...props.buttonProps}
       >
         {props.children}
       </ActionIcon>
-    </Tooltip>
+    </CustomTooltip>
   );
 }
 
@@ -73,6 +83,8 @@ function ControlButton({ active, disabled, tooltip, color, ...props }: ControlBu
 ////////////////////////////////////////////////////////////
 export default function RtcControlBar() {
   const app = useApp();
+  
+  const [webcamLoading, setWebcamLoading] = useState<boolean>(false);
 
   // Check if viewing room
   const domain_id = app.navigation.domain;
@@ -108,11 +120,15 @@ export default function RtcControlBar() {
 
       <ControlButton
         tooltip={app.rtc?.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
-        onClick={() => {
+        buttonProps={{ loading: webcamLoading }}
+        onClick={async () => {
           if (app.rtc?.is_webcam_on)
             app._mutators.rtc.webcam.disable();
-          else
-            app._mutators.rtc.webcam.enable();
+          else {
+            setWebcamLoading(true);
+            await app._mutators.rtc.webcam.enable();
+            setWebcamLoading(false);
+          }
         }}
       >
         {app.rtc?.is_webcam_on && <IconVideo size={20} />}
