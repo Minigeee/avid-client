@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useMemo } from 'react';
 
 import {
@@ -35,11 +36,21 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
   const content = useMemo<string | JSX.Element>(() => {
     if (icon)
       return icon;
+    else if (domain.icon)
+      return (
+        <Image
+          src={domain.icon}
+          alt={domain.name || ''}
+          width={2 * AVATAR_RADIUS}
+          height={2 * AVATAR_RADIUS}
+        />
+      );
+
     else if (domain.name)
       return domain.name.split(/[\s_]+/).map(x => x.charAt(0)).join('').toUpperCase();
 
     return '';
-  }, [domain.name]);
+  }, [icon, domain.icon, domain.name]);
 
   return (
     <Group spacing={0} position='right'>
@@ -107,6 +118,8 @@ export default function DomainBar() {
   const session = useSession();
 
   const profile = useProfile(session.profile_id);
+
+  // WIP : Update domain avatar in profile object
 
 
   ////////////////////////////////////////////////////////////

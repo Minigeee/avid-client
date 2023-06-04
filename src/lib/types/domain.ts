@@ -14,6 +14,10 @@ export type Domain = {
 	id: string;
 	/** The name of the domain */
 	name: string;
+	/** The url of the domain icon picture */
+	icon?: string | null;
+	/** The url of the domain banner picture */
+	banner?: string | null;
 	/** A list of role ids belonging to the domain */
 	roles: string[];
 	/** Time the domain was created */

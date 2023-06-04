@@ -24,7 +24,9 @@ import { useElementSize } from '@mantine/hooks';
 
 ////////////////////////////////////////////////////////////
 export type ImageModalProps = {
+  /** Text that is shown within the dropzone */
   description?: string;
+  /** Text that is shown benezth the description in the dropzone */
   subtext?: string;
   /** The max size of the input image in bytes */
   maxSize?: number;

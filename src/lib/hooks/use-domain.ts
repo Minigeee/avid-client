@@ -2,6 +2,7 @@
 import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
+import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { addChannel, query, removeChannel, sql } from '@/lib/db';
 import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain } from '@/lib/types';
@@ -153,6 +154,53 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				optimisticData: (domain) => {
 					assert(domain);
 					return { ...domain, channels };
+				}
+			}
+		),
+
+		/**
+		 * Upload and set the specified image as the domain icon picture.
+		 * 
+		 * @param image The image data to set as domain icon
+		 * @param fname The name of the original image file
+		 * @returns The new domain object
+		 */
+		setIcon: (image: Blob, fname: string) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				// Upload profile image
+				const url = await uploadDomainImage(domain, 'icon', image, fname, session);
+
+				return {
+					...domain,
+					icon: url,
+				};
+			}, { message: 'An error occurred while setting domain icon picture' }),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Remove the current domain icon picture. Performs optimistic update.
+		 * 
+		 * @returns The new domain object
+		 */
+		removeIcon: () => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				// Delete profile image
+				await deleteDomainImage(domain, 'icon', session);
+
+				return {
+					...domain,
+					icon: null,
+				};
+			}, { message: 'An error occurred while removing domain icon picture' }),
+			{
+				revalidate: false,
+				optimisticData: (domain) => {
+					assert(domain);
+					return {
+						...domain,
+						icon: null,
+					};
 				}
 			}
 		),

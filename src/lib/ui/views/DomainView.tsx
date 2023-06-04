@@ -18,6 +18,7 @@ import MainView from '@/lib/ui/views/main/MainView';
 import config from '@/config';
 import { AppState } from '@/lib/contexts';
 import { DomainWrapper, useApp, useDomain, useSession } from '@/lib/hooks';
+import { openDomainSettings } from '../modals';
 
 
 ////////////////////////////////////////////////////////////
@@ -71,7 +72,13 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
-          <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
+          <Menu.Item
+            icon={<IconSettings size={16} />}
+            onClick={() => openDomainSettings({ domain_id: domain.id })}
+          >
+            Settings
+          </Menu.Item>
+
           <Menu.Item icon={<IconCopy size={16} />} onClick={() =>
             clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}?inviter=${session.profile_id.split(':')[1]}`)
           }>

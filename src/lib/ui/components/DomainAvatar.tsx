@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useMemo } from 'react';
 
 import {
@@ -21,11 +22,21 @@ type DomainAvatarProps = {
 export default function DomainAvatar(props: DomainAvatarProps) {
   // Avatar content
   const content = useMemo<string | JSX.Element>(() => {
-    if (props.domain.name)
+    if (props.domain.icon)
+      return (
+        <Image
+          src={props.domain.icon}
+          alt={props.domain.name}
+          width={props.size}
+          height={props.size}
+        />
+      );
+
+    else if (props.domain.name)
       return props.domain.name.split(/[\s_]+/).map(x => x.charAt(0)).join('').toUpperCase();
 
     return '';
-  }, [props.domain.name]);
+  }, [props.domain.icon, props.domain.name]);
 
   return (
     <Avatar size={props.size} radius={100} sx={(theme) => {

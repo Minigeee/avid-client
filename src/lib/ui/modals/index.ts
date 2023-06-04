@@ -8,6 +8,7 @@ import {
 	EditTaskCollection, EditTaskCollectionProps
 } from './CreateTaskCollection';
 
+import DomainSettings, { DomainSettingsProps } from './DomainSettings';
 import UserSettings, { UserSettingsProps } from './UserSettings';
 
 
@@ -20,6 +21,7 @@ export const modals = {
 	'create-task-collection': CreateTaskCollection,
 	'edit-task-collection': EditTaskCollection,
 
+	'domain-settings': DomainSettings,
 	'user-settings': UserSettings,
 };
 
@@ -78,6 +80,21 @@ export const openEditTaskCollection = (props: EditTaskCollectionProps) => openCo
 	size: 'lg',
 });
 
+
+/** Open domain settings modal */
+export const openDomainSettings = (props: DomainSettingsProps) => openContextModal({
+	modal: 'domain-settings',
+	withCloseButton: false,
+	innerProps: props,
+	size: '160ch',
+	styles: {
+		body: {
+			padding: 0,
+			height: '120ch',
+			maxHeight: '90vh',
+		},
+	},
+});
 
 /** Open user settings modal */
 export const openUserSettings = (props: UserSettingsProps) => openContextModal({

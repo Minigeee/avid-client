@@ -206,7 +206,7 @@ export function useProfile(profile_id: string | undefined) {
 			return sql.select([
 				'*',
 				sql.wrap(sql.select<Domain>(
-					['id', 'name', 'time_created'],
+					['id', 'name', 'icon', 'time_created'],
 					{ from: '->member_of->domains' }
 				), { alias: 'domains' }),
 			], { from: profile_id });
