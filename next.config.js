@@ -16,6 +16,16 @@ const nextConfig = {
         destination: `/app?join=:domain_id`,
         permanent: false,
       },
+      {
+        source: '/changelog',
+        destination: `/changelog/0-1`,
+        permanent: false,
+      },
+      {
+        source: '/changelog/latest',
+        destination: `/changelog/0-1`,
+        permanent: false,
+      },
     ];
   },
 

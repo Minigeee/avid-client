@@ -5,6 +5,7 @@ import BlogPost from '@/lib/ui/components/BlogPost';
 import { Box, Center, ScrollArea } from '@mantine/core';
 import { s3 } from '@/lib/utility/spaces';
 import config from '@/config';
+import { GetStaticProps, NextPageContext } from 'next';
 
 
 ////////////////////////////////////////////////////////////
@@ -14,8 +15,6 @@ type BlogProps = {
 
 ////////////////////////////////////////////////////////////
 export default function Roadmap({ post }: BlogProps) {
-
-
   return (
     <ScrollArea w='100vw' h='100vh'>
       <Center>
@@ -33,16 +32,32 @@ export default function Roadmap({ post }: BlogProps) {
 }
 
 ////////////////////////////////////////////////////////////
-export async function getStaticProps() {
-  // const post = readFileSync('posts/roadmap.md', { encoding: 'utf-8' });
-  const res = await s3.get('posts/roadmap.md');
-  const post = await res.Body?.transformToString();
+export const getStaticProps: GetStaticProps<BlogProps> = async (ctx) => {
+  const version = 'v' + (ctx.params?.version as string)?.replaceAll('-', '.');
 
+  try {
+    const res = await s3.get(`posts/changelogs/${version}.md`);
+    const post = await res.Body?.transformToString();
+  
+    return {
+      props: {
+        post,
+      } as BlogProps,
+  
+      revalidate: config.dev_mode ? 1 : 24 * 60 * 60, // In seconds
+    };
+  }
+  catch (err) {
+    return { notFound: true };
+  }
+}
+
+////////////////////////////////////////////////////////////
+export function getStaticPaths() {
   return {
-    props: {
-      post,
-    } as BlogProps,
-
-    revalidate: config.dev_mode ? 1 : 24 * 60 * 60, // In seconds
+    paths: [
+      { params: { version: '0-1' } },
+    ],
+    fallback: false,
   };
 }

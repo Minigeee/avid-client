@@ -40,6 +40,7 @@ const TABS = {
   'Help & Feedback': [
     { value: 'contact', label: 'Contact' },
     { value: 'roadmap', label: 'Roadmap', link: '/roadmap' },
+    { value: 'changelog', label: 'Changelog', link: '/changelog/latest' },
     { value: 'feedback', label: 'Feedback', link: config.app.contact.feedback_form },
   ],
 };
