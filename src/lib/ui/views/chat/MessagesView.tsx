@@ -541,7 +541,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 }
 
                 return (
-                  <ContextMenu.Trigger context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
+                  <ContextMenu.Trigger key={attachment.filename} context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
                     <Image
                       key={attachment.filename}
                       src={attachment.url}
