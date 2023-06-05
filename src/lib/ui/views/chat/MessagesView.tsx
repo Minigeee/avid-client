@@ -457,8 +457,9 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 {msg.reply_to && (
                   <Group
                     spacing={6}
-                    p='0.15rem 0.25rem'
+                    p='0.15rem 0.5rem 0.15rem 0.25rem'
                     h='1.5rem'
+                    w='fit-content'
                     maw='80ch'
                     align='start'
                     sx={(theme) => ({

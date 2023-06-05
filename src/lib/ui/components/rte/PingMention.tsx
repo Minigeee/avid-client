@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState, useImperativeHandle } from 'react';
 
 import {
+  Group,
   ScrollArea,
   Stack,
   Text,
@@ -12,6 +13,8 @@ import { ReactRenderer } from '@tiptap/react';
 import Mention, { MentionOptions } from '@tiptap/extension-mention';
 import { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion';
 import tippy, { Instance, Props as TippyProps } from 'tippy.js';
+
+import MemberAvatar from '../MemberAvatar';
 
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
@@ -25,6 +28,8 @@ type SuggestionType = {
   id: string;
   type: 'member' | 'role';
   name: string;
+  /** Member pfp if this is a member type */
+  pfp?: string;
   color?: string;
 }
 
@@ -179,7 +184,21 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
               onClick={() => selectItem(index)}
               onMouseEnter={() => setSelectedIndex(-1)}
             >
-              <Text size='sm'>{item.name}</Text>
+              <Group noWrap spacing={8}>
+                {item.type === 'member' && (
+                  <MemberAvatar
+                    member={{ alias: item.name, profile_picture: item.pfp }}
+                    size={24}
+                  />
+                )}
+                <Text
+                  size='sm'
+                  weight={item.type === 'role' ? 600 : undefined}
+                  sx={{ color: item.type === 'role' ? item.color : undefined }}
+                >
+                  {item.type === 'role' ? '@' : ''}{item.name}
+                </Text>
+              </Group>
             </UnstyledButton>
           ))
           : <Text size='sm' color='dimmed'>No results</Text>
@@ -242,6 +261,7 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
         type: 'member',
         id: x.id,
         name: x.alias,
+        pfp: x.profile_picture,
         color: x.color,
       })),
       ...filteredR.map(x => ({

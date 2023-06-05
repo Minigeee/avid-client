@@ -11,7 +11,7 @@ import { Member } from '@/lib/types';
 
 ////////////////////////////////////////////////////////////
 type MemberAvatarProps = {
-  member?: Member | null;
+  member?: Omit<Member, 'id' | 'time_joined'> | null;
 
   size: number;
   color?: string;
