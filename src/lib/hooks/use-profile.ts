@@ -1,7 +1,7 @@
 import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
-import { deleteProfile, uploadProfile } from '@/lib/api';
+import { deleteProfile, uploadDomainImage, uploadProfile } from '@/lib/api';
 import { getDomainCache, id, query, sql } from '@/lib/db';
 import { Channel, Domain, ExpandedProfile, Member, Role } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
@@ -23,7 +23,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 		 * @param name The name of the domain
 		 * @returns The new profile object
 		 */
-		addDomain: (name: string) => mutate(
+		addDomain: (name: string, icon?: { file: Blob, name: string }) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
 				// Time domain is created
 				const now = new Date().toISOString();
@@ -56,6 +56,12 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 					sql.select<Domain>('*', { from: '$domain' }),
 				]), { session });
 				assert(results && results.length > 0);
+
+				// Upload icon image if given
+				if (icon) {
+					const url = await uploadDomainImage(results[0].id, 'icon', icon.file, icon.name, session);
+					results[0].icon = url;
+				}
 
 				// Add domain id to profiles
 				return {

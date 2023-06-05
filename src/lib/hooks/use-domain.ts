@@ -168,7 +168,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		setIcon: (image: Blob, fname: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
 				// Upload profile image
-				const url = await uploadDomainImage(domain, 'icon', image, fname, session);
+				const url = await uploadDomainImage(domain.id, 'icon', image, fname, session);
 
 				return {
 					...domain,

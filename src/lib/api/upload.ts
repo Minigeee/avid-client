@@ -45,21 +45,21 @@ export async function deleteProfile(profile: ExpandedProfile, session: SessionSt
 /**
  * Upload a domain image
  * 
- * @param domain The domain to upload image for
+ * @param domain_id The id of the domain to upload image for
  * @param type The type of image being uploaded
  * @param image The image to upload
  * @param fname The original image file name
  * @param session Session used to authenticate request
  * @returns The url of the uploaded image
  */
-export async function uploadDomainImage(domain: ExpandedDomain, type: 'icon' | 'banner', image: Blob, fname: string, session: SessionState) {
+export async function uploadDomainImage(domain_id: string, type: 'icon' | 'banner', image: Blob, fname: string, session: SessionState) {
 	// Generate form data
 	const formData = new FormData();
 	formData.append('image', image, fname);
 
 	// Send image post
 	const results = await axios.post<{ image: string }>(
-		`/api/upload/domains/${id(domain.id)}/${type}`,
+		`/api/upload/domains/${id(domain_id)}/${type}`,
 		formData,
 		withAccessToken(session),
 	);
