@@ -43,6 +43,7 @@ import {
   TasksWrapper,
   useApp,
   useBoard,
+  useCachedState,
   useChatStyles,
   useMemoStateAsync,
   useTasks,
@@ -77,9 +78,9 @@ type TabViewProps = {
 ////////////////////////////////////////////////////////////
 function TabView({ board, type, ...props }: TabViewProps) {
   // Filter tags
-  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useCachedState<string[]>(`${board.id}.${props.collection}.${type}.tags`, []);
   // Groping field
-  const [grouper, setGrouper] = useState<GroupableFields | null>(null);
+  const [grouper, setGrouper] = useCachedState<GroupableFields | null>(`${board.id}.${props.collection}.${type}.grouper`, null);
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
   // Refresh enabled
@@ -328,34 +329,29 @@ function TabView({ board, type, ...props }: TabViewProps) {
       </Group>
 
 
-      {filtered && (
-        <>
-          <div style={{ display: type === 'list' ? undefined : 'none' }}>
-            <ListView
-              board={board}
-              tasks={props.tasks}
-              domain={props.domain}
-              collection={props.collection}
+      {filtered && type === 'list' && (
+        <ListView
+          board={board}
+          tasks={props.tasks}
+          domain={props.domain}
+          collection={props.collection}
 
-              filtered={filtered as NoGrouped | SingleGrouped}
-              setFiltered={setFiltered}
-              grouper={grouperLagged}
-            />
-          </div>
+          filtered={filtered as NoGrouped | SingleGrouped}
+          setFiltered={setFiltered}
+          grouper={grouperLagged}
+        />
+      )}
+      {filtered && type === 'kanban' && (
+        <KanbanView
+          board={board}
+          tasks={props.tasks}
+          domain={props.domain}
+          collection={props.collection}
 
-          <div style={{ display: type === 'kanban' ? undefined : 'none' }}>
-            <KanbanView
-              board={board}
-              tasks={props.tasks}
-              domain={props.domain}
-              collection={props.collection}
-
-              filtered={filtered as SingleGrouped | DoubleGrouped}
-              setFiltered={setFiltered}
-              grouper={grouperLagged}
-            />
-          </div>
-        </>
+          filtered={filtered as SingleGrouped | DoubleGrouped}
+          setFiltered={setFiltered}
+          grouper={grouperLagged}
+        />
       )}
     </Stack>
   );
@@ -410,12 +406,8 @@ export default function BoardView(props: BoardViewProps) {
   
   const { classes } = useChatStyles();
   
-  const [collectionId, setCollectionId] = useState<string | null>(
-    app.navigation.board.collections[board.id || '']
-  );
-  const [view, setView] = useState<string | null>(
-    app.navigation.board.views[board.id || ''] || config.app.board.default_task_view
-  );
+  const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
+  const [view, setView] = useCachedState<string>(`${board.id}.view`, config.app.board.default_task_view);
 
   // Collection selections
   const collectionSelections = useMemo(() => {
@@ -448,12 +440,9 @@ export default function BoardView(props: BoardViewProps) {
   useEffect(() => {
     if (!board._exists) return;
 
-    // Used nav state if available
-    const nav = app.navigation.board.collections[board.id];
-    if (nav) {
-      setCollectionId(nav);
+    // If collection id exists, it is using cached value and should be left as is
+    if (collectionId)
       return;
-    }
 
     // Choose a current objective (choose the one with largest start date before today)
     const today = new Date();
@@ -472,14 +461,9 @@ export default function BoardView(props: BoardViewProps) {
     }
 
     // Set best collection
-    if (bestCollection.start_date) {
+    if (bestCollection.start_date)
       // Set collection id of first cycle that is current
       setCollectionId(bestCollection.id);
-
-      // Set nav state for faster load
-      if (!nav)
-        app._mutators.navigation.board.setCollection(board.id, bestCollection.id);
-    }
     else
       // Use backlog as default
       setCollectionId(config.app.board.default_backlog.id);
@@ -555,11 +539,7 @@ export default function BoardView(props: BoardViewProps) {
               rightSection: {pointerEvents: 'none' },
             })}
             value={collectionId}
-            onChange={(value) => {
-              setCollectionId(value);
-              if (value)
-                app._mutators.navigation.board.setCollection(board.id, value);
-            }}
+            onChange={setCollectionId}
           />
 
           {collection && (
@@ -631,11 +611,7 @@ export default function BoardView(props: BoardViewProps) {
               variant='outline'
               mt={32}
               value={view}
-              onTabChange={(value) => {
-                setView(value);
-                if (value)
-                  app._mutators.navigation.board.setView(board.id, value as 'list' | 'kanban');
-              }}
+              onTabChange={setView}
               styles={(theme) => ({
                 tab: {
                   fontWeight: 500,
@@ -648,6 +624,7 @@ export default function BoardView(props: BoardViewProps) {
 
               <Tabs.Panel value='list' mt={16}>
                 <TabView
+                  key={collectionId}
                   board={board}
                   tasks={tasks}
                   domain={props.domain}
@@ -657,6 +634,7 @@ export default function BoardView(props: BoardViewProps) {
               </Tabs.Panel>
               <Tabs.Panel value='kanban' mt={16}>
                 <TabView
+                  key={collectionId}
                   board={board}
                   tasks={tasks}
                   domain={props.domain}

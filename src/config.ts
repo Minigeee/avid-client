@@ -19,7 +19,7 @@ const config = {
 		/** Patch version number */
 		patch: 1,
 		/** Revision number */
-		revision: 0,
+		revision: 1,
 		/** Build metadata */
 		metadata: ['alpha'],
 	},

@@ -76,14 +76,6 @@ type _NavState = {
 	channels?: Record<string, string>;
 	/** The ids of the expansion the user is viewing per domain */
 	expansions?: Record<string, string>;
-	
-	/** Board navigation states */
-	board: {
-		/** The collection the user is viewing per board id */
-		collections: Record<string, string>;
-		/** The board view the user is viewing per board id */
-		views: Record<string, 'list' | 'kanban'>;
-	};
 };
 
 /** All subparts put together */
@@ -155,7 +147,7 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			if (nav.domain === domain_id) return;
 
 			const diff = { domain: domain_id };
-			setNav(merge(nav, diff));
+			setNav(merge({}, nav, diff));
 			
 			save('navigation', diff);
 		},
@@ -179,7 +171,7 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			const diff: DeepPartial<_NavState> = {
 				channels: { [domain_id]: channel_id },
 			};
-			setNav(merge(nav, diff));
+			setNav(merge({}, nav, diff));
 
 			save('navigation', diff);
 		},
@@ -203,52 +195,9 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			const diff: DeepPartial<_NavState> = {
 				expansions: { [domain_id]: expansion_id },
 			};
-			setNav(merge(nav, diff));
+			setNav(merge({}, nav, diff));
 
 			save('navigation', diff);
-		},
-		
-		/** Board navigation mutators */
-		board: {
-			/**
-			 * Set the collection the user is viewing for a certain board
-			 * 
-			 * @param board_id The board to set the current value for
-			 * @param collection_id The id of the collection the user is viewing
-			 */
-			setCollection: (board_id: string, collection_id: string) => {
-				// Set state
-				setNav({
-					...nav,
-					board: {
-						...nav.board,
-						collections: {
-							...nav.board.collections,
-							[board_id]: collection_id,
-						},
-					},
-				});
-			},
-
-			/**
-			 * Set the board view the user is using for a certain board
-			 * 
-			 * @param board_id The board to set the current value for
-			 * @param view The view the user is using
-			 */
-			setView: (board_id: string, view: 'list' | 'kanban') => {
-				// Set state
-				setNav({
-					...nav,
-					board: {
-						...nav.board,
-						views: {
-							...nav.board.views,
-							[board_id]: view,
-						},
-					},
-				});
-			},
 		},
 	};
 }
@@ -281,12 +230,7 @@ export default function AppProvider({ children }: PropsWithChildren) {
 	const [general, setGeneral] = useState<_GeneralState>({
 		stale: {},
 	});
-	const [nav, setNav] = useState<_NavState>({
-		board: {
-			collections: {},
-			views: {},
-		},
-	});
+	const [nav, setNav] = useState<_NavState>({});
 	const rtc = useRtc(session);
 	
 	// Timeout used to save nav state
