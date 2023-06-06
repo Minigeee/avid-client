@@ -79,8 +79,9 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <MessagesView
           channel_id={props.channel_id}
           domain={props.domain}
-          p='1.25rem'
+          p='1.2rem'
           pb='1.5rem'
+          avatarGap='md'
         />
       </Box>
       

@@ -117,6 +117,20 @@ export default function RtcControlBar() {
           <Divider orientation='vertical' mt={3} mb={3} />
         </>
       )}
+      
+      <ControlButton
+        tooltip={app.rtc?.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
+        active={app.rtc?.is_screen_shared}
+        onClick={() => {
+          if (app.rtc?.is_screen_shared)
+            app._mutators.rtc.screenshare.disable();
+          else
+            app._mutators.rtc.screenshare.enable();
+        }}
+      >
+        {!app.rtc?.is_screen_shared && <IconScreenShare size={19} />}
+        {app.rtc?.is_screen_shared && <IconScreenShareOff size={19} />}
+      </ControlButton>
 
       <ControlButton
         tooltip={app.rtc?.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
@@ -133,20 +147,6 @@ export default function RtcControlBar() {
       >
         {app.rtc?.is_webcam_on && <IconVideo size={20} />}
         {!app.rtc?.is_webcam_on && <IconVideoOff size={20} />}
-      </ControlButton>
-      
-      <ControlButton
-        tooltip={app.rtc?.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
-        active={app.rtc?.is_screen_shared}
-        onClick={() => {
-          if (app.rtc?.is_screen_shared)
-            app._mutators.rtc.screenshare.disable();
-          else
-            app._mutators.rtc.screenshare.enable();
-        }}
-      >
-        {!app.rtc?.is_screen_shared && <IconScreenShare size={19} />}
-        {app.rtc?.is_screen_shared && <IconScreenShareOff size={19} />}
       </ControlButton>
 
       <ControlButton

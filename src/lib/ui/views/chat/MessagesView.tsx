@@ -61,7 +61,7 @@ import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
 import { useScrollIntoView } from '@mantine/hooks';
 
-const AVATAR_SIZE = 40;
+const AVATAR_SIZE = 38;
 const MIN_IMAGE_WIDTH = 400;
 const MIN_IMAGE_HEIGHT = 400;
 const MAX_IMAGE_WIDTH = 600;
@@ -77,6 +77,8 @@ type MessagesViewProps = {
   p?: string;
   /** Bottom padding */
   pb?: string;
+  /** Gap between pfp and message */
+  avatarGap?: 'sm' | 'md' | 'lg';
 }
 
 /** Message viewport state */
@@ -128,6 +130,8 @@ export type MessageViewContextState = {
     p: string;
     /** Bottom padding */
     pb: string;
+    /** Gap between pfp and message */
+    avatarGap: 'sm' | 'md' | 'lg';
   },
 };
 
@@ -146,8 +150,9 @@ export const MessageViewContext = createContext<MessageViewContextState>();
 /** Message view context provider */
 function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesViewProps) {
   // Default styling
-  const sidePadding = props.p || '2.5rem';
-  const bottomPadding = props.pb || '2.2rem';
+  const sidePadding = props.p || '2.0rem';
+  const bottomPadding = props.pb || '1.8rem';
+  const avatarGap = props.avatarGap || 'lg';
 
   // Data
   const app = useApp();
@@ -292,6 +297,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     style: {
       p: sidePadding,
       pb: bottomPadding,
+      avatarGap: avatarGap,
     }
   } as MessageViewContextState;
 }
@@ -366,6 +372,7 @@ type MessageGroupProps = {
   sender: MemberWrapper;
   editing: string | null;
   p: string;
+  avatarGap: 'sm' | 'md' | 'lg';
   
   setState: MutableRefObject<<K extends keyof MessageViewState>(key: K, value: MessageViewState[K]) => void>;
   scrollToRef: RefObject<HTMLDivElement>;
@@ -403,8 +410,8 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
           hasPing ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) :
             fromUser ? theme.colors.dark[5] : undefined,
         transition: 'background 0.08s',
-        borderTopLeftRadius: 3,
-        borderBottomLeftRadius: 3,
+        borderTopLeftRadius: 4,
+        borderBottomLeftRadius: 4,
       })} />
 
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
@@ -416,10 +423,9 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
             context={{ msg }}
             sx={(theme) => ({
               display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5625rem',
+              gap: theme.spacing[props.avatarGap],
 
-              padding: `0.3rem 0rem 0.3rem calc(${props.p} - 3px)`,
+              padding: `0.25rem 0rem 0.25rem calc(${props.p} - 3px)`,
               backgroundColor: hasPing ? '#2B293A' : undefined,
               transition: 'background-color 0.08s',
 
@@ -432,128 +438,131 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
             })}
           >
             {i === 0 && (
-              <Group align='start'>
-                <MemberAvatar
-                  member={msg.sender}
-                  size={AVATAR_SIZE}
-                  sx={(theme) => ({
-                    backgroundColor: theme.colors.dark[5],
-                  })}
-                />
-
-                <Stack spacing={2}>
-                  <Title order={6} sx={{ color: msg.sender?.color }}>
-                    {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
-                  </Title>
-                  <Text size={11} color='dimmed'>
-                    {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
-                  </Text>
-                </Stack>
-              </Group>
+              <MemberAvatar
+                member={msg.sender}
+                size={AVATAR_SIZE}
+                sx={(theme) => ({
+                  marginTop: '0.25rem',
+                  backgroundColor: theme.colors.dark[5],
+                })}
+              />
             )}
 
-            {props.editing !== msg.id && (
-              <div>
-                {msg.reply_to && (
-                  <Group
-                    spacing={6}
-                    p='0.15rem 0.5rem 0.15rem 0.25rem'
-                    h='1.5rem'
-                    w='fit-content'
-                    maw='80ch'
-                    align='start'
-                    sx={(theme) => ({
-                      borderRadius: 3,
-                      '&:hover': {
-                        backgroundColor: theme.colors.dark[5],
-                        cursor: 'pointer',
-                      },
-                    })}
-                    onClick={() => {
-                      props.setState.current?.('scroll_to', msg.reply_to?.id || null);
-                    }}
-                  >
-                    <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
-                      <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
-                    </Box>
-                    <MemberAvatar
-                      member={msg.reply_to.sender}
-                      size={20}
-                    />
-                    <Text
-                      size={12}
-                      weight={600}
-                      sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
-                    >
-                      {msg.reply_to.sender?.alias}
-                    </Text>
-                    <Text
-                      size={11}
-                      mt={1}
-                      mah='1.25rem'
+            <Stack spacing={6} sx={(theme) => ({ marginLeft: i !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined })}>
+              {props.editing !== msg.id && (
+                <>
+                  {i === 0 && (
+                    <Group align='baseline' spacing={8}>
+                      <Title order={6} sx={(theme) => ({ color: msg.sender?.alias === 'Minigee' ? theme.colors.blue[4] : undefined })}>
+                        {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
+                      </Title>
+                      <Text size={11} color='dimmed'>
+                        {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
+                      </Text>
+                    </Group>
+                  )}
+
+                  {msg.reply_to && (
+                    <Group
+                      spacing={6}
+                      p='0.15rem 0.5rem 0.15rem 0.25rem'
+                      h='1.5rem'
+                      w='fit-content'
+                      maw='80ch'
+                      align='start'
                       sx={(theme) => ({
-                        maxWidth: '80ch',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        color: `${theme.colors.dark[0]}C0`,
+                        borderRadius: 3,
+                        '&:hover': {
+                          backgroundColor: theme.colors.dark[5],
+                          cursor: 'pointer',
+                        },
                       })}
+                      onClick={() => {
+                        props.setState.current?.('scroll_to', msg.reply_to?.id || null);
+                      }}
                     >
-                      {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
-                    </Text>
-                  </Group>
-                )}
-                <div
-                  className={style}
-                  style={{ maxWidth: '80ch' }}
-                  dangerouslySetInnerHTML={{ __html: msg.message }}
-                />
-                {msg.edited && (
-                  <Text size={10} color='dimmed'>{'(edited)'}</Text>
-                )}
-              </div>
-            )}
-            {props.editing === msg.id && (
-              <MessageEditor msg={msg} />
-            )}
+                      <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
+                        <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
+                      </Box>
+                      <MemberAvatar
+                        member={msg.reply_to.sender}
+                        size={20}
+                      />
+                      <Text
+                        size={12}
+                        weight={600}
+                        sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
+                      >
+                        {msg.reply_to.sender?.alias}
+                      </Text>
+                      <Text
+                        size={11}
+                        mt={1}
+                        mah='1.25rem'
+                        sx={(theme) => ({
+                          maxWidth: '80ch',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          color: `${theme.colors.dark[0]}C0`,
+                        })}
+                      >
+                        {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                      </Text>
+                    </Group>
+                  )}
+                  <div
+                    className={style}
+                    style={{ maxWidth: '80ch' }}
+                    dangerouslySetInnerHTML={{ __html: msg.message }}
+                  />
+                  {msg.edited && (
+                    <Text size={10} color='dimmed' mt={-6}>{'(edited)'}</Text>
+                  )}
+                </>
+              )}
+              {props.editing === msg.id && (
+                <MessageEditor msg={msg} />
+              )}
 
-            {msg.attachments?.map((attachment, attachment_idx) => {
-              if (attachment.type === 'image') {
-                if (!attachment.width || !attachment.height) return null;
+              {msg.attachments?.map((attachment, attachment_idx) => {
+                if (attachment.type === 'image') {
+                  if (!attachment.width || !attachment.height) return null;
 
-                // Determine if width or height should be filled
-                let w = 0, h = 0;
-                if (attachment.width > attachment.height) {
-                  // Wide image, fill height
-                  h = MIN_IMAGE_HEIGHT;
-                  w = h * attachment.width / attachment.height;
+                  // Determine if width or height should be filled
+                  let w = 0, h = 0;
+                  if (attachment.width > attachment.height) {
+                    // Wide image, fill height
+                    h = MIN_IMAGE_HEIGHT;
+                    w = h * attachment.width / attachment.height;
+                  }
+                  else {
+                    // Tall image, fill width
+                    w = MIN_IMAGE_WIDTH;
+                    h = w * attachment.height / attachment.width;
+                  }
+
+                  // Scale image down if too large
+                  const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
+                  if (scale < 1) {
+                    w *= scale;
+                    h *= scale;
+                  }
+
+                  return (
+                    <ContextMenu.Trigger key={attachment.filename} context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
+                      <Image
+                        key={attachment.filename}
+                        src={attachment.url}
+                        alt={attachment.filename}
+                        width={w}
+                        height={h}
+                        style={{ borderRadius: 6 }}
+                      />
+                    </ContextMenu.Trigger>
+                  );
                 }
-                else {
-                  // Tall image, fill width
-                  w = MIN_IMAGE_WIDTH;
-                  h = w * attachment.height / attachment.width;
-                }
-
-                // Scale image down if too large
-                const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
-                if (scale < 1) {
-                  w *= scale;
-                  h *= scale;
-                }
-
-                return (
-                  <ContextMenu.Trigger key={attachment.filename} context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
-                    <Image
-                      key={attachment.filename}
-                      src={attachment.url}
-                      alt={attachment.filename}
-                      width={w}
-                      height={h}
-                      style={{ borderRadius: 6 }}
-                    />
-                  </ContextMenu.Trigger>
-                );
-              }
-            })}
+              })}
+            </Stack>
           </ContextMenu.Trigger>
         ))}
       </Stack>
@@ -670,19 +679,22 @@ function MessagesViewport(props: MessagesViewportProps) {
                   sx={(theme) => ({ marginLeft: context.style.p, color: theme.colors.dark[2] })}
                 />
                 {grouped.map((consec, j) => (
-                  <MemoMessageGroup
-                    key={j}
-                    msgs={consec}
-                    style={classes.typography}
+                  <>
+                    <MemoMessageGroup
+                      key={j}
+                      msgs={consec}
+                      style={classes.typography}
 
-                    sender={context.sender as MemberWrapper}
-                    editing={cachedProps[`${day}.${j}`].editing}
-                    p={context.style.p}
-                    
-                    setState={setStateRef}
-                    scrollToRef={context.refs.scroll_to}
-                    scrollTo={cachedProps[`${day}.${j}`].scrollTo}
-                  />
+                      sender={context.sender as MemberWrapper}
+                      editing={cachedProps[`${day}.${j}`].editing}
+                      p={context.style.p}
+                      avatarGap={context.style.avatarGap}
+
+                      setState={setStateRef}
+                      scrollToRef={context.refs.scroll_to}
+                      scrollTo={cachedProps[`${day}.${j}`].scrollTo}
+                    />
+                  </>
                 ))}
               </Fragment>
             ))}
