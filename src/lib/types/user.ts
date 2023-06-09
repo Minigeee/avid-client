@@ -12,8 +12,6 @@ export type User = {
 	provider_id: string;
 	/** The provider that is used for the user account */
 	provider: string;
-	/** A list of user profile ids */
-	profiles: string[];
 	/** The email associated with the user */
 	email?: string;
 

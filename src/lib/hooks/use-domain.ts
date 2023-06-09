@@ -5,7 +5,7 @@ import assert from 'assert';
 import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { addChannel, query, removeChannel, sql } from '@/lib/db';
-import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain } from '@/lib/types';
+import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain, Role } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { useDbQuery } from './use-db-query';
@@ -223,9 +223,15 @@ export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDo
 export function useDomain(domain_id: string) {
 	return useDbQuery<ExpandedDomain, DomainMutators>(domain_id, {
 		builder: (key) => {
-			return sql.select<Domain>('*', { from: domain_id, fetch: ['roles', 'channels'] });
+			return sql.select<Domain>([
+				'*',
+				sql.wrap(sql.select<Role>(['id', 'label', 'description', 'color'], {
+					from: 'roles',
+					where: sql.match({ id: domain_id }),
+				}), { alias: 'roles' }),
+			], { from: domain_id, fetch: ['channels'] });
 		},
-		then: (results: ExpandedDomain[]) => results?.length ? results[0] : null,
+		then: (results: ExpandedDomain[]) => results?.length ? { ...results[0], channels: results[0].channels.filter(x => x) } : null,
 		mutators,
 	});
 }

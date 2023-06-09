@@ -5,6 +5,7 @@ export * from './common';
 export * from './domain';
 export * from './member';
 export * from './message';
+export * from './permissions';
 export * from './profile';
 export * from './role';
 export * from './socket';

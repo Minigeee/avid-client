@@ -18,8 +18,6 @@ export type Domain = {
 	icon?: string | null;
 	/** The url of the domain banner picture */
 	banner?: string | null;
-	/** A list of role ids belonging to the domain */
-	roles: string[];
 	/** Time the domain was created */
 	time_created: Date;
 

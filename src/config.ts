@@ -42,6 +42,8 @@ const config = {
 		namespace: dev_mode ? 'test' : 'main',
 		/** Default databse */
 		database: dev_mode ? 'test' : 'main',
+		/** Default scope */
+		scope: 'main',
 		/** Default token */
 		token: dev_mode ? 'main' : 'client',
 

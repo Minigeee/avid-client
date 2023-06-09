@@ -6,10 +6,13 @@ import { getDomainCache, id, query, sql } from '@/lib/db';
 import { Channel, Domain, ExpandedProfile, Member, Role } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
+import { withAccessToken } from '@/lib/api/utility';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { SwrWrapper } from './use-swr-wrapper';
 import { useDbQuery } from './use-db-query';
+
+import axios from 'axios';
 
 
 ////////////////////////////////////////////////////////////
@@ -25,48 +28,24 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 		 */
 		addDomain: (name: string, icon?: { file: Blob, name: string }) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
-				// Time domain is created
-				const now = new Date().toISOString();
-
-				// Create new domain with the specified name and make user join
-				const results = await query<Domain[]>(sql.transaction([
-					// TODO : Create default channels where each channel type is handled correctly
-					sql.let('$channels', '[]'),
-					// Create everyone role
-					sql.let('$role', sql.create<Role>('roles', { label: 'everyone' })),
-					// Create domain
-					sql.let('$domain', sql.create<Domain>('domains', {
-						name,
-						roles: [sql.$('$role.id')],
-						channels: sql.fn<Domain>('add_domain', function(channels: Channel[]) {
-							return channels.map(x => x.id);
-						}),
-						time_created: now,
-						_default_role: sql.$('$role.id'),
-					})),
-					// Add member to domain
-					sql.relate<Member>(profile.id, 'member_of', '$domain.id', {
-						content: {
-							alias: profile.username,
-							roles: [sql.$('$role.id')],
-							time_joined: now,
-						},
-					}),
-					// Return id of domain
-					sql.select<Domain>('*', { from: '$domain' }),
-				]), { session });
-				assert(results && results.length > 0);
+				// Domain create api
+				const results = await axios.post<{ domain: Domain }>(
+					'/api/domains',
+					{ name },
+					withAccessToken(session)
+				);
+				const domain = results.data.domain;
 
 				// Upload icon image if given
 				if (icon) {
-					const url = await uploadDomainImage(results[0].id, 'icon', icon.file, icon.name, session);
-					results[0].icon = url;
+					const url = await uploadDomainImage(domain.id, 'icon', icon.file, icon.name, session);
+					domain.icon = url;
 				}
 
 				// Add domain id to profiles
 				return {
 					...profile,
-					domains: [...profile.domains, results[0]],
+					domains: [...profile.domains, domain],
 				};
 			}, { message: 'An error occurred while creating domain' }),
 			{ revalidate: false }

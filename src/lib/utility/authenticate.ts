@@ -170,6 +170,8 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		// Create access token
 		const access_token = sign({
 			NS: config.db.namespace,
+			DB: config.db.database,
+			SC: config.db.scope,
 			TK: config.db.token,
 			user_id: user.id,
 			profile_id: user.current_profile,

@@ -52,7 +52,6 @@ function factory(session?: SessionState) {
 						time_created: new Date().toISOString(),
 						provider_id,
 						provider,
-						profiles: [],
 						email,
 		
 						current_profile: null,

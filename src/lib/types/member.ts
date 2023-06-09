@@ -7,14 +7,14 @@ export type Member = {
 	id: string;
 	/** The member's alias within this domain */
 	alias: string;
-	/** The url of the profile picture of the user */
-	profile_picture?: string | null;
 	/** A list of role ids assigned to the member */
 	roles?: string[];
-	/** The color the member should be displayed in, taken from their top role (this isn't stored in database) */
-	color?: string;
 	/** Time the user joined the domain */
 	time_joined: Date;
+	/** Indicates if member is the domain owner */
+	is_owner?: boolean;
+	/** Indicates if member is a domain admin */
+	is_admin?: boolean;
 	/** Tracks the number of times this member was pinged */
 	_mentions?: number;
 	/** Tracks the last time this member was pinged to "dedupe" additions to the ping counter */
