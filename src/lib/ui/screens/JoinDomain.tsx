@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   Button,
@@ -16,12 +16,16 @@ import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 
 import { useApp, useDomain, useProfile, useSession } from '@/lib/hooks';
 import { socket } from '@/lib/utility/realtime';
+import { query, sql } from '@/lib/db';
+import { Domain, ExpandedDomain, Member } from '@/lib/types';
+import { withAccessToken } from '@/lib/api/utility';
+
+import axios from 'axios';
 
 
 ////////////////////////////////////////////////////////////
 interface Props {
   domain_id: string;
-  inviter_id?: string;
   onSubmit: () => void;
 }
 
@@ -30,10 +34,25 @@ export default function JoinDomain(props: Props) {
   const app = useApp();
   const session = useSession();
   const profile = useProfile(session.profile_id);
-  const inviter = useProfile(props.inviter_id ? `profiles:${props.inviter_id}` : undefined);
-  const domain = useDomain(`domains:${props.domain_id}`);
 
+  const [domain, setDomain] = useState<{ name: string; icon: string } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Check if user is already a member
+  // TODO : Upgrade join system
+  useEffect(() => {
+    if (!session.profile_id) return;
+    axios.get(`/api/domains/join/${props.domain_id}`, withAccessToken(session))
+      .then((results) => {
+        // Skip if already member
+        if (results.data.is_member)
+          props.onSubmit();
+
+        else {
+          setDomain({ name: results.data.name, icon: results.data.icon });
+        }
+      });
+  }, [session.profile_id]);
 
 
   ////////////////////////////////////////////////////////////
@@ -67,7 +86,7 @@ export default function JoinDomain(props: Props) {
 
   
   ////////////////////////////////////////////////////////////
-  if (!domain._exists || (props.inviter_id && !inviter._exists))
+  if (!domain)
     return null;
   
   ////////////////////////////////////////////////////////////
@@ -82,7 +101,7 @@ export default function JoinDomain(props: Props) {
           <Stack>
             <Stack align='center'>
               <DomainAvatar
-                domain={domain}
+                domain={domain as ExpandedDomain}
                 size={96}
                 color='#626771'
                 sx={(theme) => ({
@@ -91,17 +110,17 @@ export default function JoinDomain(props: Props) {
               />
 
               <div>
-                <Text size='xs' color='dimmed' align='center' mb={6}><b>{inviter.username}</b> has invited you to join</Text>
+                <Text size='xs' color='dimmed' align='center' mb={6}>You have been invited to join</Text>
                 <Title order={3} align='center'>{domain.name}</Title>
               </div>
             </Stack>
 
-            <TextInput
+            {/* <TextInput
               label='Alias'
               placeholder={profile.username}
               data-autofocus
               {...form.getInputProps('username')}
-            />
+            /> */}
 
             <Space h={0} />
             <Button

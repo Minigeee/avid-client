@@ -10,8 +10,8 @@ export type DomainPermissions =
 	'can_create_members' |
 	/** Roles that can create channels (will become a channel group permission later) */
 	'can_create_channels' |
-	/** Roles that can create boards */
-	'can_create_boards' |
+	/** Roles that can create (non-channel) resources */
+	'can_create_resources' |
 	/** Roles that can create extensions */
 	'can_create_extensions' |
 	/** Roles that can create domain level roles */
@@ -24,13 +24,15 @@ export type RolePermissions =
 	/** Roles that can manage role's permissions (can't set permissions that exceed own permissions) */
 	'can_manage_permissions' |
 	/** Roles that can create subroles (this may or may not include self) */
-	'can_create_subroles';
+	'can_create_subroles' |
+	/** Roles that can assign (and unassign) this role */
+	'can_assign_role';
 	
 /** Member related permissions, but resource id = all of member's roles */
 export type MemberPermissions =
 	/** Roles that can manage alias of members with a given role */
 	'can_manage_alias' |
-	/** Roles that can manage roles of members with a given role */
+	/** Roles that can manage all roles of members with a given role */
 	'can_manage_roles' |
 	/** Roles that can kick members with a given role */
 	'can_kick' |

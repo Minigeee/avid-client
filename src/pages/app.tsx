@@ -33,7 +33,6 @@ function ScreenState({ router }: { router: NextRouter }) {
     return (
       <JoinDomain
         domain_id={router.query.join as string}
-        inviter_id={router.query.inviter as string | undefined}
         onSubmit={() => router.replace(config.domains.app_path)}
       />
     );

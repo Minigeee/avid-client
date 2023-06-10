@@ -10,7 +10,7 @@ import {
 import MemberAvatar from './MemberAvatar';
 
 import config from '@/config';
-import { Member } from '@/lib/types';
+import { ExpandedMember } from '@/lib/types';
 import { listMembers } from '@/lib/db';
 import { useSession } from '@/lib/hooks';
 
@@ -18,7 +18,7 @@ import { useSession } from '@/lib/hooks';
 ////////////////////////////////////////////////////////////
 type ItemProps = {
   label: string;
-  member: Member;
+  member: ExpandedMember;
 };
 
 ////////////////////////////////////////////////////////////
@@ -26,16 +26,16 @@ type MemberInputProps = Omit<SelectProps, 'data' | 'value' | 'onChange'> & {
   /** Domain id used to search members within domain */
   domain_id?: string;
 
-  value?: Member | null;
-  onChange?: (value: Member | null) => any;
+  value?: ExpandedMember | null;
+  onChange?: (value: ExpandedMember | null) => any;
 };
 
 ////////////////////////////////////////////////////////////
 export default function MemberInput({ domain_id, ...props }: MemberInputProps) {
   const session = useSession();
 
-  const [value, setValue] = useState<Member | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
+  const [value, setValue] = useState<ExpandedMember | null>(null);
+  const [members, setMembers] = useState<ExpandedMember[]>([]);
   useEffect(() => {
     // Used to get initial members
     if (domain_id)
@@ -98,7 +98,7 @@ export default function MemberInput({ domain_id, ...props }: MemberInputProps) {
           const newMembers = await listMembers(domain_id, query, session);
 
           // Merge members lists
-          const memberMap: Record<string, Member> = {};
+          const memberMap: Record<string, ExpandedMember> = {};
           for (const member of newMembers)
             memberMap[member.id] = member;
 

@@ -4,12 +4,27 @@ import assert from 'assert';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
-import { Board, Channel, ChannelOptions, ChannelTypes, Domain } from '@/lib/types';
+import {
+	AclEntry,
+	AllChannelPermissions,
+	Board,
+	Channel,
+	ChannelOptions,
+	ChannelTypes,
+	Domain
+} from '@/lib/types';
 
 
 /** Default function for creating channel */
 function addDefaultChannel(channel: Partial<Channel>, session: SessionState) {
 	assert(channel.domain);
+
+	// Default permissions per channel type
+	const permissions: AllChannelPermissions[] = ['can_view'];
+	if (channel.type === 'text' || channel.type === 'board') {
+		permissions.push('can_send_messages');
+		permissions.push('can_send_attachments');
+	}
 
 	return query<Channel[]>(sql.transaction([
 		sql.let('$channel', sql.create<Channel>('channels', channel, ['id', 'data'])),
@@ -17,6 +32,14 @@ function addDefaultChannel(channel: Partial<Channel>, session: SessionState) {
 			set: { channels: ['+=', sql.$('$channel.id')] },
 			return: 'NONE',
 		}),
+
+		sql.create<AclEntry>('acl', {
+			domain: channel.domain,
+			resource: sql.$('$channel.id'),
+			role: sql.$(`${channel.domain}._default_role`),
+			permissions,
+		}),
+		
 		sql.select('*', { from: '$channel' }),
 	]), { session });
 }
@@ -45,6 +68,20 @@ function addBoardChannel(channel: Partial<Channel>, options: ChannelOptions<'boa
 			set: { channels: ['+=', sql.$('$channel.id')] },
 			return: 'NONE',
 		}),
+
+		sql.create<AclEntry>('acl', {
+			domain: channel.domain,
+			resource: sql.$('$channel.id'),
+			role: sql.$(`${channel.domain}._default_role`),
+			permissions: ['can_view'],
+		}),
+		sql.create<AclEntry>('acl', {
+			domain: channel.domain,
+			resource: sql.$('$board.id'),
+			role: sql.$(`${channel.domain}._default_role`),
+			permissions: ['can_view'],
+		}),
+
 		sql.select('*', { from: '$channel' }),
 	]), { session });
 }

@@ -453,7 +453,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
                 <>
                   {i === 0 && (
                     <Group align='baseline' spacing={8}>
-                      <Title order={6} sx={(theme) => ({ color: msg.sender?.alias === 'Minigee' ? theme.colors.blue[4] : undefined })}>
+                      <Title order={6}>
                         {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
                       </Title>
                       <Text size={11} color='dimmed'>

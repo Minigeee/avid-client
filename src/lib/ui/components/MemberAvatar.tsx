@@ -6,12 +6,12 @@ import {
   Sx,
 } from '@mantine/core';
 
-import { Member } from '@/lib/types';
+import { ExpandedMember } from '@/lib/types';
 
 
 ////////////////////////////////////////////////////////////
 type MemberAvatarProps = {
-  member?: Omit<Member, 'id' | 'time_joined'> | null;
+  member?: Omit<ExpandedMember, 'id' | 'time_joined'> | null;
 
   size: number;
   color?: string;
@@ -63,7 +63,7 @@ export default function MemberAvatar(props: MemberAvatarProps) {
 
 ////////////////////////////////////////////////////////////
 type AvatarGroupProps = {
-  members: Member[];
+  members: ExpandedMember[];
 
   max: number;
   size: number;

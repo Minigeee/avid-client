@@ -80,7 +80,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
           </Menu.Item>
 
           <Menu.Item icon={<IconCopy size={16} />} onClick={() =>
-            clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}?inviter=${session.profile_id.split(':')[1]}`)
+            clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}`)
           }>
             Copy Invite URL
           </Menu.Item>

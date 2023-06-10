@@ -11,7 +11,7 @@ import { DomainWrapper } from '@/lib/hooks';
 
 ////////////////////////////////////////////////////////////
 type DomainAvatarProps = {
-  domain: DomainWrapper;
+  domain: { name: string; icon?: string | null };
 
   size: number;
   color?: string;

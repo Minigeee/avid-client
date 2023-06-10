@@ -19,4 +19,11 @@ export type Member = {
 	_mentions?: number;
 	/** Tracks the last time this member was pinged to "dedupe" additions to the ping counter */
 	_last_mentioned?: number;
-}
+};
+
+
+/** Member with more fields */
+export type ExpandedMember = Member & {
+	/** The url of the profile picture of the member */
+	profile_picture?: string | null;
+};

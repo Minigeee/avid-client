@@ -60,23 +60,12 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 		 */
 		joinDomain: (domain_id: string, alias: string) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
-				// Try adding member, error will occur if the user is already a member
-				const results = await query<Domain[]>(sql.multi([
-					sql.let('$domain', sql.select<Domain>(['id', 'name', '_default_role'], { from: domain_id })),
-					sql.relate<Member>(profile.id, 'member_of', domain_id, {
-						content: {
-							alias,
-							roles: [sql.$('$domain._default_role')],
-							time_joined: new Date().toISOString(),
-						}
-					}),
-					sql.select('*', { from: '$domain' }),
-				]), { session });
-				assert(results && results.length > 0);
+				// Use api to join
+				const results = await axios.post(`/api/domains/join/${id(domain_id)}`, {}, withAccessToken(session));
 
 				return {
 					...profile,
-					domains: [...profile.domains, results[0]],
+					domains: [...profile.domains, results.data],
 				};
 			}, { message: 'An error occurred while joining the domain' }),
 			{ revalidate: false }

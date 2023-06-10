@@ -1,7 +1,7 @@
 import assert from 'assert';
 
 import config from '@/config';
-import { Member } from '@/lib/types';
+import { ExpandedMember, Member } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 import { query, sql } from '@/lib/db';
 
@@ -15,7 +15,7 @@ const _mutex = new Mutex();
 /** Member caches for each domain */
 const _caches: Record<string, {
 	/** A cache containing members */
-	cache: AsyncCache<Member>;
+	cache: AsyncCache<ExpandedMember>;
 	/** Maps member query to the time it was requested */
 	queries: Record<string, number>;
 }> = {};
@@ -51,8 +51,8 @@ export async function getDomainCache(domain_id: string, session: SessionState, t
 			if (throwOnMissing) throw new Error('domain cache missing');
 
 			// Get initial data for cache
-			const members = await query<Member[]>(
-				sql.select<Member>(MEMBER_SELECT_FIELDS, {
+			const members = await query<ExpandedMember[]>(
+				sql.select<ExpandedMember>(MEMBER_SELECT_FIELDS, {
 					from: `${domain_id}<-member_of`,
 					limit: config.app.member.query_limit,
 				}),
@@ -63,7 +63,7 @@ export async function getDomainCache(domain_id: string, session: SessionState, t
 			const now = Date.now();
 
 			// Create cache
-			const cache = new AsyncCache<Member>(async (keys) => (await query<Member[]>(
+			const cache = new AsyncCache<ExpandedMember>(async (keys) => (await query<ExpandedMember[]>(
 				sql.select(MEMBER_SELECT_FIELDS, {
 					from: `${domain_id}<-(member_of WHERE in INSIDE [${keys.join(',')}])`,
 					limit: config.app.member.query_limit,
@@ -144,8 +144,8 @@ export async function listMembers(domain_id: string, search: string, session: Se
 
 	// Fetch data if needed
 	if (!queryTime || Date.now() - queryTime > config.app.member.query_interval * 1000) {
-		const members = await query<Member[]>(
-			sql.select<Member>(MEMBER_SELECT_FIELDS, {
+		const members = await query<ExpandedMember[]>(
+			sql.select<ExpandedMember>(MEMBER_SELECT_FIELDS, {
 				from: `${domain_id}<-member_of`,
 				where: search ? undefined : `string::lowercase(alias) CONTAINS '${search}'`,
 				limit: config.app.member.query_limit,
@@ -164,7 +164,7 @@ export async function listMembers(domain_id: string, search: string, session: Se
 	}
 
 	// Construct members array
-	const members: Member[] = [];
+	const members: ExpandedMember[] = [];
 	for (const m of Object.values(data.cache._data)) {
 		if (m.data?.alias.toLowerCase().includes(search))
 			members.push(m.data);

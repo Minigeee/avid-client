@@ -24,7 +24,7 @@ router
 			// TODO : Check if user can create new domain
 
 			// Create new domain with the specified name and make user join
-			const results = await query<Domain>(sql.transaction([
+			const results = await query<Domain[]>(sql.transaction([
 				// TODO : Create default channels where each channel type is handled correctly
 				sql.let('$channels', '[]'),
 				// Create domain
@@ -42,7 +42,7 @@ router
 				// Add everyone role to domain
 				sql.let('$domain', sql.update<Domain>('$domain', { set: { _default_role: sql.$('$role.id') } })),
 				// Add member to domain as owner/admin
-				sql.relate<Member>(req.token.profile_id, 'member_of', '$domain.id', {
+				sql.relate<Member>(req.token.profile_id, 'member_of', '$domain', {
 					content: {
 						alias: sql.$(`${req.token.profile_id}.username`),
 						roles: [sql.$('$role.id')],
@@ -53,10 +53,10 @@ router
 				// Return id of domain
 				sql.return('$domain'),
 			]));
-			assert(results);
+			assert(results && results.length > 0);
 
 			// Send new image url
-			res.json({ domain: results });
+			res.json({ domain: results[0] });
 		}
 	)
 
