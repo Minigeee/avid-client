@@ -48,9 +48,7 @@ export function useDbQuery<In, Mutators extends SwrMutators = {}, Out = In>(key:
 		...swr,
 		data: swr.isLoading || swr.error ? options.fallback : swr.data,
 	}, {
-		transform: options.transform,
-		mutators: options.mutators,
-		mutatorParams: options.mutatorParams,
+		...options,
 		session,
 	});
 }

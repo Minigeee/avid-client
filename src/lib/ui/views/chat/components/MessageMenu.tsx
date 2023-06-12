@@ -9,7 +9,7 @@ import { IconArrowBackUp, IconCopy, IconLink, IconPencil, IconPhoto, IconPin, Ic
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import { LoadedMessageViewContextState } from '../MessagesView';
 
-import { MessagesWrapper } from '@/lib/hooks';
+import { MessagesWrapper, hasPermission } from '@/lib/hooks';
 import { ExpandedMessage, Member } from '@/lib/types';
 
 import moment from 'moment';
@@ -100,33 +100,35 @@ export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropd
       )}
 
       <Menu.Divider />
-      
-      <Menu.Item
-        icon={<IconTrash size={16} />}
-        color='red'
-        onClick={() => {
-          openConfirmModal({
-            title: 'Delete Message',
-            labels: { cancel: 'Cancel', confirm: 'Delete' },
-            children: (
-              <>Are you sure you want to delete this message?</>
-            ),
-            groupProps: {
-              spacing: 'xs',
-              sx: { marginTop: '0.5rem' },
-            },
-            confirmProps: {
-              color: 'red',
-            },
-            onConfirm: () => {
-              // Delete message
-              context.messages._mutators.deleteMessage(msg.id);
-            }
-          })
-        }}
-      >
-        Delete
-      </Menu.Item>
+
+      {(context.sender.id === msg.sender?.id || hasPermission(context.domain, context.channel_id, 'can_delete_messages')) && (
+        <Menu.Item
+          icon={<IconTrash size={16} />}
+          color='red'
+          onClick={() => {
+            openConfirmModal({
+              title: 'Delete Message',
+              labels: { cancel: 'Cancel', confirm: 'Delete' },
+              children: (
+                <>Are you sure you want to delete this message?</>
+              ),
+              groupProps: {
+                spacing: 'xs',
+                sx: { marginTop: '0.5rem' },
+              },
+              confirmProps: {
+                color: 'red',
+              },
+              onConfirm: () => {
+                // Delete message
+                context.messages._mutators.deleteMessage(msg.id);
+              }
+            })
+          }}
+        >
+          Delete
+        </Menu.Item>
+      )}
     </>
   )
 }

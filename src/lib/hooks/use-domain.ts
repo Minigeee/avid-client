@@ -5,11 +5,12 @@ import assert from 'assert';
 import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { addChannel, query, removeChannel, sql } from '@/lib/db';
-import { Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain, Role } from '@/lib/types';
+import { AclEntry, AllPermissions, Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain, Member, Role, UserPermissions } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { useDbQuery } from './use-db-query';
 import { SwrWrapper } from './use-swr-wrapper';
+import { useSession } from './use-session';
 
 
 ////////////////////////////////////////////////////////////
@@ -17,6 +18,8 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 	assert(session);
 
 	return {
+		
+
 		/**
 		 * Add a new channel to the domain
 		 * 
@@ -220,18 +223,75 @@ export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDo
  * @param domain_id The id of the domain to retrieve
  * @returns A swr wrapper object containing the requested domain
  */
-export function useDomain(domain_id: string) {
+export function useDomain(domain_id: string | undefined) {
+	const session = useSession();
+
 	return useDbQuery<ExpandedDomain, DomainMutators>(domain_id, {
 		builder: (key) => {
-			return sql.select<Domain>([
-				'*',
-				sql.wrap(sql.select<Role>(['id', 'label', 'description', 'color'], {
-					from: 'roles',
-					where: sql.match({ id: domain_id }),
-				}), { alias: 'roles' }),
-			], { from: domain_id, fetch: ['channels'] });
+			assert(domain_id);
+
+			return sql.multi([
+				sql.let('$member', sql.wrap(
+					sql.select<Member>(['roles', 'is_admin', 'is_owner'], {
+						from: `${domain_id}<-member_of`,
+						where: sql.match({ in: session.profile_id }),
+					}),
+					{ append: '[0]' }
+				)),
+				sql.select<AclEntry>('*', {
+					from: 'acl',
+					where: sql.match<AclEntry>({
+						domain: domain_id,
+						role: ['IN', sql.$('$member.roles')]
+					}),
+				}),
+				sql.select<Domain>([
+					'*',
+					sql.wrap(sql.select<Role>(['id', 'label', 'description', 'color'], {
+						from: 'roles',
+						where: sql.match({ id: domain_id }),
+					}), { alias: 'roles' }),
+				], { from: domain_id, fetch: ['channels'] }),
+				sql.return('$member'),
+			]);
 		},
-		then: (results: ExpandedDomain[]) => results?.length ? { ...results[0], channels: results[0].channels.filter(x => x) } : null,
+		complete: true,
+		then: (results: [unknown, AclEntry[], ExpandedDomain[], Member]) => {
+			assert(results);
+
+			const [_, entries, domains, member] = results;
+
+			// Member info
+			const info: UserPermissions = {
+				roles: member.roles || [],
+				is_admin: member.is_admin || false,
+				is_owner: member.is_owner || false,
+				permissions: {},
+			};
+
+			// Add entries to map
+			for (const entry of entries) {
+				if (!info.permissions[entry.resource])
+					info.permissions[entry.resource] = new Set<AllPermissions>(entry.permissions);
+				else {
+					const set = info.permissions[entry.resource];
+					for (const perm of entry.permissions)
+						set.add(perm);
+				}
+			}
+
+			return results?.length ? {
+				...domains[0],
+				channels: domains[0].channels.filter(x => x),
+				_permissions: info,
+			} : null;
+		},
 		mutators,
 	});
+}
+
+
+/** Check if user has a certain permission */
+export function hasPermission(domain: DomainWrapper, resource_id: string, permission: AllPermissions) {
+	return domain._permissions.is_admin || domain._permissions.permissions[resource_id]?.has(permission);
 }

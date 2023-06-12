@@ -20,6 +20,7 @@ import {
   Tooltip,
   Transition,
 } from '@mantine/core';
+import { useScrollIntoView } from '@mantine/hooks';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 import {
@@ -44,6 +45,7 @@ import {
   ExpandedMessageWithPing,
   MemberWrapper,
   MessagesWrapper,
+  hasPermission,
   useApp,
   useChatStyles,
   useMember,
@@ -53,13 +55,13 @@ import {
 } from '@/lib/hooks';
 import { ExpandedMessage, FileAttachment, Member, Message } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
+import notification from '@/lib/utility/notification';
 
 import moment from 'moment';
 import { Editor } from '@tiptap/react';
 
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
-import { useScrollIntoView } from '@mantine/hooks';
 
 const AVATAR_SIZE = 38;
 const MIN_IMAGE_WIDTH = 400;
@@ -710,6 +712,7 @@ function MessagesViewport(props: MessagesViewportProps) {
 
 ////////////////////////////////////////////////////////////
 type TextEditorProps = {
+  canSendAttachments: boolean;
   onSubmit: (message: string, attachments: FileAttachment[]) => boolean;
 };
 
@@ -743,7 +746,7 @@ function TextEditor(props: TextEditorProps) {
     ) return;
 
     // Add message
-    const handled = props.onSubmit(toMarkdown(editor), attachments)
+    const handled = props.onSubmit(toMarkdown(editor), props.canSendAttachments ? attachments : []);
     if (!handled) return;
 
     // Clear input
@@ -775,19 +778,26 @@ function TextEditor(props: TextEditorProps) {
 
       fileInputRef={fileInputRef}
       attachments={attachments}
-      onAttachmentsChange={setAttachments}
+      onAttachmentsChange={props.canSendAttachments ? setAttachments : () =>
+        notification.info(
+          'Attachment Permissions',
+          'You do not have permissions to send attachments in this channel'
+        )
+      }
 
       rightSection={(
         <Group spacing={2} mr={useFormattedEditor ? 2 : 3}>
-          <ActionButton
-            tooltip='Add Attachment'
-            tooltipProps={{ position: 'top-end', withArrow: true }}
-            variant='transparent'
-            sx={(theme) => ({ color: theme.colors.dark[1] })}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <IconPaperclip size={useFormattedEditor ? 19 : 17} />
-          </ActionButton>
+          {props.canSendAttachments && (
+            <ActionButton
+              tooltip='Add Attachment'
+              tooltipProps={{ position: 'top-end', withArrow: true }}
+              variant='transparent'
+              sx={(theme) => ({ color: theme.colors.dark[1] })}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <IconPaperclip size={useFormattedEditor ? 19 : 17} />
+            </ActionButton>
+          )}
 
           {useFormattedEditor ? (
             <ActionButton
@@ -979,20 +989,23 @@ export default function MessagesView(props: MessagesViewProps) {
             </Group>
           )}
 
-          <TextEditor
-            onSubmit={(message, attachments) => {
-              // If these don't exist, return false to indicate submit was not handled, don't clear input
-              if (!messages._exists || !sender._exists)
-                return false;
+          {hasPermission(props.domain, props.channel_id, 'can_send_messages') && (
+            <TextEditor
+              canSendAttachments={hasPermission(props.domain, props.channel_id, 'can_send_attachments')}
+              onSubmit={(message, attachments) => {
+                // If these don't exist, return false to indicate submit was not handled, don't clear input
+                if (!messages._exists || !sender._exists)
+                  return false;
 
-              // Send message
-              messages._mutators.addMessage(message, sender, {
-                attachments,
-                reply_to: context.state.replying_to || undefined,
-              });
-              return true;
-            }}
-          />
+                // Send message
+                messages._mutators.addMessage(message, sender, {
+                  attachments,
+                  reply_to: context.state.replying_to || undefined,
+                });
+                return true;
+              }}
+            />
+          )}
         </Box>
       </Box>
     </MessageViewContext.Provider>

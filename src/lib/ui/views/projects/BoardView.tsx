@@ -41,6 +41,7 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  hasPermission,
   useApp,
   useBoard,
   useCachedState,
@@ -296,18 +297,21 @@ function TabView({ board, type, ...props }: TabViewProps) {
           value={filterTags}
           onChange={setFilterTags}
         />
-        <Button
-          variant='gradient'
-          onClick={() => {
-            openCreateTask({
-              board_id: board.id,
-              domain: props.domain,
-              collection: props.collection,
-            });
-          }}
-        >
-          Create Task
-        </Button>
+
+        {(hasPermission(props.domain, board.id, 'can_manage_tasks') || hasPermission(props.domain, board.id, 'can_manage_own_tasks')) && (
+          <Button
+            variant='gradient'
+            onClick={() => {
+              openCreateTask({
+                board_id: board.id,
+                domain: props.domain,
+                collection: props.collection,
+              });
+            }}
+          >
+            Create Task
+          </Button>
+        )}
 
         <ActionButton
           tooltip='Refresh'
@@ -542,47 +546,51 @@ export default function BoardView(props: BoardViewProps) {
             onChange={setCollectionId}
           />
 
-          {collection && (
-            <ActionIcon size='lg' mt={4} ml={8} onClick={() => openEditTaskCollection({
-              board,
-              domain: props.domain,
-              collection,
-              onDelete: () => setCollectionId(config.app.board.default_backlog.id),
-            })}>
-              <IconPencil />
-            </ActionIcon>
+          {hasPermission(props.domain, board.id, 'can_manage') && (
+            <>
+              {collection && (
+                <ActionIcon size='lg' mt={4} ml={8} onClick={() => openEditTaskCollection({
+                  board,
+                  domain: props.domain,
+                  collection,
+                  onDelete: () => setCollectionId(config.app.board.default_backlog.id),
+                })}>
+                  <IconPencil />
+                </ActionIcon>
+              )}
+              <Menu width='20ch' position='bottom-start'>
+                <Menu.Target>
+                  <ActionIcon size='lg' mt={4}>
+                    <IconPlus />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    icon={<IconArrowIteration size={20} />}
+                    onClick={() => openCreateTaskCollection({
+                      board,
+                      domain: props.domain,
+                      mode: 'objective',
+                      onCreate: (id) => setCollectionId(id),
+                    })}
+                  >
+                    New Objective
+                  </Menu.Item>
+                  <Menu.Item
+                    icon={<IconFolders size={19} />}
+                    onClick={() => openCreateTaskCollection({
+                      board,
+                      domain: props.domain,
+                      mode: 'collection',
+                      onCreate: (id) => setCollectionId(id),
+                    })}
+                  >
+                    New Collection
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </>
           )}
-          <Menu width='20ch' position='bottom-start'>
-            <Menu.Target>
-              <ActionIcon size='lg' mt={4}>
-                <IconPlus />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                icon={<IconArrowIteration size={20} />}
-                onClick={() => openCreateTaskCollection({
-                  board,
-                  domain: props.domain,
-                  mode: 'objective',
-                  onCreate: (id) => setCollectionId(id),
-                })}
-              >
-                New Objective
-              </Menu.Item>
-              <Menu.Item
-                icon={<IconFolders size={19} />}
-                onClick={() => openCreateTaskCollection({
-                  board,
-                  domain: props.domain,
-                  mode: 'collection',
-                  onCreate: (id) => setCollectionId(id),
-                })}
-              >
-                New Collection
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
 
           <div style={{ flexGrow: 1 }} />
           {collection && (collection.start_date || collection.end_date) && (

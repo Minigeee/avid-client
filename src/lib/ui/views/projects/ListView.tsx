@@ -10,6 +10,7 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  hasPermission,
 } from '@/lib/hooks';
 import { Label } from '@/lib/types';
 
@@ -33,6 +34,9 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
   // Memo this so it doesn't change every render
   const groups = useMemo<string[]>(() => Object.keys(filtered), [filtered]);
 
+
+  // Determine if user can create tasks
+  const creatable = hasPermission(props.domain, board.id, 'can_manage_tasks') || hasPermission(props.domain, board.id, 'can_manage_own_tasks');
 
   // Tag map
   const tagMap = useMemo<Record<string, Label>>(() => {
@@ -79,6 +83,7 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
               group={group}
               statuses={statusMap}
               tags={tagMap}
+              creatable={creatable}
             />
           )}
 
@@ -99,6 +104,7 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
           group={''}
           statuses={statusMap}
           tags={tagMap}
+          creatable={creatable}
         />
       )}
     </TaskContextMenu>

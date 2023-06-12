@@ -46,6 +46,7 @@ import { AppState } from '@/lib/contexts';
 import { getChannel, getMembers } from '@/lib/db';
 import {
   DomainWrapper,
+  hasPermission,
   rtcIo,
   useApp,
   useSession,
@@ -209,8 +210,25 @@ function JoinScreen({ app, ...props }: SubviewProps) {
       })
       .then(setParticipants);
   }, []);
+
+  // Rtc permissions
+  const canSpeak = hasPermission(props.domain, props.channel.id, 'can_speak');
+  const canVideo = hasPermission(props.domain, props.channel.id, 'can_share_video');
   
-  const webcamOn = app.rtc?.is_webcam_on;
+  const webcamOn = canVideo && app.rtc?.is_webcam_on;
+  const micOn = canSpeak && !app.rtc?.is_mic_muted;
+
+  // Turn off mic if no permission
+  useEffect(() => {
+    if (!app.rtc?.is_mic_muted && !canSpeak)
+      app._mutators.rtc.microphone.mute();
+  }, [app.rtc?.is_mic_muted, canSpeak]);
+
+  // Turn off webcam if no permission
+  useEffect(() => {
+    if (app.rtc?.is_webcam_on && !canVideo)
+      app._mutators.rtc.webcam.disable();
+  }, [app.rtc?.is_webcam_on, canVideo]);
 
 
   return (
@@ -274,6 +292,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
             {!webcamOn && <IconVideoOff size={20} />}
             <Switch
               checked={webcamOn}
+              disabled={!canVideo}
               onChange={() => {
                 if (!webcamOn)
                   app._mutators.rtc.webcam.enable();
@@ -283,10 +302,11 @@ function JoinScreen({ app, ...props }: SubviewProps) {
             />
           </Group>
           <Group spacing={6} mr={4}>
-            {!app.rtc?.is_mic_muted && <IconMicrophone size={20} />}
-            {app.rtc?.is_mic_muted && <IconMicrophoneOff size={20} />}
+            {micOn && <IconMicrophone size={20} />}
+            {!micOn && <IconMicrophoneOff size={20} />}
             <Switch
-              checked={!app.rtc?.is_mic_muted}
+              checked={micOn}
+              disabled={!canSpeak}
               onChange={() => {
                 if (app.rtc?.is_mic_muted)
                   app._mutators.rtc.microphone.unmute();

@@ -40,7 +40,7 @@ export interface Media_ServerToClientEvents {
 export interface Media_ClientToServerEvents {
 	'config': (device: any, rtpCapabilities: any, sctpCapabilities: any) => void;
 	'connect-transport': (transport_id: string, dtlsParameters: any) => void;
-	'produce': (transport_id: string, params: { kind: any; rtpParameters: any; appData: any; }, callback: (producer_id: string) => void) => void;
+	'produce': (transport_id: string, params: { kind: any; rtpParameters: any; appData: any; }, callback: (producer_id: string | null) => void) => void;
 	'consumers-paused': (consumer_ids: string[]) => void;
 	'consumers-resumed': (consumer_ids: string[]) => void;
 	'producer-closed': (producer_id: string) => void;

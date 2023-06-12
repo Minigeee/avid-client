@@ -38,6 +38,7 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  hasPermission,
   useMemoState,
 } from '@/lib/hooks';
 import { ExpandedTask, Label, Member, TaskPriority } from '@/lib/types';
@@ -86,6 +87,9 @@ type TaskMenuDropdownProps = Omit<TaskMenuProps, 'children'> & TaskMenuContext;
 function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownProps) {
   const [assignee, setAssignee] = useState<Member | null>(task?.assignee || null);
   const [origAssignee, setOrigAssignee] = useState<Member | null | undefined>(task?.assignee || null);
+
+  // Check if user can manage any
+  const canManageAny = props.domain ? hasPermission(props.domain, board.id, 'can_manage_tasks') : false;
 
   // Reset whenever task changes
   useEffect(() => {
@@ -162,7 +166,7 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
         </ContextMenu.Submenu>
       )}
 
-      {props.domain && (
+      {props.domain && canManageAny && (
         <ContextMenu.Submenu
           id='assign-to'
           label='Assign to'
@@ -214,10 +218,10 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
         ) : null)}
       </ContextMenu.Submenu>
 
-      <Menu.Divider />
-
       {props.statuses && (
         <>
+          <Menu.Divider />
+
           {task && !selected?.length && (
             <>
               {task.status === 'todo' && (

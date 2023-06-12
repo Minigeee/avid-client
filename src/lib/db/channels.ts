@@ -21,9 +21,13 @@ function addDefaultChannel(channel: Partial<Channel>, session: SessionState) {
 
 	// Default permissions per channel type
 	const permissions: AllChannelPermissions[] = ['can_view'];
-	if (channel.type === 'text' || channel.type === 'board') {
+	if (channel.type === 'text' || channel.type === 'rtc') {
 		permissions.push('can_send_messages');
 		permissions.push('can_send_attachments');
+	}
+	if (channel.type === 'rtc') {
+		permissions.push('can_speak');
+		permissions.push('can_share_video');
 	}
 
 	return query<Channel[]>(sql.transaction([

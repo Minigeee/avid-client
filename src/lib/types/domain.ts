@@ -1,5 +1,19 @@
 import { Channel } from './channel';
+import { AllPermissions } from './permissions';
 import { Role } from './role';
+
+
+/** Map of resource id to permissions the user has */
+export type UserPermissions = {
+	/** Roles of user */
+	roles: string[];
+	/** Indicates if user is an admin within this permission map */
+	is_admin: boolean;
+	/** Indicates if user is the owner within this permission map */
+	is_owner: boolean;
+	/** Permissions info per resource */
+	permissions: Record<string, Set<AllPermissions>>;
+};
 
 
 /**
@@ -35,4 +49,6 @@ export type ExpandedDomain = Omit<Domain, 'roles' | 'channels'> & {
 	channels: Channel[];
 	/** A list of roles belonging to the domain */
 	roles: Role[];
+	/** Permissions for current user */
+	_permissions: UserPermissions;
 };

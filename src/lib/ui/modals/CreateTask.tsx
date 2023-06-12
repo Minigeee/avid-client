@@ -46,10 +46,12 @@ import config from '@/config';
 import {
   BoardWrapper,
   DomainWrapper,
+  hasPermission,
   TasksWrapper,
   useBoard,
   useChatStyles,
   useMemoState,
+  useSession,
   useTask,
   useTasks,
 } from '@/lib/hooks';
@@ -64,6 +66,7 @@ import {
 import moment from 'moment';
 import { v4 as uuid } from 'uuid';
 import assert from 'assert';
+import { getMember, getMemberSync } from '@/lib/db';
 
 
 ////////////////////////////////////////////////////////////
@@ -261,6 +264,7 @@ type FormValues = {
   status: string;
   priority: TaskPriority | null;
   due_date: Date | null;
+  assignee: Member | null;
   collection: string;
   tags: string[];
 };
@@ -372,8 +376,12 @@ export type CreateTaskProps = {
 
 ////////////////////////////////////////////////////////////
 export function CreateTask({ context, id, innerProps: props }: ContextModalProps<CreateTaskProps>) {
+  const session = useSession();
   const board = useBoard(props.board_id);
   const tasks = useTasks(props.board_id);
+
+  // Check if user can manage any task
+  const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
 
   // Create form
   const form = useForm({
@@ -383,7 +391,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       status: props.status || config.app.board.default_status_id,
       priority: props.priority || null,
       due_date: props.due_date ? new Date(props.due_date) : null,
-      assignee: props.assignee || null,
+      assignee: props.assignee || (canManageAny ? null : getMemberSync(props.domain.id, session.profile_id, false)),
       collection: props.collection || config.app.board.default_backlog.id,
       tags: props.tag !== undefined ? [props.tag.trim()] : [],
     } as FormValues,
@@ -398,6 +406,13 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     statusMap,
   } = useTaskHooks(board);
 
+
+  // Set base assignee if needed (can only manage own tasks)
+  useEffect(() => {
+    if (!canManageAny && !form.values.assignee) {
+      getMember(props.domain.id, session.profile_id, session).then((member) => form.setFieldValue('assignee', member));
+    }
+  }, []);
 
   ////////////////////////////////////////////////////////////
   async function submit(values: FormValues) {
@@ -488,6 +503,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           label='Assignee'
           placeholder='Start typing to get a list of users'
           clearable
+          disabled={!canManageAny}
           sx={{ maxWidth: config.app.ui.med_input_width }}
           {...form.getInputProps('assignee')}
         />
@@ -597,18 +613,23 @@ export type EditTaskProps = {
 
 ////////////////////////////////////////////////////////////
 export function EditTask({ context, id, innerProps: props }: ContextModalProps<EditTaskProps>) {
+  const session = useSession();
   const board = useBoard(props.board_id);
   const tasks = useTasks(props.board_id);
   const task = useTask(props.task.id, props.task);
+  
+  // Check if task is editable
+  const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
+  const editable = canManageAny || (hasPermission(props.domain, props.board_id, 'can_manage_own_tasks') && task.assignee?.id === session.profile_id);
 
   const { classes } = useChatStyles();
   const textEditStyle = (theme: MantineTheme) => ({
     padding: '0.2rem 0.45rem',
     marginLeft: '-0.45rem',
     borderRadius: 3,
-    '&:hover': {
+    '&:hover': editable ? {
       backgroundColor: theme.colors.dark[6],
-    },
+    } : undefined,
   });
 
   // Create form
@@ -671,56 +692,59 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                     position='left'
                     openDelay={500}
                     withArrow
+                    disabled={!editable}
                     sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
                   >
                     <Title
                       order={3}
-                      onClick={() => setInEditMode({ ...inEditMode, summary: true })}
+                      onClick={editable ? (() => setInEditMode({ ...inEditMode, summary: true })) : undefined}
                     >
                       {form.values.summary}
                     </Title>
                   </Tooltip>
                 </Box>
 
-                <Menu shadow='lg' width={200} position='bottom-end'>
-                  <Menu.Target>
-                    <ActionIcon size='lg' radius={3} sx={(theme) => ({ color: theme.colors.dark[1] })}>
-                      <IconDotsVertical size={20} />
-                    </ActionIcon>
-                  </Menu.Target>
+                {editable && (
+                  <Menu shadow='lg' width={200} position='bottom-end'>
+                    <Menu.Target>
+                      <ActionIcon size='lg' radius={3} sx={(theme) => ({ color: theme.colors.dark[1] })}>
+                        <IconDotsVertical size={20} />
+                      </ActionIcon>
+                    </Menu.Target>
 
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      color='red'
-                      icon={<IconTrash size={16} />}
-                      onClick={() => {
-                        openConfirmModal({
-                          title: 'Delete Task',
-                          labels: { cancel: 'Cancel', confirm: 'Delete' },
-                          children: (
-                            <p>
-                              Are you sure you want to delete <b>{props.board_prefix}-{props.task.sid}</b>?
-                            </p>
-                          ),
-                          groupProps: {
-                            spacing: 'xs',
-                            sx: { marginTop: '0.5rem' },
-                          },
-                          confirmProps: {
-                            color: 'red',
-                          },
-                          onConfirm: () => {
-                            if (!tasks._exists || !task._exists) return;
-                            tasks._mutators.removeTasks([task.id]);
-                            closeAllModals();
-                          }
-                        })
-                      }}
-                    >
-                      Delete task
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        color='red'
+                        icon={<IconTrash size={16} />}
+                        onClick={() => {
+                          openConfirmModal({
+                            title: 'Delete Task',
+                            labels: { cancel: 'Cancel', confirm: 'Delete' },
+                            children: (
+                              <p>
+                                Are you sure you want to delete <b>{props.board_prefix}-{props.task.sid}</b>?
+                              </p>
+                            ),
+                            groupProps: {
+                              spacing: 'xs',
+                              sx: { marginTop: '0.5rem' },
+                            },
+                            confirmProps: {
+                              color: 'red',
+                            },
+                            onConfirm: () => {
+                              if (!tasks._exists || !task._exists) return;
+                              tasks._mutators.removeTasks([task.id]);
+                              closeAllModals();
+                            }
+                          })
+                        }}
+                      >
+                        Delete task
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
               </Group>
             )}
             {inEditMode.summary && (
@@ -749,17 +773,18 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                   position='left'
                   openDelay={500}
                   withArrow
+                  disabled={!editable}
                   sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
                 >
                   <Text
                     className={classes.typography}
                     size='sm'
                     sx={textEditStyle}
-                    onClick={() => {
+                    onClick={editable ? (() => {
                       setPrevDesc(form.values.description.slice());
                       setInEditMode({ ...inEditMode, description: true });
-                    }}
-                    dangerouslySetInnerHTML={{ __html: form.values.description || '<i>Click to add description</i>' }}
+                    }) : undefined}
+                    dangerouslySetInnerHTML={{ __html: form.values.description || (editable ? '<i>Click to add description</i>' : '<i>No description</i>') }}
                   />
                 </Tooltip>
               )}
@@ -794,69 +819,94 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               )}
             </Stack>
 
-            <MultiSelect
-              label='Tags'
-              placeholder='Start typing to get a list of available tags or create a new one'
-              searchable
-              clearable
-              creatable
-              withinPortal
-              getCreateLabel={(query) => {
-                // TODO : Make sure the tag want to create doesn't exist already
-                return (
-                  <Box sx={{
-                    width: 'fit-content',
-                    padding: '1px 11px 2px 11px',
-                    backgroundColor: config.app.board.default_tag_color,
-                    borderRadius: 15,
-                  }}>
-                    <Text size='xs' weight={500}>{query}</Text>
-                  </Box>
-                );
-              }}
-              onCreate={(query) => {
-                // Create new tag (id doesn't matter before tag is created)
-                const id = uuid();
-                const tag = {
-                  id,
-                  label: query,
-                  color: config.app.board.default_tag_color,
-                };
-                const item = { value: id, ...tag };
-    
-                // Add to created list and tags list
-                setTags([...(tags || []), item]);
-                setCreatedTags({ ...createdTags, [id]: tag });
+            {editable && (
+              <MultiSelect
+                label='Tags'
+                placeholder='Start typing to get a list of available tags or create a new one'
+                searchable
+                clearable
+                creatable
+                withinPortal
+                getCreateLabel={(query) => {
+                  // TODO : Make sure the tag want to create doesn't exist already
+                  return (
+                    <Box sx={{
+                      width: 'fit-content',
+                      padding: '1px 11px 2px 11px',
+                      backgroundColor: config.app.board.default_tag_color,
+                      borderRadius: 15,
+                    }}>
+                      <Text size='xs' weight={500}>{query}</Text>
+                    </Box>
+                  );
+                }}
+                onCreate={(query) => {
+                  // Create new tag (id doesn't matter before tag is created)
+                  const id = uuid();
+                  const tag = {
+                    id,
+                    label: query,
+                    color: config.app.board.default_tag_color,
+                  };
+                  const item = { value: id, ...tag };
 
-                return item;
-              }}
-              data={tags || []}
-              itemComponent={TagSelectItem}
-              valueComponent={TagSelectValue((value, color) => {
-                // Add to overrides list
-                setTagColorOverrides({ ...tagColorOverrides, [value]: color });
+                  // Add to created list and tags list
+                  setTags([...(tags || []), item]);
+                  setCreatedTags({ ...createdTags, [id]: tag });
 
-                // Change actual tag color
-                const copy = [...(tags || [])];
-                const index = copy.findIndex(x => x.value === value);
-                copy[index] = { ...copy[index], color };
-                setTags(copy);
-              })}
-              styles={{ wrapper: { maxWidth: config.app.ui.med_input_width }, value: { margin: '3px 5px 3px 2px' } }}
-              {...form.getInputProps('tags')}
-              onBlur={async () => {
-                if (!board._exists) return;
-                
-                // Only update tags when lose focus
+                  return item;
+                }}
+                data={tags || []}
+                itemComponent={TagSelectItem}
+                valueComponent={TagSelectValue((value, color) => {
+                  // Add to overrides list
+                  setTagColorOverrides({ ...tagColorOverrides, [value]: color });
 
-                // Create new tags and update existing tag colors
-                const updatedTagIds = await updateTags(form.values, createdTags, tagColorOverrides, board);
+                  // Change actual tag color
+                  const copy = [...(tags || [])];
+                  const index = copy.findIndex(x => x.value === value);
+                  copy[index] = { ...copy[index], color };
+                  setTags(copy);
+                })}
+                styles={{ wrapper: { maxWidth: config.app.ui.med_input_width }, value: { margin: '3px 5px 3px 2px' } }}
+                {...form.getInputProps('tags')}
+                onBlur={async () => {
+                  if (!board._exists) return;
 
-                // Update task
-                if (form.isDirty('tags'))
-                  await onFieldChange({ tags: updatedTagIds });
-              }}
-            />
+                  // Only update tags when lose focus
+
+                  // Create new tags and update existing tag colors
+                  const updatedTagIds = await updateTags(form.values, createdTags, tagColorOverrides, board);
+
+                  // Update task
+                  if (form.isDirty('tags'))
+                    await onFieldChange({ tags: updatedTagIds });
+                }}
+              />
+            )}
+            {!editable && task.tags && task.tags.length > 0 && (
+              <div>
+                <Text size='sm' weight={600} mb={9}>Tags</Text>
+
+                <Group spacing={6} mb={task.assignee ? 0 : 5}>
+                  {task.tags?.map((id, i) => {
+                    const tag = tags?.find(x => x.value === id);
+                    if (!tag) return;
+
+                    return (
+                      <Box key={id} sx={{
+                        padding: '1px 11px 2px 11px',
+                        backgroundColor: tag.color,
+                        borderRadius: 15,
+                        cursor: 'default',
+                      }}>
+                        <Text size='xs' weight={500}>{tag.label}</Text>
+                      </Box>
+                    );
+                  })}
+                </Group>
+              </div>
+            )}
 
           </Stack>
         </Grid.Col>
@@ -872,6 +922,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                 mt={1}
               />}
               itemComponent={StatusSelectItem}
+              disabled={!editable}
               {...form.getInputProps('status')}
               onChange={(value) => {
                 form.setFieldValue('status', value || config.app.board.default_status_id);
@@ -898,6 +949,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               clearable
               itemComponent={PrioritySelectItem}
               withinPortal
+              disabled={!editable}
               {...form.getInputProps('priority')}
               onChange={(value: TaskPriority | null) => {
                 form.setFieldValue('priority', value);
@@ -911,6 +963,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               placeholder='Start typing to get a list of users'
               clearable
               withinPortal
+              disabled={!canManageAny}
               {...form.getInputProps('assignee')}
               onChange={(value) => {
                 form.setFieldValue('assignee', value);
@@ -922,7 +975,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               placeholder='None'
               icon={<IconCalendarEvent size={19} />}
               clearable
-              sx={{ maxWidth: config.app.ui.med_input_width }}
+              disabled={!editable}
               {...form.getInputProps('due_date')}
               onChange={(value) => {
                 form.setFieldValue('due_date', value);
@@ -936,6 +989,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               withinPortal
               data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
               itemComponent={CollectionSelectItem}
+              disabled={!editable}
               {...form.getInputProps('collection')}
               onChange={(value) => {
                 const v = value || config.app.board.default_status_id;

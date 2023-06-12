@@ -27,7 +27,7 @@ import {
   IconVideoOff
 } from '@tabler/icons-react';
 
-import { useApp } from '@/lib/hooks';
+import { hasPermission, useApp, useDomain } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -88,7 +88,16 @@ export default function RtcControlBar() {
 
   // Check if viewing room
   const domain_id = app.navigation.domain;
-  const inRoom = domain_id === app.rtc?.domain_id && app.navigation.channels?.[domain_id || ''] === app.rtc?.room_id;
+  const room_id = app.rtc?.room_id;
+  const inRoom = domain_id === app.rtc?.domain_id && app.navigation.channels?.[domain_id || ''] === room_id;
+
+  // Get domain for permissions
+  const domain = useDomain(domain_id);
+  
+  // Rtc permissions
+  const canSpeak = domain._exists && room_id ? hasPermission(domain, room_id, 'can_speak') : false;
+  const canVideo =  domain._exists && room_id ? hasPermission(domain, room_id, 'can_share_video') : false;
+
 
   return (
     <Group
@@ -121,6 +130,7 @@ export default function RtcControlBar() {
       <ControlButton
         tooltip={app.rtc?.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
         active={app.rtc?.is_screen_shared}
+        disabled={!canVideo}
         onClick={() => {
           if (app.rtc?.is_screen_shared)
             app._mutators.rtc.screenshare.disable();
@@ -135,6 +145,7 @@ export default function RtcControlBar() {
       <ControlButton
         tooltip={app.rtc?.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
         buttonProps={{ loading: webcamLoading }}
+        disabled={!canVideo}
         onClick={async () => {
           if (app.rtc?.is_webcam_on)
             app._mutators.rtc.webcam.disable();
@@ -151,6 +162,7 @@ export default function RtcControlBar() {
 
       <ControlButton
         tooltip={app.rtc?.is_mic_muted ? 'Unmute' : 'Mute'}
+        disabled={!canSpeak}
         onClick={() => {
           // Enable if not enabled first
           if (!app.rtc?.is_mic_enabled)

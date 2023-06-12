@@ -71,8 +71,17 @@ export type BoardPermissions =
 	/** Roles that can create + manage their own tasks within board (those tasks assigned to them) */
 	'can_manage_own_tasks';
 
+/** Rtc permissions */
+export type RtcChannelPermissions =
+	/** Roles that can speak in this channel */
+	'can_speak' |
+	/** Roles that can share video (webcam, screenshare) in this channel */
+	'can_share_video' |
+	/** Roles that can manage other members within this channel (all actions wrapped into this: mute, deafen, stop sharing, move, kick, ban) */
+	'can_manage_members';
+
 /** All channel permissions */
-export type AllChannelPermissions = ChannelPermissions | TextChannelPermissions | BoardPermissions;
+export type AllChannelPermissions = ChannelPermissions | TextChannelPermissions | BoardPermissions | RtcChannelPermissions;
 
 
 /** All permissions types */
@@ -88,5 +97,5 @@ export type AclEntry = {
 	/** The id of the role that permissions are defined for */
 	role: string;
 	/** List of permissions */
-	permissions: string[];
+	permissions: AllPermissions[];
 };

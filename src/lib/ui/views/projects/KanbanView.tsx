@@ -45,7 +45,9 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  hasPermission,
   useMemoState,
+  useSession,
 } from '@/lib/hooks';
 import { ExpandedTask, Label, TaskPriority } from '@/lib/types';
 
@@ -58,6 +60,7 @@ import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 type TaskCardProps = {
   task: ExpandedTask;
   prefix: string;
+  editable?: boolean;
 
   tags: Record<string, Label>;
 
@@ -71,7 +74,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
   const diff = moment(task.due_date || 0).diff([today.getFullYear(), today.getMonth(), today.getDate()], 'days');
 
   return (
-    <ContextMenu.Trigger context={{ task } as TaskMenuContext}>
+    <ContextMenu.Trigger context={{ task } as TaskMenuContext} disabled={props.editable === false}>
       <Draggable draggableId={task.id.toString()} index={props.index}>
         {(provided) => (
           <Stack
@@ -198,10 +201,16 @@ type KanbanProps = {
   group: string | null;
 
   tagMap: Record<string, Label>;
+
+  /** Indicates if tasks can be created using kanban UI */
+  creatable?: boolean;
 };
 
 ////////////////////////////////////////////////////////////
 function Kanban({ board, tasks, group, ...props }: KanbanProps) {
+  const session = useSession();
+  const canManageAny = hasPermission(props.domain, board.id, 'can_manage_tasks');
+
   return (
     <SimpleGrid
       cols={Object.keys(board.statuses).length}
@@ -222,33 +231,35 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
               {status.label} - {tasks && tasks[status.id] ? tasks[status.id].length : 0}
             </Title>
 
-            <ActionIcon
-              onClick={() => {
-                // Add starting group data
-                const groupData: Partial<CreateTaskProps> = {};
-                
-                if (group) {
-                  if (props.grouper === 'assignee')
-                    groupData.assignee = group === '_' ? undefined : getMemberSync(props.domain.id, group) || undefined;
-                  else if (props.grouper === 'tags')
-                    groupData.tag = group === '_' ? undefined : group;
-                  else if (props.grouper === 'priority')
-                    groupData.priority = group === '_' ? undefined : group as TaskPriority;
-                  else if (props.grouper === 'due_date')
-                    groupData.due_date = group === '_' ? undefined : group;
-                }
+            {props.creatable !== false && (
+              <ActionIcon
+                onClick={() => {
+                  // Add starting group data
+                  const groupData: Partial<CreateTaskProps> = {};
 
-                openCreateTask({
-                  board_id: board.id,
-                  domain: props.domain,
-                  status: status.id,
-                  collection: props.collection,
-                  ...groupData,
-                });
-              }}
-            >
-              <IconPlus size={19} />
-            </ActionIcon>
+                  if (group) {
+                    if (props.grouper === 'assignee')
+                      groupData.assignee = group === '_' ? undefined : getMemberSync(props.domain.id, group) || undefined;
+                    else if (props.grouper === 'tags')
+                      groupData.tag = group === '_' ? undefined : group;
+                    else if (props.grouper === 'priority')
+                      groupData.priority = group === '_' ? undefined : group as TaskPriority;
+                    else if (props.grouper === 'due_date')
+                      groupData.due_date = group === '_' ? undefined : group;
+                  }
+
+                  openCreateTask({
+                    board_id: board.id,
+                    domain: props.domain,
+                    status: status.id,
+                    collection: props.collection,
+                    ...groupData,
+                  });
+                }}
+              >
+                <IconPlus size={19} />
+              </ActionIcon>
+            )}
           </Flex>
 
           <Droppable droppableId={`${group || null}.${status.id}`}>
@@ -269,6 +280,7 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
                     task={task}
                     prefix={board?.prefix || ''}
                     tags={props.tagMap}
+                    editable={canManageAny || task.assignee?.id === session.profile_id}
 
                     key={task.id}
                     index={j}
@@ -313,6 +325,10 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
   const [expanded, setExpanded] = useState<Record<string, string[]>>({});
   // Memo this so it doesn't change every render
   const groups = useMemo<string[]>(() => Object.keys(filtered), [filtered]);
+
+  
+  // Determine if user can create tasks
+  const creatable = hasPermission(props.domain, board.id, 'can_manage_tasks') || hasPermission(props.domain, board.id, 'can_manage_own_tasks');
 
   // Tag map
   const tagMap = useMemo<Record<string, Label>>(() => {
@@ -435,6 +451,7 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
                 group={group}
 
                 tagMap={tagMap}
+                creatable={creatable}
               />
             )}
 
@@ -453,6 +470,7 @@ export default function KanbanView({ board, filtered, grouper, ...props }: Kanba
             group={null}
 
             tagMap={tagMap}
+            creatable={creatable}
           />
         )}
       </TaskContextMenu>

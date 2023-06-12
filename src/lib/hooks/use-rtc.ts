@@ -243,7 +243,12 @@ function attachSendTransportHandlers(transport: Transport) {
 				kind,
 				rtpParameters,
 				appData
-			}, (id) => { callback({ id }); });
+			}, (id) => {
+				if (!id)
+					errback(new Error('producer creation attempt denied'));
+				else
+					callback({ id });
+			});
 		}
 		catch (err) { errback(err as Error); }
 	});

@@ -15,7 +15,7 @@ import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import RtcControlBar from '@/lib/ui/components/rtc/RtcControlBar';
 // TODO : import BoardHeader from './headers/BoardHeader';
 
-import { DomainWrapper, useApp } from '@/lib/hooks';
+import { DomainWrapper, hasPermission, useApp } from '@/lib/hooks';
 import { Channel } from '@/lib/types';
 
 
@@ -57,12 +57,14 @@ export default function HeaderView(props: HeaderViewProps) {
         <Title order={5} sx={{ flexGrow: 1 }}>
           {'Channels'}
         </Title>
-        <ActionButton
-          tooltip='Create Channel'
-          onClick={() => openCreateChannel({ domain: props.domain })}
-        >
-          <IconPlus size={18} color={theme.colors.dark[1]} />
-        </ActionButton>
+        {hasPermission(props.domain, props.domain.id, 'can_create_channels') && (
+          <ActionButton
+            tooltip='Create Channel'
+            onClick={() => openCreateChannel({ domain: props.domain })}
+          >
+            <IconPlus size={18} color={theme.colors.dark[1]} />
+          </ActionButton>
+        )}
       </Group>
       {props.channel && (
         <Group

@@ -24,7 +24,7 @@ import {
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
-import { DomainWrapper, useApp } from '@/lib/hooks';
+import { DomainWrapper, hasPermission, useApp } from '@/lib/hooks';
 import { Channel } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
@@ -138,38 +138,43 @@ function SingleChannel(props: SingleChannelProps) {
                 <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
                 <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
                 <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
-                <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
-                  // Reset form value to channel name
-                  form.setFieldValue('name', props.channel.name);
-                  setRenaming(true);
-                }}>Rename</Menu.Item>
+                
+                {hasPermission(props.domain, props.channel.id, 'can_manage') && (
+                  <>
+                    <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
+                      // Reset form value to channel name
+                      form.setFieldValue('name', props.channel.name);
+                      setRenaming(true);
+                    }}>Rename</Menu.Item>
 
-                <Menu.Divider />
-                <Menu.Item
-                  color='red'
-                  icon={<IconTrash size={16} />}
-                  onClick={() => {
-                    openConfirmModal({
-                      title: 'Delete Channel',
-                      labels: { cancel: 'Cancel', confirm: 'Delete' },
-                      children: (
-                        <>Are you sure you want to delete <b>{props.channel.name}</b>?</>
-                      ),
-                      groupProps: {
-                        spacing: 'xs',
-                        sx: { marginTop: '0.5rem' },
-                      },
-                      confirmProps: {
-                        color: 'red',
-                      },
-                      onConfirm: () => {
-                        props.domain._mutators.removeChannel(props.channel.id);
-                      }
-                    })
-                  }}
-                >
-                  Delete channel
-                </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      color='red'
+                      icon={<IconTrash size={16} />}
+                      onClick={() => {
+                        openConfirmModal({
+                          title: 'Delete Channel',
+                          labels: { cancel: 'Cancel', confirm: 'Delete' },
+                          children: (
+                            <>Are you sure you want to delete <b>{props.channel.name}</b>?</>
+                          ),
+                          groupProps: {
+                            spacing: 'xs',
+                            sx: { marginTop: '0.5rem' },
+                          },
+                          confirmProps: {
+                            color: 'red',
+                          },
+                          onConfirm: () => {
+                            props.domain._mutators.removeChannel(props.channel.id);
+                          }
+                        })
+                      }}
+                    >
+                      Delete channel
+                    </Menu.Item>
+                  </>
+                )}
               </Menu.Dropdown>
             </Menu>
           </Group>
