@@ -60,7 +60,7 @@ export default function App() {
   const profile = useProfile(session.profile_id);
 
   
-  // Authentication logic
+  // Initialization logic (auth, emotes)
   useEffect(() => {
     // Should be only client side
     if (typeof window === 'undefined') return;

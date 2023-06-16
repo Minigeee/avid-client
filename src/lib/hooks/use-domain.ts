@@ -207,6 +207,60 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				}
 			}
 		),
+
+		/**
+		 * Perform a batch of role operations
+		 * 
+		 * @param options Role update options
+		 * @param options.added A list of roles to be added
+		 * @param options.changed A map of role ids to new roles to be merged into existing ones
+		 * @param options.deleted A list of role ids to be deleted
+		 * @returns The new domain object
+		 */
+		updateRoles: (options: { added?: Partial<Role>[]; changed?: Record<string, Partial<Role>>; deleted?: string[] }) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				// Operations
+				const operations: string[] = [];
+
+				// Add
+				if (options.added) {
+					// Create operations
+					for (const role of options.added) {
+						operations.push(sql.create<Role>('roles', {
+							...role,
+							domain: domain.id,
+						}));
+					}
+				}
+
+				// Change
+				if (options.changed) {
+					// Update operations
+					for (const [id, role] of Object.entries(options.changed))
+						operations.push(sql.update<Role>(id, { content: role, merge: true }));
+				}
+
+				// Delete
+				if (options.deleted?.length)
+					operations.push(sql.delete(options.deleted));
+
+				// Refetch all roles
+				operations.push(sql.select<Role>(['id', 'label', 'description', 'color', 'badge'], {
+					from: 'roles',
+					where: sql.match({ domain: domain.id }),
+				}));
+
+				// Execute as transaction
+				const results = await query<Role[]>(sql.transaction(operations), { session });
+				assert(results);
+
+				return {
+					...domain,
+					roles: results,
+				};
+			}, { message: 'An error occurred while updating roles' }),
+			{ revalidate: false }
+		),
 	};
 }
 
@@ -247,9 +301,9 @@ export function useDomain(domain_id: string | undefined) {
 				}),
 				sql.select<Domain>([
 					'*',
-					sql.wrap(sql.select<Role>(['id', 'label', 'description', 'color'], {
+					sql.wrap(sql.select<Role>(['id', 'label', 'description', 'color', 'badge'], {
 						from: 'roles',
-						where: sql.match({ id: domain_id }),
+						where: sql.match({ domain: domain_id }),
 					}), { alias: 'roles' }),
 				], { from: domain_id, fetch: ['channels'] }),
 				sql.return('$member'),

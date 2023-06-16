@@ -223,9 +223,6 @@ function RtcTab({ app, ...props }: TabProps) {
         value={app.rtc?.audio_input_device || 'default'}
         onChange={(value) => app._mutators.rtc.microphone.setDevice(value || undefined)}
         sx={{ width: config.app.ui.med_input_width }}
-        styles={{
-          item: { whiteSpace: 'normal' },
-        }}
       />
 
       <Divider />
@@ -238,9 +235,6 @@ function RtcTab({ app, ...props }: TabProps) {
         value={app.rtc?.video_options?.device_id || videoInputDevices.at(0)?.value}
         onChange={(value) => app._mutators.rtc.webcam.setOptions({ ...app.rtc?.video_options, device_id: value || undefined })}
         sx={{ width: config.app.ui.med_input_width }}
-        styles={{
-          item: { whiteSpace: 'normal' },
-        }}
       />
     </Stack>
   );

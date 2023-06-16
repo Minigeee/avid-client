@@ -16,6 +16,7 @@ import {
   Stack,
   Text,
   Textarea,
+  ThemeIcon,
   Title,
   Tooltip,
   Transition,
@@ -29,10 +30,12 @@ import {
   IconPaperclip,
   IconPencilPlus,
   IconSend,
+  IconTool,
 } from '@tabler/icons-react';
 
 import ActionButton from '@/lib/ui/components/ActionButton';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
+import { Emoji } from '@/lib/ui/components/Emoji';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
 import { MessageContextMenu } from './components/MessageMenu';
@@ -53,7 +56,7 @@ import {
   useSession,
   useTimeout,
 } from '@/lib/hooks';
-import { ExpandedMessage, FileAttachment, Member, Message } from '@/lib/types';
+import { ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
 import notification from '@/lib/utility/notification';
 
@@ -370,6 +373,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
 type MessageGroupProps = {
   msgs: ExpandedMessageWithPing[];
   style: string;
+  rolesMap: Record<string, Role>;
 
   sender: MemberWrapper;
   editing: string | null;
@@ -382,7 +386,192 @@ type MessageGroupProps = {
 }
 
 ////////////////////////////////////////////////////////////
-function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
+type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
+  msg: ExpandedMessageWithPing;
+  hasPing: boolean;
+  idx: number;
+};
+
+////////////////////////////////////////////////////////////
+function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
+  const badges = useMemo(() => {
+    const badges: JSX.Element[] = [];
+    for (const id of msg.sender?.roles || []) {
+      const role = props.rolesMap[id];
+      if (!role.badge) continue;
+
+      badges.push(
+        <Tooltip label={role.label} position='top-start' withArrow>
+          <div style={{ cursor: 'default' }}><Emoji id={role.badge} size={14} /></div>
+        </Tooltip>
+      );
+    }
+
+    return badges;
+  }, [msg.sender?.roles, props.rolesMap]);
+
+  return (
+    <ContextMenu.Trigger
+      ref={props.scrollTo && props.scrollTo === msg.id ? props.scrollToRef : undefined}
+      className='msg-body'
+      context={{ msg }}
+      sx={(theme) => ({
+        display: 'flex',
+        gap: theme.spacing[props.avatarGap],
+
+        padding: `0.25rem 0rem 0.25rem calc(${props.p} - 3px)`,
+        backgroundColor: props.hasPing ? '#2B293A' : undefined,
+        transition: 'background-color 0.08s',
+
+        '&:hover': {
+          backgroundColor: props.hasPing ? '#312D46' : theme.colors.dark[6],
+        },
+
+        '&:first-child': { borderTopRightRadius: 3 },
+        '&:last-child': { borderBottomRightRadius: 3 },
+      })}
+    >
+      {props.idx === 0 && (
+        <MemberAvatar
+          member={msg.sender}
+          size={AVATAR_SIZE}
+          sx={(theme) => ({
+            marginTop: '0.25rem',
+            backgroundColor: theme.colors.dark[5],
+          })}
+        />
+      )}
+
+      <Stack spacing={6} sx={(theme) => ({ marginLeft: props.idx !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined })}>
+        {props.editing !== msg.id && (
+          <>
+            {props.idx === 0 && (
+              <div>
+                <Group align='baseline' spacing={6}>
+                  <Title order={6} color='gray'>
+                    {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
+                  </Title>
+
+                  {badges.length > 0 && (
+                    <Group spacing={2} mb={2}>
+                      {badges}
+                    </Group>
+                  )}
+
+                  <Text size={11} color='dimmed' ml={2}>
+                    {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
+                  </Text>
+                </Group>
+              </div>
+            )}
+
+            {msg.reply_to && (
+              <Group
+                spacing={6}
+                p='0.15rem 0.5rem 0.15rem 0.25rem'
+                h='1.5rem'
+                w='fit-content'
+                maw='80ch'
+                align='start'
+                sx={(theme) => ({
+                  borderRadius: 3,
+                  '&:hover': {
+                    backgroundColor: theme.colors.dark[5],
+                    cursor: 'pointer',
+                  },
+                })}
+                onClick={() => {
+                  props.setState.current?.('scroll_to', msg.reply_to?.id || null);
+                }}
+              >
+                <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
+                  <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
+                </Box>
+                <MemberAvatar
+                  member={msg.reply_to.sender}
+                  size={20}
+                />
+                <Text
+                  size={12}
+                  weight={600}
+                  sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
+                >
+                  {msg.reply_to.sender?.alias}
+                </Text>
+                <Text
+                  size={11}
+                  mt={1}
+                  mah='1.25rem'
+                  sx={(theme) => ({
+                    maxWidth: '80ch',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    color: `${theme.colors.dark[0]}C0`,
+                  })}
+                >
+                  {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                </Text>
+              </Group>
+            )}
+            <div
+              className={style}
+              style={{ maxWidth: '80ch' }}
+              dangerouslySetInnerHTML={{ __html: msg.message }}
+            />
+            {msg.edited && (
+              <Text size={10} color='dimmed' mt={-6}>{'(edited)'}</Text>
+            )}
+          </>
+        )}
+        {props.editing === msg.id && (
+          <MessageEditor msg={msg} />
+        )}
+
+        {msg.attachments?.map((attachment, attachment_idx) => {
+          if (attachment.type === 'image') {
+            if (!attachment.width || !attachment.height) return null;
+
+            // Determine if width or height should be filled
+            let w = 0, h = 0;
+            if (attachment.width > attachment.height) {
+              // Wide image, fill height
+              h = MIN_IMAGE_HEIGHT;
+              w = h * attachment.width / attachment.height;
+            }
+            else {
+              // Tall image, fill width
+              w = MIN_IMAGE_WIDTH;
+              h = w * attachment.height / attachment.width;
+            }
+
+            // Scale image down if too large
+            const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
+            if (scale < 1) {
+              w *= scale;
+              h *= scale;
+            }
+
+            return (
+              <ContextMenu.Trigger key={attachment.filename} context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
+                <Image
+                  key={attachment.filename}
+                  src={attachment.url}
+                  alt={attachment.filename}
+                  width={w}
+                  height={h}
+                  style={{ borderRadius: 6 }}
+                />
+              </ContextMenu.Trigger>
+            );
+          }
+        })}
+      </Stack>
+    </ContextMenu.Trigger>
+  );
+}
+
+////////////////////////////////////////////////////////////
+function MessageGroup({ msgs, ...props }: MessageGroupProps) {
   // Don't use context bc it forces all groups to rerender (bad performance)
   // console.log('rerender msg')
 
@@ -418,154 +607,13 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
-          <ContextMenu.Trigger
+          <SingleMessage
             key={msg.id}
-            ref={props.scrollTo && props.scrollTo === msg.id ? props.scrollToRef : undefined}
-            className='msg-body'
-            context={{ msg }}
-            sx={(theme) => ({
-              display: 'flex',
-              gap: theme.spacing[props.avatarGap],
-
-              padding: `0.25rem 0rem 0.25rem calc(${props.p} - 3px)`,
-              backgroundColor: hasPing ? '#2B293A' : undefined,
-              transition: 'background-color 0.08s',
-
-              '&:hover': {
-                backgroundColor: hasPing ? '#312D46' : theme.colors.dark[6],
-              },
-
-              '&:first-child': { borderTopRightRadius: 3 },
-              '&:last-child': { borderBottomRightRadius: 3 },
-            })}
-          >
-            {i === 0 && (
-              <MemberAvatar
-                member={msg.sender}
-                size={AVATAR_SIZE}
-                sx={(theme) => ({
-                  marginTop: '0.25rem',
-                  backgroundColor: theme.colors.dark[5],
-                })}
-              />
-            )}
-
-            <Stack spacing={6} sx={(theme) => ({ marginLeft: i !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined })}>
-              {props.editing !== msg.id && (
-                <>
-                  {i === 0 && (
-                    <Group align='baseline' spacing={8}>
-                      <Title order={6}>
-                        {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
-                      </Title>
-                      <Text size={11} color='dimmed'>
-                        {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
-                      </Text>
-                    </Group>
-                  )}
-
-                  {msg.reply_to && (
-                    <Group
-                      spacing={6}
-                      p='0.15rem 0.5rem 0.15rem 0.25rem'
-                      h='1.5rem'
-                      w='fit-content'
-                      maw='80ch'
-                      align='start'
-                      sx={(theme) => ({
-                        borderRadius: 3,
-                        '&:hover': {
-                          backgroundColor: theme.colors.dark[5],
-                          cursor: 'pointer',
-                        },
-                      })}
-                      onClick={() => {
-                        props.setState.current?.('scroll_to', msg.reply_to?.id || null);
-                      }}
-                    >
-                      <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
-                        <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
-                      </Box>
-                      <MemberAvatar
-                        member={msg.reply_to.sender}
-                        size={20}
-                      />
-                      <Text
-                        size={12}
-                        weight={600}
-                        sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
-                      >
-                        {msg.reply_to.sender?.alias}
-                      </Text>
-                      <Text
-                        size={11}
-                        mt={1}
-                        mah='1.25rem'
-                        sx={(theme) => ({
-                          maxWidth: '80ch',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          color: `${theme.colors.dark[0]}C0`,
-                        })}
-                      >
-                        {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
-                      </Text>
-                    </Group>
-                  )}
-                  <div
-                    className={style}
-                    style={{ maxWidth: '80ch' }}
-                    dangerouslySetInnerHTML={{ __html: msg.message }}
-                  />
-                  {msg.edited && (
-                    <Text size={10} color='dimmed' mt={-6}>{'(edited)'}</Text>
-                  )}
-                </>
-              )}
-              {props.editing === msg.id && (
-                <MessageEditor msg={msg} />
-              )}
-
-              {msg.attachments?.map((attachment, attachment_idx) => {
-                if (attachment.type === 'image') {
-                  if (!attachment.width || !attachment.height) return null;
-
-                  // Determine if width or height should be filled
-                  let w = 0, h = 0;
-                  if (attachment.width > attachment.height) {
-                    // Wide image, fill height
-                    h = MIN_IMAGE_HEIGHT;
-                    w = h * attachment.width / attachment.height;
-                  }
-                  else {
-                    // Tall image, fill width
-                    w = MIN_IMAGE_WIDTH;
-                    h = w * attachment.height / attachment.width;
-                  }
-
-                  // Scale image down if too large
-                  const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
-                  if (scale < 1) {
-                    w *= scale;
-                    h *= scale;
-                  }
-
-                  return (
-                    <ContextMenu.Trigger key={attachment.filename} context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
-                      <Image
-                        key={attachment.filename}
-                        src={attachment.url}
-                        alt={attachment.filename}
-                        width={w}
-                        height={h}
-                        style={{ borderRadius: 6 }}
-                      />
-                    </ContextMenu.Trigger>
-                  );
-                }
-              })}
-            </Stack>
-          </ContextMenu.Trigger>
+            idx={i}
+            msg={msg}
+            hasPing={hasPing}
+            {...props}
+          />
         ))}
       </Stack>
     </Flex>
@@ -575,6 +623,7 @@ function MessageGroup({ msgs, style, ...props }: MessageGroupProps) {
 const MemoMessageGroup = memo(MessageGroup, (a, b) => {
   // Compare the user objects by their id property
   return a.style === b.style &&
+    a.rolesMap === b.rolesMap &&
     a.sender === b.sender &&
     a.editing === b.editing &&
     a.p === b.p &&
@@ -603,6 +652,14 @@ function MessagesViewport(props: MessagesViewportProps) {
   useEffect(() => {
     setStateRef.current = context.state._set;
   }, [context.state._set]);
+
+  // Roles map for rendering badges
+  const rolesMap = useMemo(() => {
+    const map: Record<string, Role> = {};
+    for (const role of context.domain.roles)
+      map[role.id] = role;
+    return map;
+  }, [context.domain.roles]);
 
 
   // Calculate editing message to minimize memo component change
@@ -686,6 +743,7 @@ function MessagesViewport(props: MessagesViewportProps) {
                       key={j}
                       msgs={consec}
                       style={classes.typography}
+                      rolesMap={rolesMap}
 
                       sender={context.sender as MemberWrapper}
                       editing={cachedProps[`${day}.${j}`].editing}

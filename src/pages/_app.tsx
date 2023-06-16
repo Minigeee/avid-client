@@ -112,6 +112,7 @@ export default function App(props: AppProps) {
                     boxShadow: '0px 2px 10px #00000022',
                   },
                   item: {
+                    whiteSpace: 'normal',
                     '&[data-hovered]': {
                       background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
                     },

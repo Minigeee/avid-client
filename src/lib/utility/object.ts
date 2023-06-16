@@ -30,3 +30,51 @@ export function sortObject<T extends Record<any, any>>(x: T, compareFn?: (a: [st
 		{}
 	);
 }
+
+
+export function diff<B extends any>(origObj: any, newObj: B): Partial<B> | undefined {
+	if (origObj == null && newObj != null) {
+		// new is diff + non-null
+		return newObj;
+	}
+	else if (origObj != null && newObj == null) {
+		// new is diff + null
+		return null as B;
+	}
+	else if (origObj == null && newObj == null) {
+		// Same
+		return undefined;
+	}
+	else if (typeof origObj !== typeof newObj) {
+		// new is diff
+		return newObj;
+	}
+	else  {
+		if (newObj === origObj)
+			return undefined;
+		else if (Array.isArray(origObj) && Array.isArray(newObj)) {
+			// Return entire array if it is diff
+			if (origObj.length !== newObj.length || origObj.findIndex((x, i) => x !== newObj[i]) < 0)
+				return newObj;
+		}
+		else if (typeof origObj === 'object') {
+			// Set of keys
+			const keys = new Set<string>(Object.keys(origObj).concat(Object.keys(newObj as object)));
+	
+			const obj: any = {};
+			for (const k of Array.from(keys)) {
+				const propDiff = diff(origObj[k], newObj[k as keyof B])
+				if (propDiff !== undefined)
+					obj[k] = propDiff;
+			}
+
+			return Object.keys(obj).length > 0 ? obj : undefined;
+		}
+		else if (newObj !== origObj)
+			return newObj;
+		else
+			return undefined;
+	}
+
+	return undefined;
+}
