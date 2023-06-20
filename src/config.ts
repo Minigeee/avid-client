@@ -124,9 +124,11 @@ const config = {
 		/** General ui config */
 		ui: {
 			/** Width for short length input */
-			short_input_width: '40ch',
+			short_input_width: '22rem',
 			/** Width for medium length input */
-			med_input_width: '60ch',
+			med_input_width: '32rem',
+			/** Max width for general settings UI */
+			settings_maw: '36rem',
 			/** The viewport position threshold the user must be at to trigger more data fetching (px) */
 			load_next_treshold: 1200,
 		},

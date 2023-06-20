@@ -1,3 +1,4 @@
+export * from './use-acl-entries';
 export * from './use-app';
 export * from './use-board';
 export * from './use-cached-state';

@@ -63,7 +63,7 @@ export function diff<B extends any>(origObj: any, newObj: B): Partial<B> | undef
 	
 			const obj: any = {};
 			for (const k of Array.from(keys)) {
-				const propDiff = diff(origObj[k], newObj[k as keyof B])
+				const propDiff = diff(origObj[k], newObj[k as keyof B]);
 				if (propDiff !== undefined)
 					obj[k] = propDiff;
 			}

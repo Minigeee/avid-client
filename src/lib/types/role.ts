@@ -1,6 +1,3 @@
-import { ChannelTypes } from './channel';
-import { Label } from './common';
-import { AllChannelPermissions } from './permissions';
 
 /** A type representing a domain role */
 export type Role = {

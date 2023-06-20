@@ -237,7 +237,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				if (options.changed) {
 					// Update operations
 					for (const [id, role] of Object.entries(options.changed))
-						operations.push(sql.update<Role>(id, { content: role, merge: true }));
+						operations.push(sql.update<Role>(id, { content: role }));
 				}
 
 				// Delete
@@ -245,7 +245,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 					operations.push(sql.delete(options.deleted));
 
 				// Refetch all roles
-				operations.push(sql.select<Role>(['id', 'label', 'description', 'color', 'badge'], {
+				operations.push(sql.select<Role>('*', {
 					from: 'roles',
 					where: sql.match({ domain: domain.id }),
 				}));
@@ -301,7 +301,7 @@ export function useDomain(domain_id: string | undefined) {
 				}),
 				sql.select<Domain>([
 					'*',
-					sql.wrap(sql.select<Role>(['id', 'label', 'description', 'color', 'badge'], {
+					sql.wrap(sql.select<Role>('*', {
 						from: 'roles',
 						where: sql.match({ domain: domain_id }),
 					}), { alias: 'roles' }),

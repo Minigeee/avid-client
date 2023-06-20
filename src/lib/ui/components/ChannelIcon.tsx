@@ -1,13 +1,11 @@
-import { IconHash, IconListDetails, IconVideo } from '@tabler/icons-react';
+import { IconHash, IconListDetails, IconVideo, TablerIconsProps } from '@tabler/icons-react';
 
 import { ChannelTypes } from '@/lib/types';
 
 
 ////////////////////////////////////////////////////////////
-type ChannelIconProps = {
+type ChannelIconProps = TablerIconsProps & {
   type: ChannelTypes;
-  size?: number;
-  color?: string;
 }
 
 ////////////////////////////////////////////////////////////

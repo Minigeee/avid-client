@@ -1,0 +1,111 @@
+import { KeyedMutator } from 'swr';
+import assert from 'assert';
+
+import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
+import { SessionState } from '@/lib/contexts';
+import { addChannel, query, removeChannel, sql } from '@/lib/db';
+import { AclEntry, AllPermissions, Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain, Member, Role, UserPermissions } from '@/lib/types';
+import { swrErrorWrapper } from '@/lib/utility/error-handler';
+
+import { useDbQuery } from './use-db-query';
+import { SwrWrapper } from './use-swr-wrapper';
+import { useSession } from './use-session';
+
+
+////////////////////////////////////////////////////////////
+function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resource_id: string) {
+	return {
+		/**
+		 * Set the permissions list for an entry with the given role
+		 * 
+		 * @param role_id The id of the role for entries to modify
+		 * @param permissions The new (complete) list of permissions to set in the entry
+		 * @returns The new list of acl entries
+		 */
+		setPermissions: (permissions: Record<string, AllPermissions[]>) => mutate(
+			swrErrorWrapper(async (entries: AclEntry[]) => {
+				const operations: string[] = [];
+
+				// Add operations
+				let hasUpdateStatements = false;
+				for (const [role_id, perms] of Object.entries(permissions)) {
+					if (perms.length > 0) {
+						operations.push(
+							sql.if({
+								cond: `$entries CONTAINS ${role_id}`,
+								body: sql.update<AclEntry>('acl', {
+									set: { permissions: perms },
+									where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
+									return: ['domain'],
+								}),
+							}, {
+								body: sql.create<AclEntry>('acl', {
+									domain: sql.$(`${role_id}.domain`),
+									resource: resource_id,
+									role: role_id,
+									permissions: perms,
+								}),
+							})
+						);
+
+						hasUpdateStatements = true;
+					}
+					else {
+						operations.push(
+							sql.delete<AclEntry>('acl', {
+								where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
+							})
+						);
+					}
+				}
+
+				// Add select for entries that point to given resource
+				if (hasUpdateStatements) {
+					operations.splice(0, 0,
+						sql.let('$entries', sql.wrap(sql.select<AclEntry>(['role'], {
+							from: 'acl',
+							where: sql.match<AclEntry>({ resource: resource_id }),
+						}), { append: '.role' }))
+					);
+				}
+
+				// Refetch
+				operations.push(sql.select<AclEntry>('*', {
+					from: 'acl',
+					where: sql.match<AclEntry>({ resource: resource_id }),
+				}));
+
+				// Perform query
+				const results = await query<AclEntry[]>(sql.transaction(operations), { session });
+				assert(results);
+
+				return results;
+			}, { message: 'An error occurred while setting permissions' }),
+			{ revalidate: false }
+		),
+	};
+}
+
+
+/** Mutators that will be attached to the acl entries swr wrapper */
+export type AclEntriesMutators = ReturnType<typeof mutators>;
+/** Swr data wrapper for acl entries */
+export type AclEntriesWrapper<Loaded extends boolean = true> = SwrWrapper<AclEntry[], Loaded, AclEntriesMutators>;
+
+
+/**
+ * Get a list of ACL entries for the given resource
+ * 
+ * @param resource_id The id of the resource to retrieve ACL entries for
+ * @returns A swr wrapper with a list of ACL entries
+ */
+export function useAclEntries(resource_id: string | undefined) {
+	return useDbQuery(resource_id ? `${resource_id}.acl` : undefined, {
+		builder: (key) => sql.select<AclEntry>('*', {
+			from: 'acl',
+			where: sql.match<AclEntry>({ resource: resource_id }),
+		}),
+		mutators,
+		mutatorParams: [resource_id],
+	});
+}

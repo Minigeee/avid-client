@@ -216,13 +216,19 @@ type _SqlUpdateContentOptions<T extends object> = {
 
 type _SqlUpdateSetOptions<T extends object> = {
 	/** Data that should be incremented or decremented (or array push or pull) */
-	set: { [K in keyof T]?: T[K] extends ReadonlyArray<infer A> ?
+	set: { [K in Selectables<T>]?: K extends keyof T ? T[K] extends ReadonlyArray<infer A> ?
 		(SqlContent<A> | SqlContent<A>[] | ['=' | '+=' | '-=', SqlContent<A> | SqlContent<A>[]]) :
-		(SqlContent<T[K]> | ['=' | '+=' | '-=', SqlContent<T[K]>]) };
+		(SqlContent<T[K]> | ['=' | '+=' | '-=', SqlContent<T[K]>]) : any };
 } & _SqlUpdateBaseOptions<T>;
 
 /** Update statement options */
 export type SqlUpdateOptions<T extends object> = _SqlUpdateContentOptions<T> | _SqlUpdateSetOptions<T>;
+
+/** Insert statement options */
+type SqlInsertOptions<T extends object> = {
+	/** Values to set on insert key conflict */
+	on_conflict?: _SqlUpdateSetOptions<T>['set'],
+};
 
 
 function _json(x: any, doubleBackslash: boolean = false): string {
@@ -370,7 +376,7 @@ export const sql = {
 	},
 
 	/** Insert statement */
-	insert: <T extends object>(table: string, values: SqlContent<T>[]) => {
+	insert: <T extends object>(table: string, values: SqlContent<T>[], options?: SqlInsertOptions<T>) => {
 		// Get keys
 		const keySet = new Set<string>();
 		for (const obj of values) {
@@ -384,8 +390,23 @@ export const sql = {
 		for (const obj of values)
 			strs.push(`(${keys.map(k => _json(obj[k as keyof SqlContent<T>])).join(',')})`);
 
+		// Construct on conflict string
+		let onConflict = '';
+		if (options?.on_conflict) {
+			const exprs: string[] = [];
+			for (const [k, v] of Object.entries((options as SqlInsertOptions<T>).on_conflict || {})) {
+				if (v === undefined) continue;
+
+				exprs.push(Array.isArray(v) && (v[0] === '=' || v[0] === '+=' || v[0] === '-=') ?
+					`${k}${v[0]}${_json(v[1])}` :
+					`${k}=${_json(v)}`
+				);
+			}
+			onConflict = `ON DUPLICATE KEY UPDATE ${exprs.join(',')} `;
+		}
+
 		// Put parts togther
-		return `INSERT INTO ${table} (${keys.join(',')}) VALUES ${strs.join(',')} `;
+		return `INSERT INTO ${table} (${keys.join(',')}) VALUES ${strs.join(',')} ${onConflict}`;
 	},
 
 	/** Relate statement */
@@ -435,11 +456,16 @@ export const sql = {
 		// Check if SET should be used
 		if ((options as _SqlUpdateSetOptions<T>).set) {
 			// All must be set using merge
-			const set = Object.entries((options as _SqlUpdateSetOptions<T>).set).map(([k, v]) =>
-				Array.isArray(v) && (v[0] === '=' || v[0] === '+=' || v[0] === '-=') ?
+			const exprs: string[] = [];
+			for (const [k, v] of Object.entries((options as _SqlUpdateSetOptions<T>).set)) {
+				if (v === undefined) continue;
+
+				exprs.push(Array.isArray(v) && (v[0] === '=' || v[0] === '+=' || v[0] === '-=') ?
 					`${k}${v[0]}${_json(v[1])}` :
 					`${k}=${_json(v)}`
-			).join(',');
+				);
+			}
+			const set = exprs.join(',');
 
 			q += `SET ${set} `;
 		}

@@ -6,38 +6,32 @@ import { ChannelTypes } from './channel';
 export type DomainPermissions =
 	/** Roles that can manage domain settings */
 	'can_manage' |
-	/** Roles that can create members of domain (create invites) */
-	'can_create_members' |
-	/** Roles that can create channels (will become a channel group permission later) */
-	'can_create_channels' |
-	/** Roles that can create (non-channel) resources */
-	'can_create_resources' |
+	/** Roles that can manage invites to domain */
+	'can_manage_invites' |
 	/** Roles that can create extensions */
-	'can_create_extensions' |
+	'can_manage_extensions' |
+	/** Roles that can create domain resources (TODO : Make this a channel group permission) */
+	'can_create_resources' |
 	/** Roles that can create domain level roles */
 	'can_create_roles';
 
 
 export type RolePermissions =
-	/** Roles that can manage role (all settings excluding permissions) */
+	/** Roles that can manage role */
 	'can_manage' |
-	/** Roles that can manage role's permissions (can't set permissions that exceed own permissions) */
-	'can_manage_permissions' |
-	/** Roles that can create subroles (this may or may not include self) */
-	'can_create_subroles' |
 	/** Roles that can assign (and unassign) this role */
 	'can_assign_role';
 	
 /** Member related permissions, but resource id = all of member's roles */
 export type MemberPermissions =
 	/** Roles that can manage alias of members with a given role */
-	'can_manage_alias' |
+	'can_manage_member_alias' |
 	/** Roles that can manage all roles of members with a given role */
-	'can_manage_roles' |
+	'can_manage_member_roles' |
 	/** Roles that can kick members with a given role */
-	'can_kick' |
+	'can_kick_member' |
 	/** Roles that can ban members with a given role */
-	'can_ban';
+	'can_ban_member';
 
 
 /** General channel permissions, all fields are a list of roles that have access to the specified permission */
@@ -45,9 +39,7 @@ export type ChannelPermissions =
 	/** Roles that can view channel */
 	'can_view' |
 	/** Roles that can manage channel (change settings, etc.) */
-	'can_manage' |
-	/** Roles that can manage channel permissions (overrides) */
-	'can_manage_permissions';
+	'can_manage';
 
 /** Text channel permissions */
 export type TextChannelPermissions =
@@ -64,8 +56,6 @@ export type BoardPermissions =
 	'can_view' |
 	/** Roles that can manage board (change settings, tags, etc.) */
 	'can_manage' |
-	/** Roles that can manage board permissions (overrides) */
-	'can_manage_permissions' |
 	/** Roles that can create + manage tasks within board, regardless of assignee (summary, details, assignee, etc.) */
 	'can_manage_tasks' |
 	/** Roles that can create + manage their own tasks within board (those tasks assigned to them) */
@@ -74,11 +64,11 @@ export type BoardPermissions =
 /** Rtc permissions */
 export type RtcChannelPermissions =
 	/** Roles that can speak in this channel */
-	'can_speak' |
+	'can_broadcast_audio' |
 	/** Roles that can share video (webcam, screenshare) in this channel */
-	'can_share_video' |
+	'can_broadcast_video' |
 	/** Roles that can manage other members within this channel (all actions wrapped into this: mute, deafen, stop sharing, move, kick, ban) */
-	'can_manage_members';
+	'can_manage_participants';
 
 /** All channel permissions */
 export type AllChannelPermissions = ChannelPermissions | TextChannelPermissions | BoardPermissions | RtcChannelPermissions;
@@ -90,6 +80,8 @@ export type AllPermissions = DomainPermissions | RolePermissions | MemberPermiss
 
 /** Access control list entry */
 export type AclEntry = {
+	/** Id of the entry */
+	id: string;
 	/** The id of the domain the protected resource is contained in */
 	domain: string;
 	/** The id of the protected resource */
