@@ -302,6 +302,9 @@ export const sql = {
 			for (let i = 0; i < params.length; ++i)
 				body = _replace(body, params[i], `arguments[${i}]`);
 
+			// Builtin objects
+			body = body.replace(/\(\d.+?new_Record\)/g, 'new Record');
+
 			// Replace hardcodes
 			let template = body;
 			for (const [k, v] of Object.entries(hardcode || {})) {
@@ -345,7 +348,7 @@ export const sql = {
 
 	/** Wrap statement in parantheses */
 	wrap: (expr: string, options?: { alias?: string, append?: string }) =>
-		`(${expr.trim()})${options?.alias ? ` AS ${options.alias}` : options?.append} `,
+		`(${expr.trim()})${options?.alias ? ` AS ${options.alias}` : (options?.append || '')} `,
 
 
 	/** Create statement */
@@ -504,3 +507,7 @@ export const sql = {
 	transaction: (statements: string[]) =>
 		`BEGIN TRANSACTION; ${statements.map(x => x.trim()).join('; ')}; COMMIT TRANSACTION `,
 };
+
+
+// Record class for usage in functions
+export function new_Record(table: string, id: string) { return ''; }

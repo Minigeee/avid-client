@@ -323,6 +323,13 @@ function RolesTab({ domain, ...props }: TabProps) {
   // Is badge picker open
   const [badgePickerOpen, setBadgePickerOpen] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (!form.isDirty()) {
+      form.setValues(initialValues);
+      form.resetDirty(initialValues);
+    }
+  }, [initialValues]);
+
 
   // Current role
   const role = roleIdx !== null ? form.values.roles[roleIdx] : null;

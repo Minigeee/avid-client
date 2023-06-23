@@ -1,3 +1,4 @@
+import { Resource } from './common';
 import { Date } from './util';
 
 
@@ -33,20 +34,33 @@ export type ChannelOptions<Type extends ChannelTypes> =
 
 
 /** A type representing a channel */
-export interface Channel<Type extends ChannelTypes = ChannelTypes> {
-	/** Id of the channel */
-	id: string;
-	/** The id of the domain that the channel belongs to */
-	domain: string;
-	/** The name of the channel */
-	name: string;
+export type Channel<Type extends ChannelTypes = ChannelTypes> = Resource & {
 	/** The type of channel */
 	type: Type;
 	/** Extra data for each channel type */
 	data?: ChannelData<Type>;
+}
+
+
+/** A group containing a list of channels */
+export type ChannelGroup = {
+	/** Id of the channel group */
+	id: string;
+	/** The id of the domain that the group belongs to */
+	domain: string;
+	/** The name of the group */
+	name: string;
+	/** A list of channels that belong to the group (in order) */
+	channels: string[];
 	/** Time the channel was created */
 	time_created: Date;
-}
+};
+
+/** Expanded channel group */
+export type ExpandedChannelGroup = Omit<ChannelGroup, 'channels'> & {
+	/** A list of channels that belong to the group (in order) */
+	channels: Channel[];
+};
 
 
 /**

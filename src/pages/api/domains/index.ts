@@ -3,7 +3,7 @@ import { createRouter, expressWrapper } from 'next-connect';
 import assert from 'assert';
 
 import _config from '@/config';
-import { Channel, Domain, Member, Role } from '@/lib/types';
+import { AclEntry, Channel, ChannelGroup, Domain, Member, Role } from '@/lib/types';
 import { query, sql } from '@/lib/db';
 
 import { AccessToken, token } from '@/lib/utility/authenticate';
@@ -23,24 +23,65 @@ router
 
 			// TODO : Check if user can create new domain
 
+			// Templates
+			const templates = {
+				default: () => ([
+					sql.let('$groups', '[]'),
+					sql.let('$group', sql.create<ChannelGroup>('channel_groups', {
+						domain: sql.$('$domain.id'),
+						name: 'Main',
+						channels: sql.$('[]'),
+					})),
+					sql.update<ChannelGroup>('($group.id)', {
+						set: {
+							channels: sql.$('[' + sql.wrap(
+								sql.create<Channel>('channels', {
+									domain: sql.$('$domain.id'),
+									inherit: sql.$('$group.id'),
+									name: 'general',
+									type: 'text',
+								}),
+								{ append: '.id' }
+							) + ']'),
+						},
+					}),
+					sql.create<AclEntry>('acl', {
+						domain: sql.$('$domain.id'),
+						resource: sql.$('$group.id'),
+						role: sql.$('$role.id'),
+						permissions: [
+							'can_view',
+							'can_send_messages',
+							'can_send_attachments',
+							'can_broadcast_audio',
+							'can_broadcast_video',
+						],
+					}),
+					sql.let('$groups', `array::append($groups, $group.id)`),
+				]),
+			};
+
 			// Create new domain with the specified name and make user join
 			const results = await query<Domain[]>(sql.transaction([
-				// TODO : Create default channels where each channel type is handled correctly
-				sql.let('$channels', '[]'),
 				// Create domain
 				sql.let('$domain', sql.create<Domain>('domains', {
 					name: params.name,
-					channels: sql.fn<Domain>('add_domain', function (channels: Channel[]) {
-						return channels.map(x => x.id);
-					}),
+					groups: [],
 				})),
 				// Create everyone role
 				sql.let('$role', sql.create<Role>('roles', {
 					domain: sql.$('$domain.id'),
 					label: 'everyone',
 				})),
-				// Add everyone role to domain
-				sql.let('$domain', sql.update<Domain>('$domain', { set: { _default_role: sql.$('$role.id') } })),
+				// Create starting template configuration
+				...templates.default(),
+				// Add starting config to domain
+				sql.let('$domain', sql.update<Domain>('$domain', {
+					set: {
+						_default_role: sql.$('$role.id'),
+						groups: sql.$('$groups'),
+					},
+				})),
 				// Add member to domain as owner/admin
 				sql.relate<Member>(req.token.profile_id, 'member_of', '$domain', {
 					content: {

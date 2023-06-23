@@ -27,15 +27,12 @@ export default function MainView() {
   const domain = useDomain(app.navigation.domain);
   // Get channel, using nav state as first choice and first channel as back up
   const channel_id = app.navigation.channels?.[app.navigation.domain] ||
-    (domain.channels?.length ? domain.channels[0].id : undefined);
+    (Object.keys(domain?.channels || {}).length ? Object.keys(domain?.channels || {})[0] : undefined);
 
   const [headerData, setHeaderData] = useState<Record<string, any>>({});
 
   // Retrieve channel object
-  const channel = useMemo<Channel | undefined>(
-    () => domain.channels?.find(x => x.id === channel_id),
-    [channel_id, domain.channels]
-  );
+  const channel = channel_id ? domain?.channels?.[channel_id] || undefined : undefined;
 
 
   if (!domain._exists)

@@ -1,3 +1,5 @@
+import { MouseEvent } from 'react';
+
 import {
   ActionIcon,
   ActionIconProps,
@@ -9,7 +11,7 @@ import {
 export type ActionButtonProps = ActionIconProps & {
   tooltip?: string;
   tooltipProps?: Omit<TooltipProps, 'label' | 'children'>;
-  onClick?: () => unknown,
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void,
 };
 
 

@@ -1,5 +1,5 @@
 import { Date, WithId } from './util';
-import { Label } from './common';
+import { Label, Resource } from './common';
 
 
 /** A task collection makes task management easier (used for backlog, cycles, etc.) */
@@ -23,11 +23,7 @@ export type TaskCollection = {
  */
 
 /** A type representing a project board */
-export interface Board {
-	/** The id of the board */
-	id: string;
-	/** The domain the board belongs to */
-	domain: string;
+export type Board = Resource<false> & {
 	/** The prefix given to all tasks in this board */
 	prefix: string;
 	/** Map of all tags belonging to this board */
@@ -36,8 +32,6 @@ export interface Board {
 	statuses: WithId<Label>[];
 	/** Ids of all task collections belonging to the board */
 	collections: TaskCollection[];
-	/** Time the board was created */
-	time_created: Date;
 
 	/** A counter used to assign task ids */
 	_task_counter: number;

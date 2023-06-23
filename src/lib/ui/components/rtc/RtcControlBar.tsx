@@ -95,8 +95,8 @@ export default function RtcControlBar() {
   const domain = useDomain(domain_id);
   
   // Rtc permissions
-  const canSpeak = domain._exists && room_id ? hasPermission(domain, room_id, 'can_speak') : false;
-  const canVideo =  domain._exists && room_id ? hasPermission(domain, room_id, 'can_share_video') : false;
+  const canSpeak = domain._exists && room_id ? hasPermission(domain, room_id, 'can_broadcast_audio') : false;
+  const canVideo =  domain._exists && room_id ? hasPermission(domain, room_id, 'can_broadcast_video') : false;
 
 
   return (

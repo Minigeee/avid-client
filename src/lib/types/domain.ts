@@ -1,4 +1,4 @@
-import { Channel } from './channel';
+import { Channel, ChannelGroup } from './channel';
 import { AllPermissions } from './permissions';
 import { Role } from './role';
 
@@ -35,8 +35,8 @@ export type Domain = {
 	/** Time the domain was created */
 	time_created: Date;
 
-	/** TEMP : A list of channel ids belonging to domain, used to track channel order */
-	channels: string[];
+	/** A list of channel group ids belonging to domain, used to track group order */
+	groups: string[];
 
 	/** The default everyone role */
 	_default_role: string;
@@ -44,9 +44,11 @@ export type Domain = {
 
 
 /** Domain with expanded fields */
-export type ExpandedDomain = Omit<Domain, 'roles' | 'channels'> & {
-	/** Channels belonging to domain */
-	channels: Channel[];
+export type ExpandedDomain = Omit<Domain, 'roles' | 'groups'> & {
+	/** A map of channel ids to channel objects */
+	channels: Record<string, Channel>;
+	/** Channel groups belonging to domain */
+	groups: ChannelGroup[];
 	/** A list of roles belonging to the domain */
 	roles: Role[];
 	/** Permissions for current user */

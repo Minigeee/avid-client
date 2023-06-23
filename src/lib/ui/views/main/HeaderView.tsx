@@ -1,15 +1,17 @@
 import { Dispatch, SetStateAction } from 'react';
 
 import {
+  ActionIcon,
   Box,
   Group,
+  Menu,
   Title,
   useMantineTheme,
 } from '@mantine/core';
 
-import { IconPlus } from '@tabler/icons-react';
+import { IconFolderPlus, IconHash, IconPlus } from '@tabler/icons-react';
 
-import { openCreateChannel } from '@/lib/ui/modals';
+import { openCreateChannel, openCreateChannelGroup } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import RtcControlBar from '@/lib/ui/components/rtc/RtcControlBar';
@@ -57,13 +59,29 @@ export default function HeaderView(props: HeaderViewProps) {
         <Title order={5} sx={{ flexGrow: 1 }}>
           {'Channels'}
         </Title>
-        {hasPermission(props.domain, props.domain.id, 'can_create_channels') && (
-          <ActionButton
-            tooltip='Create Channel'
-            onClick={() => openCreateChannel({ domain: props.domain })}
-          >
-            <IconPlus size={18} color={theme.colors.dark[1]} />
-          </ActionButton>
+        {hasPermission(props.domain, props.domain.id, 'can_create_resources') && (
+          <Menu width='12rem'>
+            <Menu.Target>
+              <ActionIcon>
+                <IconPlus size={18} color={theme.colors.dark[1]} />
+              </ActionIcon>
+            </Menu.Target>
+
+            <Menu.Dropdown>
+              <Menu.Item
+                icon={<IconHash size={18} />}
+                onClick={() => openCreateChannel({ domain: props.domain })}
+              >
+                New Channel
+              </Menu.Item>
+              <Menu.Item
+                icon={<IconFolderPlus size={18} />}
+                onClick={() => openCreateChannelGroup({ domain: props.domain })}
+              >
+                New Group
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         )}
       </Group>
       {props.channel && (

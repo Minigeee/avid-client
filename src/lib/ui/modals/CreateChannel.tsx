@@ -1,4 +1,4 @@
-import { ComponentPropsWithoutRef, forwardRef, useState } from 'react';
+import { ComponentPropsWithoutRef, forwardRef, useMemo, useState } from 'react';
 
 import {
   Button,
@@ -13,12 +13,38 @@ import {
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { IconHash } from '@tabler/icons-react';
+import { IconFolder, IconHash } from '@tabler/icons-react';
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
 import { DomainWrapper } from '@/lib/hooks';
 import { ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
+
+
+////////////////////////////////////////////////////////////
+const CHANNEL_TYPES = [
+  {
+    value: 'text',
+    label: 'Text',
+    group: 'General',
+    description: 'Communicate using messages, images, and emojis',
+    disabled: false,
+  },
+  {
+    value: 'rtc',
+    label: 'Voice & Video',
+    group: 'General',
+    description: 'Chat with other members through voice, video, and screen share',
+    disabled: false,
+  },
+  {
+    value: 'board',
+    label: 'Board',
+    group: 'Project',
+    description: 'Create to-do lists and roadmaps to plan and organize large-scale projects',
+    disabled: false,
+  },
+];
 
 
 ////////////////////////////////////////////////////////////
@@ -58,6 +84,8 @@ TypeSelectItem.displayName = 'TypeSelectItem';
 ////////////////////////////////////////////////////////////
 export type CreateChannelProps = {
   domain: DomainWrapper;
+  /** Id of the group to add channel to */
+  group_id?: string;
 }
 
 ////////////////////////////////////////////////////////////
@@ -66,6 +94,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
     initialValues: {
       name: '',
       type: 'text' as ChannelTypes,
+      group: props.group_id || (props.domain.groups.length > 0 ? props.domain.groups[0].id : null),
 
       rtc_max_participants: 50,
 
@@ -75,39 +104,17 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
 
   const [loading, setLoading] = useState<boolean>(false);
 
+  const groups = useMemo(() => {
+    return props.domain.groups.map(group => ({ value: group.id, label: group.name }));
+  }, [props.domain.groups]);
+
   const extraSettings =
     form.values.type === 'rtc' ||
     form.values.type === 'board';
 
 
-  ////////////////////////////////////////////////////////////
-  const CHANNEL_TYPES = [
-    {
-      value: 'text',
-      label: 'Text',
-      group: 'General',
-      description: 'Communicate using messages, images, and emojis',
-      disabled: false,
-    },
-    {
-      value: 'rtc',
-      label: 'Voice & Video',
-      group: 'General',
-      description: 'Chat with other members through voice, video, and screen share',
-      disabled: false,
-    },
-    {
-      value: 'board',
-      label: 'Board',
-      group: 'Project',
-      description: 'Create to-do lists and roadmaps to plan and organize large-scale projects',
-      disabled: false,
-    },
-  ];
-
-
   async function submit() {
-    if (!props.domain._exists) return;
+    if (!props.domain._exists || !form.values.group) return;
 
     // Indicate loading
     setLoading(true);
@@ -129,7 +136,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
     }
 
     // Add channel
-    await props.domain._mutators.addChannel(name, type, data, options);
+    await props.domain._mutators.addChannel(name, type, form.values.group, data, options);
 
     // Close
     setLoading(false);
@@ -162,6 +169,16 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
           })}
           {...form.getInputProps('type')}
         />
+
+        {!props.group_id && (
+          <Select
+            label='Channel Group'
+            data={groups}
+            icon={<IconFolder size={16} />}
+            withinPortal
+            {...form.getInputProps('group')}
+          />
+        )}
 
         {extraSettings && <Divider />}
 

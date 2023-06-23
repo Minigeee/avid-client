@@ -212,8 +212,8 @@ function JoinScreen({ app, ...props }: SubviewProps) {
   }, []);
 
   // Rtc permissions
-  const canSpeak = hasPermission(props.domain, props.channel.id, 'can_speak');
-  const canVideo = hasPermission(props.domain, props.channel.id, 'can_share_video');
+  const canSpeak = hasPermission(props.domain, props.channel.id, 'can_broadcast_audio');
+  const canVideo = hasPermission(props.domain, props.channel.id, 'can_broadcast_video');
   
   const webcamOn = canVideo && app.rtc?.is_webcam_on;
   const micOn = canSpeak && !app.rtc?.is_mic_muted;
