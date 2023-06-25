@@ -31,6 +31,24 @@ function _hasAccessToken(session: _SessionState) {
 
 /** Creates mutator functions for session (not all funcs are mutators) */
 function mutatorFactory(session: _SessionState, setSession: (state: _SessionState) => unknown) {
+	function setToken(token: string) {
+		// Set session data
+		const payload: any = decode(token);
+		setSession({
+			_exists: true,
+			token,
+			user_id: payload.user_id,
+			profile_id: payload.profile_id,
+			email: payload.email,
+		});
+
+		// Set user for error logging
+		setUser({
+			id: payload.profile_id || payload.user_id,
+			email: payload.email,
+		});
+	}
+
 	return {
 		/**
 		 * Refresh access token.
@@ -60,21 +78,8 @@ function mutatorFactory(session: _SessionState, setSession: (state: _SessionStat
 				return;
 			}
 
-			// Set session data
-			const payload: any = decode(token);
-			setSession({
-				_exists: true,
-				token,
-				user_id: payload.user_id,
-				profile_id: payload.profile_id,
-				email: payload.email,
-			});
-
-			// Set user for error logging
-			setUser({
-				id: payload.profile_id || payload.user_id,
-				email: payload.email,
-			});
+			// Apply token
+			setToken(token);
 
 			return token;
 		},
@@ -87,6 +92,13 @@ function mutatorFactory(session: _SessionState, setSession: (state: _SessionStat
 		setProfile: (profile_id: string) => {
 			setSession({ ...session, profile_id });
 		},
+
+		/**
+		 * Applies a token string.
+		 * 
+		 * @param token The token to decode and apply
+		 */
+		applyToken: setToken,
 	};
 }
 

@@ -12,7 +12,7 @@ import {
 import { useForm } from '@mantine/form';
 
 import { useSession } from '@/lib/hooks';
-import { useProfilesDb } from '@/lib/db';
+import { createProfile } from '@/lib/api';
 
 
 ////////////////////////////////////////////////////////////
@@ -23,7 +23,6 @@ interface Props {
 ////////////////////////////////////////////////////////////
 export default function CreateProfile(props: Props) {
   const session = useSession();
-  const profiles = useProfilesDb();
 
   const [loading, setLoading] = useState(false);
 
@@ -46,12 +45,7 @@ export default function CreateProfile(props: Props) {
     setLoading(true);
 
     // Update profile, and make it current
-    const profile_id = await profiles.create(session.user_id, values.username, true);
-
-    // Update session with new profile
-    if (profile_id)
-      // Force refresh because new user object will have current profile
-      session._mutators.refresh(true);
+    await createProfile(values.username, session);
 
     setLoading(false);
   }
