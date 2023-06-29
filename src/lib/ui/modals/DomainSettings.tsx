@@ -357,25 +357,25 @@ function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps
 
           <PermissionSetting
             title='Manage Domain'
-            description='Allows users with this role to manage domain settings, including the domain name, icon, and banner.'
+            description={<>Allows <b>{`@${role.label}`}</b> to manage domain settings, including the domain name, icon, and banner.</>}
             switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Manage Invites'
-            description='Allows users with this role to create, edit, and delete invites to the domain.'
+            description={<>Allows <b>{`@${role.label}`}</b> to create, edit, and delete invites to the domain.</>}
             switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_invites`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Manage Extensions'
-            description='Allows users with this role to add and manage the extensions of this domain.'
+            description={<>Allows <b>{`@${role.label}`}</b> to add and manage the extensions of this domain.</>}
             switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_extensions`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Create Roles'
-            description='Allows users with this role to create and manage new roles within this domain, but does not allow them to edit or delete any existing role that they do not already have permissions for. This role will not be able to create new roles with permissions that this role does not have. To enable more precise role management capabilities, assign this role as a "Manager" to the specific roles it should handle.'
+            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new roles within this domain, but does not allow them to edit or delete any existing role that they do not already have permissions for. Users will not be able to create new roles with permissions that they do not have. To enable more precise role management capabilities, assign <b>{`@${role.label}`}</b> as a "Manager" to the specific roles it should handle.</>}
             switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_roles`, { type: 'checkbox' })}
             withDivider={false}
           />

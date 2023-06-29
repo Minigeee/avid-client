@@ -187,7 +187,7 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
   return (
     <Transition mounted={context.bodyRef.current !== null && form.isDirty()} transition='pop-bottom-right' duration={200}>
       {(styles) => (
-        <Affix target={context.bodyRef.current || undefined} position={{ bottom: '0.75rem', right: '0.75rem' }}>
+        <Affix target={context.bodyRef.current || undefined} position={{ bottom: '0.75rem', right: '1.0rem' }}>
           <Group
             spacing={8}
             w='30rem'

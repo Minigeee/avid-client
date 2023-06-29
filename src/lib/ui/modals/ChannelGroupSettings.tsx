@@ -181,19 +181,19 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
           <PermissionSetting
             title='View Group'
-            description='Allows users with this role to view this group and the channels and resources within this group.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to view this group and the channels and resources within this group.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_view`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Manage Group'
-            description='Allows users with this role to manage group settings, edit and delete channels within the group, and manage role access and permissions. This role will only be able to manage permissions for roles which they can already manage.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to manage group settings, edit and delete channels within the group, and manage role access and permissions. Users will only be able to manage permissions for roles which they can already manage.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_manage`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Create Channels'
-            description='Allows users with this role to create any new channels and resources within this group, but does not allow them to edit or delete the channels.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create any new channels and resources within this group, but does not allow them to edit or delete the channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_create_resources`, { type: 'checkbox' })}
             withDivider={false}
           />
@@ -211,19 +211,19 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
           <PermissionSetting
             title='Send Messages'
-            description='Allows users with this role to send messages in text channels.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send messages in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_send_messages`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Send Attachments'
-            description='Allows users with this role to send file attachments in text channels.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send file attachments in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_send_attachments`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Delete Messages'
-            description='Allows users with this role to delete messages sent by other users in text channels.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages sent by other users in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_delete_messages`, { type: 'checkbox' })}
             withDivider={false}
           />
@@ -241,19 +241,19 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
           <PermissionSetting
             title='Broadcast Audio'
-            description='Allows users with this role to broadcast audio using their microphone in RTC channels.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast audio using their microphone in RTC channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_broadcast_audio`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Broadcast Video'
-            description='Allows users with this role to broadcast video using their webcam or screenshare in RTC channels.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast video using their webcam or screenshare in RTC channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_broadcast_video`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Manage Participants'
-            description='Allows users with this role to manage other participants in RTC channels. Users with this permission are able to mute, deafen, force-stop video broadcasts, move, kick, or ban other participants within an RTC channel.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to manage other participants in RTC channels. Users with this permission are able to mute, deafen, force-stop video broadcasts, move, kick, or ban other participants within an RTC channel.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_manage_participants`, { type: 'checkbox' })}
             withDivider={false}
           />
@@ -271,13 +271,13 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
           <PermissionSetting
             title='Manage Tasks'
-            description='Allows users with this role to create, edit, and delete any task within a board, regardless of assignee.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete any task within a board, regardless of assignee.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_manage_tasks`, { type: 'checkbox' })}
           />
 
           <PermissionSetting
             title='Manage Own Tasks'
-            description='Allows users with this role to create, edit, and delete their own tasks within a board.'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete their own tasks within a board.</>}
             switchProps={form.getInputProps(`permissions.${selectedRole.id}.can_manage_own_tasks`, { type: 'checkbox' })}
             withDivider={false}
           />
