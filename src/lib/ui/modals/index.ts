@@ -11,6 +11,7 @@ import {
 } from './CreateTaskCollection';
 
 import DomainSettings, { DomainSettingsProps } from './DomainSettings';
+import ChannelGroupSettings, { ChannelGroupSettingsProps } from './ChannelGroupSettings';
 import UserSettings, { UserSettingsProps } from './UserSettings';
 
 
@@ -26,6 +27,7 @@ export const modals = {
 	'edit-task-collection': EditTaskCollection,
 
 	'domain-settings': DomainSettings,
+	'channel-group-settings': ChannelGroupSettings,
 	'user-settings': UserSettings,
 };
 
@@ -104,6 +106,22 @@ export const openEditTaskCollection = (props: EditTaskCollectionProps) => openCo
 /** Open domain settings modal */
 export const openDomainSettings = (props: DomainSettingsProps) => openContextModal({
 	modal: 'domain-settings',
+	withCloseButton: false,
+	innerProps: props,
+	size: '160ch',
+	styles: {
+		body: {
+			padding: 0,
+			height: '120ch',
+			maxHeight: '90vh',
+		},
+	},
+	closeOnClickOutside: false,
+});
+
+/** Open domain settings modal */
+export const openChannelGroupSettings = (props: ChannelGroupSettingsProps) => openContextModal({
+	modal: 'channel-group-settings',
 	withCloseButton: false,
 	innerProps: props,
 	size: '160ch',

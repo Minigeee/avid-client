@@ -22,7 +22,7 @@ import { IconTrash } from '@tabler/icons-react';
 import { useImageModal } from '.';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ProfileAvatar from '@/lib/ui/components/ProfileAvatar';
-import SettingsMenu from '@/lib/ui/components/SettingsMenu';
+import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';

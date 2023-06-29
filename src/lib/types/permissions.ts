@@ -10,8 +10,6 @@ export type DomainPermissions =
 	'can_manage_invites' |
 	/** Roles that can create extensions */
 	'can_manage_extensions' |
-	/** Roles that can create domain resources (TODO : Make this a channel group permission) */
-	'can_create_resources' |
 	/** Roles that can create domain level roles */
 	'can_create_roles';
 
@@ -39,7 +37,9 @@ export type ChannelPermissions =
 	/** Roles that can view channel */
 	'can_view' |
 	/** Roles that can manage channel (change settings, etc.) */
-	'can_manage';
+	'can_manage' |
+	/** Roles that can create group resources */
+	'can_create_resources';
 
 /** Text channel permissions */
 export type TextChannelPermissions =

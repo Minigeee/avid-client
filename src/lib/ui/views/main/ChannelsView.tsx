@@ -25,7 +25,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 
-import { openCreateChannel, openTypeConfirm } from '@/lib/ui/modals';
+import { openChannelGroupSettings, openCreateChannel, openTypeConfirm } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
@@ -329,7 +329,14 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                     e.stopPropagation();
                   }}>
                   <Menu.Label>{props.group.name.toUpperCase()}</Menu.Label>
-                  <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
+                  <Menu.Item
+                    icon={<IconSettings size={16} />}
+                    onClick={() => {
+                      openChannelGroupSettings({ domain_id: props.domain.id, group: props.group });
+                    }}
+                  >
+                    Settings
+                  </Menu.Item>
 
                   {hasPermission(props.domain, props.group.id, 'can_manage') && (
                     <>

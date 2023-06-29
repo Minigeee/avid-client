@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 
 import ReactDataTable, { TableColumn, TableStyles } from 'react-data-table-component';
+import { ConditionalStyles, ExpandableRowsComponent } from 'react-data-table-component/dist/src/DataTable/types';
 
 
 ////////////////////////////////////////////////////////////
@@ -66,6 +67,9 @@ function useTableStyles() {
         backgroundColor: theme.colors.dark[7],
         borderTop: `1px solid ${theme.colors.dark[4]}`,
         borderBottom: `1px solid ${theme.colors.dark[4]}`,
+        '&:not(:last-of-type)': {
+          borderBottomColor: theme.colors.dark[5],
+        },
       },
       highlightOnHoverStyle: {
         color: theme.colors.dark[0],
@@ -113,6 +117,27 @@ function useTableStyles() {
         },
       },
     },
+    expanderRow: {
+      style: {
+        color: theme.colors.dark[1],
+        backgroundColor: 'transparent',
+      },
+    },
+    expanderButton: {
+      style: {
+        color: theme.colors.dark[1],
+        fill: theme.colors.dark[1],
+        backgroundColor: 'transparent',
+        height: '100%',
+        width: '100%',
+        '&:hover:not(:disabled)': {
+          backgroundColor: theme.colors.dark[6],
+        },
+        '&:focus': {
+          backgroundColor: 'transparent',
+        },
+      },
+    },
     noData: {
       style: {
         height: '10rem',
@@ -150,8 +175,14 @@ type DataTableProps<T> = {
   selectable?: boolean;
   /** Called when row is clicked */
   onRowClicked?: (row: T) => void;
+  /** The expanded rows component */
+  expandableRowsComponent?: (props: { data: T } & any) => ReactElement;
+  /** Extra props to pass to expandable row component */
+  expandableRowsProps?: any;
   /** Element that is shown when there is no data */
   emptyComponent?: ReactElement;
+  /** Conditional role styles */
+  rowStyles?: ConditionalStyles<T>[];
   /** Properties for wrapper component */
   wrapperProps?: BoxProps;
 };
@@ -219,6 +250,12 @@ export default function DataTable<T extends { id: string }>({ data, ...props }: 
         selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }}
         onSelectedRowsChange={({ selectedRows }) => setSelected(selectedRows)}
         clearSelectedRows={toggleCleared}
+
+        expandableRows={props.expandableRowsComponent !== undefined}
+        expandableRowsComponent={props.expandableRowsComponent}
+        expandableRowsComponentProps={props.expandableRowsProps}
+
+        conditionalRowStyles={props.rowStyles}
       />
     </Box>
   );

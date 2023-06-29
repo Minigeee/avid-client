@@ -84,6 +84,7 @@ type SettingsMenuProps = {
   onChange: (value: string, label: string) => void;
 
   scrollAreaProps?: ScrollAreaProps;
+  groupNames?: Record<string, string>;
 };
 
 ////////////////////////////////////////////////////////////
@@ -94,7 +95,7 @@ export default function SettingsMenu(props: SettingsMenuProps) {
         {Object.entries(props.values).map(([group, values]) => (
           <>
             <Text size='sm' weight={700} color='dimmed' ml={6} mb={3}>
-              {group}
+              {props.groupNames?.[group] || group}
             </Text>
             {values.map((tab, i) => (
               <SettingsTab

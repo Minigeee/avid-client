@@ -12,7 +12,7 @@ export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 			fontSize: 14 * scale,
 			overflowWrap: 'anywhere',
 
-			'&:not(:last-child)': {
+			'&:not(:last-of-type)': {
 				marginBlockEnd: '0.8em',
 			},
 

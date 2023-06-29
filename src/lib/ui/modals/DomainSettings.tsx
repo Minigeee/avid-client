@@ -30,26 +30,28 @@ import { useForm } from '@mantine/form';
 import { ContextModalProps, openConfirmModal } from '@mantine/modals';
 import { UseFormReturnType } from '@mantine/form/lib/types';
 
-import { IconAlertCircle, IconBadge, IconBadgeOff, IconBuildingCommunity, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconAlertCircle, IconBadge, IconBadgeOff, IconBuildingCommunity, IconCheck, IconPlus, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
 
-import { useImageModal } from '.';
+import { openChannelGroupSettings, useImageModal } from '.';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import DataTable from '@/lib/ui/components/DataTable';
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
-import SettingsMenu from '@/lib/ui/components/SettingsMenu';
+import PermissionSetting from '@/lib/ui/components/settings/PermissionSetting';
+import UnsavedChanges from '@/lib/ui/components/settings/UnsavedChanges';
+import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { DomainWrapper, useAclEntries, useApp, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
-import { AllChannelPermissions, AllPermissions, ChannelTypes, Role } from '@/lib/types';
+import { DomainWrapper, cache, useAclEntries, useAclEntriesByRole, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
+import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
 
 
 ////////////////////////////////////////////////////////////
 const TABS = {
-  'Domain Settings': [
+  '_': [
     { value: 'general', label: 'General' },
     { value: 'roles', label: 'Roles' },
   ],
@@ -77,70 +79,6 @@ type TabProps = {
   /** Modal body ref */
   bodyRef: RefObject<HTMLDivElement>;
 };
-
-
-////////////////////////////////////////////////////////////
-type UnsavedChangesProps<T> = {
-  bodyRef: RefObject<HTMLDivElement>;
-  form: UseFormReturnType<T>;
-  onSubmit?: () => Promise<void>;
-};
-
-////////////////////////////////////////////////////////////
-function UnsavedChanges<T>({ bodyRef, form, ...props }: UnsavedChangesProps<T>) {
-  const [loading, setLoading] = useState<boolean>(false);
-
-  return (
-    <Transition mounted={bodyRef.current !== null && form.isDirty()} transition='pop-bottom-right' duration={200}>
-      {(styles) => (
-        <Affix target={bodyRef.current || undefined} position={{ bottom: '0.75rem', right: '0.75rem' }}>
-          <Group
-            spacing={8}
-            w='30rem'
-            p='0.5rem 0.5rem 0.5rem 0.8rem'
-            sx={(theme) => ({
-              backgroundColor: theme.colors.dark[8],
-              boxShadow: '0px 0px 12px #00000030',
-              '.tabler-icon': { color: theme.colors.dark[4], marginBottom: 1 },
-            })}
-            style={styles}
-          >
-            <IconAlertCircle size='1.5rem' />
-            <Text ml={4}>You have unsaved changes</Text>
-            <div style={{ flexGrow: 1 }} />
-
-            <Button
-              variant='default'
-              onClick={() => form.reset()}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant='gradient'
-              loading={loading}
-              onClick={async () => {
-                if (!props.onSubmit) return;
-
-                try {
-                  setLoading(true);
-                  await props.onSubmit();
-
-                  // Reset dirty
-                  form.resetDirty();
-                }
-                finally {
-                  setLoading(false);
-                }
-              }}
-            >
-              Save
-            </Button>
-          </Group>
-        </Affix>
-      )}
-    </Transition>
-  );
-}
 
 
 ////////////////////////////////////////////////////////////
@@ -246,33 +184,256 @@ function GeneralTab({ domain, ...props }: TabProps) {
 
 
 ////////////////////////////////////////////////////////////
-type PermissionSettingProps = {
-  title: string;
-  description: ReactNode;
-  withDivider?: boolean;
+const CHANNEL_GROUP_PERMISSION_COLUMNS = [
+  {
+    name: 'Name',
+    grow: 1,
+    style: { fontSize: 14 },
+    selector: (group: ChannelGroup) => group.name,
+  },
+  {
+    name: 'Can View',
+    center: true,
+    width: '6rem',
+    cell: (group: { can_view: boolean }) => group.can_view ?
+      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck size={20} /></Box>) :
+      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX size={20} /></Box>),
+  },
+  {
+    name: 'Can Manage',
+    center: true,
+    width: '8rem',
+    cell: (group: { can_manage: boolean }) => group.can_manage ?
+      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck size={20} /></Box>) :
+      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX size={20} /></Box>),
+  },
+];
 
-  switchProps?: SwitchProps;
+////////////////////////////////////////////////////////////
+function GroupPermissoinsExpandableRows({ data, domain }: { data: ChannelGroup, domain: DomainWrapper }) {
+  return (
+    <Stack
+      spacing={0}
+      pt={6}
+      sx={(theme) => ({ backgroundColor: theme.colors.dark[7] })}
+    >
+      {data.channels.map((channel_id, idx) => (
+        <Group spacing='xs' p='0.3rem 0.6rem'>
+          <ChannelIcon type={domain.channels[channel_id].type} size={16} />
+          <Text inline size='sm' weight={600} mb={1} sx={{ flexGrow: 1 }}>
+            {domain.channels[channel_id].name}
+          </Text>
+        </Group>
+      ))}
+    </Stack>
+    );
+}
+
+
+////////////////////////////////////////////////////////////
+type RoleFormValues = {
+  roles: Role[];
+  domain_permissions: Record<string, {
+    can_manage: boolean;
+    can_manage_invites: boolean;
+    can_create_resources: boolean;
+    can_manage_extensions: boolean;
+    can_create_roles: boolean;
+  }>;
 };
 
 ////////////////////////////////////////////////////////////
-function PermissionSetting(props: PermissionSettingProps) {
+type RoleSettingsTabsProps = {
+  domain: DomainWrapper;
+  role: Role;
+  roleIdx: number;
+  form: UseFormReturnType<RoleFormValues>;
+};
+
+////////////////////////////////////////////////////////////
+function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps) {
+  // Get permissions for this role
+  const acl = useAclEntriesByRole(role.id);
+
+  // The current tab that is open
+  const [activeTab, setActiveTab] = useCachedState<string | null>(`settings.${domain.id}.roles.tab`, 'general');
+  // Is badge picker open
+  const [badgePickerOpen, setBadgePickerOpen] = useState<boolean>(false);
+
+  // Data table
+  const groupPermissionsData = useMemo(() => {
+    if (!acl._exists) return [];
+
+    // Map of resource id to acl entry
+    const aclMap: Record<string, AclEntry> = {};
+    for (const entry of acl.data)
+      aclMap[entry.resource] = entry;
+
+    // Create data
+    return domain.groups.map(group => ({
+      ...group,
+      can_view: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_view') >= 0 : false,
+      can_manage: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_manage') >= 0 : false,
+    }))
+  }, [domain.groups, acl.data]);
+
+
   return (
-    <>
-      <Flex maw={config.app.ui.settings_maw} wrap='nowrap' gap='1.0rem'>
-        <Box sx={{ flexGrow: 1 }}>
-          <Text size='md' weight={600} mb={4}>{props.title}</Text>
-          <Text size='sm' color='dimmed' maw='40rem'>
-            {props.description}
-          </Text>
-        </Box>
+    <Tabs value={activeTab} onTabChange={setActiveTab} variant='outline' defaultValue='general'>
+      <Tabs.List>
+        <Tabs.Tab value='general'>General</Tabs.Tab>
+        <Tabs.Tab value='managers'>Managers</Tabs.Tab>
+        <Tabs.Tab value='permissions'>Permissions</Tabs.Tab>
+        <Tabs.Tab value='members'>Members</Tabs.Tab>
+      </Tabs.List>
 
-        <Switch {...props.switchProps} />
-      </Flex>
+      {/* General */}
+      <Tabs.Panel value='general'>
+        <Stack mt={20}>
+          <TextInput
+            label='Name'
+            sx={{ width: config.app.ui.med_input_width }}
+            {...form.getInputProps(`roles.${roleIdx}.label`)}
+          />
 
-      {props.withDivider !== false && (
-        <Divider maw={config.app.ui.settings_maw} sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
-      )}
-    </>
+          <ColorInput
+            label='Color'
+            description={`The role color affects the colored tags displayed in a user's profile`}
+            placeholder='None'
+            swatchesPerRow={7}
+            swatches={PRESET_COLORS}
+            styles={{ wrapper: { maxWidth: config.app.ui.med_input_width } }}
+            {...form.getInputProps(`roles.${roleIdx}.color`)}
+          />
+
+          <div>
+            <Text size='sm' weight={600}>Badge</Text>
+            <Text size='xs' color='dimmed' mb={6}>
+              A role badge is an icon displayed next to a user's names in chat
+            </Text>
+
+            <Group mt={8} spacing='sm'>
+              <Center sx={(theme) => ({
+                height: '2.75rem',
+                width: '2.75rem',
+                backgroundColor: role.badge ? undefined : theme.colors.dark[8],
+                color: theme.colors.dark[3],
+                borderRadius: '3rem',
+              })}>
+                {role.badge ? (<Emoji id={role.badge} size='2rem' />) : (<IconBadgeOff size='1.75rem' />)}
+              </Center>
+
+              <Popover
+                opened={badgePickerOpen}
+                withinPortal
+                withArrow
+                onClose={() => setBadgePickerOpen(false)}
+              >
+                <Popover.Target>
+                  <Button variant='default' ml={4} onClick={() => setBadgePickerOpen(!badgePickerOpen)}>
+                    {role.badge ? 'Change' : 'Add'} Badge
+                  </Button>
+                </Popover.Target>
+                <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
+                  backgroundColor: theme.colors.dark[7],
+                  borderColor: theme.colors.dark[5],
+                  boxShadow: '0px 4px 16px #00000030',
+                })}>
+                  <EmojiPicker
+                    emojiSize={32}
+                    onSelect={(emoji) => {
+                      form.setFieldValue(`roles.${roleIdx}.badge`, emoji.id);
+                      setBadgePickerOpen(false);
+                    }}
+                  />
+                </Popover.Dropdown>
+              </Popover>
+
+              {role.badge && (
+                <CloseButton
+                  size='md'
+                  onClick={() => form.setFieldValue(`roles.${roleIdx}.badge`, null)}
+                />
+              )}
+            </Group>
+          </div>
+        </Stack>
+      </Tabs.Panel>
+
+      {/* Permissions */}
+      <Tabs.Panel value='permissions'>
+        <Stack mt={20}>
+          <Box mb={8}>
+            <Group spacing='xs' mb={4}>
+              <IconBuildingCommunity size={19} />
+              <Title order={4}>Domain Permissions</Title>
+            </Group>
+            <Text size='sm' color='dimmed'>
+              General permissions that apply to the domain.
+            </Text>
+          </Box>
+
+          <PermissionSetting
+            title='Manage Domain'
+            description='Allows users with this role to manage domain settings, including the domain name, icon, and banner.'
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage`, { type: 'checkbox' })}
+          />
+
+          <PermissionSetting
+            title='Manage Invites'
+            description='Allows users with this role to create, edit, and delete invites to the domain.'
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_invites`, { type: 'checkbox' })}
+          />
+
+          <PermissionSetting
+            title='Manage Extensions'
+            description='Allows users with this role to add and manage the extensions of this domain.'
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_extensions`, { type: 'checkbox' })}
+          />
+
+          <PermissionSetting
+            title='Create Roles'
+            description='Allows users with this role to create and manage new roles within this domain, but does not allow them to edit or delete any existing role that they do not already have permissions for. This role will not be able to create new roles with permissions that this role does not have. To enable more precise role management capabilities, assign this role as a "Manager" to the specific roles it should handle.'
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_roles`, { type: 'checkbox' })}
+            withDivider={false}
+          />
+
+          <Divider maw={config.app.ui.settings_maw} mt={16} />
+          <Box mb={12}>
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='text' size={20} />
+              <Title order={4}>Channel Permissions</Title>
+            </Group>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              {/* TODO : Allow channels to be clickable (to modify channel permissions) */}
+              Permissions for each channel group. Click a group to modify its permissions.
+            </Text>
+          </Box>
+
+          <DataTable
+            columns={CHANNEL_GROUP_PERMISSION_COLUMNS}
+            data={groupPermissionsData}
+            expandableRowsComponent={GroupPermissoinsExpandableRows}
+            expandableRowsProps={{ domain }}
+            onRowClicked={(row) => {
+              // Save changes in cache
+              cache[`settings.${domain.id}.roles.changes`] = form.values;
+
+              // Open modal
+              openChannelGroupSettings({
+                domain_id: domain.id,
+                group: row,
+                tab: 'permissions',
+                role,
+              });
+            }}
+            wrapperProps={{
+              maw: config.app.ui.settings_maw,
+            }}
+          />
+        </Stack>
+      </Tabs.Panel>
+    </Tabs>
   );
 }
 
@@ -288,13 +449,7 @@ function RolesTab({ domain, ...props }: TabProps) {
     }
 
     // Map of domain permissions per role
-    const domainPermissions: Record<string, {
-      can_manage: boolean;
-      can_manage_invites: boolean;
-      can_create_resources: boolean;
-      can_manage_extensions: boolean;
-      can_create_roles: boolean;
-    }> = {};
+    const domainPermissions: RoleFormValues['domain_permissions'] = {};
 
     for (const role of domain.roles) {
       const entry = aclEntries.data?.find(x => x.role === role.id);
@@ -314,25 +469,32 @@ function RolesTab({ domain, ...props }: TabProps) {
         color: role.color || '',
       })),
       domain_permissions: domainPermissions,
-    };
+    } as RoleFormValues;
   }, [aclEntries.data, domain.roles]);
   const form = useForm({ initialValues });
 
-  // Chosen role index
-  const [roleIdx, setRoleIdx] = useState<number | null>(null);
-  // Is badge picker open
-  const [badgePickerOpen, setBadgePickerOpen] = useState<boolean>(false);
+  // Chosen role
+  const [selectedRole, setSelectedRole] = useCachedState<Role | null>(`settings.${domain.id}.roles.selected`, null);
 
+  // Reset form values on change
   useEffect(() => {
-    if (!form.isDirty()) {
+    const cached = cache[`settings.${domain.id}.roles.changes`];
+    if (cached) {
+      form.setValues(cached);
+      cache[`settings.${domain.id}.roles.changes`] = undefined;
+    }
+    else if (!form.isDirty()) {
       form.setValues(initialValues);
       form.resetDirty(initialValues);
     }
   }, [initialValues]);
 
+  // Index of role
+  const selectedIdx = useMemo(() => {
+    if (!selectedRole) return null;
+    return domain.roles.findIndex(x => x.id === selectedRole.id);
+  }, [selectedRole, domain.roles]);
 
-  // Current role
-  const role = roleIdx !== null ? form.values.roles[roleIdx] : null;
 
   return (
     <>
@@ -372,14 +534,14 @@ function RolesTab({ domain, ...props }: TabProps) {
                 <UnstyledButton
                   sx={(theme) => ({
                     padding: '0.4rem 0.6rem',
-                    backgroundColor: roleIdx === idx ? theme.colors.dark[7] : undefined,
+                    backgroundColor: selectedRole?.id === role.id ? theme.colors.dark[7] : undefined,
                     transition: 'background-color, 0.08s',
 
                     '&:hover': {
                       backgroundColor: theme.colors.dark[7],
                     },
                   })}
-                  onClick={() => setRoleIdx(idx)}
+                  onClick={() => setSelectedRole(role)}
                 >
                   <Group spacing='xs'>
                     <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
@@ -396,216 +558,17 @@ function RolesTab({ domain, ...props }: TabProps) {
           </ScrollArea.Autosize>
         </Box>
 
-        {role && (
+        {selectedRole && selectedIdx !== null && (
           <>
-          <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
-          <Title order={3} mb={8}>Edit - {role.id === domain._default_role ? '@' : ''}{role.label}</Title>
+            <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+            <Title order={3} mb={8}>Edit - {'@'}{selectedRole.label}</Title>
 
-          <Tabs variant='outline' defaultValue='general'>
-            <Tabs.List>
-              <Tabs.Tab value='general'>General</Tabs.Tab>
-              <Tabs.Tab value='managers'>Managers</Tabs.Tab>
-              <Tabs.Tab value='permissions'>Permissions</Tabs.Tab>
-              <Tabs.Tab value='members'>Members</Tabs.Tab>
-            </Tabs.List>
-
-            {/* General */}
-            <Tabs.Panel value='general'>
-              <Stack mt={20}>
-                <TextInput
-                  label='Name'
-                  sx={{ width: config.app.ui.med_input_width }}
-                  {...form.getInputProps(`roles.${roleIdx}.label`)}
-                />
-
-                <ColorInput
-                  label='Color'
-                  description={`The role color affects the colored tags displayed in a user's profile`}
-                  placeholder='None'
-                  swatchesPerRow={7}
-                  swatches={PRESET_COLORS}
-                  styles={{ wrapper: { maxWidth: config.app.ui.med_input_width } }}
-                  {...form.getInputProps(`roles.${roleIdx}.color`)}
-                />
-
-                <div>
-                  <Text size='sm' weight={600}>Badge</Text>
-                  <Text size='xs' color='dimmed' mb={6}>
-                    A role badge is an icon displayed next to a user's names in chat
-                  </Text>
-
-                  <Group mt={8} spacing='sm'>
-                    <Center sx={(theme) => ({
-                      height: '2.75rem',
-                      width: '2.75rem',
-                      backgroundColor: role.badge ? undefined : theme.colors.dark[8],
-                      color: theme.colors.dark[3],
-                      borderRadius: '3rem',
-                    })}>
-                      {role.badge ? (<Emoji id={role.badge} size='2rem' />) : (<IconBadgeOff size='1.75rem' />)}
-                    </Center>
-
-                    <Popover
-                      opened={badgePickerOpen}
-                      withinPortal
-                      withArrow
-                      onClose={() => setBadgePickerOpen(false)}
-                    >
-                      <Popover.Target>
-                        <Button variant='default' ml={4} onClick={() => setBadgePickerOpen(!badgePickerOpen)}>
-                          {role.badge ? 'Change' : 'Add'} Badge
-                        </Button>
-                      </Popover.Target>
-                      <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
-                        backgroundColor: theme.colors.dark[7],
-                        borderColor: theme.colors.dark[5],
-                        boxShadow: '0px 4px 16px #00000030',
-                      })}>
-                        <EmojiPicker
-                          emojiSize={32}
-                          onSelect={(emoji) => {
-                            form.setFieldValue(`roles.${roleIdx}.badge`, emoji.id);
-                            setBadgePickerOpen(false);
-                          }}
-                        />
-                      </Popover.Dropdown>
-                    </Popover>
-
-                    {role.badge && (
-                      <CloseButton
-                        size='md'
-                        onClick={() => form.setFieldValue(`roles.${roleIdx}.badge`, null)}
-                      />
-                    )}
-                  </Group>
-                </div>
-              </Stack>
-            </Tabs.Panel>
-            
-            {/* Permissions */}
-              <Tabs.Panel value='permissions'>
-                <Stack mt={20}>
-                  <Box mb={8}>
-                    <Group spacing='xs' mb={4}>
-                      <IconBuildingCommunity size={19} />
-                      <Title order={4}>Domain Permissions</Title>
-                    </Group>
-                    <Text size='sm' color='dimmed'>
-                      General permissions that apply to the domain.
-                    </Text>
-                  </Box>
-
-                  <PermissionSetting
-                    title='Manage Domain'
-                    description='Allows users with this role to manage domain settings, including the domain name, icon, and banner.'
-                    switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Manage Invites'
-                    description='Allows users with this role to create, edit, and delete invites to the domain.'
-                    switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_invites`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Manage Extensions'
-                    description='Allows users with this role to add and manage the extensions of this domain.'
-                    switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_extensions`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Create Roles'
-                    description='Allows users with this role to create and manage new roles within this domain, but does not allow them to edit or delete any existing role that they do not already have permissions for. This role will not be able to create new roles with permissions that this role does not have. To enable more precise role management capabilities, assign this role as a "Manager" to the specific roles it should handle.'
-                    switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_roles`, { type: 'checkbox' })}
-                    withDivider={false}
-                  />
-
-                  {/* <Divider maw={config.app.ui.settings_maw} mt={16} />
-                  <Box mb={12}>
-                    <Group spacing='xs' mb={4}>
-                      <ChannelIcon type='text' size={20} />
-                      <Title order={4}>Chat Permissions</Title>
-                    </Group>
-                    <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-                      Default permissions for new and existing text channels. These permissions can be customized within each specific channel to provide finer control over access and permissions.
-                    </Text>
-                  </Box>
-
-                  <PermissionSetting
-                    title='Send Messages'
-                    description='Allows users with this role to send messages in text channels.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.text.can_send_messages`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Send Attachments'
-                    description='Allows users with this role to send file attachments in text channels.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.text.can_send_attachments`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Delete Messages'
-                    description='Allows users with this role to delete messages sent by other users in text channels.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.text.can_delete_messages`, { type: 'checkbox' })}
-                    withDivider={false}
-                  />
-
-                  <Divider maw={config.app.ui.settings_maw} mt={16} />
-                  <Box mb={12}>
-                    <Group spacing='xs' mb={4}>
-                      <ChannelIcon type='rtc' size={20} />
-                      <Title order={4}>Voice & Video Permissions</Title>
-                    </Group>
-                    <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-                      Default permissions for new and existing voice & video channels. These permissions can be customized within each specific channel to provide finer control over access and permissions. Voice & video channels will be referred to as RTC channels.
-                    </Text>
-                  </Box>
-
-                  <PermissionSetting
-                    title='Broadcast Audio'
-                    description='Allows users with this role to broadcast audio using their microphone in RTC channels.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.rtc.can_broadcast_audio`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Broadcast Video'
-                    description='Allows users with this role to broadcast video using their webcam or screenshare in RTC channels.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.rtc.can_broadcast_video`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Manage Participants'
-                    description='Allows users with this role to manage other participants in RTC channels. Users with this permission are able to mute, deafen, force-stop video broadcasts, move, kick, or ban other participants within an RTC channel.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.rtc.can_manage_participants`, { type: 'checkbox' })}
-                    withDivider={false}
-                  />
-
-                  <Divider maw={config.app.ui.settings_maw} mt={16} />
-                  <Box mb={12}>
-                    <Group spacing='xs' mb={4}>
-                      <ChannelIcon type='board' size={19} />
-                      <Title order={4}>Board Permissions</Title>
-                    </Group>
-                    <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-                      Default permissions for new and existing task boards. These permissions can be customized within each specific board to provide finer control over access and permissions.
-                    </Text>
-                  </Box>
-
-                  <PermissionSetting
-                    title='Manage Tasks'
-                    description='Allows users with this role to create, edit, and delete any task within a board, regardless of assignee.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.board.can_manage_tasks`, { type: 'checkbox' })}
-                  />
-
-                  <PermissionSetting
-                    title='Manage Own Tasks'
-                    description='Allows users with this role to create, edit, and delete their own tasks within a board.'
-                    switchProps={form.getInputProps(`roles.${roleIdx}.permissions.board.can_manage_own_tasks`, { type: 'checkbox' })}
-                    withDivider={false}
-                  /> */}
-              </Stack>
-            </Tabs.Panel>
-          </Tabs>
+            <RoleSettingsTabs
+              domain={domain}
+              role={selectedRole}
+              roleIdx={selectedIdx}
+              form={form}
+            />
           </>
         )}
 
@@ -614,6 +577,7 @@ function RolesTab({ domain, ...props }: TabProps) {
       <UnsavedChanges
         bodyRef={props.bodyRef}
         form={form}
+        initialValues={initialValues}
         onSubmit={async () => {
           // Recreate original roles
           const original: Record<string, Role> = {};
@@ -695,17 +659,31 @@ export default function DomainSettings({ context, id, innerProps: props }: Conte
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Current tab
-  const [tab, setTab] = useMemoState(() => {
-    const tabId = props.tab || 'roles';
+  const initialTab = useMemo(() => {
+    const tabId = props.tab || 'general';
     return FLATTENED.find(x => x.value === tabId);
-  }, [props.tab]);
+  }, [props.tab])
+  const [tab, setTab] = useCachedState<{ value: string; label: string } | null>(`settings.${props.domain_id}.tab`, initialTab || null, props.tab ? initialTab : undefined);
+
+  // Click close handlers
+  useEffect(() => {
+    function clickClose() {
+      
+    }
+
+    window.addEventListener('click', clickClose);
+
+    return () => {
+      window.removeEventListener('click', clickClose);
+    }
+  }, []);
 
 
   if (!domain._exists) return null;
   const tabProps = { app, session, domain, bodyRef };
 
   return (
-    <Flex ref={bodyRef} w='100%' h='100%'>
+    <Flex ref={bodyRef} w='100%' h='100%' onClick={(e) => e.stopPropagation()}>
       <SettingsMenu
         values={TABS}
         value={tab?.value || ''}
@@ -715,6 +693,7 @@ export default function DomainSettings({ context, id, innerProps: props }: Conte
           pt: 10,
           sx: (theme) => ({ backgroundColor: theme.colors.dark[6] }),
         }}
+        groupNames={{ '_': domain.name }}
       />
 
       <Flex h='100%' direction='column' sx={(theme) => ({
@@ -734,7 +713,7 @@ export default function DomainSettings({ context, id, innerProps: props }: Conte
           />
         </Flex>
 
-        <ScrollArea sx={{ flexGrow: 1, padding: '1.0rem 1.5rem' }}>
+        <ScrollArea sx={{ flexGrow: 1 }} viewportProps={{ style: { padding: '1.0rem 1.5rem' } }}>
           {tab?.value === 'general' && (<GeneralTab {...tabProps} />)}
           {tab?.value === 'roles' && (<RolesTab {...tabProps} />)}
         </ScrollArea>

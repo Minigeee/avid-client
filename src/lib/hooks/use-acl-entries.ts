@@ -91,6 +91,8 @@ function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resou
 export type AclEntriesMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for acl entries */
 export type AclEntriesWrapper<Loaded extends boolean = true> = SwrWrapper<AclEntry[], Loaded, AclEntriesMutators>;
+/** Swr data wrapper for acl entries */
+export type AclEntriesWrapperNoMutators<Loaded extends boolean = true> = SwrWrapper<AclEntry[], Loaded>;
 
 
 /**
@@ -107,5 +109,20 @@ export function useAclEntries(resource_id: string | undefined) {
 		}),
 		mutators,
 		mutatorParams: [resource_id],
+	});
+}
+
+/**
+ * Get a list of ACL entries for all resources with a given role
+ * 
+ * @param role_id The id of the role to retrieve ACL entries for
+ * @returns A swr wrapper with a list of ACL entries
+ */
+export function useAclEntriesByRole(role_id: string | undefined) {
+	return useDbQuery<AclEntry[]>(role_id ? `${role_id}.acl_roles` : undefined, {
+		builder: (key) => sql.select<AclEntry>('*', {
+			from: 'acl',
+			where: sql.match<AclEntry>({ role: role_id }),
+		}),
 	});
 }
