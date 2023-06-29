@@ -27,8 +27,7 @@ import DataTable from '@/lib/ui/components/DataTable';
 import { Emoji } from '@/lib/ui/components/Emoji';
 import ProfileAvatar from '@/lib/ui/components/ProfileAvatar';
 import PermissionSetting from '@/lib/ui/components/settings/PermissionSetting';
-import UnsavedChanges from '@/lib/ui/components/settings/UnsavedChanges';
-import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
+import { SettingsModal } from '@/lib/ui/components/settings/SettingsModal';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
@@ -39,24 +38,10 @@ import { diff } from '@/lib/utility';
 
 
 ////////////////////////////////////////////////////////////
-const TABS = {
-  '_': [
-    { value: 'permissions', label: 'Permissions' },
-  ],
-};
-let FLATTENED: { value: string; label: string }[] = [];
-for (const tabs of Object.values(TABS))
-  FLATTENED = FLATTENED.concat(tabs);
-
-////////////////////////////////////////////////////////////
 type TabProps = {
-  app: AppState;
   session: SessionState;
   domain: DomainWrapper;
   group: ChannelGroup;
-
-  /** Modal body ref */
-  bodyRef: RefObject<HTMLDivElement>;
 };
 
 
@@ -103,7 +88,7 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
   // Group permissions
   const aclEntries = useAclEntries(group.id);
-  
+
   // Settings form
   const initialValues = useMemo(() => {
     if (!aclEntries._exists) return { permissions: {} };
@@ -146,7 +131,7 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
     if (!aclEntries._exists) return [];
     return aclEntries.data.map(e => props.domain.roles.find(x => x.id === e.role)).filter(x => x) as Role[];
   }, [aclEntries.data, props.domain.roles]);
-  
+
   // Reset form values on change
   useEffect(() => {
     if (!form.isDirty()) {
@@ -158,7 +143,6 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
   return (
     <>
-    <Stack pb='5rem'>
       <Box>
         <Title order={3}>Roles</Title>
         <Text size='sm' color='dimmed'>
@@ -299,13 +283,11 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
           />
         </>
       )}
-      </Stack>
 
-      <UnsavedChanges
-        bodyRef={props.bodyRef}
+      <SettingsModal.Unsaved
         form={form}
         initialValues={initialValues}
-        onSubmit={async () => {
+        onSave={async () => {
           // Set permissions if changed
           const diffs = diff(initialValues.permissions, form.values.permissions);
 
@@ -339,57 +321,30 @@ export type ChannelGroupSettingsProps = {
 
 ////////////////////////////////////////////////////////////
 export default function ChannelGroupSettings({ context, id, innerProps: props }: ContextModalProps<ChannelGroupSettingsProps>) {
-  const app = useApp();
   const session = useSession();
   const domain = useDomain(props.domain_id);
 
-  // Modal body
-  const bodyRef = useRef<HTMLDivElement>(null);
-
-  const [tab, setTab] = useMemoState(() => {
-    const tabId = props.tab || 'permissions';
-    return FLATTENED.find(x => x.value === tabId);
-  }, [props.tab]);
+  // Tabs
+  const tabs = useMemo(() => ({
+    [props.group.name || '_']: [
+      { value: 'permissions', label: 'Permissions' },
+    ],
+  }), [props.group.name]);
 
 
   if (!domain._exists) return null;
-  const tabProps = { app, session, domain, group: props.group, bodyRef };
+  const tabProps = { session, domain, group: props.group };
 
   return (
-    <Flex ref={bodyRef} w='100%' h='100%'>
-      <SettingsMenu
-        values={TABS}
-        value={tab?.value || ''}
-        onChange={(value, label) => setTab({ label, value })}
-        scrollAreaProps={{
-          w: '30ch',
-          pt: 10,
-          sx: (theme) => ({ backgroundColor: theme.colors.dark[6] }),
-        }}
-        groupNames={{ '_': props.group.name }}
-      />
-
-      <Flex h='100%' direction='column' sx={(theme) => ({
-        flexGrow: 1,
-        backgroundColor: theme.colors.dark[7],
-      })}>
-        <Flex align='end' mb={4} sx={(theme) => ({
-          padding: '1.0rem 1.5rem',
-          borderBottom: `1px solid ${theme.colors.dark[5]}`,
-        })}>
-          <Title order={2}>{tab?.label}</Title>
-          <div style={{ flexGrow: 1 }} />
-          <CloseButton
-            size='lg'
-            iconSize={24}
-            onClick={() => context.closeModal(id)}
-          />
-        </Flex>
-
-        <ScrollArea sx={{ flexGrow: 1, padding: '1.0rem 1.5rem' }}>
-          {tab?.value === 'permissions' && (<PermissionsTab {...tabProps} role={props.role} />)}
-        </ScrollArea>
-      </Flex>
-    </Flex>
+    <SettingsModal
+      navkey={props.group.id}
+      tabs={tabs}
+      defaultTab={props.tab}
+      close={() => context.closeModal(id)}
+    >
+      <SettingsModal.Panel value='permissions'>
+        <PermissionsTab {...tabProps} role={props.role} />
+      </SettingsModal.Panel>
+    </SettingsModal>
   );
 }

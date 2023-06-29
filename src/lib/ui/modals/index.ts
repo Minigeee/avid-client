@@ -117,6 +117,7 @@ export const openDomainSettings = (props: DomainSettingsProps) => openContextMod
 		},
 	},
 	closeOnClickOutside: false,
+	closeOnEscape: false,
 });
 
 /** Open domain settings modal */
@@ -132,6 +133,8 @@ export const openChannelGroupSettings = (props: ChannelGroupSettingsProps) => op
 			maxHeight: '90vh',
 		},
 	},
+	closeOnClickOutside: false,
+	closeOnEscape: false,
 });
 
 /** Open user settings modal */

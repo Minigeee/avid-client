@@ -39,27 +39,15 @@ import DataTable from '@/lib/ui/components/DataTable';
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
 import PermissionSetting from '@/lib/ui/components/settings/PermissionSetting';
-import UnsavedChanges from '@/lib/ui/components/settings/UnsavedChanges';
-import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
+import { SettingsModal, popUnsaved, pushUnsaved } from '@/lib/ui/components/settings/SettingsModal';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { DomainWrapper, cache, useAclEntries, useAclEntriesByRole, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
+import { DomainWrapper, useAclEntries, useAclEntriesByRole, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
 
 
-////////////////////////////////////////////////////////////
-const TABS = {
-  '_': [
-    { value: 'general', label: 'General' },
-    { value: 'roles', label: 'Roles' },
-  ],
-};
-let FLATTENED: { value: string; label: string }[] = [];
-for (const tabs of Object.values(TABS))
-  FLATTENED = FLATTENED.concat(tabs);
-  
 ////////////////////////////////////////////////////////////
 const PRESET_COLORS: string[] = [];
 for (const [name, colors] of Object.entries(DEFAULT_THEME.colors)) {
@@ -72,12 +60,8 @@ PRESET_COLORS.push(DEFAULT_THEME.colors.gray[6]);
 
 ////////////////////////////////////////////////////////////
 type TabProps = {
-  app: AppState;
   session: SessionState;
   domain: DomainWrapper;
-
-  /** Modal body ref */
-  bodyRef: RefObject<HTMLDivElement>;
 };
 
 
@@ -106,78 +90,76 @@ function GeneralTab({ domain, ...props }: TabProps) {
         }}
       />
 
-      <Stack>
-        <Title order={3}>Domain Icon</Title>
+      <Title order={3}>Domain Icon</Title>
 
-        <Group spacing='xl' sx={(theme) => ({
-          padding: '1.2rem',
-          backgroundColor: theme.colors.dark[8],
-          borderRadius: theme.radius.md,
-        })}>
-          <DomainAvatar domain={domain} size={120} />
-          <Stack spacing='sm'>
-            <Group spacing='sm'>
-              <Button
-                variant='gradient'
-                onClick={openImageModal}
-              >
-                {domain.icon ? 'Change' : 'Upload'} Image
-              </Button>
+      <Group spacing='xl' sx={(theme) => ({
+        padding: '1.2rem',
+        backgroundColor: theme.colors.dark[8],
+        borderRadius: theme.radius.md,
+      })}>
+        <DomainAvatar domain={domain} size={120} />
+        <Stack spacing='sm'>
+          <Group spacing='sm'>
+            <Button
+              variant='gradient'
+              onClick={openImageModal}
+            >
+              {domain.icon ? 'Change' : 'Upload'} Image
+            </Button>
 
-              {domain.icon && (
-                <ActionButton
-                  tooltip='Remove Image'
-                  tooltipProps={{ position: 'right' }}
-                  size='lg'
-                  sx={(theme) => ({
-                    color: theme.colors.dark[1],
-                    '&:hover': {
-                      backgroundColor: theme.colors.dark[5],
+            {domain.icon && (
+              <ActionButton
+                tooltip='Remove Image'
+                tooltipProps={{ position: 'right' }}
+                size='lg'
+                sx={(theme) => ({
+                  color: theme.colors.dark[1],
+                  '&:hover': {
+                    backgroundColor: theme.colors.dark[5],
+                  },
+                })}
+                onClick={() => {
+                  openConfirmModal({
+                    title: 'Remove Domain Icon',
+                    labels: { cancel: 'Cancel', confirm: 'Remove' },
+                    children: 'Are you sure you want to remove the domain icon picture?',
+                    groupProps: {
+                      spacing: 'xs',
+                      sx: { marginTop: '0.5rem' },
                     },
-                  })}
-                  onClick={() => {
-                    openConfirmModal({
-                      title: 'Remove Domain Icon',
-                      labels: { cancel: 'Cancel', confirm: 'Remove' },
-                      children: 'Are you sure you want to remove the domain icon picture?',
-                      groupProps: {
-                        spacing: 'xs',
-                        sx: { marginTop: '0.5rem' },
-                      },
-                      confirmProps: {
-                        color: 'red',
-                      },
+                    confirmProps: {
+                      color: 'red',
+                    },
 
-                      // Optimistic mutation
-                      onConfirm: async () => {
-                        // Remove domain icon picture
-                        await domain._mutators.removeIcon();
+                    // Optimistic mutation
+                    onConfirm: async () => {
+                      // Remove domain icon picture
+                      await domain._mutators.removeIcon();
 
-                        // Apply change to profile
-                        if (profile._exists)
-                          profile._refresh();
-                      },
-                    })
-                  }}
-                >
-                  <IconTrash size={22} />
-                </ActionButton>
-              )}
-            </Group>
-            <Text size='xs' color='dimmed'>Domain icons are resized to {config.upload.profile_picture.image_size.w}x{config.upload.profile_picture.image_size.h}</Text>
-          </Stack>
-        </Group>
+                      // Apply change to profile
+                      if (profile._exists)
+                        profile._refresh();
+                    },
+                  })
+                }}
+              >
+                <IconTrash size={22} />
+              </ActionButton>
+            )}
+          </Group>
+          <Text size='xs' color='dimmed'>Domain icons are resized to {config.upload.profile_picture.image_size.w}x{config.upload.profile_picture.image_size.h}</Text>
+        </Stack>
+      </Group>
 
-        <Divider />
-        <Title order={3}>Domain Settings</Title>
+      <Divider />
+      <Title order={3}>Domain Settings</Title>
 
-        <TextInput
-          label='Domain Name'
-          value={domain.name}
-          disabled
-          sx={{ width: config.app.ui.short_input_width }}
-        />
-      </Stack>
+      <TextInput
+        label='Domain Name'
+        value={domain.name}
+        disabled
+        sx={{ width: config.app.ui.short_input_width }}
+      />
     </>
   );
 }
@@ -196,16 +178,16 @@ const CHANNEL_GROUP_PERMISSION_COLUMNS = [
     center: true,
     width: '6rem',
     cell: (group: { can_view: boolean }) => group.can_view ?
-      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck size={20} /></Box>) :
-      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX size={20} /></Box>),
+      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck data-tag='allowRowEvents' size={20} /></Box>) :
+      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX data-tag='allowRowEvents' size={20} /></Box>),
   },
   {
     name: 'Can Manage',
     center: true,
     width: '8rem',
     cell: (group: { can_manage: boolean }) => group.can_manage ?
-      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck size={20} /></Box>) :
-      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX size={20} /></Box>),
+      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck data-tag='allowRowEvents' size={20} /></Box>) :
+      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX data-tag='allowRowEvents' size={20} /></Box>),
   },
 ];
 
@@ -226,7 +208,7 @@ function GroupPermissoinsExpandableRows({ data, domain }: { data: ChannelGroup, 
         </Group>
       ))}
     </Stack>
-    );
+  );
 }
 
 
@@ -417,7 +399,7 @@ function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps
             expandableRowsProps={{ domain }}
             onRowClicked={(row) => {
               // Save changes in cache
-              cache[`settings.${domain.id}.roles.changes`] = form.values;
+              pushUnsaved(domain.id, form.values);
 
               // Open modal
               openChannelGroupSettings({
@@ -478,10 +460,10 @@ function RolesTab({ domain, ...props }: TabProps) {
 
   // Reset form values on change
   useEffect(() => {
-    const cached = cache[`settings.${domain.id}.roles.changes`];
+    const cached = popUnsaved(domain.id);
+
     if (cached) {
       form.setValues(cached);
-      cache[`settings.${domain.id}.roles.changes`] = undefined;
     }
     else if (!form.isDirty()) {
       form.setValues(initialValues);
@@ -498,87 +480,83 @@ function RolesTab({ domain, ...props }: TabProps) {
 
   return (
     <>
-      <Stack spacing='md' pb='5rem'>
-        <Text size='sm' color='dimmed' maw='100ch'>
-          Roles are labels that can be assigned to members to indicate their designated position or responsibilities.
-          Each role has a customizable set of permissions for precise control over their actions and access levels.
+      <Text size='sm' color='dimmed' maw='100ch'>
+        Roles are labels that can be assigned to members to indicate their designated position or responsibilities.
+        Each role has a customizable set of permissions for precise control over their actions and access levels.
+      </Text>
+
+      <Box>
+        <Title order={3}>Roles</Title>
+        <Text size='sm' color='dimmed'>
+          Role tags and badges will be displayed in the order they appear in this list.
         </Text>
+      </Box>
 
-        <Box>
-          <Title order={3}>Roles</Title>
-          <Text size='sm' color='dimmed'>
-            Role tags and badges will be displayed in the order they appear in this list.
-          </Text>
-        </Box>
+      <Box>
+        <Group maw={config.app.ui.settings_maw} align='end' spacing='xs' mb={8}>
+          <TextInput
+            placeholder='Search'
+            icon={<IconSearch size={18} />}
+            style={{ flexGrow: 1 }}
+          />
+          <Button
+            variant='gradient'
+          >
+            New Role
+          </Button>
+        </Group>
 
-        <Box>
-          <Group maw={config.app.ui.settings_maw} align='end' spacing='xs' mb={8}>
-            <TextInput
-              placeholder='Search'
-              icon={<IconSearch size={18} />}
-              style={{ flexGrow: 1 }}
-            />
-            <Button
-              variant='gradient'
-            >
-              New Role
-            </Button>
-          </Group>
+        <ScrollArea.Autosize maw={config.app.ui.settings_maw} sx={(theme) => ({
+          padding: '0.5rem',
+          backgroundColor: theme.colors.dark[8],
+        })}>
+          <Stack spacing={0}>
+            {form.values.roles.map((role, idx) => (
+              <UnstyledButton
+                sx={(theme) => ({
+                  padding: '0.4rem 0.6rem',
+                  backgroundColor: selectedRole?.id === role.id ? theme.colors.dark[7] : undefined,
+                  transition: 'background-color, 0.08s',
 
-          <ScrollArea.Autosize maw={config.app.ui.settings_maw} sx={(theme) => ({
-            padding: '0.5rem',
-            backgroundColor: theme.colors.dark[8],
-          })}>
-            <Stack spacing={0}>
-              {form.values.roles.map((role, idx) => (
-                <UnstyledButton
-                  sx={(theme) => ({
-                    padding: '0.4rem 0.6rem',
-                    backgroundColor: selectedRole?.id === role.id ? theme.colors.dark[7] : undefined,
-                    transition: 'background-color, 0.08s',
+                  '&:hover': {
+                    backgroundColor: theme.colors.dark[7],
+                  },
+                })}
+                onClick={() => setSelectedRole(role)}
+              >
+                <Group spacing='xs'>
+                  <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+                    {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
+                  </Box>
+                  <Text inline size='sm' weight={600} sx={{ flexGrow: 1 }}>
+                    {role.id === domain._default_role ? '@' : ''}{role.label}
+                  </Text>
+                  {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
+                </Group>
+              </UnstyledButton>
+            ))}
+          </Stack>
+        </ScrollArea.Autosize>
+      </Box>
 
-                    '&:hover': {
-                      backgroundColor: theme.colors.dark[7],
-                    },
-                  })}
-                  onClick={() => setSelectedRole(role)}
-                >
-                  <Group spacing='xs'>
-                    <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
-                      {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
-                    </Box>
-                    <Text inline size='sm' weight={600} sx={{ flexGrow: 1 }}>
-                      {role.id === domain._default_role ? '@' : ''}{role.label}
-                    </Text>
-                    {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
-                  </Group>
-                </UnstyledButton>
-              ))}
-            </Stack>
-          </ScrollArea.Autosize>
-        </Box>
+      {selectedRole && selectedIdx !== null && (
+        <>
+          <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+          <Title order={3} mb={8}>Edit - {'@'}{selectedRole.label}</Title>
 
-        {selectedRole && selectedIdx !== null && (
-          <>
-            <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
-            <Title order={3} mb={8}>Edit - {'@'}{selectedRole.label}</Title>
+          <RoleSettingsTabs
+            domain={domain}
+            role={selectedRole}
+            roleIdx={selectedIdx}
+            form={form}
+          />
+        </>
+      )}
 
-            <RoleSettingsTabs
-              domain={domain}
-              role={selectedRole}
-              roleIdx={selectedIdx}
-              form={form}
-            />
-          </>
-        )}
-
-      </Stack>
-
-      <UnsavedChanges
-        bodyRef={props.bodyRef}
+      <SettingsModal.Unsaved
         form={form}
         initialValues={initialValues}
-        onSubmit={async () => {
+        onSave={async () => {
           // Recreate original roles
           const original: Record<string, Role> = {};
           for (const role of initialValues.roles)
@@ -591,7 +569,7 @@ function RolesTab({ domain, ...props }: TabProps) {
 
           for (let i = 0; i < form.values.roles.length; ++i) {
             const role = form.values.roles[i];
-            
+
             // Create new role if role is new
             if (!unaccounted.has(role.id)) {
               newRoles[role.id] = {
@@ -651,73 +629,34 @@ export type DomainSettingsProps = {
 
 ////////////////////////////////////////////////////////////
 export default function DomainSettings({ context, id, innerProps: props }: ContextModalProps<DomainSettingsProps>) {
-  const app = useApp();
   const session = useSession();
   const domain = useDomain(props.domain_id);
 
-  // Modal body
-  const bodyRef = useRef<HTMLDivElement>(null);
-
-  // Current tab
-  const initialTab = useMemo(() => {
-    const tabId = props.tab || 'general';
-    return FLATTENED.find(x => x.value === tabId);
-  }, [props.tab])
-  const [tab, setTab] = useCachedState<{ value: string; label: string } | null>(`settings.${props.domain_id}.tab`, initialTab || null, props.tab ? initialTab : undefined);
-
-  // Click close handlers
-  useEffect(() => {
-    function clickClose() {
-      
-    }
-
-    window.addEventListener('click', clickClose);
-
-    return () => {
-      window.removeEventListener('click', clickClose);
-    }
-  }, []);
+  // Tabs
+  const tabs = useMemo(() => ({
+    [domain.name || '_']: [
+      { value: 'general', label: 'General' },
+      { value: 'roles', label: 'Roles' },
+    ],
+  }), [domain.name]);
 
 
   if (!domain._exists) return null;
-  const tabProps = { app, session, domain, bodyRef };
+  const tabProps = { session, domain };
 
   return (
-    <Flex ref={bodyRef} w='100%' h='100%' onClick={(e) => e.stopPropagation()}>
-      <SettingsMenu
-        values={TABS}
-        value={tab?.value || ''}
-        onChange={(value, label) => setTab({ label, value })}
-        scrollAreaProps={{
-          w: '30ch',
-          pt: 10,
-          sx: (theme) => ({ backgroundColor: theme.colors.dark[6] }),
-        }}
-        groupNames={{ '_': domain.name }}
-      />
-
-      <Flex h='100%' direction='column' sx={(theme) => ({
-        flexGrow: 1,
-        backgroundColor: theme.colors.dark[7],
-      })}>
-        <Flex align='end' mb={4} sx={(theme) => ({
-          padding: '1.0rem 1.5rem',
-          borderBottom: `1px solid ${theme.colors.dark[5]}`,
-        })}>
-          <Title order={2}>{tab?.label}</Title>
-          <div style={{ flexGrow: 1 }} />
-          <CloseButton
-            size='lg'
-            iconSize={24}
-            onClick={() => context.closeModal(id)}
-          />
-        </Flex>
-
-        <ScrollArea sx={{ flexGrow: 1 }} viewportProps={{ style: { padding: '1.0rem 1.5rem' } }}>
-          {tab?.value === 'general' && (<GeneralTab {...tabProps} />)}
-          {tab?.value === 'roles' && (<RolesTab {...tabProps} />)}
-        </ScrollArea>
-      </Flex>
-    </Flex>
+    <SettingsModal
+      navkey={props.domain_id}
+      tabs={tabs}
+      defaultTab={props.tab}
+      close={() => context.closeModal(id)}
+    >
+      <SettingsModal.Panel value='general'>
+        <GeneralTab {...tabProps} />
+      </SettingsModal.Panel>
+      <SettingsModal.Panel value='roles'>
+        <RolesTab {...tabProps} />
+      </SettingsModal.Panel>
+    </SettingsModal>
   );
 }
