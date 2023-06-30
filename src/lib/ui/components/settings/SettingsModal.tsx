@@ -166,6 +166,8 @@ type UnsavedChangesProps<T> = {
   form: UseFormReturnType<T>;
   /** Need initial values bc form reset func doesn't used updated intial values */
   initialValues: T;
+  /** Called when user resets changes */
+  onReset?: (initialValues: T) => void;
   /** Called when user saves changes */
   onSave?: () => Promise<void>;
 };
@@ -210,6 +212,7 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
               onClick={() => {
                 form.setValues(props.initialValues);
                 form.resetDirty(props.initialValues);
+                props.onReset?.(props.initialValues);
               }}
             >
               Reset

@@ -1,6 +1,7 @@
-import { RefObject, forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { PropsWithChildren, RefObject, forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  ActionIcon,
   Box,
   Button,
   Center,
@@ -9,6 +10,7 @@ import {
   Divider,
   Flex,
   Group,
+  Popover,
   ScrollArea,
   Select,
   Stack,
@@ -19,7 +21,7 @@ import {
 } from '@mantine/core';
 import { ContextModalProps, openConfirmModal } from '@mantine/modals';
 
-import { IconBadgeOff, IconFolder, IconTrash } from '@tabler/icons-react';
+import { IconAt, IconBadgeOff, IconFolder, IconPlus, IconTrash } from '@tabler/icons-react';
 
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
@@ -46,41 +48,114 @@ type TabProps = {
 
 
 ////////////////////////////////////////////////////////////
-const PERMISSIONS_ROLE_COLUMNS = [
-  {
-    name: 'Role',
-    grow: 1,
-    cell: (role: Role) => (
-      <Group spacing='xs'>
-        <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
-          {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
-        </Box>
-        <Text inline size='sm' weight={600} sx={{ flexGrow: 1 }}>
-          {role.label}
-        </Text>
-        {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
-      </Group>
-    ),
-  },
-];
+type PermissionSet = {
+  can_view: boolean;
+  can_manage: boolean;
+  can_create_resources: boolean;
+  can_send_messages: boolean;
+  can_send_attachments: boolean;
+  can_delete_messages: boolean;
+  can_broadcast_audio: boolean;
+  can_broadcast_video: boolean;
+  can_manage_participants: boolean;
+  can_manage_tasks: boolean;
+  can_manage_own_tasks: boolean;
+};
 
 ////////////////////////////////////////////////////////////
 type PermissionsFormValues = {
   /** Map of role id to their permissions */
-  permissions: Record<string, {
-    can_view: boolean;
-    can_manage: boolean;
-    can_create_resources: boolean;
-    can_send_messages: boolean;
-    can_send_attachments: boolean;
-    can_delete_messages: boolean;
-    can_broadcast_audio: boolean;
-    can_broadcast_video: boolean;
-    can_manage_participants: boolean;
-    can_manage_tasks: boolean;
-    can_manage_own_tasks: boolean;
-  }>;
+  permissions: Record<string, PermissionSet>;
 };
+
+////////////////////////////////////////////////////////////
+const DEFAULT_PERMISSION_SET = {
+  can_view: true,
+  can_manage: false,
+  can_create_resources: false,
+  can_send_messages: true,
+  can_send_attachments: true,
+  can_delete_messages: false,
+  can_broadcast_audio: true,
+  can_broadcast_video: true,
+  can_manage_participants: false,
+  can_manage_tasks: false,
+  can_manage_own_tasks: false,
+} as PermissionSet;
+
+
+////////////////////////////////////////////////////////////
+const RoleSelectItem = forwardRef<HTMLDivElement, { label: string; badge: string }>(
+  ({ label, badge, ...others }, ref) => (
+    <div ref={ref} {...others}>
+      <Group spacing='xs' noWrap>
+        <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+          {badge ? (<Emoji id={badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
+        </Box>
+        <Text size='sm'>{label}</Text>
+      </Group>
+    </div>
+  )
+);
+RoleSelectItem.displayName = 'RoleSelectItem';
+
+////////////////////////////////////////////////////////////
+function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: string) => void; exclude?: string[]; type: 'empty' | 'table' }) {
+  const [opened, setOpened] = useState<boolean>(false);
+
+  const roles = useMemo(
+    () => props.domain.roles.filter(
+      x => !props.exclude || props.exclude.findIndex(y => y === x.id) < 0
+    ).map(
+      x => ({ value: x.id, label: x.label, badge: x.badge })
+    ),
+    [props.domain.roles, props.exclude]
+  );
+
+  return (
+    <Popover
+      opened={opened}
+      position='bottom'
+      withArrow
+      onClose={() => setOpened(false)}
+    >
+      {props.type === 'table' && (
+        <Popover.Target>
+          <ActionIcon onClick={() => setOpened(!opened)}>
+            <IconPlus size={19} />
+          </ActionIcon>
+        </Popover.Target>
+      )}
+      {props.type === 'empty' && (
+        <Popover.Target>
+          <Button
+            variant='gradient'
+            leftIcon={<IconPlus size={18} />}
+            onClick={() => setOpened(!opened)}
+          >
+            Add Permissions
+          </Button>
+        </Popover.Target>
+      )}
+
+      <Popover.Dropdown onKeyDown={(e) => { e.stopPropagation() }}>
+        <Select
+          placeholder='Choose a role'
+          data={roles}
+          icon={<IconAt size={16} />}
+          itemComponent={RoleSelectItem}
+          searchable
+          onChange={(value) => {
+            if (!value) return;
+            props.onSelect(value);
+            // Close after select
+            setOpened(false);
+          }}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
 
 ////////////////////////////////////////////////////////////
 function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
@@ -100,7 +175,19 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
     // Map of group permissions per role
     const permissions: PermissionsFormValues['permissions'] = {};
 
-    for (const entry of aclEntries.data) {
+    // Add extra temp role if needed
+    const data = aclEntries.data.slice();
+    if (props.role && aclEntries.data.findIndex(x => x.role === props.role?.id) < 0) {
+      data.push({
+        id: '',
+        domain: props.domain.id,
+        resource: group.id,
+        role: props.role.id,
+        permissions: [],
+      });
+    }
+    
+    for (const entry of data) {
       permissions[entry.role] = {
         can_view: hasPerm(entry?.permissions, 'can_view'),
         can_manage: hasPerm(entry?.permissions, 'can_manage'),
@@ -120,7 +207,7 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
     return {
       permissions
     } as PermissionsFormValues;
-  }, [aclEntries.data]);
+  }, [aclEntries.data, props.role]);
   const form = useForm({ initialValues });
 
   // Currently selected role
@@ -128,9 +215,52 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
   // Get roles that have acl entries for this group
   const roles = useMemo(() => {
-    if (!aclEntries._exists) return [];
-    return aclEntries.data.map(e => props.domain.roles.find(x => x.id === e.role)).filter(x => x) as Role[];
-  }, [aclEntries.data, props.domain.roles]);
+    // Add extra temp role if needed
+    const role_ids = Object.keys(form.values.permissions);
+    if (props.role && role_ids.findIndex(x => x === props.role?.id) < 0)
+      role_ids.push(props.role.id);
+
+    return role_ids.map(id => props.domain.roles.find(x => x.id === id)).filter(x => x) as Role[];
+  }, [form.values.permissions, props.domain.roles]);
+
+  // Table columns
+  const columns = useMemo(() => ([
+    {
+      name: 'Role',
+      grow: 1,
+      cell: (role: Role) => (
+        <Group spacing='xs'>
+          <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+            {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
+          </Box>
+          <Text inline size='sm' weight={600}>
+            {role.label}
+          </Text>
+        </Group>
+      ),
+    },
+    {
+      name: (
+        <AddRolePopover
+          domain={props.domain}
+          type='table'
+          exclude={Object.keys(form.values.permissions)}
+          onSelect={(role_id) => {
+            // Add new default permission set
+            form.setFieldValue('permissions', {
+              ...form.values.permissions,
+              [role_id]: DEFAULT_PERMISSION_SET,
+            });
+
+            // Set new role as selected
+            setSelectedRole(props.domain.roles.find(x => x.id === role_id) || null);
+          }}
+        />
+      ),
+      width: '4rem',
+      right: true,
+    },
+  ]), [props.domain, form.values.permissions]);
 
   // Reset form values on change
   useEffect(() => {
@@ -151,12 +281,31 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
       </Box>
 
       <DataTable
-        columns={PERMISSIONS_ROLE_COLUMNS}
+        columns={columns}
         data={roles}
         onRowClicked={setSelectedRole}
         wrapperProps={{
           maw: config.app.ui.settings_maw,
         }}
+        emptyComponent={(
+          <Stack align='center'>
+            <Text weight={600}>This channel group has no permission sets</Text>
+            <AddRolePopover
+              domain={props.domain}
+              type='empty'
+              onSelect={(role_id) => {
+                // Add new default permission set
+                form.setFieldValue('permissions', {
+                  ...form.values.permissions,
+                  [role_id]: DEFAULT_PERMISSION_SET,
+                });
+
+                // Set new role as selected
+                setSelectedRole(props.domain.roles.find(x => x.id === role_id) || null);
+              }}
+            />
+          </Stack>
+        )}
         rowStyles={[
           {
             when: (row) => row.id === selectedRole?.id,
@@ -287,6 +436,11 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
       <SettingsModal.Unsaved
         form={form}
         initialValues={initialValues}
+        onReset={(initialValues) => {
+          // Go to empty role if current role does not exist after reset
+          if (selectedRole && !initialValues.permissions[selectedRole.id])
+            setSelectedRole(null);
+        }}
         onSave={async () => {
           // Set permissions if changed
           const diffs = diff(initialValues.permissions, form.values.permissions);
@@ -326,10 +480,10 @@ export default function ChannelGroupSettings({ context, id, innerProps: props }:
 
   // Tabs
   const tabs = useMemo(() => ({
-    [props.group.name || '_']: [
+    [`${domain.name} / ${props.group.name}`]: [
       { value: 'permissions', label: 'Permissions' },
     ],
-  }), [props.group.name]);
+  }), [domain.name, props.group.name]);
 
 
   if (!domain._exists) return null;

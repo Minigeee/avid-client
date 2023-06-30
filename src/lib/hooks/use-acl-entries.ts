@@ -1,4 +1,5 @@
-import { KeyedMutator } from 'swr';
+import { KeyedMutator, useSWRConfig } from 'swr';
+import { ScopedMutator } from 'swr/_internal';
 import assert from 'assert';
 
 import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
@@ -13,7 +14,7 @@ import { useSession } from './use-session';
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resource_id: string) {
+function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resource_id: string, _mutate: ScopedMutator) {
 	return {
 		/**
 		 * Set the permissions list for an entry with the given role
@@ -25,6 +26,7 @@ function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resou
 		setPermissions: (permissions: Record<string, AllPermissions[]>) => mutate(
 			swrErrorWrapper(async (entries: AclEntry[]) => {
 				const operations: string[] = [];
+				const updated: Partial<AclEntry>[] = [];
 
 				// Add operations
 				let hasUpdateStatements = false;
@@ -36,7 +38,7 @@ function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resou
 								body: sql.update<AclEntry>('acl', {
 									set: { permissions: perms },
 									where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
-									return: ['domain'],
+									return: 'AFTER',
 								}),
 							}, {
 								body: sql.create<AclEntry>('acl', {
@@ -57,6 +59,16 @@ function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resou
 							})
 						);
 					}
+
+					// Track entries that are updated
+					const entry = entries.find(x => x.role === role_id);
+					updated.push({
+						...(entry || {
+							resource: resource_id,
+							role: role_id,
+						}),
+						permissions: perms,
+					});
 				}
 
 				// Add select for entries that point to given resource
@@ -76,10 +88,55 @@ function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resou
 				}));
 
 				// Perform query
-				const results = await query<AclEntry[]>(sql.transaction(operations), { session });
+				const results = await query<(AclEntry | AclEntry[] | null)[]>(sql.transaction(operations), { session, complete: true });
 				assert(results);
+				const offset = hasUpdateStatements ? 1 : 0;
 
-				return results;
+				// Update data
+				const copy = entries.slice();
+				for (let i = 0; i < updated.length; ++i) {
+					const entry = updated[i];
+					// These should be present by default
+					assert(entry.role && entry.resource && entry.permissions);
+
+					// Check what type of operation was performed
+					const result = results[offset + i];
+					const updatedEntry = Array.isArray(result) ? result[0] : result;
+
+					// Update resource based data
+					const idx = copy.findIndex(x => x.role === entry.role);
+					if (idx < 0 && updatedEntry)
+						copy.push(updatedEntry);
+					else {
+						if (updatedEntry)
+							copy[idx] = updatedEntry;
+						else
+							copy.splice(idx, 1);
+					}
+
+					// Update role based data
+					_mutate<AclEntry[]>(`${entry.role}.acl_roles`, async (entries) => {
+						if (!entries) return;
+						
+						const copy = entries.slice();
+
+						// Find entries with matching resource
+						const idx = copy.findIndex(entry => entry.resource === resource_id);
+						if (idx < 0 && updatedEntry)
+							copy.push(updatedEntry);
+						else {
+							if (updatedEntry)
+								copy[idx] = updatedEntry;
+							else
+								copy.splice(idx, 1);
+						}
+
+						return copy;
+					}, { revalidate: false });
+				}
+
+				console.log(copy)
+				return copy;
 			}, { message: 'An error occurred while setting permissions' }),
 			{ revalidate: false }
 		),
@@ -102,13 +159,15 @@ export type AclEntriesWrapperNoMutators<Loaded extends boolean = true> = SwrWrap
  * @returns A swr wrapper with a list of ACL entries
  */
 export function useAclEntries(resource_id: string | undefined) {
-	return useDbQuery(resource_id ? `${resource_id}.acl` : undefined, {
+	const { mutate } = useSWRConfig();
+
+	return useDbQuery<AclEntry[], AclEntriesMutators>(resource_id ? `${resource_id}.acl` : undefined, {
 		builder: (key) => sql.select<AclEntry>('*', {
 			from: 'acl',
 			where: sql.match<AclEntry>({ resource: resource_id }),
 		}),
 		mutators,
-		mutatorParams: [resource_id],
+		mutatorParams: [resource_id, mutate],
 	});
 }
 

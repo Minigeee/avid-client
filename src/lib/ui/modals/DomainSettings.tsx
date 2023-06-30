@@ -30,7 +30,7 @@ import { useForm } from '@mantine/form';
 import { ContextModalProps, openConfirmModal } from '@mantine/modals';
 import { UseFormReturnType } from '@mantine/form/lib/types';
 
-import { IconAlertCircle, IconBadge, IconBadgeOff, IconBuildingCommunity, IconCheck, IconPlus, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
+import { IconAlertCircle, IconBadge, IconBadgeOff, IconBuildingCommunity, IconCheck, IconFolder, IconPlus, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
 
 import { openChannelGroupSettings, useImageModal } from '.';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -46,6 +46,7 @@ import { AppState, SessionState } from '@/lib/contexts';
 import { DomainWrapper, useAclEntries, useAclEntriesByRole, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
+import { TableColumn } from 'react-data-table-component';
 
 
 ////////////////////////////////////////////////////////////
@@ -166,37 +167,12 @@ function GeneralTab({ domain, ...props }: TabProps) {
 
 
 ////////////////////////////////////////////////////////////
-const CHANNEL_GROUP_PERMISSION_COLUMNS = [
-  {
-    name: 'Name',
-    grow: 1,
-    style: { fontSize: 14 },
-    selector: (group: ChannelGroup) => group.name,
-  },
-  {
-    name: 'Can View',
-    center: true,
-    width: '6rem',
-    cell: (group: { can_view: boolean }) => group.can_view ?
-      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck data-tag='allowRowEvents' size={20} /></Box>) :
-      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX data-tag='allowRowEvents' size={20} /></Box>),
-  },
-  {
-    name: 'Can Manage',
-    center: true,
-    width: '8rem',
-    cell: (group: { can_manage: boolean }) => group.can_manage ?
-      (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck data-tag='allowRowEvents' size={20} /></Box>) :
-      (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX data-tag='allowRowEvents' size={20} /></Box>),
-  },
-];
-
-////////////////////////////////////////////////////////////
 function GroupPermissoinsExpandableRows({ data, domain }: { data: ChannelGroup, domain: DomainWrapper }) {
   return (
     <Stack
       spacing={0}
       pt={6}
+      pb={6}
       sx={(theme) => ({ backgroundColor: theme.colors.dark[7] })}
     >
       {data.channels.map((channel_id, idx) => (
@@ -208,6 +184,35 @@ function GroupPermissoinsExpandableRows({ data, domain }: { data: ChannelGroup, 
         </Group>
       ))}
     </Stack>
+  );
+}
+
+////////////////////////////////////////////////////////////
+function AddGroupOverrideDropdown(props: { domain: DomainWrapper; role: Role; exclude?: ChannelGroup[] }) {
+  const groups = useMemo(
+    () => props.domain.groups.filter(
+      x => !props.exclude || props.exclude.findIndex(y => y.id === x.id) < 0
+    ).map(
+      x => ({ value: x.id, label: x.name })
+    ),
+    [props.domain.groups, props.exclude]
+  );
+
+  return (
+    <Popover.Dropdown>
+      <Select
+        placeholder='Choose a channel group'
+        data={groups}
+        icon={<IconFolder size={16} />}
+        searchable
+        onChange={(value) => openChannelGroupSettings({
+          domain_id: props.domain.id,
+          group: props.domain.groups.find(x => x.id === value) as ChannelGroup,
+          tab: 'permissions',
+          role: props.role,
+        })}
+      />
+    </Popover.Dropdown>
   );
 }
 
@@ -242,22 +247,97 @@ function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps
   // Is badge picker open
   const [badgePickerOpen, setBadgePickerOpen] = useState<boolean>(false);
 
+
+  // Is current role the default role
+  const isDefaultRole = role.id === domain._default_role;
+
   // Data table
-  const groupPermissionsData = useMemo(() => {
+  const groupPermissionsData = useMemo<(ChannelGroup & { can_view: boolean; can_manage: boolean })[]>(() => {
     if (!acl._exists) return [];
 
-    // Map of resource id to acl entry
-    const aclMap: Record<string, AclEntry> = {};
-    for (const entry of acl.data)
-      aclMap[entry.resource] = entry;
+    // Only return groups that have acl entry if not default role
+    if (!isDefaultRole) {
+      // Map of group id to group object
+      const groupMap: Record<string, ChannelGroup> = {};
+      for (const group of domain.groups)
+        groupMap[group.id] = group;
 
-    // Create data
-    return domain.groups.map(group => ({
-      ...group,
-      can_view: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_view') >= 0 : false,
-      can_manage: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_manage') >= 0 : false,
-    }))
-  }, [domain.groups, acl.data]);
+      const data: (ChannelGroup & { can_view: boolean; can_manage: boolean })[] = [];
+      for (const entry of acl.data) {
+        if (!groupMap[entry.resource]) continue;
+        data.push({
+          ...groupMap[entry.resource],
+          can_view: entry.permissions.findIndex(x => x === 'can_view') >= 0,
+          can_manage: entry.permissions.findIndex(x => x === 'can_manage') >= 0,
+        });
+      }
+
+      return data;
+    }
+
+    else {
+      // Map of resource id to acl entry
+      const aclMap: Record<string, AclEntry> = {};
+      for (const entry of acl.data)
+        aclMap[entry.resource] = entry;
+
+      // Show all groups if default role
+      return domain.groups.map(group => ({
+        ...group,
+        can_view: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_view') >= 0 : false,
+        can_manage: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_manage') >= 0 : false,
+      }));
+    }
+  }, [domain.groups, acl.data, isDefaultRole]);
+
+  // Group override table columns
+  const groupOverrideColumns = useMemo(() => {
+    const cols: TableColumn<any>[] = [
+      {
+        name: 'Name',
+        grow: 1,
+        style: { fontSize: 14 },
+        selector: (group: ChannelGroup) => group.name,
+      },
+      {
+        name: 'Can View',
+        center: true,
+        width: '6rem',
+        cell: (group: { can_view: boolean }) => group.can_view ?
+          (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck data-tag='allowRowEvents' size={20} /></Box>) :
+          (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX data-tag='allowRowEvents' size={20} /></Box>),
+      },
+      {
+        name: 'Can Manage',
+        center: true,
+        width: '8rem',
+        cell: (group: { can_manage: boolean }) => group.can_manage ?
+          (<Box sx={(theme) => ({ color: theme.colors.green[5] })}><IconCheck data-tag='allowRowEvents' size={20} /></Box>) :
+          (<Box sx={(theme) => ({ color: theme.colors.red[5] })}><IconX data-tag='allowRowEvents' size={20} /></Box>),
+      },
+    ];
+
+    // Adder if not default role
+    if (!isDefaultRole) {
+      cols.push({
+        name: (
+          <Popover position='top' withArrow>
+            <Popover.Target>
+              <ActionIcon>
+                <IconPlus size={19} />
+              </ActionIcon>
+            </Popover.Target>
+
+            <AddGroupOverrideDropdown domain={domain} role={role} exclude={groupPermissionsData} />
+          </Popover>
+        ),
+        width: '4rem',
+        right: true,
+      });
+    }
+
+    return cols;
+  }, [isDefaultRole, groupPermissionsData]);
 
 
   return (
@@ -388,12 +468,16 @@ function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               {/* TODO : Allow channels to be clickable (to modify channel permissions) */}
-              Permissions for each channel group. Click a group to modify its permissions.
+              {isDefaultRole && (<>Permissions for <b>{'@everyone'}</b> for every channel group. Click a group to modify its permissions.</>)}
+              {!isDefaultRole && (<>
+                Permission sets for channel groups. Users can perform any given action if any of their assigned roles allow them to,
+                which means that users may have additional capabilities granted by other roles even if <b>{`@${role.label}`}</b> does not explicitly allow those actions.
+              </>)}
             </Text>
           </Box>
 
           <DataTable
-            columns={CHANNEL_GROUP_PERMISSION_COLUMNS}
+            columns={groupOverrideColumns}
             data={groupPermissionsData}
             expandableRowsComponent={GroupPermissoinsExpandableRows}
             expandableRowsProps={{ domain }}
@@ -409,6 +493,23 @@ function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps
                 role,
               });
             }}
+            emptyComponent={(
+              <Stack align='center'>
+                <Text weight={600}>This role has no extra permission sets</Text>
+                <Popover position='top' withArrow>
+                  <Popover.Target>
+                    <Button
+                      variant='gradient'
+                      leftIcon={<IconPlus size={18} />}
+                    >
+                      Add Permissions
+                    </Button>
+                  </Popover.Target>
+                  
+                  <AddGroupOverrideDropdown domain={domain} role={role} />
+                </Popover>
+              </Stack>
+            )}
             wrapperProps={{
               maw: config.app.ui.settings_maw,
             }}
@@ -529,7 +630,7 @@ function RolesTab({ domain, ...props }: TabProps) {
                     {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
                   </Box>
                   <Text inline size='sm' weight={600} sx={{ flexGrow: 1 }}>
-                    {role.id === domain._default_role ? '@' : ''}{role.label}
+                    {role.label}
                   </Text>
                   {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
                 </Group>
