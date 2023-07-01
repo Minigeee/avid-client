@@ -597,6 +597,34 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 			}, { message: 'An error occurred while updating roles' }),
 			{ revalidate: false }
 		),
+
+		/**
+		 * Set role order within a domain
+		 * 
+		 * @param roles All domain roles in the order they should appear
+		 * @returns The new domain object
+		 */
+		setRoleOrder: (roles: Role[]) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				// Unlike reordering channel groups, everyone can see every role, so no need for complicated function for reordering
+
+				// Set list
+				await query(
+					sql.update<Domain>(domain.id, { set: { roles: roles.map(x => x.id) } }),
+					{ session }
+				);
+
+				return { ...domain, roles };
+
+			}, { message: 'An error occurred while moving role' }),
+			{
+				revalidate: false,
+				optimisticData: (domain) => {
+					assert(domain);
+					return { ...domain, roles };
+				},
+			}
+		),
 	};
 }
 
@@ -639,13 +667,7 @@ export function useDomain(domain_id: string | undefined) {
 					from: 'channels',
 					where: sql.match({ domain: domain_id }),
 				}),
-				sql.select<Domain>([
-					'*',
-					sql.wrap(sql.select<Role>('*', {
-						from: 'roles',
-						where: sql.match({ domain: domain_id }),
-					}), { alias: 'roles' }),
-				], { from: domain_id, fetch: ['groups'] }),
+				sql.select<Domain>('*', { from: domain_id, fetch: ['groups', 'roles'] }),
 				sql.return('$member'),
 			]);
 		},

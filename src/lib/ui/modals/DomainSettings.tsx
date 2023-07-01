@@ -30,7 +30,7 @@ import { useForm } from '@mantine/form';
 import { ContextModalProps, openConfirmModal } from '@mantine/modals';
 import { UseFormReturnType } from '@mantine/form/lib/types';
 
-import { IconAlertCircle, IconBadge, IconBadgeOff, IconBuildingCommunity, IconCheck, IconFolder, IconPlus, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
+import { IconAlertCircle, IconBadge, IconBadgeOff, IconBuildingCommunity, IconCheck, IconFolder, IconGripVertical, IconPlus, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
 
 import { openChannelGroupSettings, useImageModal } from '.';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -39,6 +39,7 @@ import DataTable from '@/lib/ui/components/DataTable';
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
 import PermissionSetting from '@/lib/ui/components/settings/PermissionSetting';
+import PortalAwareItem from '@/lib/ui/components/PortalAwareItem';
 import { SettingsModal, popUnsaved, pushUnsaved } from '@/lib/ui/components/settings/SettingsModal';
 
 import config from '@/config';
@@ -47,6 +48,7 @@ import { DomainWrapper, useAclEntries, useAclEntriesByRole, useApp, useCachedSta
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
 import { TableColumn } from 'react-data-table-component';
+import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 
 
 ////////////////////////////////////////////////////////////
@@ -232,13 +234,15 @@ type RoleFormValues = {
 ////////////////////////////////////////////////////////////
 type RoleSettingsTabsProps = {
   domain: DomainWrapper;
-  role: Role;
   roleIdx: number;
   form: UseFormReturnType<RoleFormValues>;
 };
 
 ////////////////////////////////////////////////////////////
-function RoleSettingsTabs({ domain, role, roleIdx, form }: RoleSettingsTabsProps) {
+function RoleSettingsTabs({ domain, roleIdx, form }: RoleSettingsTabsProps) {
+  // Use form values
+  const role = form.values.roles[roleIdx];
+
   // Get permissions for this role
   const acl = useAclEntriesByRole(role.id);
 
@@ -557,7 +561,7 @@ function RolesTab({ domain, ...props }: TabProps) {
   const form = useForm({ initialValues });
 
   // Chosen role
-  const [selectedRole, setSelectedRole] = useCachedState<Role | null>(`settings.${domain.id}.roles.selected`, null);
+  const [selectedRoleId, setSelectedRoleId] = useCachedState<string | null>(`settings.${domain.id}.roles.selected`, null);
 
   // Reset form values on change
   useEffect(() => {
@@ -574,9 +578,9 @@ function RolesTab({ domain, ...props }: TabProps) {
 
   // Index of role
   const selectedIdx = useMemo(() => {
-    if (!selectedRole) return null;
-    return domain.roles.findIndex(x => x.id === selectedRole.id);
-  }, [selectedRole, domain.roles]);
+    if (!selectedRoleId) return null;
+    return form.values.roles.findIndex(x => x.id === selectedRoleId);
+  }, [selectedRoleId, form.values.roles]);
 
 
   return (
@@ -590,6 +594,9 @@ function RolesTab({ domain, ...props }: TabProps) {
         <Title order={3}>Roles</Title>
         <Text size='sm' color='dimmed'>
           Role tags and badges will be displayed in the order they appear in this list.
+        </Text>
+        <Text size={11} color='dimmed'>
+          {'(Drag and drop items to reorder roles)'}
         </Text>
       </Box>
 
@@ -607,47 +614,84 @@ function RolesTab({ domain, ...props }: TabProps) {
           </Button>
         </Group>
 
-        <ScrollArea.Autosize maw={config.app.ui.settings_maw} sx={(theme) => ({
-          padding: '0.5rem',
-          backgroundColor: theme.colors.dark[8],
-        })}>
-          <Stack spacing={0}>
-            {form.values.roles.map((role, idx) => (
-              <UnstyledButton
-                sx={(theme) => ({
-                  padding: '0.4rem 0.6rem',
-                  backgroundColor: selectedRole?.id === role.id ? theme.colors.dark[7] : undefined,
-                  transition: 'background-color, 0.08s',
+        <DragDropContext onDragEnd={(result) => {
+          if (!result.destination) return;
+          const from = result.source.index;
+          const to = result.destination.index;
 
-                  '&:hover': {
-                    backgroundColor: theme.colors.dark[7],
-                  },
+          const copy = form.values.roles.slice();
+          const role = copy.splice(from, 1)[0];
+          copy.splice(to, 0, role);
+
+          form.setFieldValue('roles', copy);
+        }}>
+          <Droppable droppableId={domain.id}>
+            {(provided) => (
+              <Stack
+                ref={provided.innerRef}
+                spacing={0}
+                maw={config.app.ui.settings_maw}
+                sx={(theme) => ({
+                  padding: '0.5rem',
+                  backgroundColor: theme.colors.dark[8],
                 })}
-                onClick={() => setSelectedRole(role)}
+                {...provided.droppableProps}
               >
-                <Group spacing='xs'>
-                  <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
-                    {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
-                  </Box>
-                  <Text inline size='sm' weight={600} sx={{ flexGrow: 1 }}>
-                    {role.label}
-                  </Text>
-                  {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
-                </Group>
-              </UnstyledButton>
-            ))}
-          </Stack>
-        </ScrollArea.Autosize>
+                {form.values.roles.map((role, idx) => (
+                  <Draggable key={role.id} draggableId={role.id} index={idx}>
+                    {(provided, snapshot) => (
+                      <PortalAwareItem snapshot={snapshot}>
+                        <Box
+                          ref={provided.innerRef}
+                          w='100%'
+                          p='0.4rem 0.6rem'
+                          sx={(theme) => ({
+                            backgroundColor: selectedRoleId === role.id || snapshot.isDragging ? theme.colors.dark[7] : theme.colors.dark[8],
+                            boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
+                            borderRadius: theme.radius.sm,
+
+                            '&:hover': {
+                              backgroundColor: theme.colors.dark[7],
+                            },
+                          })}
+                          onClick={() => setSelectedRoleId(role.id)}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Group spacing='xs' sx={(theme) => ({ '.tabler-icon': { color: theme.colors.dark[3] } })}>
+                            <div style={{ height: '1.5rem' }}>
+                              {role.badge ? (<Emoji id={role.badge} size='1rem' />) : (<IconBadgeOff size={19} style={{ marginTop: 2 }} />)}
+                            </div>
+                            <Text inline size='sm' weight={600}>
+                              {role.label}
+                            </Text>
+                            <div style={{ flexGrow: 1 }} />
+                            {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
+                          </Group>
+                        </Box>
+                      </PortalAwareItem>
+                    )}
+                  </Draggable>
+                ))}
+
+                {provided.placeholder}
+              </Stack>
+            )}
+          </Droppable>
+        </DragDropContext>
       </Box>
 
-      {selectedRole && selectedIdx !== null && (
+      {selectedIdx !== null && (
         <>
           <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
-          <Title order={3} mb={8}>Edit - {'@'}{selectedRole.label}</Title>
+          <Title order={3} mb={8}>Edit - {'@'}{form.values.roles[selectedIdx].label}</Title>
 
           <RoleSettingsTabs
             domain={domain}
-            role={selectedRole}
             roleIdx={selectedIdx}
             form={form}
           />
@@ -667,6 +711,7 @@ function RolesTab({ domain, ...props }: TabProps) {
           const unaccounted = new Set<string>(Object.keys(original));
           const changes: Record<string, Partial<Role>> = {};
           const newRoles: Record<string, Partial<Role>> = {};
+          let orderChanged = false;
 
           for (let i = 0; i < form.values.roles.length; ++i) {
             const role = form.values.roles[i];
@@ -682,7 +727,7 @@ function RolesTab({ domain, ...props }: TabProps) {
 
             // Add diff it role changed
             else {
-              const roleDiff = diff(initialValues.roles[i], role);
+              const roleDiff = diff(original[role.id], role);
 
               // Record diff
               if (roleDiff !== undefined)
@@ -691,6 +736,11 @@ function RolesTab({ domain, ...props }: TabProps) {
               // Mark as accounted for
               unaccounted.delete(role.id);
             }
+
+            // Check if order changed
+            // TODO : This will likely have to change for add role code
+            if (role.id !== initialValues.roles[i].id)
+              orderChanged = true;
           }
 
           // The remaining values in unaccounted are deleted
@@ -701,6 +751,10 @@ function RolesTab({ domain, ...props }: TabProps) {
               deleted: Array.from(unaccounted),
             });
           }
+
+          // Update order
+          if (orderChanged)
+            await domain._mutators.setRoleOrder(form.values.roles);
 
           // Set permissions if changed
           const domainPermsDiff = diff(initialValues.domain_permissions, form.values.domain_permissions);

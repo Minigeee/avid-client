@@ -35,6 +35,8 @@ export type Domain = {
 	/** Time the domain was created */
 	time_created: Date;
 
+	/** A list of role ids belonging to the domain, used to track role order */
+	roles: string[];
 	/** A list of channel group ids belonging to domain, used to track group order */
 	groups: string[];
 

@@ -373,7 +373,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
 type MessageGroupProps = {
   msgs: ExpandedMessageWithPing[];
   style: string;
-  rolesMap: Record<string, Role>;
+  rolesMap: Record<string, Role & { index: number }>;
 
   sender: MemberWrapper;
   editing: string | null;
@@ -395,8 +395,12 @@ type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
 ////////////////////////////////////////////////////////////
 function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
   const badges = useMemo(() => {
+    // Create list of role ids, sort by role order
+    const roleIds: string[] = msg.sender?.roles?.slice() || [];
+    roleIds.sort((a, b) => props.rolesMap[a] ? props.rolesMap[b] ? props.rolesMap[a].index - props.rolesMap[b].index : 1 : -1);
+
     const badges: JSX.Element[] = [];
-    for (const id of msg.sender?.roles || []) {
+    for (const id of roleIds) {
       const role = props.rolesMap[id];
       if (!role.badge) continue;
 
@@ -655,9 +659,11 @@ function MessagesViewport(props: MessagesViewportProps) {
 
   // Roles map for rendering badges
   const rolesMap = useMemo(() => {
-    const map: Record<string, Role> = {};
-    for (const role of context.domain.roles)
-      map[role.id] = role;
+    const map: Record<string, Role & { index: number }> = {};
+    for (let i = 0; i < context.domain.roles.length; ++i) {
+      const role = context.domain.roles[i];
+      map[role.id] = { ...role, index: i };
+    }
     return map;
   }, [context.domain.roles]);
 
