@@ -551,22 +551,53 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 * @param options.added A list of roles to be added
 		 * @param options.changed A map of role ids to new roles to be merged into existing ones
 		 * @param options.deleted A list of role ids to be deleted
+		 * @param options.order A list of role ids in the order they should appear (including newly added roles, which should be using unique ids)
 		 * @returns The new domain object
 		 */
-		updateRoles: (options: { added?: Partial<Role>[]; changed?: Record<string, Partial<Role>>; deleted?: string[] }) => mutate(
+		updateRoles: (options: { added?: Partial<Role>[]; changed?: Record<string, Partial<Role>>; deleted?: string[]; order?: string[]; }) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
 				// Operations
 				const operations: string[] = [];
 
 				// Add
-				if (options.added) {
+				if (options.added?.length) {
 					// Create operations
-					for (const role of options.added) {
-						operations.push(sql.create<Role>('roles', {
+					for (let i = 0; i < options.added.length; ++i) {
+						const role = options.added[i];
+						operations.push(sql.let(`$role_${i}`, sql.create<Role>('roles', {
 							...role,
+							id: undefined,
 							domain: domain.id,
+						})));
+					}
+
+					// Append new roles to domain if order not specified
+					if (!options.order) {
+						const newRoles: any[] = [];
+						for (let i = 0; i < options.added.length; ++i)
+							newRoles.push(sql.$(`$role_${i}.id`));
+
+						operations.push(sql.update<Domain>(domain.id, {
+							set: { roles: ['+=', newRoles] },
 						}));
 					}
+				}
+
+				// Order
+				if (options.order) {
+					// Map of new role ids
+					const newIds: Record<string, any> = {};
+					for (let i = 0; options.added && i < options.added.length; ++i) {
+						assert(options.added[i].id);
+						newIds[options.added[i].id || ''] = sql.$(`$role_${i}.id`);
+					}
+					
+					const roles = options.order.map(id => newIds[id] || id);
+					
+					// Add update operation
+					operations.push(sql.update<Domain>(domain.id, {
+						set: { roles },
+					}));
 				}
 
 				// Change
@@ -581,49 +612,21 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 					operations.push(sql.delete(options.deleted));
 
 				// Refetch all roles
-				operations.push(sql.select<Role>('*', {
-					from: 'roles',
-					where: sql.match({ domain: domain.id }),
+				operations.push(sql.select<Domain>(['roles'], {
+					from: domain.id,
+					fetch: ['roles'],
 				}));
 
 				// Execute as transaction
-				const results = await query<Role[]>(sql.transaction(operations), { session });
-				assert(results);
+				const results = await query<ExpandedDomain[]>(sql.transaction(operations), { session });
+				assert(results && results.length > 0);
 
 				return {
 					...domain,
-					roles: results,
+					roles: results[0].roles,
 				};
 			}, { message: 'An error occurred while updating roles' }),
 			{ revalidate: false }
-		),
-
-		/**
-		 * Set role order within a domain
-		 * 
-		 * @param roles All domain roles in the order they should appear
-		 * @returns The new domain object
-		 */
-		setRoleOrder: (roles: Role[]) => mutate(
-			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				// Unlike reordering channel groups, everyone can see every role, so no need for complicated function for reordering
-
-				// Set list
-				await query(
-					sql.update<Domain>(domain.id, { set: { roles: roles.map(x => x.id) } }),
-					{ session }
-				);
-
-				return { ...domain, roles };
-
-			}, { message: 'An error occurred while moving role' }),
-			{
-				revalidate: false,
-				optimisticData: (domain) => {
-					assert(domain);
-					return { ...domain, roles };
-				},
-			}
 		),
 	};
 }

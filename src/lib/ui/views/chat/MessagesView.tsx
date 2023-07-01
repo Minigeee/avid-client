@@ -854,7 +854,7 @@ function TextEditor(props: TextEditorProps) {
           {props.canSendAttachments && (
             <ActionButton
               tooltip='Add Attachment'
-              tooltipProps={{ position: 'top-end', withArrow: true }}
+              tooltipProps={{ position: 'top-end', withArrow: true, withinPortal: !useFormattedEditor }}
               variant='transparent'
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => fileInputRef.current?.click()}
@@ -875,7 +875,7 @@ function TextEditor(props: TextEditorProps) {
           ) : (
             <ActionButton
               tooltip='Formatted Message'
-              tooltipProps={{ position: 'top-end', withArrow: true }}
+              tooltipProps={{ position: 'top-end', withArrow: true, withinPortal: !useFormattedEditor }}
               variant='transparent'
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => setUseFormattedEditor(true)}

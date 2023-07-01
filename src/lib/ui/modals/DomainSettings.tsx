@@ -50,6 +50,8 @@ import { diff } from '@/lib/utility';
 import { TableColumn } from 'react-data-table-component';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 
+import { v4 as uuid } from 'uuid';
+
 
 ////////////////////////////////////////////////////////////
 const PRESET_COLORS: string[] = [];
@@ -499,7 +501,7 @@ function RoleSettingsTabs({ domain, roleIdx, form }: RoleSettingsTabsProps) {
             }}
             emptyComponent={(
               <Stack align='center'>
-                <Text weight={600}>This role has no extra permission sets</Text>
+                <Text weight={600}>This role has no extra permissions for any groups</Text>
                 <Popover position='top' withArrow>
                   <Popover.Target>
                     <Button
@@ -560,6 +562,8 @@ function RolesTab({ domain, ...props }: TabProps) {
   }, [aclEntries.data, domain.roles]);
   const form = useForm({ initialValues });
 
+  // Role search text
+  const [search, setSearch] = useState<string>('');
   // Chosen role
   const [selectedRoleId, setSelectedRoleId] = useCachedState<string | null>(`settings.${domain.id}.roles.selected`, null);
 
@@ -575,6 +579,15 @@ function RolesTab({ domain, ...props }: TabProps) {
       form.resetDirty(initialValues);
     }
   }, [initialValues]);
+
+  // Filtered roles
+  const filteredRoles = useMemo(() => {
+    if (search.length === 0)
+      return form.values.roles;
+
+    const query = search.toLowerCase();
+    return form.values.roles.filter(x => x.label.toLowerCase().indexOf(query) >= 0);
+  }, [form.values.roles, search]);
 
   // Index of role
   const selectedIdx = useMemo(() => {
@@ -605,10 +618,33 @@ function RolesTab({ domain, ...props }: TabProps) {
           <TextInput
             placeholder='Search'
             icon={<IconSearch size={18} />}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+            rightSection={search.length > 0 ? (
+              <CloseButton
+                onClick={() => setSearch('')}
+              />
+            ) : undefined}
             style={{ flexGrow: 1 }}
           />
           <Button
             variant='gradient'
+            onClick={() => {
+              // Temp uuid
+              const id = uuid();
+
+              // Append new role
+              form.setFieldValue('roles', [
+                ...form.values.roles, {
+                  id,
+                  domain: domain.id,
+                  label: 'New Role',
+                },
+              ]);
+
+              // Switch to it
+              setSelectedRoleId(id);
+            }}
           >
             New Role
           </Button>
@@ -637,7 +673,7 @@ function RolesTab({ domain, ...props }: TabProps) {
                 })}
                 {...provided.droppableProps}
               >
-                {form.values.roles.map((role, idx) => (
+                {filteredRoles.map((role, idx) => (
                   <Draggable key={role.id} draggableId={role.id} index={idx}>
                     {(provided, snapshot) => (
                       <PortalAwareItem snapshot={snapshot}>
@@ -701,6 +737,11 @@ function RolesTab({ domain, ...props }: TabProps) {
       <SettingsModal.Unsaved
         form={form}
         initialValues={initialValues}
+        onReset={() => {
+          // Go to empty role if current role does not exist after reset
+          if (selectedRoleId && initialValues.roles.findIndex(x => x.id === selectedRoleId) < 0)
+            setSelectedRoleId(null);
+        }}
         onSave={async () => {
           // Recreate original roles
           const original: Record<string, Role> = {};
@@ -735,26 +776,22 @@ function RolesTab({ domain, ...props }: TabProps) {
 
               // Mark as accounted for
               unaccounted.delete(role.id);
-            }
 
-            // Check if order changed
-            // TODO : This will likely have to change for add role code
-            if (role.id !== initialValues.roles[i].id)
-              orderChanged = true;
+              // Check if order changed, 
+              if (i >= initialValues.roles.length || role.id !== initialValues.roles[i].id)
+                orderChanged = true;
+            }
           }
 
           // The remaining values in unaccounted are deleted
-          if (unaccounted.size > 0 || Object.keys(changes).length > 0 || Object.keys(newRoles).length > 0) {
+          if (unaccounted.size > 0 || Object.keys(changes).length > 0 || Object.keys(newRoles).length > 0 || orderChanged) {
             await domain._mutators.updateRoles({
               added: Object.values(newRoles),
               changed: changes,
               deleted: Array.from(unaccounted),
+              order: orderChanged ? form.values.roles.map(x => x.id) : undefined,
             });
           }
-
-          // Update order
-          if (orderChanged)
-            await domain._mutators.setRoleOrder(form.values.roles);
 
           // Set permissions if changed
           const domainPermsDiff = diff(initialValues.domain_permissions, form.values.domain_permissions);
