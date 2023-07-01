@@ -15,7 +15,7 @@ export type DomainPermissions =
 
 
 export type RolePermissions =
-	/** Roles that can manage role */
+	/** Roles that can manage role (name, badge, permissions if they are manager to the resource, and managers if user is a manager to the role being assigned as managee) */
 	'can_manage' |
 	/** Roles that can assign (and unassign) this role */
 	'can_assign_role';
