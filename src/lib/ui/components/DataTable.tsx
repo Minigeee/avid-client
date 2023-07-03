@@ -5,6 +5,7 @@ import {
   BoxProps,
   Checkbox,
   CheckboxProps,
+  Loader,
   useMantineTheme,
 } from '@mantine/core';
 
@@ -56,7 +57,7 @@ function useTableStyles() {
         fontWeight: 600,
         backgroundColor: 'transparent',
         color: theme.colors.dark[0],
-        borderBottom: `1px solid ${theme.colors.dark[4]}`,
+        borderBottom: `1px solid ${theme.colors.dark[5]}`,
       }
     },
     rows: {
@@ -65,11 +66,8 @@ function useTableStyles() {
         fontSize: `${theme.fontSizes.sm}px`,
         color: theme.colors.dark[0],
         backgroundColor: theme.colors.dark[7],
-        borderTop: `1px solid ${theme.colors.dark[4]}`,
-        borderBottom: `1px solid ${theme.colors.dark[4]}`,
-        '&:not(:last-of-type)': {
-          borderBottomColor: theme.colors.dark[5],
-        },
+        borderTop: `1px solid ${theme.colors.dark[5]}`,
+        borderBottom: `1px solid ${theme.colors.dark[5]}`,
       },
       highlightOnHoverStyle: {
         color: theme.colors.dark[0],
@@ -146,6 +144,13 @@ function useTableStyles() {
         borderRadius: 6,
       },
     },
+    progress: {
+      style: {
+        height: '8rem',
+        color: theme.colors.dark[1],
+        backgroundColor: theme.colors.dark[8],
+      },
+    },
   }) as TableStyles, []);
 }
 
@@ -173,14 +178,29 @@ type DataTableProps<T> = {
 
   /** Indicates if table should be selectable */
   selectable?: boolean;
+
   /** Called when row is clicked */
   onRowClicked?: (row: T) => void;
+
+  /** Rows per page */
+  rowsPerPage?: number;
+  /** Settings for remote pagination */
+  paginationServer?: {
+    /** Total number of rows */
+    totalRows: number;
+    /** Handles fetching of data on page change */
+    onPageChange: (page: number, numRows: number) => void;
+  };
+
   /** The expanded rows component */
   expandableRowsComponent?: (props: { data: T } & any) => ReactElement;
   /** Extra props to pass to expandable row component */
   expandableRowsProps?: any;
+
   /** Element that is shown when there is no data */
   emptyComponent?: ReactElement;
+  /** Is data loading */
+  loading?: boolean;
   /** Conditional role styles */
   rowStyles?: ConditionalStyles<T>[];
   /** Properties for wrapper component */
@@ -189,6 +209,8 @@ type DataTableProps<T> = {
 
 ////////////////////////////////////////////////////////////
 export default function DataTable<T extends { id: string }>({ data, ...props }: DataTableProps<T>) {
+  const rowsPerPage = props.rowsPerPage || 20;
+
   // Table styles
   const styles = useTableStyles();
 
@@ -236,13 +258,20 @@ export default function DataTable<T extends { id: string }>({ data, ...props }: 
             setHovered(null);
         }}
 
-        pagination={data.length > 20}
-        paginationPerPage={20}
+        pagination={(props.paginationServer?.totalRows || data.length) > rowsPerPage}
+        paginationPerPage={rowsPerPage}
         paginationComponentOptions={{
           noRowsPerPage: true,
         }}
+        paginationServer={props.paginationServer !== undefined}
+        paginationTotalRows={props.paginationServer?.totalRows}
+        onChangePage={props.paginationServer?.onPageChange}
 
         noDataComponent={props.emptyComponent}
+        /* progressPending={props.loading}
+        progressComponent={(
+          <Loader size={24} />
+        )} */
 
         selectableRows={props.selectable}
         // @ts-ignore

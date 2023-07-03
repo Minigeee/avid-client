@@ -168,8 +168,9 @@ export class AsyncCache<T> {
 	 * 
 	 * @param key The key or list of keys to store the data under
 	 * @param data The data object or list of objects to store in cache
+	 * @param renew Should the stale timer be reset for this data
 	 */
-	add(key: string | string[], data: T | T[]) {			
+	add(key: string | string[], data: T | T[], renew: boolean = true) {			
 		const now = Date.now();
 
 		// Clean if needed
@@ -184,19 +185,27 @@ export class AsyncCache<T> {
 				const k = key[i];
 				
 				// Make new cache objects
-				this._data[k] = {
-					data: data[i],
-					last_updated: now,
-				};
+				if (!renew && this._data[k])
+					this._data[k].data = data[i] as T;
+				else {
+					this._data[k] = {
+						data: data[i] as T,
+						last_updated: now,
+					};
+				}
 			}
 		}
 
 		else {
 			// Make new cache object
-			this._data[key] = {
-				data: data as T,
-				last_updated: now,
-			};
+			if (!renew && this._data[key])
+				this._data[key].data = data as T;
+			else {
+				this._data[key] = {
+					data: data as T,
+					last_updated: now,
+				};
+			}
 		}
 	}
 

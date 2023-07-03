@@ -17,7 +17,12 @@ const _caches: Record<string, {
 	/** A cache containing members */
 	cache: AsyncCache<ExpandedMember>;
 	/** Maps member query to the time it was requested */
-	queries: Record<string, number>;
+	queries: Record<string, {
+		/** The time the query was performed */
+		time: number;
+		/** The number of results returned in the query */
+		count?: number;
+	}>;
 }> = {};
 
 /** Which fields should be selected */
@@ -45,8 +50,6 @@ export async function getDomainCache(domain_id: string, session: SessionState, t
 
 	try {
 		if (!data) {
-			console.log('refetch members')
-
 			// Throw if specified
 			if (throwOnMissing) throw new Error('domain cache missing');
 
@@ -76,7 +79,7 @@ export async function getDomainCache(domain_id: string, session: SessionState, t
 
 			_caches[domain_id] = {
 				cache,
-				queries: { '': now },
+				queries: { '': { time: now } },
 			};
 
 			return _caches[domain_id];
@@ -127,6 +130,26 @@ export async function getMembers(domain_id: string, member_ids: string[], sessio
 }
 
 
+/** List member options */
+export type MemberListOptions = {
+	/** The string to search for in member alias */
+	search?: string;
+	/** Only include members that have the specified role */
+	role_id?: string;
+	/** Limit the number of members returned, the app limit will override this limit if this limit is larger */
+	limit?: number;
+	/** The page of results to return */
+	page?: number;
+};
+
+/** Object returned from member list query */
+export type MemberListResults = {
+	/** The members from the query */
+	data: ExpandedMember[];
+	/** The total number of results in query, only available for paginated queries */
+	count?: number;
+};
+
 /**
  * Get members from a domain that match the specified query. The local cache is first checked
  * and if valid data exists, it is used. Otherwise, the data is fetched
@@ -135,42 +158,97 @@ export async function getMembers(domain_id: string, member_ids: string[], sessio
  * @param domain_id The id of the domain to retrieve the member from
  * @param substr The alias query to use for searching
  */
-export async function listMembers(domain_id: string, search: string, session: SessionState) {
+export async function listMembers(domain_id: string, options: MemberListOptions, session: SessionState): Promise<MemberListResults> {
 	const data = await getDomainCache(domain_id, session);
+	
+	const search = options.search?.toLocaleLowerCase();
+	const limit = Math.min(options.limit || 1000000000, config.app.member.query_limit);
+
+	// Create query string
+	const constraints: string[] = [];
+
+	if (search)
+		constraints.push(`search=${search}`);
+	if (options.role_id)
+		constraints.push(`role=${options.role_id}`);
+	if (options.limit !== undefined)
+		constraints.push(`limit=${limit}`);
+	if (options.page !== undefined)
+		constraints.push(`page=${options.page}`);
 
 	// Check when this query was last performed
-	search = search.toLowerCase();
-	const queryTime = data.queries[search];
+	const queryKey = constraints.length ? constraints.join('&') : '';
+	const queryTime = data.queries[queryKey]?.time || 0;
 
 	// Fetch data if needed
 	if (!queryTime || Date.now() - queryTime > config.app.member.query_interval * 1000) {
-		const members = await query<ExpandedMember[]>(
+		const paged = options.page !== undefined;
+
+		// Match string
+		let matchConstraints: string[] = [];
+		if (search)
+			matchConstraints.push(`string::lowercase(alias) CONTAINS '${search}'`);
+		if (options.role_id)
+			matchConstraints.push(`roles CONTAINS ${options.role_id}`);
+		const matchStr = matchConstraints.join('&&');
+
+		// Construct db query
+		const ops = [
 			sql.select<ExpandedMember>(MEMBER_SELECT_FIELDS, {
 				from: `${domain_id}<-member_of`,
-				where: search ? undefined : `string::lowercase(alias) CONTAINS '${search}'`,
-				limit: config.app.member.query_limit,
+				where: matchStr || undefined,
+				limit,
+				start: options.page !== undefined ? options.page * limit : undefined,
+				sort: !search ? 'alias' : undefined,
 			}),
-			{ session }
+		];
+		
+		// If paged request, the get total count as well
+		if (paged) {
+			ops.push(sql.select<ExpandedMember>(['count()'], {
+				from: `${domain_id}<-member_of`,
+				where: matchStr || undefined,
+				groupAll: true,
+			}));
+		}
+
+		const results = await query<[ExpandedMember[], { count: number }[]]>(
+			sql.multi(ops),
+			{ session, complete: true }
 		);
-		if (!members) return [];
+		if (!results || !results[0]) return { data: [] };
 
 		// Update cache
+		const members = results[0];
+		const count = results.length > 1 ? results[1][0]?.count || 0 : undefined;
 		data.cache.add(members.map(x => x.id), members);
 
-		// Update query
-		data.queries[search] = Date.now();
+		// Update query time and count
+		data.queries[queryKey] = {
+			time: Date.now(),
+			count,
+		};
 
-		return members;
+		return { data: members, count };
 	}
 
 	// Construct members array
-	const members: ExpandedMember[] = [];
+	let members: ExpandedMember[] = [];
 	for (const m of Object.values(data.cache._data)) {
-		if (m.data?.alias.toLowerCase().includes(search))
+		if (m.data && (!search || m.data.alias.toLowerCase().includes(search)) && (!options.role_id || (m.data.roles && m.data.roles.findIndex(x => x === options.role_id) >= 0)))
 			members.push(m.data);
 	}
 
-	return members;
+	// Sorting if no search
+	if (!search)
+		members.sort((a, b) => a.alias ? b.alias ? a.alias.localeCompare(b.alias) : 1 : -1);
+
+	// Apply pagination
+	const start = options.page ? options.page * limit : 0;
+	if (options.limit)
+		members = members.slice(start, start + limit);
+
+	return { data: members, count: data.queries[queryKey].count };
 }
 
 

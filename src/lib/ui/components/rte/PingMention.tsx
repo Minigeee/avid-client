@@ -19,7 +19,7 @@ import MemberAvatar from '../MemberAvatar';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { listMembers } from '@/lib/db';
-import { Member, Role } from '@/lib/types';
+import { ExpandedMember, Role } from '@/lib/types';
 import { DomainWrapper } from '@/lib/hooks';
 
 
@@ -45,7 +45,7 @@ type PingMentionStorage = {
   session: SessionState;
   domain: DomainWrapper;
   has_more_results: Record<string, boolean>;
-  members: Member[];
+  members: ExpandedMember[];
 };
 
 ////////////////////////////////////////////////////////////
@@ -71,13 +71,13 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
 
   onCreate() {
     // Get initial members list
-    listMembers(this.options.domain.id, '', this.options.session)
-      .then(members => {
+    listMembers(this.options.domain.id, {}, this.options.session)
+      .then(({ data }) => {
         // Copy members array to storage
-        this.storage.members = members;
+        this.storage.members = data;
 
         // Determine if more results are available by if query limit is reached
-        this.storage.has_more_results[''] = members.length >= config.app.member.query_limit;
+        this.storage.has_more_results[''] = data.length >= config.app.member.query_limit;
       });
   },
 
@@ -214,7 +214,7 @@ MentionList.displayName = 'MentionList';
 const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
   items: async ({ editor, query }) => {
     const storage = editor.storage.pingMention as PingMentionStorage;
-    const members: Member[] = storage.members;
+    const members: ExpandedMember[] = storage.members;
     const roles: Role[] = storage.domain.roles;
 
     // Filter members by name
@@ -224,10 +224,10 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
     // Check if more members need to be requested
     if (filteredM.length <= config.app.member.new_query_threshold && (query.length && storage.has_more_results[query.slice(0, -1)])) {
       // Request new search query
-      const newMembers = await listMembers(storage.domain.id, query, storage.session);
+      const { data: newMembers } = await listMembers(storage.domain.id, { search: query }, storage.session);
 
       // Merge members lists
-      const memberMap: Record<string, Member> = {};
+      const memberMap: Record<string, ExpandedMember> = {};
       for (const member of members)
         memberMap[member.id] = member;
 
@@ -262,7 +262,6 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
         id: x.id,
         name: x.alias,
         pfp: x.profile_picture,
-        color: x.color,
       })),
       ...filteredR.map(x => ({
         type: 'role',

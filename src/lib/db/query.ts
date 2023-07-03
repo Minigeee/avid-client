@@ -198,12 +198,14 @@ export type SqlSelectOptions<T extends object> = {
 	}[];
 	/** Fetch option */
 	fetch?: (Selectables<T> | (string & {}))[];
+	/** Group all */
+	groupAll?: boolean;
 };
 
 type _SqlUpdateBaseOptions<T extends object> = {
 	/** Update condition */
 	where?: string;
-	/** Return mode */
+	/** Return mode, AFTER by default */
 	return?: SqlReturn | (Selectables<T> | (string & {}))[];
 };
 
@@ -448,6 +450,8 @@ export const sql = {
 			q += `START ${options.start} `;
 		if (options.fetch)
 			q += `FETCH ${options.fetch.join(',')} `;
+		if (options.groupAll)
+			q += 'GROUP ALL ';
 
 		return q;
 	},

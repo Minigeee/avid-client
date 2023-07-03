@@ -14,6 +14,7 @@ import RtcVoices from '@/lib/ui/components/rtc/RtcVoices';
 import CreateProfile from '@/lib/ui/screens/CreateProfile';
 import Main from '@/lib/ui/screens/Main';
 import JoinDomain from '@/lib/ui/screens/JoinDomain';
+import ConfirmModal from '@/lib/ui/modals/ConfirmModal';
 
 import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
@@ -102,9 +103,11 @@ export default function App() {
   return (
     <ErrorBoundary height='90vh'>
       <AppProvider>
-        <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
-          <ScreenState router={router} />
-        </ModalsProvider>
+        <ConfirmModal>
+          <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
+            <ScreenState router={router} />
+          </ModalsProvider>
+        </ConfirmModal>
       </AppProvider>
     </ErrorBoundary>
   );

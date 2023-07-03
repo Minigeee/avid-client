@@ -129,7 +129,7 @@ function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: stri
       {props.type === 'empty' && (
         <Popover.Target>
           <Button
-            variant='gradient'
+            variant='default'
             leftIcon={<IconPlus size={18} />}
             onClick={() => setOpened(!opened)}
           >

@@ -181,6 +181,7 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
             placeholder='Start typing to get a list of users'
             clearable
             withinPortal
+            dropdownPosition='top'
             value={assignee}
             onChange={setAssignee}
           />

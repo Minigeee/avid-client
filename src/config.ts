@@ -202,9 +202,9 @@ const config = {
 			/** The maximum number of members returned in any given query */
 			query_limit: 200,
 			/** The number of seconds for which a member query is considered to be stale */
-			query_interval: 3 * 60,
+			query_interval: 5 * 60,
 			/** The number of members under which a new query should be requested when searching members */
-			new_query_threshold: 5,
+			new_query_threshold: 20,
 		},
 
 		/** Rtc config */

@@ -286,7 +286,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               fontWeight: 600,
               backgroundColor: 'transparent',
               color: theme.colors.dark[0],
-              borderBottom: `1px solid ${theme.colors.dark[4]}`,
+              borderBottom: `1px solid ${theme.colors.dark[5]}`,
             }
           },
           rows: {
@@ -295,8 +295,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               fontSize: `${theme.fontSizes.sm}px`,
               color: theme.colors.dark[0],
               backgroundColor: theme.colors.dark[7],
-              borderTop: `1px solid ${theme.colors.dark[4]}`,
-              borderBottom: `1px solid ${theme.colors.dark[4]}`,
+              borderTop: `1px solid ${theme.colors.dark[5]}`,
+              borderBottom: `1px solid ${theme.colors.dark[5]}`,
             },
             highlightOnHoverStyle: {
               color: theme.colors.dark[0],
