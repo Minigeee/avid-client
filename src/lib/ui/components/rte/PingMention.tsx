@@ -1,9 +1,11 @@
-import { forwardRef, useEffect, useState, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useState, useImperativeHandle, useMemo, PropsWithChildren } from 'react';
 
 import {
+  Divider,
   Group,
   ScrollArea,
   Stack,
+  Sx,
   Text,
   UnstyledButton,
 } from '@mantine/core';
@@ -14,6 +16,7 @@ import Mention, { MentionOptions } from '@tiptap/extension-mention';
 import { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion';
 import tippy, { Instance, Props as TippyProps } from 'tippy.js';
 
+import { Emoji } from '../Emoji';
 import MemberAvatar from '../MemberAvatar';
 
 import config from '@/config';
@@ -21,6 +24,7 @@ import { SessionState } from '@/lib/contexts';
 import { listMembers } from '@/lib/db';
 import { ExpandedMember, Role } from '@/lib/types';
 import { DomainWrapper } from '@/lib/hooks';
+import { IconBadgeOff } from '@tabler/icons-react';
 
 
 ////////////////////////////////////////////////////////////
@@ -30,7 +34,8 @@ type SuggestionType = {
   name: string;
   /** Member pfp if this is a member type */
   pfp?: string;
-  color?: string;
+  /** Role badge if this is a role type */
+  badge?: string;
 }
 
 
@@ -88,13 +93,8 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
     const finalAttrs: any = {
       ...HTMLAttributes,
       ['data-type']: 'pingMention',
-      class: `avid-highlight avid-${attrs['data-variant'] === 'member' ? 'mention-member' : ''}`,
+      class: `avid-highlight avid-${attrs['data-variant'] === 'member' ? 'mention-member' : 'mention-role'}`,
     };
-
-    if (attrs['data-variant'] === 'role') {
-      const color = attrs['data-color'] || '#EAECEF';
-      finalAttrs['style'] = `background-color: ${color}2A; color: ${color}; font-weight: 600;`;
-    }
 
     return [
       'span',
@@ -107,6 +107,34 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
   },
 });
 
+
+////////////////////////////////////////////////////////////
+function SuggestionButton(props: PropsWithChildren & { index: number; selectedIndex: number; setSelectedIndex: (idx: number) => void; selectItem: (idx: number) => void; sx?: Sx }) {
+  return (
+    <UnstyledButton
+      key={props.index}
+      sx={(theme) => {
+        const merge = typeof props.sx === 'function' ? props.sx?.(theme) : (props.sx || {});
+        const selected = props.selectedIndex === props.index;
+        return {
+          padding: '0.25rem 0.4rem 0.25rem 0.4rem',
+          backgroundColor: theme.colors.dark[selected ? 4 : 5],
+          borderRadius: theme.radius.sm,
+          '&:hover': {
+            backgroundColor: theme.colors.dark[4],
+          },
+          ...merge,
+        };
+      }}
+      onClick={() => props.selectItem(props.index)}
+      onMouseEnter={() => props.setSelectedIndex(-1)}
+    >
+      <Group noWrap spacing={8}>
+        {props.children}
+      </Group>
+    </UnstyledButton>
+  );
+}
 
 ////////////////////////////////////////////////////////////
 const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => {
@@ -154,7 +182,16 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
 
       return false;
     },
-  }))
+  }));
+  
+
+  const members = useMemo(() => {
+    return props.items.filter(x => x.type === 'member');
+  }, [props.items]);
+  
+  const roles = useMemo(() => {
+    return props.items.filter(x => x.type === 'role');
+  }, [props.items]);
 
   return (
     <ScrollArea.Autosize mah='25ch'>
@@ -167,41 +204,54 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
         boxShadow: '0px 0px 10px #00000033',
       })}>
         {props.items.length
-          ? props.items.map((item, index) => (
-            <UnstyledButton
-              key={index}
-              sx={(theme) => {
-                const selected = selectedIndex === index;
-                return {
-                  padding: '0.25rem 0.4rem 0.25rem 0.4rem',
-                  backgroundColor: theme.colors.dark[selected ? 4 : 5],
-                  borderRadius: theme.radius.sm,
-                  '&:hover': {
-                    backgroundColor: theme.colors.dark[4],
-                  },
-                };
-              }}
-              onClick={() => selectItem(index)}
-              onMouseEnter={() => setSelectedIndex(-1)}
-            >
-              <Group noWrap spacing={8}>
-                {item.type === 'member' && (
+          ? (
+            <>
+              {members.map((item, index) => (
+                <SuggestionButton
+                  index={index}
+                  selectItem={selectItem}
+                  selectedIndex={selectedIndex}
+                  setSelectedIndex={setSelectedIndex}
+                >
                   <MemberAvatar
                     member={{ alias: item.name, profile_picture: item.pfp }}
                     size={24}
                   />
-                )}
-                <Text
-                  size='sm'
-                  weight={item.type === 'role' ? 600 : undefined}
-                  sx={{ color: item.type === 'role' ? item.color : undefined }}
+                  <Text size='sm'>
+                    {item.name}
+                  </Text>
+                </SuggestionButton>
+              ))}
+
+              {members.length > 0 && <Divider sx={{ margin: '0.25rem' }} />}
+
+              {roles.map((item, index) => (
+                <SuggestionButton
+                  index={index + members.length}
+                  selectItem={selectItem}
+                  selectedIndex={selectedIndex}
+                  setSelectedIndex={setSelectedIndex}
+                  sx={(theme) => ({
+                    '.tabler-icon': {
+                      color: theme.colors.dark[3],
+                    },
+                  })}
                 >
-                  {item.type === 'role' ? '@' : ''}{item.name}
-                </Text>
-              </Group>
-            </UnstyledButton>
-          ))
-          : <Text size='sm' color='dimmed'>No results</Text>
+                  {item.badge && <Emoji id={item.badge} size='1rem' />}
+                  {!item.badge && <IconBadgeOff size='1.25rem' />}
+                  <Text
+                    size='sm'
+                    weight={600}
+                    sx={(theme) => ({
+                      color: theme.colors.gray[4],
+                    })}
+                  >
+                    @{item.name}
+                  </Text>
+                </SuggestionButton>
+              ))}
+            </>
+          ) : <Text size='sm' color='dimmed'>No results</Text>
         }
       </Stack>
     </ScrollArea.Autosize>
@@ -238,7 +288,7 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
       }
 
       // Sort members array
-      members.sort((a, b) => (a.alias > b.alias) ? 1 : ((b.alias > a.alias) ? -1 : 0));
+      members.sort((a, b) => a.alias.localeCompare(b.alias));
 
       // Refilter and evaluate
       filteredM = members.filter(x => x.alias.toLowerCase().includes(query.toLowerCase()));
@@ -253,7 +303,8 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
     }
 
     // Filter roles
-    const filteredR = roles.filter(x => x.label.toLowerCase().startsWith(query));
+    const defRole = storage.domain._default_role;
+    const filteredR = roles.filter(x => x.label.toLowerCase().startsWith(query)).sort((a, b) => a.id === defRole ? -1 : b.id === defRole ? 1 : a.label.localeCompare(b.label));
 
     // Merge lists
     const filtered = [
@@ -267,7 +318,7 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
         type: 'role',
         id: x.id,
         name: x.label,
-        color: x.color,
+        badge: x.badge,
       })),
     ] as SuggestionType[];
 
@@ -349,7 +400,6 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
             ['data-id']: props.id,
             ['data-label']: props.name,
             ['data-variant']: props.type,
-            ['data-color']: props.color,
           },
         },
         {

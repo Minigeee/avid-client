@@ -214,7 +214,13 @@ export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 
 		'.avid-mention-member': {
 			backgroundColor: theme.colors.gray[7],
-			color: '#F0F0FC',
+			color: theme.colors.dark[0],
+			fontWeight: 600,
+		},
+
+		'.avid-mention-role': {
+			backgroundColor: theme.colors.dark[5],
+			color: theme.colors.dark[0],
 			fontWeight: 600,
 		},
 	}

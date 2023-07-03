@@ -7,8 +7,6 @@ export type Role = {
 	domain: string;
 	/** Label of the role */
 	label: string;
-	/** Color of the role */
-	color?: string | null;
 	/** Role badge emote string */
 	badge?: string | null;
 	/** Short description for this role */

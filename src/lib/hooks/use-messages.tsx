@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import ReactDomServer from 'react-dom/server';
 import assert from 'assert';
 
 import useSWR, { KeyedMutator } from 'swr';
@@ -15,6 +16,7 @@ import { MemberWrapper } from './use-members';
 import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
+import { Emoji } from '@/lib/ui/components/Emoji';
 import { SyncCache } from '@/lib/utility/cache';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { socket } from '@/lib/utility/realtime';
@@ -132,8 +134,8 @@ const _md = new MarkdownIt({
 			const id = `roles:${tokens[idx].content}`;
 			const role = env.domain?.roles?.[id];
 			const name = role?.label || '_';
-			const color = role?.color || '#EAECEF';
-			return `<span class="avid-highlight" data-type="pingMention" data-id="${id}" data-variant="member" data-label="${name}" data-color="${color}" style="background-color: ${color}2A; color: ${color}; font-weight: 600;">@${name}</span>`;
+			// const badge = role?.badge ? ReactDomServer.renderToStaticMarkup(<Emoji id={role.badge} />) : null;
+			return `<span class="avid-highlight avid-mention-role" data-type="pingMention" data-id="${id}" data-variant="role" data-label="${name}" >@${name}</span>`;
 		}
 	});
 

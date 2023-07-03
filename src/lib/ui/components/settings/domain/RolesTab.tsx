@@ -334,16 +334,6 @@ function GeneralTab({ form, role, roleIdx }: SubtabProps) {
         {...form.getInputProps(`roles.${roleIdx}.label`)}
       />
 
-      <ColorInput
-        label='Color'
-        description={`The role color affects the colored tags displayed in a user's profile`}
-        placeholder='None'
-        swatchesPerRow={7}
-        swatches={PRESET_COLORS}
-        styles={{ wrapper: { maxWidth: config.app.ui.med_input_width } }}
-        {...form.getInputProps(`roles.${roleIdx}.color`)}
-      />
-
       <div>
         <Text size='sm' weight={600}>Badge</Text>
         <Text size='xs' color='dimmed' mb={6}>
@@ -1022,7 +1012,6 @@ export function RolesTab({ domain, ...props }: TabProps) {
       roles: domain.roles.map(role => ({
         ...role,
         badge: role.badge || null,
-        color: role.color || '',
       })),
       domain_permissions: domainPermissions,
       managers,
@@ -1070,6 +1059,9 @@ export function RolesTab({ domain, ...props }: TabProps) {
     return form.values.roles.findIndex(x => x.id === selectedRoleId);
   }, [selectedRoleId, form.values.roles]);
 
+
+  // Role obj for convenience
+  const role = selectedIdx !== null ? form.values.roles[selectedIdx] : null;
 
   return (
     <>
@@ -1180,8 +1172,6 @@ export function RolesTab({ domain, ...props }: TabProps) {
                             <Text inline size='sm' weight={600}>
                               {role.label}
                             </Text>
-                            <div style={{ flexGrow: 1 }} />
-                            {role.color && <ColorSwatch color={role.color} size='1.0rem' />}
                           </Group>
                         </Box>
                       </PortalAwareItem>
@@ -1199,7 +1189,7 @@ export function RolesTab({ domain, ...props }: TabProps) {
       {selectedIdx !== null && (
         <>
           <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
-          <Title order={3} mb={8}>Edit - {'@'}{form.values.roles[selectedIdx].label}</Title>
+          <Title order={3} mb={8}>Edit - {role?.badge && <Emoji id={role.badge} />} {'@'}{role?.label}</Title>
 
           <RoleSettingsTabs
             key={selectedRoleId}
@@ -1242,7 +1232,6 @@ export function RolesTab({ domain, ...props }: TabProps) {
               newRoles[role.id] = {
                 ...role,
                 badge: role.badge || undefined,
-                color: role.color || undefined,
               };
             }
 
