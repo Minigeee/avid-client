@@ -10,6 +10,7 @@ import {
   ColorSwatch,
   DEFAULT_THEME,
   Divider,
+  Flex,
   Group,
   Menu,
   Popover,
@@ -51,7 +52,7 @@ import { SettingsModal, popUnsaved, pushUnsaved } from '@/lib/ui/components/sett
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { DomainWrapper, MemberListWrapper, setPermissions, useAclEntries, useAclEntriesByRole, useCachedState, useMemberQuery } from '@/lib/hooks';
+import { DomainWrapper, MemberListWrapper, setPermissions, useAclEntries, useAclEntriesByRole, useCachedState, useDomain, useMemberQuery } from '@/lib/hooks';
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, ExpandedMember, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
 import { TableColumn } from 'react-data-table-component';
@@ -61,6 +62,8 @@ import { v4 as uuid } from 'uuid';
 import { merge } from 'lodash';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import { useDebouncedValue } from '@mantine/hooks';
+import { listMembers } from '@/lib/db';
+import assert from 'assert';
 
 
 ////////////////////////////////////////////////////////////
@@ -312,6 +315,7 @@ type RoleSettingsTabsProps = {
   roleIdx: number;
   form: UseFormReturnType<RoleFormValues>;
   addManagers: (role_id: string, managers: Record<string, ManagerPermissions>) => void;
+  setSelectedRoleId: (id: string | null) => void;
   session: SessionState;
 };
 
@@ -322,12 +326,18 @@ type SubtabProps = RoleSettingsTabsProps & {
 
 
 ////////////////////////////////////////////////////////////
-function GeneralTab({ form, role, roleIdx }: SubtabProps) {
+function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }: SubtabProps) {
+  const { open: openConfirmModal } = useConfirmModal();
+
+  // Used to indicate if member query is loading
+  const [loading, setLoading] = useState<boolean>(false);
   // Is badge picker open
   const [badgePickerOpen, setBadgePickerOpen] = useState<boolean>(false);
 
+
   return (
     <Stack mt={20}>
+      
       <TextInput
         label='Name'
         sx={{ width: config.app.ui.med_input_width }}
@@ -385,6 +395,70 @@ function GeneralTab({ form, role, roleIdx }: SubtabProps) {
           )}
         </Group>
       </div>
+
+      <Divider maw={config.app.ui.settings_maw} />
+
+      <Flex
+        align='center'
+        wrap='nowrap'
+        gap='1.0rem'
+        maw={config.app.ui.settings_maw}
+        sx={(theme) => ({
+          padding: '0.75rem 1rem',
+          backgroundColor: theme.colors.dark[8],
+          borderRadius: theme.radius.sm,
+        })}
+      >
+        <Box sx={{ flexGrow: 1 }}>
+          <Text size='sm' weight={600} mb={4}>Delete this role</Text>
+          <Text size='xs' color='dimmed'>
+            This action will be performed immediately and can not be undone.
+          </Text>
+        </Box>
+
+        <Button
+          color='red'
+          variant='outline'
+          loading={loading}
+          onClick={async () => {
+            setLoading(true);
+
+            // Get number of members
+            const { count } = await listMembers(domain.id, {
+              limit: 100,
+              page: 0,
+              role_id: role.id,
+            }, session);
+            
+            setLoading(false);
+
+            // Make user confirm action
+            openConfirmModal({
+              modalProps: {
+                title: 'Delete Role'
+              },
+              content: (
+                <Text>
+                  Are you sure you want to delete <b>@{role.label}</b>?
+                  This role will be removed from <b>{count}</b> member{count !== 1 ? 's' : ''}.
+                </Text>
+              ),
+              confirmLabel: 'Delete',
+              confirmText: (<>Please type <b>{role.label}</b> to confirm this action.</>),
+              typeToConfirm: (count || 0) >= 10 ? role.label : undefined,
+              onConfirm: async () => {
+                // Delete role
+                await domain._mutators.deleteRole(role.id);
+                
+                // Switch off of it
+                setSelectedRoleId(null);
+              },
+            });
+          }}
+        >
+          Delete Role
+        </Button>
+      </Flex>
     </Stack>
   );
 }
@@ -986,14 +1060,27 @@ function RoleSettingsTabs(props: RoleSettingsTabsProps) {
 
 
 ////////////////////////////////////////////////////////////
-export function RolesTab({ domain, ...props }: TabProps) {
+export function RolesTab({ ...props }: TabProps) {
+  const domain = useDomain(props.domain.id);
+  assert(domain._exists);
+  console.log(domain)
+
   // Domain permissions
   const aclEntries = useAclEntries(domain.id);
   // List of manager maps per role
   const [managers, setManagers] = useState<Record<string, Record<string, ManagerPermissions>>>({});
 
+  // New role loading
+  const [newRoleLoading, setNewRoleLoading] = useState<boolean>(false);
+
   // Settings form
   const initialValues = useMemo(() => {
+    // Roles
+    const roles = domain.roles.map(role => ({
+      ...role,
+      badge: role.badge || null,
+    }));
+
     // Map of domain permissions per role
     const domainPermissions: RoleFormValues['domain_permissions'] = {};
 
@@ -1009,10 +1096,7 @@ export function RolesTab({ domain, ...props }: TabProps) {
     }
 
     return {
-      roles: domain.roles.map(role => ({
-        ...role,
-        badge: role.badge || null,
-      })),
+      roles,
       domain_permissions: domainPermissions,
       managers,
     } as RoleFormValues;
@@ -1061,7 +1145,7 @@ export function RolesTab({ domain, ...props }: TabProps) {
 
 
   // Role obj for convenience
-  const role = selectedIdx !== null ? form.values.roles[selectedIdx] : null;
+  const role = selectedIdx !== null && selectedIdx >= 0 ? form.values.roles[selectedIdx] : null;
 
   return (
     <>
@@ -1096,21 +1180,35 @@ export function RolesTab({ domain, ...props }: TabProps) {
           />
           <Button
             variant='gradient'
-            onClick={() => {
-              // Temp uuid
-              const id = uuid();
+            loading={newRoleLoading}
+            onClick={async () => {
+              try {
+                setNewRoleLoading(true);
 
-              // Append new role
-              form.setFieldValue('roles', [
-                ...form.values.roles, {
-                  id,
-                  domain: domain.id,
-                  label: 'New Role',
-                },
-              ]);
+                // Create new role
+                const newDomain = await domain._mutators.updateRoles({
+                  added: [{
+                    domain: domain.id,
+                    label: 'New Role',
+                  }]
+                });
 
-              // Switch to it
-              setSelectedRoleId(id);
+                if (newDomain) {
+                  // Find the role id that doesn't belong
+                  const oldRoles = new Set<string>(form.values.roles.map(x => x.id));
+    
+                  // Switch to it
+                  for (const role of newDomain.roles) {
+                    if (!oldRoles.has(role.id)) {
+                      setSelectedRoleId(role.id);
+                      break;
+                    }
+                  }
+                }
+              }
+              finally {
+                setNewRoleLoading(false);
+              }
             }}
           >
             New Role
@@ -1186,7 +1284,7 @@ export function RolesTab({ domain, ...props }: TabProps) {
         </DragDropContext>
       </Box>
 
-      {selectedIdx !== null && (
+      {role && selectedIdx !== null && (
         <>
           <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
           <Title order={3} mb={8}>Edit - {role?.badge && <Emoji id={role.badge} />} {'@'}{role?.label}</Title>
@@ -1199,6 +1297,7 @@ export function RolesTab({ domain, ...props }: TabProps) {
             addManagers={(role_id, newManagers) => {
               setManagers({ ...managers, [role_id]: newManagers });
             }}
+            setSelectedRoleId={setSelectedRoleId}
             session={props.session}
           />
         </>
@@ -1252,12 +1351,13 @@ export function RolesTab({ domain, ...props }: TabProps) {
             }
           }
 
+          // This function does not handle deleting roles
+
           // The remaining values in unaccounted are deleted
-          if (unaccounted.size > 0 || Object.keys(changes).length > 0 || Object.keys(newRoles).length > 0 || orderChanged) {
+          if (Object.keys(changes).length > 0 || Object.keys(newRoles).length > 0 || orderChanged) {
             await domain._mutators.updateRoles({
               added: Object.values(newRoles),
               changed: changes,
-              deleted: Array.from(unaccounted),
               order: orderChanged ? form.values.roles.map(x => x.id) : undefined,
             }).catch(() => {});
           }

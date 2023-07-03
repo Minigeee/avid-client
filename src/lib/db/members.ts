@@ -34,6 +34,29 @@ const MEMBER_SELECT_FIELDS = [
 ];
 
 
+/** Get the map of queries that are cached */
+export function getMemberQueries(domain_id: string) {
+	return _caches[domain_id].queries;
+}
+
+/** Create query key from the given options */
+export function getMemberQueryKey(options: MemberListOptions) {
+	// Create query string
+	const constraints: string[] = [];
+
+	if (options.search)
+		constraints.push(`search=${options.search.toLocaleLowerCase()}`);
+	if (options.role_id)
+		constraints.push(`role=${options.role_id}`);
+	if (options.limit !== undefined)
+		constraints.push(`limit=${Math.min(options.limit, config.app.member.query_limit)}`);
+	if (options.page !== undefined)
+		constraints.push(`page=${options.page}`);
+
+	// Query key
+	return constraints.length ? constraints.join('&') : '';
+}
+
 /**
  * Get domain's member cache, or create a new one if it doesn't exist
  * 
@@ -164,20 +187,8 @@ export async function listMembers(domain_id: string, options: MemberListOptions,
 	const search = options.search?.toLocaleLowerCase();
 	const limit = Math.min(options.limit || 1000000000, config.app.member.query_limit);
 
-	// Create query string
-	const constraints: string[] = [];
-
-	if (search)
-		constraints.push(`search=${search}`);
-	if (options.role_id)
-		constraints.push(`role=${options.role_id}`);
-	if (options.limit !== undefined)
-		constraints.push(`limit=${limit}`);
-	if (options.page !== undefined)
-		constraints.push(`page=${options.page}`);
-
 	// Check when this query was last performed
-	const queryKey = constraints.length ? constraints.join('&') : '';
+	const queryKey = getMemberQueryKey(options);
 	const queryTime = data.queries[queryKey]?.time || 0;
 
 	// Fetch data if needed

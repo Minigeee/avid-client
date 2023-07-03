@@ -5,7 +5,7 @@ import assert from 'assert';
 
 import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { addChannel, new_Record, query, removeChannel, sql } from '@/lib/db';
+import { addChannel, getDomainCache, new_Record, query, removeChannel, sql } from '@/lib/db';
 import { AclEntry, AllPermissions, Channel, ChannelData, ChannelGroup, ChannelOptions, ChannelTypes, Domain, ExpandedChannelGroup, ExpandedDomain, Member, Role, UserPermissions } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
@@ -550,11 +550,10 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 * @param options Role update options
 		 * @param options.added A list of roles to be added
 		 * @param options.changed A map of role ids to new roles to be merged into existing ones
-		 * @param options.deleted A list of role ids to be deleted
 		 * @param options.order A list of role ids in the order they should appear (including newly added roles, which should be using unique ids)
 		 * @returns The new domain object
 		 */
-		updateRoles: (options: { added?: Partial<Role>[]; changed?: Record<string, Partial<Role>>; deleted?: string[]; order?: string[]; }) => mutate(
+		updateRoles: (options: { added?: Partial<Role>[]; changed?: Record<string, Partial<Role>>; order?: string[]; }) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
 				// Operations
 				const operations: string[] = [];
@@ -607,10 +606,6 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 						operations.push(sql.update<Role>(id, { content: role }));
 				}
 
-				// Delete
-				if (options.deleted?.length)
-					operations.push(sql.delete(options.deleted));
-
 				// Refetch all roles
 				operations.push(sql.select<Domain>(['roles'], {
 					from: domain.id,
@@ -621,11 +616,66 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				const results = await query<ExpandedDomain[]>(sql.transaction(operations), { session });
 				assert(results && results.length > 0);
 
+				console.log('new domain', {
+					...domain,
+					roles: results[0].roles,
+				});
 				return {
 					...domain,
 					roles: results[0].roles,
 				};
 			}, { message: 'An error occurred while updating roles' }),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Delete a role from this domain. This will also remove the specified role
+		 * from every member that has the role.
+		 * 
+		 * @param role_id The id of the role to delete
+		 * @returns The new domain object
+		 */
+		deleteRole: (role_id: string) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				// Delete role
+				const results = await query<Domain[]>(
+					sql.transaction([
+						// Delete role object
+						sql.delete(role_id),
+						// Remove all acl entries involving it
+						sql.delete<AclEntry>('acl', {
+							where: sql.match<AclEntry>({ resource: role_id, role: role_id }, '||'),
+						}),
+						// Remove from all members of domain
+						sql.update<Member>(`${domain.id}<-member_of`, {
+							set: { roles: ['-=', role_id] },
+							return: 'NONE',
+						}),
+						// Remove from domain
+						sql.update<Domain>(domain.id, {
+							set: { roles: ['-=', role_id] },
+							return: ['roles'],
+						}),
+					]),
+					{ session }
+				);
+				assert(results && results.length > 0);
+
+				// Update all members locally
+				const cache = await getDomainCache(domain.id, session);
+				for (const id of Object.keys(cache.cache._data)) {
+					const member = cache.cache._data[id].data;
+					if (!member?.roles) continue;
+
+					// Remove role from members if they contain it
+					const idx = member.roles.findIndex(r => r === role_id);
+					if (idx >= 0)
+						member.roles.splice(idx, 1);
+				}
+
+				// Update domain object
+				return { ...domain, roles: domain.roles.filter(r => r.id !== role_id) };
+			}, { message: 'An error occurred while deleting role' }),
 			{ revalidate: false }
 		),
 	};

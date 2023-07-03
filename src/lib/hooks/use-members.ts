@@ -3,7 +3,7 @@ import assert from 'assert';
 
 import { ExpandedMember, Member } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
-import { MemberListOptions, MemberListResults, getDomainCache, getMember, listMembers, query, sql } from '@/lib/db';
+import { MemberListOptions, MemberListResults, getDomainCache, getMember, getMemberQueries, getMemberQueryKey, listMembers, query, sql } from '@/lib/db';
 
 import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
@@ -86,7 +86,15 @@ async function _applyMember(domain_id: string, members: Record<string, Partial<M
 		_mutate(`${domain_id}.${id}`, member, { revalidate: false });
 	}
 
-	return _modifyListQuery(Object.values(merged), options, list);
+	// Create new list
+	list = _modifyListQuery(Object.values(merged), options, list);
+
+	// Apply new query count
+	const queries = getMemberQueries(domain_id);
+	const key = getMemberQueryKey(options);
+	queries[key].count = list.count;
+
+	return list;
 }
 
 ////////////////////////////////////////////////////////////
