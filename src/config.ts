@@ -49,10 +49,14 @@ const config = {
 
 		/** Functions */
 		fns: {
-			add_domain: ({}) => `function($channels) { return arguments[0].map((x)=>x.id); }`,
+			add_domain: ({ }) => `function($channels) { return arguments[0].map((x)=>x.id); }`,
 			add_tags: ({ add, update }) => `function() { for (const tag of ${update}){ const idx = this.tags.findIndex((x)=>x.id === tag.id); if (idx >= 0) this.tags[idx] = { ...this.tags[idx], ...tag }; } return this.tags.concat(${add}.map((x, i)=>({ ...x, id: (this._id_counter + i).toString() }))); }`,
+			move_channel_dst_diff: ({ before, target_id }) => `function() { const to = ${before} ? this.channels.findIndex((x)=>x.toString() === ${before}) + 1 : 0; this.channels.splice(to, 0, new Record("channels", ${target_id})); return this.channels; }`,
+			move_channel_dst_same: ({ before, target_id }) => `function() { const targetRecord = "channels:".concat(${target_id}); const from = this.channels.findIndex((x)=>x.toString() === targetRecord); const to = ${before} ? this.channels.findIndex((x)=>x.toString() === ${before}) + 1 : 0; this.channels.splice(from, 1); this.channels.splice(to, 0, new Record("channels", ${target_id})); return this.channels; }`,
+			move_channel_src_diff: ({ target_id }) => `function() { const from = this.channels.findIndex((x)=>x.toString() === ${target_id}); this.channels.splice(from, 1); return this.channels; }`,
+			move_group: ({ before, group_id }) => `function() { const targetRecord = "channel_groups:".concat(${group_id}); const from = this.groups.findIndex((x)=>x.toString() === targetRecord); const to = ${before} ? this.groups.findIndex((x)=>x.toString() === ${before}) + 1 : 0; this.groups.splice(from, 1); this.groups.splice(to, 0, new Record("channel_groups", ${group_id})); return this.groups; }`,
 			remove_collection: ({ collection_id }) => `function() { return this.collections.filter((x)=>x.id !== ${collection_id}); }`,
-			update_collection: ({ collection_id, collection }) => `function() { const idx = this.collections.findIndex((x)=>x.id === ${collection_id}); if (idx >= 0) this.collections[idx] = { ...this.collections[idx], ...${collection} }; return this.collections; }`,
+			update_collection: ({ collection, collection_id }) => `function() { const idx = this.collections.findIndex((x)=>x.id === ${collection_id}); if (idx >= 0) this.collections[idx] = { ...this.collections[idx], ...${collection} }; return this.collections; }`,
 			update_tasks: ({ newStatus, now }) => `function() { return ${newStatus} && ${newStatus} !== this.status ? ${now} : this.time_status_updated; }`,
 		} as Record<string, (hardcodes: any) => string>,
 	},
