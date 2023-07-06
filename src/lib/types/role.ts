@@ -10,6 +10,8 @@ export type Role = {
 	label: string;
 	/** Role badge emote string */
 	badge?: string | null;
+	/** Indicates if badge should be shown in chats */
+	show_badge?: boolean;
 	/** Short description for this role */
 	description?: string;
 	/** Time the role was created */

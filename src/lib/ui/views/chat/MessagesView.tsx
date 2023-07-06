@@ -404,7 +404,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
     const badges: JSX.Element[] = [];
     for (const id of roleIds) {
       const role = props.rolesMap[id];
-      if (!role?.badge) continue;
+      if (!role?.badge || role.show_badge === false) continue;
 
       badges.push(
         <Tooltip label={role.label} position='top-start' withArrow>

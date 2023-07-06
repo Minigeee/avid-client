@@ -31,6 +31,8 @@ import {
   IconBuildingCommunity,
   IconCheck,
   IconDotsVertical,
+  IconEye,
+  IconEyeOff,
   IconFolder,
   IconPlus,
   IconSearch,
@@ -353,8 +355,8 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
           A role badge is an icon displayed next to a user's names in chat
         </Text>
 
-        <Group mt={8} spacing='sm'>
-          <Center sx={(theme) => ({
+        <Group mt={8} spacing={4}>
+          <Center mr={8} sx={(theme) => ({
             height: '2.75rem',
             width: '2.75rem',
             backgroundColor: role.badge ? undefined : theme.colors.dark[8],
@@ -371,7 +373,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
             onClose={() => setBadgePickerOpen(false)}
           >
             <Popover.Target>
-              <Button disabled={!canManage} variant='default' ml={4} onClick={() => setBadgePickerOpen(!badgePickerOpen)}>
+              <Button disabled={!canManage} variant='default' ml={4} mr={8} onClick={() => setBadgePickerOpen(!badgePickerOpen)}>
                 {role.badge ? 'Change' : 'Add'} Badge
               </Button>
             </Popover.Target>
@@ -390,11 +392,28 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
             </Popover.Dropdown>
           </Popover>
 
+
           {canManage && role.badge && (
-            <CloseButton
-              size='md'
-              onClick={() => form.setFieldValue(`roles.${roleIdx}.badge`, null)}
-            />
+            <>
+              <ActionButton
+                tooltip={role.show_badge ? 'Hide In Chat' : 'Show In Chat'}
+                sx={(theme) => ({ color: theme.colors.dark[1], '&:hover': undefined })}
+                onClick={() => {
+                  const copy = form.values.roles.slice();
+                  copy[roleIdx] = { ...role, show_badge: !role.show_badge };
+
+                  form.setFieldValue('roles', copy);
+                }}
+              >
+                {role.show_badge && <IconEye size={24} />}
+                {!role.show_badge && <IconEyeOff size={24} />}
+              </ActionButton>
+
+              <CloseButton
+                size='md'
+                onClick={() => form.setFieldValue(`roles.${roleIdx}.badge`, null)}
+              />
+            </>
           )}
         </Group>
       </div>
@@ -1283,6 +1302,7 @@ export function RolesTab({ ...props }: TabProps) {
     const roles = domain.roles.map(role => ({
       ...role,
       badge: role.badge || null,
+      show_badge: role.show_badge === undefined ? true : role.show_badge,
     }));
 
     // Map of domain permissions per role
@@ -1351,8 +1371,6 @@ export function RolesTab({ ...props }: TabProps) {
 
   // Role obj for convenience
   const role = selectedIdx !== null && selectedIdx >= 0 ? form.values.roles[selectedIdx] : null;
-
-  // WIP : Implement the rest of permission ui restrictions
 
   return (
     <>
@@ -1480,6 +1498,13 @@ export function RolesTab({ ...props }: TabProps) {
                             <Text inline size='sm' weight={600}>
                               {role.label}
                             </Text>
+
+                            {role.badge && !role.show_badge && (
+                              <>
+                              <div style={{ flexGrow: 1 }} />
+                              <IconEyeOff size={20} />
+                              </>
+                            )}
                           </Group>
                         </Box>
                       </PortalAwareItem>
@@ -1517,7 +1542,7 @@ export function RolesTab({ ...props }: TabProps) {
       <SettingsModal.Unsaved
         form={form}
         initialValues={initialValues}
-        onReset={() => {
+        onReset={(init) => {
           // Go to empty role if current role does not exist after reset
           if (selectedRoleId && initialValues.roles.findIndex(x => x.id === selectedRoleId) < 0)
             setSelectedRoleId(null);
