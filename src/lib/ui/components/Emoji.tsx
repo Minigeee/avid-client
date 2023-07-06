@@ -221,7 +221,7 @@ export function Emoji(props: EmojiProps) {
       : `https://cdn.jsdelivr.net/npm/emoji-datasource-${set}@14.0.0/img/${set}/sheets-256/64.png`
 
   return (
-    <span className="emoji-mart-emoji" data-emoji-set={set}>
+    <span data-type='emojis' emoji-id={id} data-emoji-set={set}>
       {imageSrc ? (
         <img
           style={{
@@ -236,7 +236,7 @@ export function Emoji(props: EmojiProps) {
         <span
           style={{
             fontSize: props.size,
-            fontFamily: '"Noto Color Emoji", sans-serif',
+            fontFamily: '"Apple Color Emoji", "Twemoji Mozilla", "Noto Color Emoji", "Android Emoji"',
           }}
         >
           {emojiSkin.native}

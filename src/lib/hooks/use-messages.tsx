@@ -16,7 +16,7 @@ import { MemberWrapper } from './use-members';
 import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
-import { Emoji } from '@/lib/ui/components/Emoji';
+import { Emoji, emojiSearch } from '@/lib/ui/components/Emoji';
 import { SyncCache } from '@/lib/utility/cache';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 import { socket } from '@/lib/utility/realtime';
@@ -29,6 +29,8 @@ import shash from 'string-hash';
 import { v4 as uuid } from 'uuid';
 
 import sanitizeHtml from 'sanitize-html';
+import StateCore from 'markdown-it/lib/rules_core/state_core';
+import Token from 'markdown-it/lib/token';
 
 
 /** An expanded message with information on if a target member was pinged within message */
@@ -71,6 +73,90 @@ const _md = new MarkdownIt({
 	.use(require('markdown-it-texmath'), {
 		engine: require('katex'),
 		delimiters: 'dollars',
+	})
+	.use((md: MarkdownIt, options: any) => {
+		// Renderer
+		md.renderer.rules.emoji = function (token, idx) {
+			const id = token[idx].markup;
+			return ReactDomServer.renderToStaticMarkup(<Emoji id={id} />);
+		};
+
+		function create_rule(md: MarkdownIt, scanRE: RegExp, replaceRE: RegExp) {
+			var arrayReplaceAt = md.utils.arrayReplaceAt,
+				// @ts-ignore
+				ucm = md.utils.lib.ucmicro,
+				ZPCc = new RegExp([ucm.Z.source, ucm.P.source, ucm.Cc.source].join('|'));
+
+			function splitTextToken(text: string, level: number, Token: StateCore['Token']) {
+				var token, last_pos = 0, nodes = [];
+
+				// @ts-ignore
+				text.replace(replaceRE, function (match, offset, src) {
+					var emoji_name = match.slice(1, -1);
+
+					// Get emoji
+					const emoji = emojiSearch.get(emoji_name);
+					if (!emoji || emoji.skins.length === 0) return;
+
+					// Add new tokens to pending list
+					if (offset > last_pos) {
+						token = new Token('text', '', 0);
+						token.content = text.slice(last_pos, offset);
+						nodes.push(token);
+					}
+
+					token = new Token('emoji', '', 0);
+					token.markup = emoji_name;
+					token.content = emoji.name;
+					nodes.push(token);
+
+					last_pos = offset + match.length;
+				});
+
+				if (last_pos < text.length) {
+					token = new Token('text', '', 0);
+					token.content = text.slice(last_pos);
+					nodes.push(token);
+				}
+
+				return nodes;
+			}
+
+			return function emoji_replace(state: StateCore) {
+				var i, j, l, tokens: Token[], token,
+					blockTokens = state.tokens,
+					autolinkLevel = 0;
+
+				for (j = 0, l = blockTokens.length; j < l; j++) {
+					if (blockTokens[j].type !== 'inline') { continue; }
+					tokens = blockTokens[j].children || [];
+
+					// We scan from the end, to keep position when new tags added.
+					// Use reversed logic in links start/end match
+					for (i = tokens.length - 1; i >= 0; i--) {
+						token = tokens[i];
+
+						if (token.type === 'link_open' || token.type === 'link_close') {
+							if (token.info === 'auto') { autolinkLevel -= token.nesting; }
+						}
+
+						if (token.type === 'text' && autolinkLevel === 0 && scanRE.test(token.content)) {
+							// replace current node
+							blockTokens[j].children = tokens = arrayReplaceAt(
+								tokens, i, splitTextToken(token.content, token.level, state.Token)
+							);
+						}
+					}
+				}
+			};
+		};
+
+		md.core.ruler.after(
+			'linkify',
+			'emoji',
+			create_rule(md, /:\w+:/, /:\w+:/g)
+		);
+
 	})
 	.use((md) => {
 		md.inline.ruler.after('emphasis', 'mentions', (state, silent) => {

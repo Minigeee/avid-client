@@ -12,6 +12,7 @@ import {
   Group,
   Loader,
   Menu,
+  Popover,
   ScrollArea,
   Stack,
   Text,
@@ -27,6 +28,7 @@ import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import {
   IconArrowForwardUp,
   IconChevronsDown,
+  IconMoodHappy,
   IconPaperclip,
   IconPencilPlus,
   IconSend,
@@ -35,7 +37,7 @@ import {
 
 import ActionButton from '@/lib/ui/components/ActionButton';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
-import { Emoji } from '@/lib/ui/components/Emoji';
+import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
 import { MessageContextMenu } from './components/MessageMenu';
@@ -788,6 +790,8 @@ function TextEditor(props: TextEditorProps) {
   
   // Indicates if formatted editor should be used
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
+  // Indicates if emoji picker should be opened
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState<boolean>(false);
   // List of file attachments
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
@@ -862,6 +866,55 @@ function TextEditor(props: TextEditorProps) {
               <IconPaperclip size={useFormattedEditor ? 19 : 17} />
             </ActionButton>
           )}
+
+          <Popover
+            opened={emojiPickerOpen}
+            withinPortal
+            withArrow
+            position='top-end'
+            onClose={() => setEmojiPickerOpen(false)}
+          >
+            <Tooltip
+              label='Emojis'
+              position='top-end'
+              withArrow
+              withinPortal={!useFormattedEditor}
+            >
+              <Popover.Target>
+                <ActionIcon
+                  variant='transparent'
+                  sx={(theme) => ({ color: theme.colors.dark[1] })}
+                  onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
+                >
+                  <IconMoodHappy size={useFormattedEditor ? 20 : 18} />
+                </ActionIcon>
+              </Popover.Target>
+            </Tooltip>
+            <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
+              backgroundColor: theme.colors.dark[7],
+              borderColor: theme.colors.dark[5],
+              boxShadow: '0px 4px 16px #00000030',
+            })}>
+              <EmojiPicker
+                emojiSize={32}
+                onSelect={(emoji) => {
+                  const editor = context.refs.editor.current;
+                  if (!editor) return;
+                  
+                  // Add emoji
+                  editor.chain().focus().insertContent({
+                    type: 'emojis',
+                    attrs: {
+                      'emoji-id': emoji.id,
+                    },
+                  }).insertContent({ type: 'text', text: ' ' }).run();
+
+                  // Close picker
+                  setEmojiPickerOpen(false);
+                }}
+              />
+            </Popover.Dropdown>
+          </Popover>
 
           {useFormattedEditor ? (
             <ActionButton

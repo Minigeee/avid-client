@@ -43,6 +43,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
 
   // Checks if user can manage any resource
   const canManage = useMemo(() => {
+    if (domain._permissions.is_admin) return true;
     for (const perms of Object.values(domain._permissions.permissions)) {
       if (perms.has('can_manage'))
         return true;

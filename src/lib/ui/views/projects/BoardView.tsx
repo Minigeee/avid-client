@@ -106,7 +106,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
 
   // Filter tasks
-  const [filtered, setFiltered] = useMemoStateAsync<NoGrouped | SingleGrouped | DoubleGrouped>(`${board.id}.tasks`, async () => {
+  const [filtered, setFiltered] = useMemoStateAsync<NoGrouped | SingleGrouped | DoubleGrouped>(`${board.id}.${props.collection}.tasks`, async () => {
     // Set the lagged grouper variable
     setGrouperLagged(grouper);
 
@@ -397,6 +397,45 @@ GroupSelectItem.displayName = 'GroupSelectItem';
 
 
 ////////////////////////////////////////////////////////////
+function BoardTabs(props: Omit<TabViewProps, 'type'>) {
+  const [view, setView] = useCachedState<string>(`${props.board.id}.${props.collection}.view`, config.app.board.default_task_view);
+
+  return (
+    <Tabs
+      variant='outline'
+      mt={32}
+      value={view}
+      onTabChange={setView}
+      styles={(theme) => ({
+        tab: {
+          fontWeight: 500,
+        },
+      })}>
+      <Tabs.List>
+        <Tabs.Tab value='list' icon={<IconListDetails size={18} />}>List</Tabs.Tab>
+        <Tabs.Tab value='kanban' icon={<IconLayoutKanban size={19} />}>Kanban</Tabs.Tab>
+      </Tabs.List>
+
+      <Tabs.Panel value='list' mt={16}>
+        <TabView
+          key={props.collection}
+          {...props}
+          type={'list'}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel value='kanban' mt={16}>
+        <TabView
+          key={props.collection}
+          {...props}
+          type={'kanban'}
+        />
+      </Tabs.Panel>
+    </Tabs>
+    );
+}
+
+
+////////////////////////////////////////////////////////////
 type BoardViewProps = {
   channel: Channel<'board'>;
   domain: DomainWrapper;
@@ -411,7 +450,6 @@ export default function BoardView(props: BoardViewProps) {
   const { classes } = useChatStyles();
   
   const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
-  const [view, setView] = useCachedState<string>(`${board.id}.view`, config.app.board.default_task_view);
 
   // Collection selections
   const collectionSelections = useMemo(() => {
@@ -615,42 +653,13 @@ export default function BoardView(props: BoardViewProps) {
               dangerouslySetInnerHTML={{ __html: collection.description || '' }}
             />
 
-            <Tabs
-              variant='outline'
-              mt={32}
-              value={view}
-              onTabChange={setView}
-              styles={(theme) => ({
-                tab: {
-                  fontWeight: 500,
-                },
-              })}>
-              <Tabs.List>
-                <Tabs.Tab value='list' icon={<IconListDetails size={18} />}>List</Tabs.Tab>
-                <Tabs.Tab value='kanban' icon={<IconLayoutKanban size={19} />}>Kanban</Tabs.Tab>
-              </Tabs.List>
-
-              <Tabs.Panel value='list' mt={16}>
-                <TabView
-                  key={collectionId}
-                  board={board}
-                  tasks={tasks}
-                  domain={props.domain}
-                  type={'list'}
-                  collection={collectionId}
-                />
-              </Tabs.Panel>
-              <Tabs.Panel value='kanban' mt={16}>
-                <TabView
-                  key={collectionId}
-                  board={board}
-                  tasks={tasks}
-                  domain={props.domain}
-                  type={'kanban'}
-                  collection={collectionId}
-                />
-              </Tabs.Panel>
-            </Tabs>
+            <BoardTabs
+              key={collectionId}
+              board={board}
+              tasks={tasks}
+              domain={props.domain}
+              collection={collectionId}
+            />
           </>
         )}
       </Stack>

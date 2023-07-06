@@ -48,6 +48,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TextStyle from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 
+import { Emojis } from './Emojis';
 import PingMention from './PingMention';
 
 import config from '@/config';
@@ -474,6 +475,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       BulletList,
       CharacterCount.configure({ limit: props.maxCharacters }),
       Color,
+      Emojis,
       Link.configure({ openOnClick: false }),
       ...(props.domain?._exists ? [
         PingMention.configure({
@@ -888,6 +890,10 @@ function makeParagraph(node: JSONContent) {
         brackets = config.app.message.role_mention_chars;
 
       text += `@${brackets[0]}${parts[1]}${brackets[1]}`;
+    }
+
+    else if (type === 'emojis') {
+      text += `:${doc.attrs?.['emoji-id']}:`;
     }
   }
 
