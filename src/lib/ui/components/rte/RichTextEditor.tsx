@@ -57,6 +57,7 @@ import { DomainWrapper, useChatStyles, useSession, useTimeout } from '@/lib/hook
 import { uid } from 'uid';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import { FileAttachment } from '@/lib/types';
+import { emojiSearch } from '../Emoji';
 
 
 ////////////////////////////////////////////////////////////
@@ -893,7 +894,16 @@ function makeParagraph(node: JSONContent) {
     }
 
     else if (type === 'emojis') {
-      text += `:${doc.attrs?.['emoji-id']}:`;
+      const id = doc.attrs?.['emoji-id'] || '';
+      const native = doc.attrs?.['data-emoji-set'] === 'native';
+      console.log(doc.attrs);
+
+      if (native) {
+        const emoji = emojiSearch.get(id);
+        text += emoji ? emoji.skins[0].native : `:${id}:`;
+      }
+      else
+        text += `:${id}:`;
     }
   }
 

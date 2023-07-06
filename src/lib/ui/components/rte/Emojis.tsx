@@ -1,7 +1,11 @@
-import { Node } from '@tiptap/core';
+import { Node, nodeInputRule, nodePasteRule } from '@tiptap/core';
 
 import { Emoji, emojiSearch } from '../Emoji';
 
+import emojiRegex from 'emoji-regex';
+
+
+const _emojiRegex = emojiRegex();
 
 export const Emojis = Node.create({
   name: 'emojis',
@@ -11,12 +15,28 @@ export const Emojis = Node.create({
   addAttributes() {
     return {
       'emoji-id': '',
+      'data-emoji-set': {
+        default: 'native'
+      },
     };
   },
 
   group: 'inline',
   inline: true,
   selectable: false,
+
+  addPasteRules() {
+    return [
+      nodePasteRule({
+        find: _emojiRegex,
+        type: this.type,
+        getAttributes: (match) => {
+          const emoji = emojiSearch.get(match[0]);
+          return { 'emoji-id': emoji?.id || '' };
+        },
+      })
+    ];
+  },
 
   parseHTML() {
     return [
@@ -32,6 +52,7 @@ export const Emojis = Node.create({
     // Construct attrs
     const finalAttrs: any = {
       ...HTMLAttributes,
+      class: 'emoji',
       ['data-type']: 'emojis',
     };
 
@@ -40,12 +61,8 @@ export const Emojis = Node.create({
     // TODO : Support more emoji types, currently only native
     return [
       'span',
-      finalAttrs, [
-        'span', {
-          style: 'font-family: "Apple Color Emoji", "Twemoji Mozilla", "Noto Color Emoji", "Android Emoji";',
-        },
-        emoji?.skins[0].native || 0,
-      ],
+      finalAttrs,
+      emoji?.skins[0].native || 0,
     ];
   },
 });

@@ -92,15 +92,30 @@ function getCategoryLabel(category: string) {
 }
 
 
+////////////////////////////////////////////////////////////
+let _nativeToId = null as Record<string, string> | null;
+
 let Pool: any[] | null = null;
 export const emojiSearch = {
   SHORTCODES_REGEX: /^(?:\:([^\:]+)\:)(?:\:skin-tone-(\d)\:)?$/,
 
   get: (emojiId: string) => {
+    // Construct native to id if needed
+    if (!_nativeToId) {
+      _nativeToId = {};
+
+      for (const emoji of Object.values(data.emojis)) {
+        for (const skin of emoji.skins) {
+          if (skin.native)
+            _nativeToId[skin.native] = emoji.id;
+        }
+      }
+    }
+
     return (
       data.emojis[emojiId] ||
       data.emojis[data.aliases[emojiId]] ||
-      data.emojis[data.natives[emojiId]]
+      data.emojis[_nativeToId[emojiId]]
     )
   },
 

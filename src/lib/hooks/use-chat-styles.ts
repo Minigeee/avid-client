@@ -28,6 +28,11 @@ export const useChatStyles = (scale: number = 1) => createStyles((theme) => ({
 				backgroundColor: theme.colors.dark[8],
 				borderRadius: 3,
 			},
+
+			'.emoji': {
+				fontSize: 16 * scale,
+				fontFamily: '"Apple Color Emoji", "Twemoji Mozilla", "Noto Color Emoji", "Android Emoji"',
+			},
 		},
 
 		pre: {

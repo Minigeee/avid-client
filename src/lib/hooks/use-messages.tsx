@@ -31,6 +31,7 @@ import { v4 as uuid } from 'uuid';
 import sanitizeHtml from 'sanitize-html';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
 import Token from 'markdown-it/lib/token';
+import emojiRegex from 'emoji-regex';
 
 
 /** An expanded message with information on if a target member was pinged within message */
@@ -50,6 +51,8 @@ type MarkdownEnv = {
 	};
 };
 
+
+const _emojiRegex = emojiRegex();
 
 /** Markdown renderer */
 const _md = new MarkdownIt({
@@ -77,8 +80,8 @@ const _md = new MarkdownIt({
 	.use((md: MarkdownIt, options: any) => {
 		// Renderer
 		md.renderer.rules.emoji = function (token, idx) {
-			const id = token[idx].markup;
-			return ReactDomServer.renderToStaticMarkup(<Emoji id={id} />);
+			const native = token[idx].content;
+			return native;
 		};
 
 		function create_rule(md: MarkdownIt, scanRE: RegExp, replaceRE: RegExp) {
@@ -107,7 +110,7 @@ const _md = new MarkdownIt({
 
 					token = new Token('emoji', '', 0);
 					token.markup = emoji_name;
-					token.content = emoji.name;
+					token.content = emoji.skins[0].native;
 					nodes.push(token);
 
 					last_pos = offset + match.length;
@@ -311,7 +314,13 @@ function renderMessage(id: string, message: string, env: MarkdownEnv) {
 		return _cache.message[id].rendered;
 
 	// Render new message
-	const rendered = _md.render(message, env);
+	let rendered = _md.render(message, env);
+
+	// Native emojis
+	rendered = rendered.replaceAll(_emojiRegex, (match) => {
+		const emoji = emojiSearch.get(match);
+		return emoji ? `<span class="emoji" data-type="emojis" emoji-id="${emoji.id}" data-emoji-set="native">${match}</span>` : match;
+	});
 
 	// Add to cache
 	_cache.message[id] = { hash, rendered };
