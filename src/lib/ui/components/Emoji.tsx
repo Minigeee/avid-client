@@ -315,6 +315,7 @@ const SkinSelectItem = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<'div'
     </div>
   )
 );
+SkinSelectItem.displayName = 'SkinSelectItem';
 
 
 ////////////////////////////////////////////////////////////
@@ -328,6 +329,7 @@ type ScrollInfo = {
 const ItemWrapper = memo(({ data, index, style }: { data: ((style: CSSProperties) => JSX.Element)[], index: number, style: CSSProperties }) => {
   return data[index](style);
 }, areEqual);
+ItemWrapper.displayName = 'EmojiItemWrapper';
 
 
 ////////////////////////////////////////////////////////////
@@ -506,6 +508,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
         <Group spacing={0}>
           {data.categories.map((category, idx) => (
             <Tooltip
+              key={category.id}
               label={getCategoryLabel(category.id)}
               withArrow
             >

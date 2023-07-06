@@ -412,14 +412,13 @@ export default function createListComponent({
           },
         },
         createElement(innerElementType || innerTagName || 'div', {
-          children: items,
           ref: innerRef,
           style: {
             height: isHorizontal ? '100%' : estimatedTotalSize,
             pointerEvents: isScrolling ? 'none' : undefined,
             width: isHorizontal ? estimatedTotalSize : '100%',
           },
-        })
+        }, ...children)
       );
     }
 

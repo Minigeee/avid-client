@@ -100,7 +100,7 @@ function GroupPermissoinsExpandableRows({ data, domain }: { data: ChannelGroup, 
       sx={(theme) => ({ backgroundColor: theme.colors.dark[7] })}
     >
       {data.channels.map((channel_id, idx) => (
-        <Group spacing='xs' p='0.3rem 0.6rem'>
+        <Group key={channel_id} spacing='xs' p='0.3rem 0.6rem'>
           <ChannelIcon type={domain.channels[channel_id].type} size={16} />
           <Text inline size='sm' weight={600} mb={1} sx={{ flexGrow: 1 }}>
             {domain.channels[channel_id].name}
@@ -352,7 +352,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
       <div>
         <Text size='sm' weight={600}>Badge</Text>
         <Text size='xs' color='dimmed' mb={6}>
-          A role badge is an icon displayed next to a user's names in chat
+          A role badge is an icon displayed next to a user&apos;s name in chat
         </Text>
 
         <Group mt={8} spacing={4}>
@@ -749,7 +749,7 @@ function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl:
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               Permissions the parent has over members with the <b>{`@${selectedChild.label}`}</b> role.
-              In order to perform any of the following actions, a user must have the corresponding permission to perform the action for every one of the target member's roles,
+              In order to perform any of the following actions, a user must have the corresponding permission to perform the action for every one of the target member&apos;s roles,
               not just this role.
             </Text>
           </Box>
@@ -961,7 +961,7 @@ function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps 
 
           <PermissionSetting
             title='Create Roles'
-            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new roles within this domain. To enable more precise role management capabilities, assign <b>{`@${role.label}`}</b> as a "Manager" to the specific roles it should handle.</>}
+            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new roles within this domain. To enable more precise role management capabilities, assign <b>{`@${role.label}`}</b> as a &quot;Manager&quot; to the specific roles it should handle.</>}
             switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_roles`, { type: 'checkbox' })}
             disabled={!_perms.can_create_roles}
             withDivider={false}

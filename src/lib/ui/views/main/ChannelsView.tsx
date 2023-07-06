@@ -364,7 +364,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                                 <p style={{ marginBlockEnd: 0 }}>Are you sure you want to delete <b>{props.group.name}</b> and the following channels?</p>
                                 <ul style={{ marginBlockStart: 0, marginBlockEnd: 0 }}>
                                   {props.group.channels.map(channel_id => (
-                                    <li><b>{props.domain.channels[channel_id].name}</b></li>
+                                    <li key={channel_id}><b>{props.domain.channels[channel_id].name}</b></li>
                                   ))}
                                 </ul>
                               </>

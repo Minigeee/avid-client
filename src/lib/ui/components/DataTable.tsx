@@ -221,23 +221,21 @@ export default function DataTable<T extends { id: string }>({ data, ...props }: 
   const [toggleCleared, setToggleCleared] = useState<boolean>(false);
 
   // State ref update
-  if (props.stateRef) {
-    useEffect(() => {
-      if (!props.stateRef) return;
+  useEffect(() => {
+    if (!props.stateRef) return;
 
-      props.stateRef.current = {
-        hovered,
-        selected,
+    props.stateRef.current = {
+      hovered,
+      selected,
 
-        clearSelected: () => {
-          // Toggle clear, reset selected
-          setToggleCleared(!toggleCleared);
-          setSelected([]);
-        },
-      };
-    }, [hovered, selected, toggleCleared]);
-  }
-  
+      clearSelected: () => {
+        // Toggle clear, reset selected
+        setToggleCleared(!toggleCleared);
+        setSelected([]);
+      },
+    };
+  }, [hovered, selected, toggleCleared]);
+
 
   return (
     <Box {...props.wrapperProps}>

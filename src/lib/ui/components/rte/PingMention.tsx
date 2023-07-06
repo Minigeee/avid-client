@@ -208,6 +208,7 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
             <>
               {members.map((item, index) => (
                 <SuggestionButton
+                  key={item.id}
                   index={index}
                   selectItem={selectItem}
                   selectedIndex={selectedIndex}
@@ -227,6 +228,7 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
 
               {roles.map((item, index) => (
                 <SuggestionButton
+                  key={item.id}
                   index={index + members.length}
                   selectItem={selectItem}
                   selectedIndex={selectedIndex}
