@@ -17,6 +17,7 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
   useMantineTheme
 } from '@mantine/core';
 import { ContextModalProps, openConfirmModal } from '@mantine/modals';
@@ -33,7 +34,7 @@ import { SettingsModal } from '@/lib/ui/components/settings/SettingsModal';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { DomainWrapper, ProfileWrapper, useAclEntries, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
+import { DomainWrapper, ProfileWrapper, canSetPermissions, hasPermission, useAclEntries, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
 import { AllPermissions, ChannelGroup, Role } from '@/lib/types';
 import { useForm } from '@mantine/form';
 import { diff } from '@/lib/utility';
@@ -51,7 +52,8 @@ type TabProps = {
 type PermissionSet = {
   can_view: boolean;
   can_manage: boolean;
-  can_create_resources: boolean;
+  can_delete_group: boolean,
+  can_manage_resources: boolean;
   can_send_messages: boolean;
   can_send_attachments: boolean;
   can_delete_messages: boolean;
@@ -72,7 +74,8 @@ type PermissionsFormValues = {
 const DEFAULT_PERMISSION_SET = {
   can_view: true,
   can_manage: false,
-  can_create_resources: false,
+  can_delete_group: false,
+  can_manage_resources: false,
   can_send_messages: true,
   can_send_attachments: true,
   can_delete_messages: false,
@@ -100,17 +103,14 @@ const RoleSelectItem = forwardRef<HTMLDivElement, { label: string; badge: string
 RoleSelectItem.displayName = 'RoleSelectItem';
 
 ////////////////////////////////////////////////////////////
-function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: string) => void; exclude?: string[]; type: 'empty' | 'table' }) {
+function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: string) => void; data: Role[]; type: 'empty' | 'table' }) {
   const [opened, setOpened] = useState<boolean>(false);
 
   const roles = useMemo(
-    () => props.domain.roles.filter(
-      x => !props.exclude || props.exclude.findIndex(y => y === x.id) < 0
-    ).map(
-      x => ({ value: x.id, label: x.label, badge: x.badge })
-    ),
-    [props.domain.roles, props.exclude]
+    () => props.data.map(x => ({ value: x.id, label: x.label, badge: x.badge })),
+    [props.domain.roles, props.data]
   );
+
 
   return (
     <Popover
@@ -119,14 +119,14 @@ function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: stri
       withArrow
       onClose={() => setOpened(false)}
     >
-      {props.type === 'table' && (
+      {roles.length > 0 && props.type === 'table' && (
         <Popover.Target>
           <ActionIcon onClick={() => setOpened(!opened)}>
             <IconPlus size={19} />
           </ActionIcon>
         </Popover.Target>
       )}
-      {props.type === 'empty' && (
+      {roles.length > 0 && props.type === 'empty' && (
         <Popover.Target>
           <Button
             variant='default'
@@ -158,7 +158,7 @@ function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: stri
 }
 
 ////////////////////////////////////////////////////////////
-function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
+function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role }) {
   const theme = useMantineTheme();
 
   // WIP : Implement delete group acl entry from group permissions settings, delete group acl entry from domain settings
@@ -182,14 +182,14 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
     const permissions: PermissionsFormValues['permissions'] = {};
 
     // Filter out roles that don't exist on domain
-    const domainRoles = new Set<string>(props.domain.roles.map(x => x.id));
+    const domainRoles = new Set<string>(domain.roles.map(x => x.id));
 
     // Add extra temp role if needed
     const data = aclEntries.data.filter(e => domainRoles.has(e.role));
     if (props.role && aclEntries.data.findIndex(x => x.role === props.role?.id) < 0) {
       data.push({
         id: '',
-        domain: props.domain.id,
+        domain: domain.id,
         resource: group.id,
         role: props.role.id,
         permissions: [],
@@ -200,7 +200,8 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
       permissions[entry.role] = {
         can_view: hasPerm(entry?.permissions, 'can_view'),
         can_manage: hasPerm(entry?.permissions, 'can_manage'),
-        can_create_resources: hasPerm(entry?.permissions, 'can_create_resources'),
+        can_delete_group: hasPerm(entry?.permissions, 'can_delete_group'),
+        can_manage_resources: hasPerm(entry?.permissions, 'can_manage_resources'),
         can_send_messages: hasPerm(entry?.permissions, 'can_send_messages'),
         can_send_attachments: hasPerm(entry?.permissions, 'can_send_attachments'),
         can_delete_messages: hasPerm(entry?.permissions, 'can_delete_messages'),
@@ -221,17 +222,58 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
 
   // Currently selected role
   const [selectedRoleId, setSelectedRoleId] = useCachedState<string | null>(`settings.${group.id}.roles.selected`, null, props.role?.id);
-  const selectedRole = useMemo(() => props.domain.roles.find(x => x.id === selectedRoleId) || null, [props.domain.roles, selectedRoleId]);
+  const selectedRole = useMemo(() => domain.roles.find(x => x.id === selectedRoleId) || null, [domain.roles, selectedRoleId]);
 
   // Get roles that have acl entries for this group
   const roles = useMemo(() => {
-    // Add extra temp role if needed
-    const role_ids = Object.keys(form.values.permissions);
-    if (props.role && !propsRoleDeleted && role_ids.findIndex(x => x === props.role?.id) < 0)
-      role_ids.push(props.role.id);
+    if (!aclEntries._exists) return [];
 
-    return role_ids.map(id => props.domain.roles.find(x => x.id === id)).filter(x => x) as Role[];
-  }, [form.values.permissions, props.domain.roles]);
+    const entries = aclEntries.data.slice();
+    const canManageResource = hasPermission(domain, group.id, 'can_manage');
+
+    // Check which entries can be deleted
+    const canDelete = aclEntries.data.map(entry => {
+      let canDelete = canSetPermissions(domain, entry);
+      for (const perm of entry.permissions)
+        canDelete = canDelete && hasPermission(domain, group.id, perm);
+      return canDelete;
+    });
+
+    // Add any missing from form
+    for (const [roleId, perms] of Object.entries(form.values.permissions)) {
+      if (entries.findIndex(x => x.role === roleId) < 0) {
+        entries.push({
+          id: '',
+          domain: domain.id,
+          resource: group.id,
+          role: roleId,
+          permissions: Object.entries(perms).filter(([k, v]) => v).map(([k, v]) => k) as AllPermissions[],
+        });
+        canDelete.push(true);
+      }
+    }
+
+    // Construct roles array
+    const roles: (Role & { can_delete: boolean })[] = [];
+    for (let i = 0; i < entries.length; ++i) {
+      const entry = entries[i];
+      if (!form.values.permissions[entry.role]) continue;
+      if (!canManageResource && !hasPermission(domain, entry.role, 'can_manage')) continue;
+
+      const role = domain.roles.find(x => x.id === entry.role);
+      if (!role) continue;
+
+      roles.push({ ...role, can_delete: canDelete[i] });
+    }
+
+    return roles;
+  }, [form.values.permissions, domain.roles, domain._permissions]);
+  
+  // Roles that can be added
+  const addableRoles = useMemo(
+    () => domain.roles.filter(x => canSetPermissions(domain, { role: x.id, resource: group.id }) && roles.findIndex(r => r.id === x.id) < 0),
+    [roles, domain.roles, domain._permissions]
+  );
 
   // Table columns
   const columns = useMemo(() => ([
@@ -252,9 +294,9 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
     {
       name: (
         <AddRolePopover
-          domain={props.domain}
+          domain={domain}
           type='table'
-          exclude={Object.keys(form.values.permissions)}
+          data={addableRoles}
           onSelect={(role_id) => {
             // Add new default permission set
             form.setFieldValue('permissions', {
@@ -269,7 +311,7 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
       ),
       width: '4rem',
       right: true,
-      cell: (role: Role) => (
+      cell: (role: Role & { can_delete: boolean }) => role.can_delete ? (
         <CloseButton
           size='md'
           iconSize={18}
@@ -287,9 +329,9 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
               setPropsRoleDeleted(true);
           }}
         />
-      ),
+      ) : null,
     },
-  ]), [props.domain, form.values.permissions, selectedRoleId]);
+  ]), [domain, form.values.permissions, selectedRoleId]);
 
   // Reset form values on change
   useEffect(() => {
@@ -298,14 +340,45 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
       form.resetDirty(initialValues);
     }
   }, [initialValues]);
+  
+  // Map of which permissions able to set
+  const _perms = useMemo(() => {
+    const entry = aclEntries.data?.find(x => x.role === selectedRoleId) || {
+      id: '', domain: '',
+      role: selectedRoleId || '',
+      resource: group.id,
+      permissions: [],
+    };
+
+    const canSet = canSetPermissions(domain, entry);
+    return {
+      can_set: canSet,
+      can_view: canSet && hasPermission(domain, group.id, 'can_view'),
+      can_manage: canSet && hasPermission(domain, group.id, 'can_manage'),
+      can_delete_group: canSet && hasPermission(domain, group.id, 'can_delete_group'),
+      can_manage_resources: canSet && hasPermission(domain, group.id, 'can_manage_resources'),
+      can_send_messages: canSet && hasPermission(domain, group.id, 'can_send_messages'),
+      can_send_attachments: canSet && hasPermission(domain, group.id, 'can_send_attachments'),
+      can_delete_messages: canSet && hasPermission(domain, group.id, 'can_delete_messages'),
+      can_broadcast_audio: canSet && hasPermission(domain, group.id, 'can_broadcast_audio'),
+      can_broadcast_video: canSet && hasPermission(domain, group.id, 'can_broadcast_video'),
+      can_manage_participants: canSet && hasPermission(domain, group.id, 'can_manage_participants'),
+      can_manage_tasks: canSet && hasPermission(domain, group.id, 'can_manage_tasks'),
+      can_manage_own_tasks: canSet && hasPermission(domain, group.id, 'can_manage_own_tasks'),
+    };
+  }, [aclEntries.data, selectedRoleId]);
 
 
   return (
     <>
       <Box>
         <Title order={3}>Roles</Title>
-        <Text size='sm' color='dimmed'>
+        <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
           Customize the permissions each role has for this channel group.
+          Users can only modify permissions for actions that they themselves can perform.
+          To prevent users from locking themselves out of being able to modify a permission,
+          it is recommended to give roles every permission they should handle, even
+          if that permission has been granted to <b>@everyone</b>.
         </Text>
       </Box>
 
@@ -320,8 +393,9 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
           <Stack align='center'>
             <Text weight={600}>This channel group has no permission sets</Text>
             <AddRolePopover
-              domain={props.domain}
+              domain={domain}
               type='empty'
+              data={addableRoles}
               onSelect={(role_id) => {
                 // Add new default permission set
                 form.setFieldValue('permissions', {
@@ -361,18 +435,30 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
             title='View Group'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to view this group and the channels and resources within this group.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_view`, { type: 'checkbox' })}
+            disabled={!_perms.can_view}
           />
 
           <PermissionSetting
             title='Manage Group'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to manage group settings, edit and delete channels within the group, and manage role access and permissions. Users will only be able to manage permissions for roles which they can already manage.</>}
+            description={<>
+              Allows <b>{`@${selectedRole.label}`}</b> to manage group settings, edit settings for existing channels within the group, and manage role access and permissions.
+            </>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage}
           />
 
           <PermissionSetting
-            title='Create Channels'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create any new channels and resources within this group, but does not allow them to edit or delete the channels.</>}
-            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_create_resources`, { type: 'checkbox' })}
+            title='Delete Group'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete this group.</>}
+            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_delete_group`, { type: 'checkbox' })}
+            disabled={!_perms.can_delete_group}
+          />
+
+          <PermissionSetting
+            title='Manage Channels'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete channels within this group.</>}
+            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_resources`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_resources}
             withDivider={false}
           />
 
@@ -391,18 +477,21 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
             title='Send Messages'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to send messages in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_send_messages`, { type: 'checkbox' })}
+            disabled={!_perms.can_send_messages}
           />
 
           <PermissionSetting
             title='Send Attachments'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to send file attachments in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_send_attachments`, { type: 'checkbox' })}
+            disabled={!_perms.can_send_attachments}
           />
 
           <PermissionSetting
             title='Delete Messages'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages sent by other users in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_delete_messages`, { type: 'checkbox' })}
+            disabled={!_perms.can_delete_messages}
             withDivider={false}
           />
 
@@ -421,18 +510,21 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
             title='Broadcast Audio'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast audio using their microphone in RTC channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_broadcast_audio`, { type: 'checkbox' })}
+            disabled={!_perms.can_broadcast_audio}
           />
 
           <PermissionSetting
             title='Broadcast Video'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast video using their webcam or screenshare in RTC channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_broadcast_video`, { type: 'checkbox' })}
+            disabled={!_perms.can_broadcast_video}
           />
 
           <PermissionSetting
             title='Manage Participants'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to manage other participants in RTC channels. Users with this permission are able to mute, deafen, force-stop video broadcasts, move, kick, or ban other participants within an RTC channel.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_participants`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_participants}
             withDivider={false}
           />
 
@@ -451,12 +543,14 @@ function PermissionsTab({ group, ...props }: TabProps & { role?: Role }) {
             title='Manage Tasks'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete any task within a board, regardless of assignee.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_tasks`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_tasks}
           />
 
           <PermissionSetting
             title='Manage Own Tasks'
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete their own tasks within a board.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_own_tasks`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_own_tasks}
             withDivider={false}
           />
         </>

@@ -55,8 +55,10 @@ function SingleChannel(props: SingleChannelProps) {
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [renaming, setRenaming] = useState<boolean>(false);
 
+  const canEdit = hasPermission(props.domain, props.channel.id, 'can_manage_resources') || hasPermission(props.domain, props.channel.id, 'can_manage');
+
   return (
-    <Draggable draggableId={props.channel.id} index={props.index} isDragDisabled={!hasPermission(props.domain, props.group_id, 'can_manage')}>
+    <Draggable draggableId={props.channel.id} index={props.index} isDragDisabled={!canEdit}>
       {(provided, snapshot) => (
         <Box
           ref={provided.innerRef}
@@ -153,15 +155,17 @@ function SingleChannel(props: SingleChannelProps) {
                 <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
                 <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
                 <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
-                
-                {hasPermission(props.domain, props.channel.id, 'can_manage') && (
-                  <>
-                    <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
-                      // Reset form value to channel name
-                      form.setFieldValue('name', props.channel.name);
-                      setRenaming(true);
-                    }}>Rename</Menu.Item>
 
+                {canEdit && (
+                  <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
+                    // Reset form value to channel name
+                    form.setFieldValue('name', props.channel.name);
+                    setRenaming(true);
+                  }}>Rename</Menu.Item>
+                )}
+
+                {hasPermission(props.domain, props.channel.id, 'can_manage_resources') && (
+                  <>
                     <Menu.Divider />
                     <Menu.Item
                       color='red'
@@ -295,7 +299,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
 
             <div style={{ flexGrow: 1 }} />
 
-            {hasPermission(props.domain, props.group.id, 'can_create_resources') && (
+            {hasPermission(props.domain, props.group.id, 'can_manage_resources') && (
               <ActionButton
                 tooltip='Create Channel'
                 size='sm'
@@ -308,7 +312,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               </ActionButton>
             )}
 
-            {hasPermission(props.domain, props.group.id, 'can_manage') && (
+            {(hasPermission(props.domain, props.group.id, 'can_manage') || hasPermission(props.domain, props.group.id, 'can_delete_group')) && (
               <Menu
                 width={180}
                 withinPortal
@@ -339,13 +343,15 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                   </Menu.Item>
 
                   {hasPermission(props.domain, props.group.id, 'can_manage') && (
-                    <>
-                      <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
-                        // Reset form value to channel name
-                        form.setFieldValue('name', props.group.name);
-                        setRenaming(true);
-                      }}>Rename</Menu.Item>
+                    <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
+                      // Reset form value to channel name
+                      form.setFieldValue('name', props.group.name);
+                      setRenaming(true);
+                    }}>Rename</Menu.Item>
+                  )}
 
+                  {hasPermission(props.domain, props.group.id, 'can_delete_group') && (
+                    <>
                       <Menu.Divider />
                       <Menu.Item
                         color='red'
@@ -381,10 +387,11 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
           </Group>
 
           {!snapshot.isDragging && opened && (
-            <Droppable droppableId={props.group.id} type='channel'>
+            <Droppable droppableId={props.group.id} type='channel' isDropDisabled={!(hasPermission(props.domain, props.group.id, 'can_manage') || hasPermission(props.domain, props.group.id, 'can_manage_resources'))}>
               {(provided) => (
                 <Stack
                   ref={provided.innerRef}
+                  mih='0.5rem'
                   spacing={0}
                   {...provided.droppableProps}
                 >
@@ -429,7 +436,7 @@ export default function ChannelsView(props: ChannelsViewProps) {
       <DragDropContext onDragEnd={(result) => {
         // Don't allow delete channel by drag
         if (!result.destination) return;
-        if (result.destination.index === result.source.index) return;
+        if (result.destination.index === result.source.index && result.destination.droppableId === result.source.droppableId) return;
 
         // Move channel
         if (result.type === 'channel') {

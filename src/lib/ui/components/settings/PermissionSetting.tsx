@@ -11,10 +11,13 @@ type PermissionSettingProps = {
   withDivider?: boolean;
 
   switchProps?: SwitchProps;
+  disabled?: boolean;
+  show?: boolean;
 };
 
 ////////////////////////////////////////////////////////////
 export default function PermissionSetting(props: PermissionSettingProps) {
+  if (props.show === false) return null;
   return (
     <>
       <Flex maw={config.app.ui.settings_maw} wrap='nowrap' gap='1.0rem'>
@@ -25,7 +28,7 @@ export default function PermissionSetting(props: PermissionSettingProps) {
           </Text>
         </Box>
 
-        <Switch {...props.switchProps} />
+        <Switch {...props.switchProps} disabled={props.disabled} />
       </Flex>
 
       {props.withDivider !== false && (

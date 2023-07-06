@@ -21,7 +21,7 @@ import { useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
-function useMemberInput(domain_id: string, exclude?: string[]) {
+function useMemberInput(domain_id: string, exclude_role?: string, exclude?: string[]) {
   const session = useSession();
   
   // Members data that apperas in dropdown
@@ -47,7 +47,7 @@ function useMemberInput(domain_id: string, exclude?: string[]) {
     // Check if more members need to be requested
     if (filtered.length <= config.app.member.new_query_threshold && (query.length && hasMoreResults[query.slice(0, -1)])) {
       // Request new search query
-      const { data: newMembers } = await listMembers(domain_id, { search: query }, session);
+      const { data: newMembers } = await listMembers(domain_id, { search: query, exclude_role_id: exclude_role }, session);
 
       // Merge members lists
       const memberMap: Record<string, ExpandedMember> = {};
@@ -86,7 +86,7 @@ function useMemberInput(domain_id: string, exclude?: string[]) {
   // Used to get initial members
   useEffect(() => {
     const excludeSet = new Set<string>(exclude || []);
-    listMembers(domain_id, {}, session).then(results => setMembers(results.data.filter(x => !excludeSet.has(x.id))));
+    listMembers(domain_id, { exclude_role_id: exclude_role }, session).then(results => setMembers(results.data.filter(x => !excludeSet.has(x.id))));
   }, []);
 
   
@@ -218,6 +218,8 @@ type MultiMemberInputProps = Omit<MultiSelectProps, 'data' | 'value' | 'onChange
   /** Domain id used to search members within domain */
   domain_id: string;
 
+  /** A role id to exclude from dropdown list */
+  exclude_role?: string;
   /** A list of members to exclude from the dropdown list */
   exclude?: string[];
   value?: ExpandedMember[] | null;
@@ -231,7 +233,7 @@ export function MultiMemberInput({ domain_id, ...props }: MultiMemberInputProps)
     data,
     onSearchChange,
     SelectItem,
-  } = useMemberInput(domain_id, props.exclude);
+  } = useMemberInput(domain_id, props.exclude_role, props.exclude);
 
   const [values, setValues] = useState<ExpandedMember[]>([]);
 

@@ -25,10 +25,6 @@ function commonCreateOps(channel: Partial<Channel>, group_id: string, data: Reco
 			inherit: group_id,
 			data: { ...channel.data, ...data },
 		}, ['id', 'data'])),
-		sql.update<ChannelGroup>(group_id, {
-			set: { channels: ['+=', sql.$('$channel.id')] },
-			return: 'NONE',
-		}),
 	];
 }
 
@@ -111,15 +107,6 @@ export async function removeChannel(channel_id: string, type: ChannelTypes, sess
 			sql.delete('$channel.data.board'),
 		);
 	}
-
-	// Update containing group
-	transaction.push(sql.update<ChannelGroup>('channel_groups', {
-		set: { channels: ['-=', channel_id] },
-		where: sql.match<ChannelGroup>({
-			domain: sql.$('$channel.domain'),
-			channels: ['CONTAINS', sql.$('$channel.id')],
-		}),
-	}));
 
 	if (session)
 		await query(sql.transaction(transaction), { session });

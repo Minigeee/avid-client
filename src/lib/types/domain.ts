@@ -1,5 +1,5 @@
 import { Channel, ChannelGroup } from './channel';
-import { AllPermissions } from './permissions';
+import { AclEntry, AllPermissions } from './permissions';
 import { Role } from './role';
 
 
@@ -13,6 +13,8 @@ export type UserPermissions = {
 	is_owner: boolean;
 	/** Permissions info per resource */
 	permissions: Record<string, Set<AllPermissions>>;
+	/** Raw acl entries */
+	entries: AclEntry[];
 };
 
 

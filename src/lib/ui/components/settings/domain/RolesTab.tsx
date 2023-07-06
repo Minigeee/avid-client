@@ -52,7 +52,7 @@ import { SettingsModal, popUnsaved, pushUnsaved } from '@/lib/ui/components/sett
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { DomainWrapper, MemberListWrapper, setPermissions, useAclEntries, useAclEntriesByRole, useCachedState, useDomain, useMemberQuery } from '@/lib/hooks';
+import { AclEntriesByRoleWrapper, AclEntriesWrapper, DomainWrapper, MemberListWrapper, canSetPermissions, hasPermission, setPermissions, setPermissionsByRole, useAclEntries, useAclEntriesByRole, useCachedState, useDomain, useMemberQuery } from '@/lib/hooks';
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, ExpandedMember, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
 import { TableColumn } from 'react-data-table-component';
@@ -110,14 +110,10 @@ function GroupPermissoinsExpandableRows({ data, domain }: { data: ChannelGroup, 
 }
 
 ////////////////////////////////////////////////////////////
-function AddGroupOverrideDropdown(props: { domain: DomainWrapper; role: Role; exclude?: ChannelGroup[] }) {
+function AddGroupOverrideDropdown(props: { domain: DomainWrapper; role: Role; data: ChannelGroup[] }) {
   const groups = useMemo(
-    () => props.domain.groups.filter(
-      x => !props.exclude || props.exclude.findIndex(y => y.id === x.id) < 0
-    ).map(
-      x => ({ value: x.id, label: x.name })
-    ),
-    [props.domain.groups, props.exclude]
+    () => props.data.map(x => ({ value: x.id, label: x.name })),
+    [props.data]
   );
 
   return (
@@ -154,16 +150,12 @@ const RoleSelectItem = forwardRef<HTMLDivElement, { label: string; badge: string
 RoleSelectItem.displayName = 'RoleSelectItem';
 
 ////////////////////////////////////////////////////////////
-function AddRolePopover(props: { form: UseFormReturnType<RoleFormValues>; onSelect: (role_id: string) => void; exclude?: string[]; type: 'empty' | 'table' }) {
+function AddRolePopover(props: { form: UseFormReturnType<RoleFormValues>; onSelect: (role_id: string) => void; data: Role[]; type: 'empty' | 'table' }) {
   const [opened, setOpened] = useState<boolean>(false);
 
   const roles = useMemo(
-    () => props.form.values.roles.filter(
-      x => !props.exclude || props.exclude.findIndex(y => y === x.id) < 0
-    ).map(
-      x => ({ value: x.id, label: x.label, badge: x.badge })
-    ),
-    [props.form.values.roles, props.exclude]
+    () => props.data.map(x => ({ value: x.id, label: x.label, badge: x.badge })),
+    [props.data]
   );
 
   return (
@@ -173,14 +165,14 @@ function AddRolePopover(props: { form: UseFormReturnType<RoleFormValues>; onSele
       withArrow
       onClose={() => setOpened(false)}
     >
-      {props.type === 'table' && (
+      {roles.length > 0 && props.type === 'table' && (
         <Popover.Target>
           <ActionIcon onClick={() => setOpened(!opened)}>
             <IconPlus size={19} />
           </ActionIcon>
         </Popover.Target>
       )}
-      {props.type === 'empty' && (
+      {roles.length > 0 && props.type === 'empty' && (
         <Popover.Target>
           <Button
             variant='default'
@@ -212,7 +204,7 @@ function AddRolePopover(props: { form: UseFormReturnType<RoleFormValues>; onSele
 }
 
 ////////////////////////////////////////////////////////////
-function AddMemberPopover(props: { domain_id: string; role_id: string; members: MemberListWrapper; exclude?: string[]; type: 'empty' | 'table' }) {
+function AddMemberPopover(props: { domain_id: string; role_id: string; members: MemberListWrapper; type: 'empty' | 'table' }) {
   const [opened, setOpened] = useState<boolean>(false);
   const [values, setValues] = useState<ExpandedMember[]>([]);
 
@@ -248,8 +240,8 @@ function AddMemberPopover(props: { domain_id: string; role_id: string; members: 
             domain_id={props.domain_id}
             value={values}
             onChange={setValues}
-            exclude={props.exclude}
             placeholder='Choose members'
+            exclude_role={props.role_id}
             icon={<IconUser size={18} />}
             clearable
             dropdownPosition='top'
@@ -276,8 +268,10 @@ function AddMemberPopover(props: { domain_id: string; role_id: string; members: 
 
 
 ////////////////////////////////////////////////////////////
-type ManagerPermissions = {
+type ChildRolePermissions = {
   can_manage: boolean;
+  can_manage_permissions: boolean;
+  can_delete_role: boolean;
   can_assign_role: boolean;
   can_manage_member_alias: boolean;
   can_manage_member_roles: boolean;
@@ -291,30 +285,35 @@ type RoleFormValues = {
   domain_permissions: Record<string, {
     can_manage: boolean;
     can_manage_invites: boolean;
-    can_create_resources: boolean;
+    can_manage_resources: boolean;
     can_manage_extensions: boolean;
+    can_create_groups: boolean;
     can_create_roles: boolean;
   }>;
-  managers: Record<string, Record<string, ManagerPermissions>>;
+  /** Map of role ids to the sets of permissions for every role for which the role is a parent of */
+  child_roles: Record<string, Record<string, ChildRolePermissions>>;
 };
 
 ////////////////////////////////////////////////////////////
 const DEFAULT_MANAGER_PERMISSION_SET = {
-  can_manage: true,
-  can_assign_role: true,
+  can_manage: false,
+  can_manage_permissions: true,
+  can_delete_role: false,
+  can_assign_role: false,
   can_manage_member_alias: false,
   can_manage_member_roles: false,
   can_kick_member: false,
   can_ban_member: false,
-} as ManagerPermissions;
+} as ChildRolePermissions;
 
 
 ////////////////////////////////////////////////////////////
 type RoleSettingsTabsProps = {
   domain: DomainWrapper;
+  domainAcl: AclEntriesWrapper;
   roleIdx: number;
   form: UseFormReturnType<RoleFormValues>;
-  addManagers: (role_id: string, managers: Record<string, ManagerPermissions>) => void;
+  addChildRoles: (role_id: string, roles: Record<string, ChildRolePermissions>) => void;
   setSelectedRoleId: (id: string | null) => void;
   session: SessionState;
 };
@@ -334,12 +333,16 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
   // Is badge picker open
   const [badgePickerOpen, setBadgePickerOpen] = useState<boolean>(false);
 
+  // Indicates if user can manage role
+  const canManage = hasPermission(domain, role.id, 'can_manage');
+
 
   return (
     <Stack mt={20}>
       
       <TextInput
         label='Name'
+        disabled={!canManage}
         sx={{ width: config.app.ui.med_input_width }}
         {...form.getInputProps(`roles.${roleIdx}.label`)}
       />
@@ -368,7 +371,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
             onClose={() => setBadgePickerOpen(false)}
           >
             <Popover.Target>
-              <Button variant='default' ml={4} onClick={() => setBadgePickerOpen(!badgePickerOpen)}>
+              <Button disabled={!canManage} variant='default' ml={4} onClick={() => setBadgePickerOpen(!badgePickerOpen)}>
                 {role.badge ? 'Change' : 'Add'} Badge
               </Button>
             </Popover.Target>
@@ -387,7 +390,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
             </Popover.Dropdown>
           </Popover>
 
-          {role.badge && (
+          {canManage && role.badge && (
             <CloseButton
               size='md'
               onClick={() => form.setFieldValue(`roles.${roleIdx}.badge`, null)}
@@ -396,107 +399,152 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
         </Group>
       </div>
 
-      <Divider maw={config.app.ui.settings_maw} />
+      {hasPermission(domain, role.id, 'can_delete_role') && (
+        <>
+          <Divider maw={config.app.ui.settings_maw} />
 
-      <Flex
-        align='center'
-        wrap='nowrap'
-        gap='1.0rem'
-        maw={config.app.ui.settings_maw}
-        sx={(theme) => ({
-          padding: '0.75rem 1rem',
-          backgroundColor: theme.colors.dark[8],
-          borderRadius: theme.radius.sm,
-        })}
-      >
-        <Box sx={{ flexGrow: 1 }}>
-          <Text size='sm' weight={600} mb={4}>Delete this role</Text>
-          <Text size='xs' color='dimmed'>
-            This action will be performed immediately and can not be undone.
-          </Text>
-        </Box>
+          <Flex
+            align='center'
+            wrap='nowrap'
+            gap='1.0rem'
+            maw={config.app.ui.settings_maw}
+            sx={(theme) => ({
+              padding: '0.75rem 1rem',
+              backgroundColor: theme.colors.dark[8],
+              borderRadius: theme.radius.sm,
+            })}
+          >
+            <Box sx={{ flexGrow: 1 }}>
+              <Text size='sm' weight={600} mb={2}>Delete this role</Text>
+              <Text size='xs' color='dimmed'>
+                This action will be performed immediately and can not be undone.
+              </Text>
+            </Box>
 
-        <Button
-          color='red'
-          variant='outline'
-          loading={loading}
-          onClick={async () => {
-            setLoading(true);
+            <Button
+              color='red'
+              variant='outline'
+              loading={loading}
+              onClick={async () => {
+                setLoading(true);
 
-            // Get number of members
-            const { count } = await listMembers(domain.id, {
-              limit: 100,
-              page: 0,
-              role_id: role.id,
-            }, session);
-            
-            setLoading(false);
+                // Get number of members
+                const { count } = await listMembers(domain.id, {
+                  limit: 100,
+                  page: 0,
+                  role_id: role.id,
+                }, session);
 
-            // Make user confirm action
-            openConfirmModal({
-              modalProps: {
-                title: 'Delete Role'
-              },
-              content: (
-                <Text>
-                  Are you sure you want to delete <b>@{role.label}</b>?
-                  This role will be removed from <b>{count}</b> member{count !== 1 ? 's' : ''}.
-                </Text>
-              ),
-              confirmLabel: 'Delete',
-              confirmText: (<>Please type <b>{role.label}</b> to confirm this action.</>),
-              typeToConfirm: (count || 0) >= 10 ? role.label : undefined,
-              onConfirm: async () => {
-                // Delete role
-                await domain._mutators.deleteRole(role.id);
-                
-                // Switch off of it
-                setSelectedRoleId(null);
-              },
-            });
-          }}
-        >
-          Delete Role
-        </Button>
-      </Flex>
+                setLoading(false);
+
+                // Make user confirm action
+                openConfirmModal({
+                  modalProps: {
+                    title: 'Delete Role'
+                  },
+                  content: (
+                    <Text>
+                      Are you sure you want to delete <b>@{role.label}</b>?
+                      This role will be removed from <b>{count}</b> member{count !== 1 ? 's' : ''}.
+                    </Text>
+                  ),
+                  confirmLabel: 'Delete',
+                  confirmText: (<>Please type <b>{role.label}</b> to confirm this action.</>),
+                  typeToConfirm: (count || 0) >= 5 ? role.label : undefined,
+                  onConfirm: async () => {
+                    // Delete role
+                    await domain._mutators.deleteRole(role.id);
+
+                    // Switch off of it
+                    setSelectedRoleId(null);
+                  },
+                });
+              }}
+            >
+              Delete Role
+            </Button>
+          </Flex>
+        </>
+      )}
     </Stack>
   );
 }
 
 ////////////////////////////////////////////////////////////
-function ManagersTab({ domain, form, role, addManagers }: SubtabProps) {
+function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl: AclEntriesByRoleWrapper }) {
   const theme = useMantineTheme();
 
-  // Manager permissions for this role
-  const managerAcl = useAclEntries(role.id);
-
   // Currently opened manager id
-  const [selectedManagerId, setSelectedManagerId] = useCachedState<string | null>(`settings.${domain.id}.roles.${role.id}.selected_manager`, null);
+  const [selectedChildId, setSelectedChildId] = useCachedState<string | null>(`settings.${domain.id}.roles.${role.id}.selected_child`, null);
 
   // Find selected manager role data
-  const selectedManager = useMemo(
-    () => selectedManagerId ? form.values.roles.find(x => x.id === selectedManagerId) || null : null,
-    [form.values.roles, selectedManagerId]
+  const selectedChild = useMemo(
+    () => selectedChildId ? form.values.roles.find(x => x.id === selectedChildId) || null : null,
+    [form.values.roles, selectedChildId]
   );
 
+  // Child roles table data
+  const childData = useMemo(() => {
+    const entries = roleAcl.data.filter(entry => entry.resource.startsWith('roles'));
+    const canManageRole = hasPermission(domain, role.id, 'can_manage');
 
-  // Manager table data
-  const managerData = useMemo(() => {
-    return Object.keys(form.values.managers[role.id] || {}).map(x => form.values.roles.find(y => y.id === x)).filter(x => x) as Role[];
-  }, [form.values.managers[role.id], domain.roles]);
+    // Check which entries can be deleted
+    const canDelete = entries.map(entry => {
+      let canDelete = canSetPermissions(domain, entry);
+      for (const perm of entry.permissions)
+        canDelete = canDelete && hasPermission(domain, entry.resource, perm);
+      return canDelete;
+    });
 
-  // Manager table columns
-  const managerColumns = useMemo(() => ([
+    // Add any missing from form
+    for (const [childId, perms] of Object.entries(form.values.child_roles[role.id] || {})) {
+      if (entries.findIndex(x => x.resource === childId) < 0) {
+        entries.push({
+          id: '',
+          domain: domain.id,
+          resource: childId,
+          role: role.id,
+          permissions: Object.entries(perms).filter(([k, v]) => v).map(([k, v]) => k) as AllPermissions[],
+        });
+        canDelete.push(true);
+      }
+    }
+
+    // Construct child roles array
+    const children: (Role & { can_delete: boolean })[] = [];
+    for (let i = 0; i < entries.length; ++i) {
+      const entry = entries[i];
+      if (!form.values.child_roles[role.id]?.[entry.resource]) continue;
+      // In order to view an acl entry, user has to manage either the role or the child role
+      if (!canManageRole && !hasPermission(domain, entry.resource, 'can_manage')) continue;
+
+      const child = form.values.roles.find(x => x.id === entry.resource);
+      if (!child) continue;
+
+      children.push({ ...child, can_delete: canDelete[i] });
+    }
+
+    return children;
+  }, [form.values.child_roles[role.id], domain._permissions]);
+
+  // Values to user can add
+  const addableChildren = useMemo(
+    () => domain.roles.filter(x => canSetPermissions(domain, { role: role.id, resource: x.id }) && childData.findIndex(r => r.id === x.id) < 0 && x.id !== role.id),
+    [childData, domain.roles, domain._permissions]
+  );
+
+  // Child roles table columns
+  const childColumns = useMemo(() => ([
     {
       name: 'Role',
       grow: 1,
-      cell: (manager: Role) => (
+      cell: (child: Role) => (
         <Group spacing='xs'>
           <Box data-tag='allowRowEvents' h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
-            {manager.badge ? (<Emoji id={manager.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
+            {child.badge ? (<Emoji id={child.badge} size='1rem' />) : (<IconBadgeOff size={19} />)}
           </Box>
           <Text data-tag='allowRowEvents' inline size='sm' weight={600}>
-            {manager.label}
+            {child.label}
           </Text>
         </Group>
       ),
@@ -506,126 +554,131 @@ function ManagersTab({ domain, form, role, addManagers }: SubtabProps) {
         <AddRolePopover
           form={form}
           type='table'
-          exclude={managerData.map(x => x.id).concat([role.id])}
+          data={addableChildren}
           onSelect={(role_id) => {
             // Add to form value
-            form.setFieldValue('managers', {
-              ...form.values.managers,
+            form.setFieldValue('child_roles', {
+              ...form.values.child_roles,
               [role.id]: {
-                ...form.values.managers[role.id],
+                ...form.values.child_roles[role.id],
                 [role_id]: DEFAULT_MANAGER_PERMISSION_SET,
               },
             });
 
             // Switch to it
-            setSelectedManagerId(role_id);
+            setSelectedChildId(role_id);
           }}
         />
       ),
       width: '4rem',
       right: true,
-      cell: (manager: Role) => (
+      cell: (child: Role & { can_delete: boolean }) => child.can_delete ? (
         <CloseButton
           size='md'
           iconSize={18}
           onClick={() => {
-            const copy = { ...form.values.managers[role.id] };
-            delete copy[manager.id];
+            const copy = { ...form.values.child_roles[role.id] };
+            delete copy[child.id];
 
             // Add to form value
-            form.setFieldValue('managers', {
-              ...form.values.managers,
+            form.setFieldValue('child_roles', {
+              ...form.values.child_roles,
               [role.id]: copy,
             });
 
             // Switch off of it if it is selected
-            if (manager.id === selectedManagerId)
-              setSelectedManagerId(null);
+            if (child.id === selectedChildId)
+              setSelectedChildId(null);
           }}
         />
-      ),
+      ) : null,
     },
-  ]), [domain, managerData]);
-
-
-  // Use to add manager data to form initially
-  useEffect(() => {
-    if (!managerAcl._exists) return;
-
-    // Create managers map
-    const map: Record<string, ManagerPermissions> = {};
-    for (const entry of managerAcl.data) {
-      map[entry.role] = {
-        can_manage: _hasPerm(entry?.permissions, 'can_manage'),
-        can_assign_role: _hasPerm(entry?.permissions, 'can_assign_role'),
-        can_manage_member_alias: _hasPerm(entry?.permissions, 'can_manage_member_alias'),
-        can_manage_member_roles: _hasPerm(entry?.permissions, 'can_manage_member_roles'),
-        can_kick_member: _hasPerm(entry?.permissions, 'can_kick_member'),
-        can_ban_member: _hasPerm(entry?.permissions, 'can_ban_member'),
-      };
-    }
-
-    // Add managers to initial state
-    addManagers(role.id, map);
-  }, [managerAcl._exists]);
-
+  ]), [domain, childData]);
+  
   // Used to apply on changes reset effects
   useEffect(() => {
-    if (selectedManagerId && !form.values.managers[role.id]?.[selectedManagerId])
-      setSelectedManagerId(null);
-  }, [form.values.managers]);
+    if (selectedChildId && !form.values.child_roles[role.id]?.[selectedChildId])
+      setSelectedChildId(null);
+  }, [form.values.child_roles]);
 
+  
+  // Map of which permissions able to set
+  const _perms = useMemo(() => {
+    const entry = roleAcl.data?.find(x => x.role === selectedChildId) || {
+      id: '', domain: '',
+      role: role.id,
+      resource: selectedChildId || '',
+      permissions: [],
+    };
+    const childId = selectedChildId || '';
+
+    const canSet = canSetPermissions(domain, entry);
+    return {
+      can_set: canSet,
+      can_manage: canSet && hasPermission(domain, childId, 'can_manage'),
+      can_manage_permissions: canSet && hasPermission(domain, childId, 'can_manage_permissions'),
+      can_delete_role: canSet && hasPermission(domain, childId, 'can_delete_role'),
+      can_assign_role: canSet && hasPermission(domain, childId, 'can_assign_role'),
+      can_manage_member_alias: canSet && hasPermission(domain, childId, 'can_manage_member_alias'),
+      can_manage_member_roles: canSet && hasPermission(domain, childId, 'can_manage_member_roles'),
+      can_kick_member: canSet && hasPermission(domain, childId, 'can_kick_member'),
+      can_ban_member: canSet && hasPermission(domain, childId, 'can_ban_member'),
+    };
+  }, [roleAcl.data, selectedChildId]);
+
+
+  // Dont render until data added to form
+  if (!form.values.child_roles[role.id])
+    return null;
 
   return (
     <Stack mt={20}>
       <Box>
-        <Title order={4}>Managers</Title>
+        <Title order={4}>Child Roles</Title>
         <Text size='sm' color='dimmed'>
-          Managers are roles that have permissions to perform certain actions on <b>{`@${role.label}`}</b> and its members.
+          Child roles are roles that <b>{`@${role.label}`}</b> has permissions over.
         </Text>
       </Box>
 
-      {managerAcl._exists && (
-        <DataTable
-          columns={managerColumns}
-          data={managerData}
-          wrapperProps={{
-            maw: config.app.ui.settings_maw,
-          }}
-          onRowClicked={(row) => setSelectedManagerId(row.id)}
-          emptyComponent={(
-            <Stack align='center' spacing='sm'>
-              <Text weight={600}>This role has no managers</Text>
-              <AddRolePopover
-                form={form}
-                type='empty'
-                exclude={[role.id]}
-                onSelect={(role_id) => {
-                  // Add to form value
-                  form.setFieldValue('managers', {
-                    ...form.values.managers,
-                    [role.id]: {
-                      ...form.values.managers[role.id],
-                      [role_id]: DEFAULT_MANAGER_PERMISSION_SET,
-                    },
-                  });
+      <DataTable
+        columns={childColumns}
+        data={childData}
+        wrapperProps={{
+          maw: config.app.ui.settings_maw,
+        }}
+        onRowClicked={(row) => setSelectedChildId(row.id)}
+        emptyComponent={(
+          <Stack align='center' spacing='sm'>
+            <Text weight={600}>This role has no child roles</Text>
+            <AddRolePopover
+              form={form}
+              type='empty'
+              data={addableChildren}
+              onSelect={(role_id) => {
+                // Add to form value
+                form.setFieldValue('child_roles', {
+                  ...form.values.child_roles,
+                  [role.id]: {
+                    ...form.values.child_roles[role.id],
+                    [role_id]: DEFAULT_MANAGER_PERMISSION_SET,
+                  },
+                });
+    
+                // Switch to it
+                setSelectedChildId(role_id);
+              }}
+            />
+          </Stack>
+        )}
+        rowStyles={[
+          {
+            when: (row) => row.id === selectedChildId,
+            style: { backgroundColor: theme.colors.dark[6] },
+          }
+        ]}
+      />
 
-                  // Switch to it
-                  setSelectedManagerId(role_id);
-                }}
-              />
-            </Stack>
-          )}
-          rowStyles={[
-            {
-              when: (row) => row.id === selectedManagerId,
-              style: { backgroundColor: theme.colors.dark[6] },
-            }
-          ]}
-        />
-      )}
-
-      {selectedManager && (
+      {selectedChild && (
         <>
           <Divider maw={config.app.ui.settings_maw} />
 
@@ -635,20 +688,37 @@ function ManagersTab({ domain, form, role, addManagers }: SubtabProps) {
               <Title order={4}>Role Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed'>
-              Permissions the manager has over the <b>{`@${role.label}`}</b> role.
+              Permissions the parent role has over the <b>{`@${selectedChild.label}`}</b> role.
             </Text>
           </Box>
 
           <PermissionSetting
             title='Manage Role'
-            description={<>Allows <b>{`@${selectedManager.label}`}</b> to manage the role settings of <b>{`@${role.label}`}</b>, including the role name, badge, permissions for resources for which the <b>{`@${selectedManager.label}`}</b> member manages, and other managers for which the <b>{`@${selectedManager.label}`}</b> member is also a manager of.</>}
-            switchProps={form.getInputProps(`managers.${role.id}.${selectedManagerId}.can_manage`, { type: 'checkbox' })}
+            description={<>Allows <b>{`@${role.label}`}</b> to manage the role settings of <b>{`@${selectedChild.label}`}</b>, including the role name, badge, and other managers of the role.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_manage`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage}
+          />
+
+          <PermissionSetting
+            title='Manage Permissions'
+            description={<>Allows <b>{`@${role.label}`}</b> to manage the permissions of <b>{`@${selectedChild.label}`}</b>. This permission is required for members of <b>{`@${role.label}`}</b> to modify <b>{`@${selectedChild.label}`}</b> permissions for any channel or resource, but they must be able to manage that channel or resource to modify its permissions.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_manage_permissions`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_permissions}
+          />
+
+          <PermissionSetting
+            title='Delete Role'
+            description={<>Allows <b>{`@${role.label}`}</b> to delete the <b>{`@${selectedChild.label}`}</b> role.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_delete_role`, { type: 'checkbox' })}
+            disabled={!_perms.can_delete_role}
+            show={selectedChild.id !== domain._default_role}
           />
 
           <PermissionSetting
             title='Assign Role'
-            description={<>Allows <b>{`@${selectedManager.label}`}</b> to assign and remove the <b>{`@${role.label}`}</b> role to and from other members within the domain.</>}
-            switchProps={form.getInputProps(`managers.${role.id}.${selectedManagerId}.can_assign_role`, { type: 'checkbox' })}
+            description={<>Allows <b>{`@${role.label}`}</b> to assign and remove the <b>{`@${selectedChild.label}`}</b> role to and from other members within the domain.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_assign_role`, { type: 'checkbox' })}
+            disabled={!_perms.can_assign_role}
             withDivider={false}
           />
 
@@ -659,34 +729,38 @@ function ManagersTab({ domain, form, role, addManagers }: SubtabProps) {
               <Title order={4}>Member Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-              Permissions the manager has over members with the <b>{`@${role.label}`}</b> role.
-              In order to perform any of the following actions, the manager must have the corresponding permission to perform the action for every one of the target member's roles,
+              Permissions the parent has over members with the <b>{`@${selectedChild.label}`}</b> role.
+              In order to perform any of the following actions, a user must have the corresponding permission to perform the action for every one of the target member's roles,
               not just this role.
             </Text>
           </Box>
 
           <PermissionSetting
             title='Manage Alias'
-            description={<>Allows <b>{`@${selectedManager.label}`}</b> to change the alias of members with the <b>{`@${role.label}`}</b> role.</>}
-            switchProps={form.getInputProps(`managers.${role.id}.${selectedManagerId}.can_manage_member_alias`, { type: 'checkbox' })}
+            description={<>Allows <b>{`@${role.label}`}</b> to change the alias of members with the <b>{`@${selectedChild.label}`}</b> role.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_manage_member_alias`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_member_alias}
           />
 
           <PermissionSetting
             title='Manage Roles'
-            description={<>Allows <b>{`@${selectedManager.label}`}</b> to manage which roles are assigned to members that have the <b>{`@${role.label}`}</b> role, regardless of whether the manager has the permission to assign the given roles.</>}
-            switchProps={form.getInputProps(`managers.${role.id}.${selectedManagerId}.can_manage_member_roles`, { type: 'checkbox' })}
+            description={<>Allows <b>{`@${role.label}`}</b> to manage which roles are assigned to members that have the <b>{`@${selectedChild.label}`}</b> role, regardless of whether the manager has the permission to assign those roles.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_manage_member_roles`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_member_roles}
           />
 
           <PermissionSetting
             title='Can Kick'
-            description={<>Allows <b>{`@${selectedManager.label}`}</b> to kick members with the <b>{`@${role.label}`}</b> role. Kicking a member removes them from the domain, but does not prevent them from rejoining the domain.</>}
-            switchProps={form.getInputProps(`managers.${role.id}.${selectedManagerId}.can_kick_member`, { type: 'checkbox' })}
+            description={<>Allows <b>{`@${role.label}`}</b> to kick members with the <b>{`@${selectedChild.label}`}</b> role. Kicking a member removes them from the domain, but does not prevent them from rejoining the domain.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_kick_member`, { type: 'checkbox' })}
+            disabled={!_perms.can_kick_member}
           />
 
           <PermissionSetting
             title='Can Ban'
-            description={<>Allows <b>{`@${selectedManager.label}`}</b> to ban members with the <b>{`@${role.label}`}</b> role. Banning a member removes them from the domain and prevents them from rejoining the domain.</>}
-            switchProps={form.getInputProps(`managers.${role.id}.${selectedManagerId}.can_ban_member`, { type: 'checkbox' })}
+            description={<>Allows <b>{`@${role.label}`}</b> to ban members with the <b>{`@${selectedChild.label}`}</b> role. Banning a member removes them from the domain and prevents them from rejoining the domain.</>}
+            switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_ban_member`, { type: 'checkbox' })}
+            disabled={!_perms.can_ban_member}
             withDivider={false}
           />
         </>
@@ -696,18 +770,13 @@ function ManagersTab({ domain, form, role, addManagers }: SubtabProps) {
 }
 
 ////////////////////////////////////////////////////////////
-function PermissionsTab({ domain, form, role }: SubtabProps) {
-  // Channel group permissions for this role
-  const groupAcl = useAclEntriesByRole(role.id);
-
+function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps & { roleAcl: AclEntriesByRoleWrapper }) {
 
   // Is current role the default role
   const isDefaultRole = role.id === domain._default_role;
 
   // Data table
   const groupPermissionsData = useMemo<(ChannelGroup & { can_view: boolean; can_manage: boolean })[]>(() => {
-    if (!groupAcl._exists) return [];
-
     // Only return groups that have acl entry if not default role
     if (!isDefaultRole) {
       // Map of group id to group object
@@ -716,8 +785,9 @@ function PermissionsTab({ domain, form, role }: SubtabProps) {
         groupMap[group.id] = group;
 
       const data: (ChannelGroup & { can_view: boolean; can_manage: boolean })[] = [];
-      for (const entry of groupAcl.data) {
-        if (!groupMap[entry.resource]) continue;
+      for (const entry of roleAcl.data) {
+        if (!groupMap[entry.resource] || (!hasPermission(domain, entry.resource, 'can_manage') && !hasPermission(domain, entry.role, 'can_manage'))) continue;
+
         data.push({
           ...groupMap[entry.resource],
           can_view: entry.permissions.findIndex(x => x === 'can_view') >= 0,
@@ -731,17 +801,48 @@ function PermissionsTab({ domain, form, role }: SubtabProps) {
     else {
       // Map of resource id to acl entry
       const aclMap: Record<string, AclEntry> = {};
-      for (const entry of groupAcl.data)
-        aclMap[entry.resource] = entry;
+      for (const entry of roleAcl.data) {
+        if (!entry.resource.startsWith('roles'))
+          aclMap[entry.resource] = entry;
+      }
 
       // Show all groups if default role
       return domain.groups.map(group => ({
         ...group,
         can_view: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_view') >= 0 : false,
         can_manage: aclMap[group.id] ? aclMap[group.id].permissions.findIndex(x => x === 'can_manage') >= 0 : false,
-      }));
+      })).filter(x => hasPermission(domain, x.id, 'can_manage') || hasPermission(domain, role.id, 'can_manage'));
     }
-  }, [domain.groups, groupAcl.data, isDefaultRole]);
+  }, [domain.groups, domain._permissions, roleAcl.data, isDefaultRole]);
+
+  // Addable channel groups
+  const addableGroups = useMemo(
+    () => domain.groups.filter(x => canSetPermissions(domain, { resource: x.id, role: role.id }) && groupPermissionsData.findIndex(g => g.id === x.id) < 0),
+    [groupPermissionsData, domain.groups, domain._permissions]
+  );
+  
+
+  // Map of which permissions able to set
+  const _perms = useMemo(() => {
+    const entry = domainAcl.data.find(x => x.role === role.id) || {
+      id: '', domain: '',
+      role: role.id,
+      resource: domain.id,
+      permissions: [],
+    };
+
+    const canSet = canSetPermissions(domain, entry);
+    return {
+      can_set: canSet,
+      can_manage: canSet && hasPermission(domain, domain.id, 'can_manage'),
+      can_manage_invites: canSet && hasPermission(domain, domain.id, 'can_manage_invites'),
+      can_manage_extensions: canSet && hasPermission(domain, domain.id, 'can_manage_extensions'),
+      can_create_groups: canSet && hasPermission(domain, domain.id, 'can_create_groups'),
+      can_create_roles: canSet && hasPermission(domain, domain.id, 'can_create_roles'),
+
+      can_set_role_permissions: hasPermission(domain, role.id, 'can_manage_permissions'),
+    };
+  }, [domainAcl.data]);
 
   // Group override table columns
   const groupOverrideColumns = useMemo(() => {
@@ -775,13 +876,15 @@ function PermissionsTab({ domain, form, role }: SubtabProps) {
       cols.push({
         name: (
           <Popover position='top' withArrow>
-            <Popover.Target>
-              <ActionIcon>
-                <IconPlus size={19} />
-              </ActionIcon>
-            </Popover.Target>
+            {_perms.can_set_role_permissions && addableGroups.length > 0 && (
+              <Popover.Target>
+                <ActionIcon>
+                  <IconPlus size={19} />
+                </ActionIcon>
+              </Popover.Target>
+            )}
 
-            <AddGroupOverrideDropdown domain={domain} role={role} exclude={groupPermissionsData} />
+            <AddGroupOverrideDropdown domain={domain} role={role} data={addableGroups} />
           </Popover>
         ),
         width: '4rem',
@@ -795,95 +898,120 @@ function PermissionsTab({ domain, form, role }: SubtabProps) {
 
   return (
     <Stack mt={20}>
-      <Box mb={8}>
-        <Group spacing='xs' mb={4}>
-          <IconBuildingCommunity size={19} />
-          <Title order={4}>Domain Permissions</Title>
-        </Group>
-        <Text size='sm' color='dimmed'>
-          General permissions that apply to the domain.
-        </Text>
-      </Box>
+      {hasPermission(domain, domain.id, 'can_manage') && (
+        <>
+          <Box mb={8}>
+            <Group spacing='xs' mb={4}>
+              <IconBuildingCommunity size={19} />
+              <Title order={4}>Domain Permissions</Title>
+            </Group>
+            <Text size='sm' color='dimmed'>
+              General permissions that apply to the domain.
+            </Text>
+          </Box>
 
-      <PermissionSetting
-        title='Manage Domain'
-        description={<>Allows <b>{`@${role.label}`}</b> to manage domain settings, including the domain name, icon, and banner.</>}
-        switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage`, { type: 'checkbox' })}
-      />
+          <PermissionSetting
+            title='Manage Domain'
+            description={<>
+              Allows <b>{`@${role.label}`}</b> to manage domain settings, including the domain name, icon, and banner, and to manage domain permissions.
+            </>}
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage}
+          />
 
-      <PermissionSetting
-        title='Manage Invites'
-        description={<>Allows <b>{`@${role.label}`}</b> to create, edit, and delete invites to the domain.</>}
-        switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_invites`, { type: 'checkbox' })}
-      />
+          <PermissionSetting
+            title='Manage Invites'
+            description={<>Allows <b>{`@${role.label}`}</b> to create, edit, and delete invites to the domain.</>}
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_invites`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_invites}
+          />
 
-      <PermissionSetting
-        title='Manage Extensions'
-        description={<>Allows <b>{`@${role.label}`}</b> to add and manage the extensions of this domain.</>}
-        switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_extensions`, { type: 'checkbox' })}
-      />
+          <PermissionSetting
+            title='Manage Extensions'
+            description={<>Allows <b>{`@${role.label}`}</b> to add and manage the extensions of this domain.</>}
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_manage_extensions`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_extensions}
+          />
 
-      <PermissionSetting
-        title='Create Roles'
-        description={<>Allows <b>{`@${role.label}`}</b> to create and manage new roles within this domain, but does not allow them to edit or delete any existing role that they do not already have permissions for. Users will not be able to create new roles with permissions that they do not have. To enable more precise role management capabilities, assign <b>{`@${role.label}`}</b> as a "Manager" to the specific roles it should handle.</>}
-        switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_roles`, { type: 'checkbox' })}
-        withDivider={false}
-      />
+          <PermissionSetting
+            title='Create Channel Groups'
+            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new channel groups in this domain.</>}
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_groups`, { type: 'checkbox' })}
+            disabled={!_perms.can_create_groups}
+          />
 
-      <Divider maw={config.app.ui.settings_maw} mt={16} />
-      <Box mb={12}>
-        <Group spacing='xs' mb={4}>
-          <ChannelIcon type='text' size={20} />
-          <Title order={4}>Channel Permissions</Title>
-        </Group>
-        <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-          {/* TODO : Allow channels to be clickable (to modify channel permissions) */}
-          {isDefaultRole && (<>Permissions for <b>{'@everyone'}</b> for every channel group. Click a group to modify its permissions.</>)}
-          {!isDefaultRole && (<>
-            Permission sets for channel groups. Users can perform any given action if any of their assigned roles allow them to,
-            which means that users may have additional capabilities granted by other roles even if <b>{`@${role.label}`}</b> does not explicitly allow those actions.
-          </>)}
-        </Text>
-      </Box>
+          <PermissionSetting
+            title='Create Roles'
+            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new roles within this domain. To enable more precise role management capabilities, assign <b>{`@${role.label}`}</b> as a "Manager" to the specific roles it should handle.</>}
+            switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_roles`, { type: 'checkbox' })}
+            disabled={!_perms.can_create_roles}
+            withDivider={false}
+          />
 
-      <DataTable
-        columns={groupOverrideColumns}
-        data={groupPermissionsData}
-        expandableRowsComponent={GroupPermissoinsExpandableRows}
-        expandableRowsProps={{ domain }}
-        onRowClicked={(row) => {
-          // Save changes in cache
-          pushUnsaved(domain.id, form.values);
+          <Divider maw={config.app.ui.settings_maw} mt={16} />
+        </>
+      )}
 
-          // Open modal
-          openChannelGroupSettings({
-            domain_id: domain.id,
-            group: row,
-            tab: 'permissions',
-            role,
-          });
-        }}
-        emptyComponent={(
-          <Stack align='center' spacing='sm'>
-            <Text weight={600}>This role has no extra permissions for any groups</Text>
-            <Popover position='top' withArrow>
-              <Popover.Target>
-                <Button
-                  variant='default'
-                  leftIcon={<IconPlus size={18} />}
-                >
-                  Add Permissions
-                </Button>
-              </Popover.Target>
+      {(_perms.can_set_role_permissions || hasPermission(domain, role.id, 'can_manage')) && (
+        <>
+          <Box mb={12}>
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='text' size={20} />
+              <Title order={4}>Channel Permissions</Title>
+            </Group>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              {/* TODO : Allow channels to be clickable (to modify channel permissions) */}
+              {isDefaultRole && (<>Permissions for <b>{'@everyone'}</b> for every channel group. Click a group to modify its permissions.</>)}
+              {!isDefaultRole && (<>
+                Permission sets for channel groups. Users can perform any given action if any of their assigned roles allow them to,
+                which means that users may have additional capabilities granted by other roles even if <b>{`@${role.label}`}</b> does not explicitly allow those actions.
+              </>)}
+            </Text>
+          </Box>
 
-              <AddGroupOverrideDropdown domain={domain} role={role} />
-            </Popover>
-          </Stack>
-        )}
-        wrapperProps={{
-          maw: config.app.ui.settings_maw,
-        }}
-      />
+          <DataTable
+            columns={groupOverrideColumns}
+            data={groupPermissionsData}
+            expandableRowsComponent={GroupPermissoinsExpandableRows}
+            expandableRowsProps={{ domain }}
+            onRowClicked={(row) => {
+              // Save changes in cache
+              if (form.isDirty())
+                pushUnsaved(domain.id, form.values);
+
+              // Open modal
+              openChannelGroupSettings({
+                domain_id: domain.id,
+                group: row,
+                tab: 'permissions',
+                role,
+              });
+            }}
+            emptyComponent={(
+              <Stack align='center' spacing='sm'>
+                <Text weight={600}>This role has no extra permissions for any groups</Text>
+                <Popover position='top' withArrow>
+                  {_perms.can_set_role_permissions && addableGroups.length > 0 && (
+                    <Popover.Target>
+                      <Button
+                        variant='default'
+                        leftIcon={<IconPlus size={18} />}
+                      >
+                        Add Permissions
+                      </Button>
+                    </Popover.Target>
+                  )}
+
+                  <AddGroupOverrideDropdown domain={domain} role={role} data={addableGroups} />
+                </Popover>
+              </Stack>
+            )}
+            wrapperProps={{
+              maw: config.app.ui.settings_maw,
+            }}
+          />
+        </>
+      )}
     </Stack>
   );
 }
@@ -898,6 +1026,9 @@ function MembersTab({ domain, role, session }: SubtabProps) {
   const [debouncedSearch, cancelDebounced] = useDebouncedValue(search, 300);
   // Current table page number
   const [page, setPage] = useState<number>(1);
+
+  // Can user assign this role
+  const canAssign = hasPermission(domain, role.id, 'can_assign_role');
 
   // Member query
   const members = useMemberQuery(domain.id, {
@@ -921,54 +1052,62 @@ function MembersTab({ domain, role, session }: SubtabProps) {
 
 
   // Members columns
-  const membersColumns = useMemo(() => ([
-    {
-      name: 'Member',
-      grow: 1,
-      cell: (member: ExpandedMember) => (
-        <Group noWrap>
-          <MemberAvatar size={28} member={member} />
-          <Text data-tag='allowRowEvents' inline size='sm'>
-            {member.alias}
-          </Text>
-        </Group>
-      ),
-    },
-    {
-      name: members._exists ? (
-        <AddMemberPopover
-          type='table'
-          domain_id={domain.id}
-          role_id={role.id}
-          exclude={members.data.map(x => x.id) || []}
-          members={members}
-        />
-      ) : undefined,
-      width: '4rem',
-      right: true,
-      cell: (member: ExpandedMember) => (
-        <CloseButton
-          size='md'
-          iconSize={18}
-          onClick={() => {
-            openConfirmModal({
-              modalProps: {
-                title: 'Remove Member',
-              },
-              confirmLabel: 'Remove',
-              content: (
-                <Text>Are you sure you want to remove <b>{member.alias}</b> from the role <b>@{role.label}</b>?</Text>
-              ),
-              onConfirm: () => {
-                if (!members._exists) return;
-                members._mutators.removeRole(member.id, role.id);
-              }
-            })
-          }}
-        />
-      ),
-    },
-  ]) as TableColumn<any>[], [members._exists]);
+  const membersColumns = useMemo(() => {
+    const cols = [
+      {
+        name: 'Member',
+        grow: 1,
+        cell: (member: ExpandedMember) => (
+          <Group noWrap>
+            <MemberAvatar size={28} member={member} />
+            <Text data-tag='allowRowEvents' inline size='sm'>
+              {member.alias}
+            </Text>
+          </Group>
+        ),
+      },
+    ] as TableColumn<any>[];
+
+    if (canAssign) {
+      cols.push(
+        {
+          name: members._exists ? (
+            <AddMemberPopover
+              type='table'
+              domain_id={domain.id}
+              role_id={role.id}
+              members={members}
+            />
+          ) : undefined,
+          width: '4rem',
+          right: true,
+          cell: (member: ExpandedMember) => (
+            <CloseButton
+              size='md'
+              iconSize={18}
+              onClick={() => {
+                openConfirmModal({
+                  modalProps: {
+                    title: 'Remove Member',
+                  },
+                  confirmLabel: 'Remove',
+                  content: (
+                    <Text>Are you sure you want to remove <b>{member.alias}</b> from the role <b>@{role.label}</b>?</Text>
+                  ),
+                  onConfirm: () => {
+                    if (!members._exists) return;
+                    members._mutators.removeRole(member.id, role.id);
+                  }
+                })
+              }}
+            />
+          ),
+        }
+      );
+    }
+
+    return cols;
+  }, [members._exists]);
 
 
   return (
@@ -1025,32 +1164,98 @@ function MembersTab({ domain, role, session }: SubtabProps) {
 function RoleSettingsTabs(props: RoleSettingsTabsProps) {
   // Use form values
   const role = props.form.values.roles[props.roleIdx];
+  
+  // Acl entries for this role
+  const roleAcl = useAclEntriesByRole(role.id);
 
   // The current tab that is open
   const [activeTab, setActiveTab] = useCachedState<string | null>(`settings.${props.domain.id}.roles.tab`, 'general');
+
+
+  // Used to add child roles data to form initially
+  useEffect(() => {
+    if (!roleAcl._exists) return;
+
+    // Create managers map
+    const map: Record<string, ChildRolePermissions> = {};
+    for (const entry of roleAcl.data) {
+      if (!entry.resource.startsWith('roles')) continue;
+
+      map[entry.resource] = {
+        can_manage: _hasPerm(entry?.permissions, 'can_manage'),
+        can_manage_permissions: _hasPerm(entry?.permissions, 'can_manage_permissions'),
+        can_delete_role: _hasPerm(entry?.permissions, 'can_delete_role'),
+        can_assign_role: _hasPerm(entry?.permissions, 'can_assign_role'),
+        can_manage_member_alias: _hasPerm(entry?.permissions, 'can_manage_member_alias'),
+        can_manage_member_roles: _hasPerm(entry?.permissions, 'can_manage_member_roles'),
+        can_kick_member: _hasPerm(entry?.permissions, 'can_kick_member'),
+        can_ban_member: _hasPerm(entry?.permissions, 'can_ban_member'),
+      };
+    }
+
+    // Add managers to initial state
+    props.addChildRoles(role.id, map);
+  }, [roleAcl._exists]);
+
+  // Check if user can manage non-role resources, if user can manage role, they can view all role's permissions, even if they can't change it
+  const canManageResources = useMemo(() => {
+    // Have to be able to manage permissions for this role, or be able to manage domain
+    if (!hasPermission(props.domain, role.id, 'can_manage') && !hasPermission(props.domain, role.id, 'can_manage_permissions') && !hasPermission(props.domain, props.domain.id, 'can_manage'))
+      return false;
+
+    // Check if user can manage any resources
+    let manage = props.domain._permissions.is_admin || hasPermission(props.domain, role.id, 'can_manage');
+    for (const entry of props.domain._permissions.entries) {
+      if (entry.resource.startsWith('roles')) continue;
+      manage = manage || entry.permissions.findIndex(x => x === 'can_manage') >= 0;
+    }
+
+    return manage;
+  }, [props.domain._permissions.entries, role.id]);
+
+  // Check if user can manage role
+  const canManageRoles = useMemo(() => {
+      // Have to be able to manage permissions for this role, if user can manage parent role, they can view all role's permissions, even if they can't change it
+      if (!hasPermission(props.domain, role.id, 'can_manage') && !hasPermission(props.domain, role.id, 'can_manage_permissions'))
+        return false;
+  
+      // Check if user can manage any roles
+      let manage = props.domain._permissions.is_admin || hasPermission(props.domain, role.id, 'can_manage');
+      for (const entry of props.domain._permissions.entries) {
+        if (!entry.resource.startsWith('roles')) continue;
+        manage = manage || entry.permissions.findIndex(x => x === 'can_manage') >= 0;
+      }
+  
+      return manage;
+    }, [props.domain._permissions, role.id]
+  );
 
 
   return (
     <Tabs value={activeTab} onTabChange={setActiveTab} variant='outline' keepMounted={false}>
       <Tabs.List>
         <Tabs.Tab value='general'>General</Tabs.Tab>
-        <Tabs.Tab value='managers'>Managers</Tabs.Tab>
-        <Tabs.Tab value='permissions'>Permissions</Tabs.Tab>
+        {canManageResources && <Tabs.Tab value='permissions'>Permissions</Tabs.Tab>}
+        {canManageRoles && <Tabs.Tab value='child-roles'>Child Roles</Tabs.Tab>}
         <Tabs.Tab value='members'>Members</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value='general'>
         <GeneralTab {...props} role={role} />
       </Tabs.Panel>
-      
-      <Tabs.Panel value='managers'>
-        <ManagersTab {...props} role={role} />
-      </Tabs.Panel>
 
-      <Tabs.Panel value='permissions'>
-        <PermissionsTab {...props} role={role} />
-      </Tabs.Panel>
-      
+      {roleAcl._exists && canManageResources && (
+        <Tabs.Panel value='permissions'>
+          <PermissionsTab {...props} role={role} roleAcl={roleAcl} />
+        </Tabs.Panel>
+      )}
+
+      {roleAcl._exists && canManageRoles && (
+        <Tabs.Panel value='child-roles'>
+          <ChildRolesTab {...props} role={role} roleAcl={roleAcl} />
+        </Tabs.Panel>
+      )}
+
       <Tabs.Panel value='members'>
         <MembersTab {...props} role={role} />
       </Tabs.Panel>
@@ -1063,12 +1268,11 @@ function RoleSettingsTabs(props: RoleSettingsTabsProps) {
 export function RolesTab({ ...props }: TabProps) {
   const domain = useDomain(props.domain.id);
   assert(domain._exists);
-  console.log(domain)
 
   // Domain permissions
   const aclEntries = useAclEntries(domain.id);
   // List of manager maps per role
-  const [managers, setManagers] = useState<Record<string, Record<string, ManagerPermissions>>>({});
+  const [childRoles, setChildRoles] = useState<Record<string, Record<string, ChildRolePermissions>>>({});
 
   // New role loading
   const [newRoleLoading, setNewRoleLoading] = useState<boolean>(false);
@@ -1089,8 +1293,9 @@ export function RolesTab({ ...props }: TabProps) {
       domainPermissions[role.id] = {
         can_manage: _hasPerm(entry?.permissions, 'can_manage'),
         can_manage_invites: _hasPerm(entry?.permissions, 'can_manage_invites'),
-        can_create_resources: _hasPerm(entry?.permissions, 'can_create_resources'),
+        can_manage_resources: _hasPerm(entry?.permissions, 'can_manage_resources'),
         can_manage_extensions: _hasPerm(entry?.permissions, 'can_manage_extensions'),
+        can_create_groups: _hasPerm(entry?.permissions, 'can_create_groups'),
         can_create_roles: _hasPerm(entry?.permissions, 'can_create_roles'),
       };
     }
@@ -1098,9 +1303,9 @@ export function RolesTab({ ...props }: TabProps) {
     return {
       roles,
       domain_permissions: domainPermissions,
-      managers,
+      child_roles: childRoles,
     } as RoleFormValues;
-  }, [aclEntries.data, domain.roles, managers]);
+  }, [aclEntries.data, domain.roles, childRoles]);
   const form = useForm({ initialValues });
 
   // Role search text
@@ -1147,6 +1352,8 @@ export function RolesTab({ ...props }: TabProps) {
   // Role obj for convenience
   const role = selectedIdx !== null && selectedIdx >= 0 ? form.values.roles[selectedIdx] : null;
 
+  // WIP : Implement the rest of permission ui restrictions
+
   return (
     <>
       <Text size='sm' color='dimmed' maw='100ch'>
@@ -1178,41 +1385,44 @@ export function RolesTab({ ...props }: TabProps) {
             ) : undefined}
             style={{ flexGrow: 1 }}
           />
-          <Button
-            variant='gradient'
-            loading={newRoleLoading}
-            onClick={async () => {
-              try {
-                setNewRoleLoading(true);
 
-                // Create new role
-                const newDomain = await domain._mutators.updateRoles({
-                  added: [{
-                    domain: domain.id,
-                    label: 'New Role',
-                  }]
-                });
+          {hasPermission(domain, domain.id, 'can_create_roles') && (
+            <Button
+              variant='gradient'
+              loading={newRoleLoading}
+              onClick={async () => {
+                try {
+                  setNewRoleLoading(true);
 
-                if (newDomain) {
-                  // Find the role id that doesn't belong
-                  const oldRoles = new Set<string>(form.values.roles.map(x => x.id));
-    
-                  // Switch to it
-                  for (const role of newDomain.roles) {
-                    if (!oldRoles.has(role.id)) {
-                      setSelectedRoleId(role.id);
-                      break;
+                  // Create new role
+                  const newDomain = await domain._mutators.updateRoles({
+                    added: [{
+                      domain: domain.id,
+                      label: 'New Role',
+                    }]
+                  });
+
+                  if (newDomain) {
+                    // Find the role id that doesn't belong
+                    const oldRoles = new Set<string>(form.values.roles.map(x => x.id));
+
+                    // Switch to it
+                    for (const role of newDomain.roles) {
+                      if (!oldRoles.has(role.id)) {
+                        setSelectedRoleId(role.id);
+                        break;
+                      }
                     }
                   }
                 }
-              }
-              finally {
-                setNewRoleLoading(false);
-              }
-            }}
-          >
-            New Role
-          </Button>
+                finally {
+                  setNewRoleLoading(false);
+                }
+              }}
+            >
+              New Role
+            </Button>
+          )}
         </Group>
 
         <DragDropContext onDragEnd={(result) => {
@@ -1284,7 +1494,7 @@ export function RolesTab({ ...props }: TabProps) {
         </DragDropContext>
       </Box>
 
-      {role && selectedIdx !== null && (
+      {aclEntries._exists && role && selectedIdx !== null && (
         <>
           <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
           <Title order={3} mb={8}>Edit - {role?.badge && <Emoji id={role.badge} />} {'@'}{role?.label}</Title>
@@ -1292,10 +1502,11 @@ export function RolesTab({ ...props }: TabProps) {
           <RoleSettingsTabs
             key={selectedRoleId}
             domain={domain}
+            domainAcl={aclEntries}
             roleIdx={selectedIdx}
             form={form}
-            addManagers={(role_id, newManagers) => {
-              setManagers({ ...managers, [role_id]: newManagers });
+            addChildRoles={(role_id, newRoles) => {
+              setChildRoles({ ...childRoles, [role_id]: newRoles });
             }}
             setSelectedRoleId={setSelectedRoleId}
             session={props.session}
@@ -1362,26 +1573,37 @@ export function RolesTab({ ...props }: TabProps) {
             }).catch(() => {});
           }
 
-          // Set manager permissions if changed
-          const managerPermsDiff = diff(initialValues.managers, form.values.managers);
-          if (managerPermsDiff && Object.keys(managerPermsDiff).length > 0) {
-            // Iterate roles and apply acl entries for each manager within each role
-            for (const [role_id, managers] of Object.entries(managerPermsDiff)) {
-              if (!managers || Object.keys(managers).length === 0) continue;
+          // Indicates if permission settings changed
+          let permissionsChanged = false;
 
-              // Get permissions list for each one that changed
+          // Set child role permissions if changed
+          const childPermsDiff = diff(initialValues.child_roles, form.values.child_roles);
+          if (childPermsDiff && Object.keys(childPermsDiff).length > 0) {
+            permissionsChanged = true;
+
+            // Update child roles bc domain updates with new permission values, and need to set latest child roles version
+            setChildRoles(form.values.child_roles);
+            
+            // Iterate roles and apply acl entries for each child role within each role
+            for (const [parent_id, childRoles] of Object.entries(childPermsDiff)) {
+              if (!childRoles || Object.keys(childRoles).length === 0) continue;
+
+              // Get permissions list for each one that changed (map of parent id to child permission changes)
               const permChanges: Record<string, AllPermissions[]> = {};
-              for (const manager_id of Object.keys(managers || {}))
-                permChanges[manager_id] = Object.entries(form.values.managers[role_id][manager_id] || {}).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
+              for (const child_id of Object.keys(childRoles || {}))
+                permChanges[child_id] = Object.entries(form.values.child_roles[parent_id][child_id] || {}).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
 
               // Mutation
-              await setPermissions(role_id, permChanges, props.session).catch(() => {});
+              // console.log(parent_id, permChanges, form.values.child_roles, childPermsDiff)
+              await setPermissionsByRole(parent_id, permChanges, props.session).catch(() => {});
             }
           }
 
           // Set domain permissions if changed
           const domainPermsDiff = diff(initialValues.domain_permissions, form.values.domain_permissions);
           if (aclEntries._exists && domainPermsDiff && Object.keys(domainPermsDiff).length > 0) {
+            permissionsChanged = true;
+
             // Get permissions list for each one that changed
             const permChanges: Record<string, AllPermissions[]> = {};
             for (const role_id of Object.keys(domainPermsDiff || {}))
@@ -1390,6 +1612,10 @@ export function RolesTab({ ...props }: TabProps) {
             // Mutation
             await aclEntries._mutators.setPermissions(permChanges).catch(() => {});
           }
+
+          // Update user permissions
+          if (permissionsChanged)
+            await domain._refresh();
         }}
       />
     </>

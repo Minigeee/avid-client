@@ -1,3 +1,4 @@
+import { Date } from './util';
 
 /** A type representing a domain role */
 export type Role = {
@@ -11,4 +12,6 @@ export type Role = {
 	badge?: string | null;
 	/** Short description for this role */
 	description?: string;
+	/** Time the role was created */
+	time_created: Date;
 }

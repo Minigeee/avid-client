@@ -48,6 +48,8 @@ export function getMemberQueryKey(options: MemberListOptions) {
 		constraints.push(`search=${options.search.toLocaleLowerCase()}`);
 	if (options.role_id)
 		constraints.push(`role=${options.role_id}`);
+	else if (options.exclude_role_id)
+		constraints.push(`role!=${options.role_id}`);
 	if (options.limit !== undefined)
 		constraints.push(`limit=${Math.min(options.limit, config.app.member.query_limit)}`);
 	if (options.page !== undefined)
@@ -157,8 +159,10 @@ export async function getMembers(domain_id: string, member_ids: string[], sessio
 export type MemberListOptions = {
 	/** The string to search for in member alias */
 	search?: string;
-	/** Only include members that have the specified role */
+	/** Only include members that have the specified role (mutually exclusive w/ `exclude_role_id`, this takes priority) */
 	role_id?: string;
+	/** Exclude members that have the specified role (mutually exclusive w/ `role_id`) */
+	exclude_role_id?: string;
 	/** Limit the number of members returned, the app limit will override this limit if this limit is larger */
 	limit?: number;
 	/** The page of results to return */
@@ -201,6 +205,8 @@ export async function listMembers(domain_id: string, options: MemberListOptions,
 			matchConstraints.push(`string::lowercase(alias) CONTAINS '${search}'`);
 		if (options.role_id)
 			matchConstraints.push(`roles CONTAINS ${options.role_id}`);
+		else if (options.exclude_role_id)
+			matchConstraints.push(`roles CONTAINSNOT ${options.exclude_role_id}`);
 		const matchStr = matchConstraints.join('&&');
 
 		// Construct db query
@@ -246,7 +252,11 @@ export async function listMembers(domain_id: string, options: MemberListOptions,
 	// Construct members array
 	let members: ExpandedMember[] = [];
 	for (const m of Object.values(data.cache._data)) {
-		if (m.data && (!search || m.data.alias.toLowerCase().includes(search)) && (!options.role_id || (m.data.roles && m.data.roles.findIndex(x => x === options.role_id) >= 0)))
+		if (m.data &&
+			(!search || m.data.alias.toLowerCase().includes(search)) &&
+			(!options.role_id || (m.data.roles && m.data.roles.findIndex(x => x === options.role_id) >= 0)) &&
+			(!options.exclude_role_id || (!m.data.roles || m.data.roles.findIndex(x => x === options.exclude_role_id) < 0))
+		)
 			members.push(m.data);
 	}
 

@@ -59,7 +59,7 @@ export default function HeaderView(props: HeaderViewProps) {
         <Title order={5} sx={{ flexGrow: 1 }}>
           {'Channels'}
         </Title>
-        {hasPermission(props.domain, props.domain.id, 'can_manage') && (
+        {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
           <Menu width='12rem'>
             <Menu.Target>
               <ActionIcon>

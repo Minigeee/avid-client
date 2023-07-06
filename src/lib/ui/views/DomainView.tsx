@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import {
   ActionIcon,
   Box,
@@ -39,6 +41,16 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
 
   const clipboard = useClipboard({ timeout: 500 });
 
+  // Checks if user can manage any resource
+  const canManage = useMemo(() => {
+    for (const perms of Object.values(domain._permissions.permissions)) {
+      if (perms.has('can_manage'))
+        return true;
+    }
+
+    return false;
+  }, [domain._permissions.permissions]);
+
 
   return (
     <Group spacing={0} sx={(theme) => ({
@@ -70,14 +82,17 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
             <IconChevronDown size={22} />
           </ActionIcon>
         </Menu.Target>
+
         <Menu.Dropdown>
           <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
-          <Menu.Item
-            icon={<IconSettings size={16} />}
-            onClick={() => openDomainSettings({ domain_id: domain.id })}
-          >
-            Settings
-          </Menu.Item>
+          {canManage && (
+            <Menu.Item
+              icon={<IconSettings size={16} />}
+              onClick={() => openDomainSettings({ domain_id: domain.id })}
+            >
+              Settings
+            </Menu.Item>
+          )}
 
           <Menu.Item icon={<IconCopy size={16} />} onClick={() =>
             clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}`)

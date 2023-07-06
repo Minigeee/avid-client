@@ -10,6 +10,8 @@ export type DomainPermissions =
 	'can_manage_invites' |
 	/** Roles that can create extensions */
 	'can_manage_extensions' |
+	/** Roles that can create domain level channel groups */
+	'can_create_groups' |
 	/** Roles that can create domain level roles */
 	'can_create_roles';
 
@@ -17,6 +19,10 @@ export type DomainPermissions =
 export type RolePermissions =
 	/** Roles that can manage role (name, badge, permissions if they are manager to the resource, and managers if user is a manager to the role being assigned as managee) */
 	'can_manage' |
+	/** Allows users to manage the permissions of this role for resources the user can manage */
+	'can_manage_permissions' |
+	/** Allows users to delete the role */
+	'can_delete_role' |
 	/** Roles that can assign (and unassign) this role */
 	'can_assign_role';
 	
@@ -38,8 +44,10 @@ export type ChannelPermissions =
 	'can_view' |
 	/** Roles that can manage channel (change settings, etc.) */
 	'can_manage' |
-	/** Roles that can create group resources */
-	'can_create_resources';
+	/** Allows role to delete channel group */
+	'can_delete_group' |
+	/** Roles that can create and delete channel group resources */
+	'can_manage_resources';
 
 /** Text channel permissions */
 export type TextChannelPermissions =

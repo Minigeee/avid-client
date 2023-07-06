@@ -36,6 +36,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				// Create channel
 				const channel: Omit<Channel, 'id'> = {
 					domain: domain.id,
+					inherit: group_id,
 					name,
 					type,
 					data,
@@ -243,15 +244,11 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 							},
 						}));
 
-						// Switch inherited channel group if needed
+						// Switch inherited channel group if needed (use local inherit value bc user is the one that dragged channel, so db should use their perspective)
+						const channel = domain.channels[channel_id];
 						ops.push(sql.update<Channel>(channel_id, {
 							set: {
-								inherit: sql.$(sql.wrap(sql.if({
-									cond: '$before = NONE || $before = NULL',
-									body: 'NONE',
-								}, {
-									body: to.group_id,
-								}))),
+								inherit: sql.$(channel.inherit ? to.group_id : 'NONE'),
 							}
 						}));
 					}
@@ -292,16 +289,12 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 						name,
 						channels: [],
 					})),
-					sql.update<Domain>(domain.id, {
-						set: { groups: ['+=', sql.$('$group.id')] },
-						return: 'NONE',
-					}),
 					sql.return('$group'),
 				];
 
 				// Add entry list
 				if (allow_everyone) {
-					ops.splice(2, 0, sql.create<AclEntry>('acl', {
+					ops.splice(1, 0, sql.create<AclEntry>('acl', {
 						domain: domain.id,
 						resource: sql.$('$group.id'),
 						role: domain._default_role,
@@ -391,7 +384,6 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				// List of db ops
 				const ops = [
 					sql.delete(group_id),
-					sql.update<Domain>(domain.id, { set: { groups: ['-=', group_id] } }),
 				];
 				
 				// Delete every channel
@@ -569,17 +561,6 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 							domain: domain.id,
 						})));
 					}
-
-					// Append new roles to domain if order not specified
-					if (!options.order) {
-						const newRoles: any[] = [];
-						for (let i = 0; i < options.added.length; ++i)
-							newRoles.push(sql.$(`$role_${i}.id`));
-
-						operations.push(sql.update<Domain>(domain.id, {
-							set: { roles: ['+=', newRoles] },
-						}));
-					}
 				}
 
 				// Order
@@ -616,10 +597,6 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				const results = await query<ExpandedDomain[]>(sql.transaction(operations), { session });
 				assert(results && results.length > 0);
 
-				console.log('new domain', {
-					...domain,
-					roles: results[0].roles,
-				});
 				return {
 					...domain,
 					roles: results[0].roles,
@@ -638,28 +615,11 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		deleteRole: (role_id: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
 				// Delete role
-				const results = await query<Domain[]>(
-					sql.transaction([
-						// Delete role object
-						sql.delete(role_id),
-						// Remove all acl entries involving it
-						sql.delete<AclEntry>('acl', {
-							where: sql.match<AclEntry>({ resource: role_id, role: role_id }, '||'),
-						}),
-						// Remove from all members of domain
-						sql.update<Member>(`${domain.id}<-member_of`, {
-							set: { roles: ['-=', role_id] },
-							return: 'NONE',
-						}),
-						// Remove from domain
-						sql.update<Domain>(domain.id, {
-							set: { roles: ['-=', role_id] },
-							return: ['roles'],
-						}),
-					]),
+				await query<Domain[]>(
+					// Delete role object, rest handled by event
+					sql.delete(role_id),
 					{ session }
 				);
-				assert(results && results.length > 0);
 
 				// Update all members locally
 				const cache = await getDomainCache(domain.id, session);
@@ -730,12 +690,15 @@ export function useDomain(domain_id: string | undefined) {
 
 			const [_, entries, channels, domains, member] = results;
 
+			// WIP : Fix missing permissions list, then fix db code that caused it to fail (tried to enable some permissions was not allowed to)
+
 			// Member info
 			const info: UserPermissions = {
 				roles: member.roles || [],
 				is_admin: member.is_admin || false,
 				is_owner: member.is_owner || false,
 				permissions: {},
+				entries: entries.map(x => ({ ...x, permissions: x.permissions || [] })),
 			};
 
 			// Add entries to map
@@ -774,5 +737,28 @@ export function useDomain(domain_id: string | undefined) {
 /** Check if user has a certain permission */
 export function hasPermission(domain: DomainWrapper, resource: string, permission: AllPermissions) {
 	let resource_id = resource.startsWith('channels') ? (domain.channels[resource].inherit || resource) : (cache.get(resource)?.data?.inherit || resource);
+	// console.log(resource, resource_id, permission, domain._permissions.permissions)
 	return domain._permissions.is_admin || domain._permissions.permissions[resource_id]?.has(permission);
+}
+
+/** Check if user has a certain acl entry */
+export function hasEntry(domain: DomainWrapper, resource: string, role: string) {
+	let resource_id = resource.startsWith('channels') ? (domain.channels[resource].inherit || resource) : (cache.get(resource)?.data?.inherit || resource);
+	// console.log(resource, resource_id, permission, domain._permissions.permissions)
+	return domain._permissions.is_admin || domain._permissions.entries.findIndex(x => x.resource === resource_id && x.role === role) >= 0;
+}
+
+/**
+ * Checks if user can set permissions for an acl entry
+ * 
+ * @param domain The domain wrapper used to get user permissions
+ * @param resource The resource for the permission being set
+ * @param role The role for the permission being set
+ * @returns True or false
+ */
+export function canSetPermissions(domain: DomainWrapper, entry: { resource: string, role: string }) {
+	const { resource, role } = entry;
+	let resource_id = resource.startsWith('channels') ? (domain.channels[resource].inherit || resource) : (cache.get(resource)?.data?.inherit || resource);
+	// User can be admin, or they have to be able to manage resource and manage permissions for the role
+	return domain._permissions.is_admin || (domain._permissions.permissions[resource_id]?.has('can_manage') && domain._permissions.permissions[role]?.has('can_manage_permissions'));
 }
