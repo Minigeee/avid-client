@@ -351,7 +351,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
   const listRef = useRef<any>(null);
 
   const [search, setSearch] = useState<string>('');
-  const [debouncedSearch] = useDebouncedValue(search, 50);
+  const [debouncedSearch] = useDebouncedValue(search, 50, { leading: true });
   const [skin, setSkin] = useState<string>('0');
   const [activeCategoryIdx, setActiveCategoryIdx] = useState<number>(0);
   const [hovered, setHovered] = useState<string | null>(null);

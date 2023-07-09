@@ -391,7 +391,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
         }}
         emptyComponent={(
           <Stack align='center'>
-            <Text weight={600}>This channel group has no permission sets</Text>
+            <Text weight={600}>This channel group has no permissions</Text>
             <AddRolePopover
               domain={domain}
               type='empty'

@@ -3,6 +3,10 @@
 const nextConfig = {
   reactStrictMode: false,
 
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production"
+  },
+
   // Redirects
   async redirects() {
     return [

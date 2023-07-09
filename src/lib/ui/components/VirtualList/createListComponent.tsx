@@ -418,7 +418,7 @@ export default function createListComponent({
             pointerEvents: isScrolling ? 'none' : undefined,
             width: isHorizontal ? estimatedTotalSize : '100%',
           },
-        }, ...children)
+        }, ...items)
       );
     }
 
