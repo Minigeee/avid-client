@@ -2,9 +2,11 @@ import { forwardRef, useEffect, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
+  Avatar,
   Box,
   Button,
   Center,
+  CloseButton,
   Group,
   Loader,
   Menu,
@@ -14,7 +16,9 @@ import {
   Stack,
   Tabs,
   Text,
+  TextInput,
   Title,
+  Tooltip,
   Transition,
 } from '@mantine/core';
 import {
@@ -28,6 +32,7 @@ import {
   IconPencil,
   IconPlus,
   IconRefresh,
+  IconSearch,
   IconTag
 } from '@tabler/icons-react';
 
@@ -35,6 +40,7 @@ import KanbanView from './KanbanView';
 import ListView from './ListView';
 import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
 import ActionButton from '@/lib/ui/components/ActionButton';
+import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 
 import config from '@/config';
 import {
@@ -47,15 +53,16 @@ import {
   useCachedState,
   useChatStyles,
   useMemoStateAsync,
+  useSession,
   useTasks,
 } from '@/lib/hooks';
-import { Channel, ExpandedTask, TaskCollection, TaskPriority } from '@/lib/types';
+import { Channel, ExpandedMember, ExpandedTask, TaskCollection, TaskPriority } from '@/lib/types';
 import { openCreateTask, openCreateTaskCollection, openEditTaskCollection } from '@/lib/ui/modals';
 import { remap, sortObject } from '@/lib/utility';
 
 import moment from 'moment-business-days';
 import { groupBy } from 'lodash';
-import { useTimeout } from '@mantine/hooks';
+import { useDebouncedValue, useTimeout } from '@mantine/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -78,12 +85,22 @@ type TabViewProps = {
 
 ////////////////////////////////////////////////////////////
 function TabView({ board, type, ...props }: TabViewProps) {
+  const session = useSession();
+
   // Filter tags
   const [filterTags, setFilterTags] = useCachedState<string[]>(`${board.id}.${props.collection}.${type}.tags`, []);
   // Groping field
   const [grouper, setGrouper] = useCachedState<GroupableFields | null>(`${board.id}.${props.collection}.${type}.grouper`, null);
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
+  // Real time search value
+  const [search, setSearch] = useState<string>('');
+  // Debounced search value
+  const [debouncedSearch] = useDebouncedValue(search, 200, { leading: true });
+  // Selected assignee filter
+  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
+  // Extra assignee if it was chosen from dropdown
+  const [extraAssignee, setExtraAssignee] = useState<ExpandedMember | null>(null);
   // Refresh enabled
   const [refreshEnabled, setRefreshEnabled] = useState<boolean>(true);
   // Refresh cooldown
@@ -104,6 +121,17 @@ function TabView({ board, type, ...props }: TabViewProps) {
     return opts;
   }, [type]);
 
+  // All assignees in board
+  const assignees = useMemo(() => {
+    const map: Record<string, ExpandedMember> ={};
+    for (const task of props.tasks.data) {
+      if (task.assignee)
+        map[task.assignee.id] = task.assignee;
+    }
+
+    return Object.values(map).sort((a, b) => a.id === session.profile_id ? -1 : b.id === session.profile_id ? 1 : a.alias.localeCompare(b.alias));
+  }, [props.tasks.data]);
+
 
   // Filter tasks
   const [filtered, setFiltered] = useMemoStateAsync<NoGrouped | SingleGrouped | DoubleGrouped>(`${board.id}.${props.collection}.tasks`, async () => {
@@ -111,10 +139,21 @@ function TabView({ board, type, ...props }: TabViewProps) {
     setGrouperLagged(grouper);
 
     // Apply filter options
+    const terms = debouncedSearch.toLocaleLowerCase().split(/\s+/);
     const filteredList = props.tasks.data.filter(x => {
-      // Keep only tasks in the current collection
-      if (x.collection !== props.collection && props.collection !== 'all')
+      // Keep only tasks in the current collection, and ones that have the right assignee
+      if ((x.collection !== props.collection && props.collection !== 'all') || (selectedAssignee && x.assignee?.id !== selectedAssignee))
         return false;
+
+      // Search filter
+      if (debouncedSearch && !x.sid.toString().includes(debouncedSearch)) {
+        const lcSummary = x.summary.toLocaleLowerCase();
+        
+        for (const term of terms) {
+          if (term.length > 0 && !lcSummary.includes(term))
+            return false;
+        }
+      }
 
       // Make sure all tags exist in filtered tags
       for (const tag of filterTags) {
@@ -271,11 +310,11 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
     return grouped;
 
-  }, [props.tasks.data, filterTags, grouper, props.collection]);
+  }, [props.tasks.data, filterTags, grouper, props.collection, debouncedSearch, selectedAssignee]);
 
 
   return (
-    <Stack spacing={32} pb={64}>
+    <Stack spacing='xs' pb={64}>
       <Group align='end'>
         <Select
           data={groupingOptions}
@@ -292,7 +331,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
         <TaskTagsSelector
           data={Object.values(board.tags).map(x => ({ value: x.id, ...x }))}
           placeholder='Filter by tags'
-          label='Filters'
+          label='Tags'
           icon={<IconTag size={16} />}
           value={filterTags}
           onChange={setFilterTags}
@@ -330,6 +369,118 @@ function TabView({ board, type, ...props }: TabViewProps) {
         >
           <IconRefresh size={22} />
         </ActionButton>
+      </Group>
+      
+      <Group align='end' mb={28}>
+        <TextInput
+          label='Search'
+          placeholder='Search'
+          icon={<IconSearch size={18} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          rightSection={search.length > 0 ? (
+            <CloseButton
+              onClick={() => setSearch('')}
+            />
+          ) : undefined}
+          sx={{ width: config.app.ui.short_input_width }}
+        />
+
+        {assignees.length > 0 && (
+          <Box>
+            <Text size='sm' weight={600} mb={6}>Assignees</Text>
+            <Group spacing={8}>
+              <Avatar.Group>
+                {assignees.slice(0, 5).map(member => (
+                  <Tooltip
+                    label={member.alias}
+                    withArrow
+                  >
+                    <MemberAvatar
+                      size={38}
+                      member={member}
+                      sx={(theme) => ({
+                        cursor: 'pointer',
+                        border: `2px solid ${selectedAssignee === member.id ? theme.colors.indigo[5] : theme.colors.dark[6]}`,
+                        filter: selectedAssignee === member.id ? undefined : 'brightness(0.9)',
+                      })}
+                      onClick={() => setSelectedAssignee(member.id)}
+                    />
+                  </Tooltip>
+                ))}
+
+                {extraAssignee && (
+                  <Tooltip
+                    label={extraAssignee.alias}
+                    withArrow
+                  >
+                    <MemberAvatar
+                      size={38}
+                      member={extraAssignee}
+                      sx={(theme) => ({
+                        cursor: 'pointer',
+                        border: `2px solid ${selectedAssignee === extraAssignee.id ? theme.colors.indigo[5] : theme.colors.dark[6]}`,
+                        filter: selectedAssignee === extraAssignee.id ? undefined : 'brightness(0.9)',
+                      })}
+                      onClick={() => setSelectedAssignee(extraAssignee.id)}
+                    />
+                  </Tooltip>
+                )}
+
+                {assignees.length > 5 && (
+                  <Menu styles={{
+                    item: {
+                      padding: '0.4rem 0.6rem',
+                      minWidth: '10rem',
+                    },
+                    itemIcon: {
+                      marginLeft: '0.5rem',
+                    },
+                  }}>
+                    <Menu.Target>
+                      <Avatar
+                        size={38}
+                        radius='xl'
+                        sx={(theme) => ({
+                          cursor: 'pointer',
+                          backgroundColor: theme.colors.gray[7],
+                        })}
+                      >
+                        {assignees.length - 5}+
+                      </Avatar>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      {assignees.slice(5).map(member => (
+                        <Menu.Item
+                          icon={<MemberAvatar size={32} member={member} />}
+                          sx={(theme) => ({
+                            backgroundColor: selectedAssignee === member.id ? theme.colors.dark[4] : undefined,
+                          })}
+                          onClick={() => {
+                            setSelectedAssignee(member.id);
+                            setExtraAssignee(member);
+                          }}
+                        >
+                          {member.alias}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+              </Avatar.Group>
+
+              {selectedAssignee && (
+                <CloseButton
+                  size={24}
+                  onClick={() => {
+                    setSelectedAssignee(null);
+                    setExtraAssignee(null);
+                  }}
+                />
+              )}
+            </Group>
+          </Box>
+        )}
       </Group>
 
 

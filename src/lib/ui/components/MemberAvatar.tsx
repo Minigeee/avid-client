@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { HTMLProps, forwardRef, useMemo } from 'react';
 import Image from 'next/image';
 
 import {
   Avatar,
+  AvatarProps,
   Sx,
 } from '@mantine/core';
 
@@ -10,17 +11,15 @@ import { ExpandedMember } from '@/lib/types';
 
 
 ////////////////////////////////////////////////////////////
-type MemberAvatarProps = {
+type MemberAvatarProps = Omit<AvatarProps, 'size'> & HTMLProps<HTMLDivElement> & {
   member?: Omit<ExpandedMember, 'id' | 'time_joined'> | null;
 
   size: number;
   color?: string;
-  borderColor?: string;
-  sx?: Sx;
 }
 
 ////////////////////////////////////////////////////////////
-export default function MemberAvatar(props: MemberAvatarProps) {
+const MemberAvatar = forwardRef<HTMLDivElement, MemberAvatarProps>((props: MemberAvatarProps, ref) => {
   // Avatar content
   const content = useMemo<string | JSX.Element>(() => {
     if (props.member?.profile_picture)
@@ -39,7 +38,7 @@ export default function MemberAvatar(props: MemberAvatarProps) {
   }, [props.member?.profile_picture, props.member?.alias]);
 
   return (
-    <Avatar size={props.size} radius={100} sx={(theme) => {
+    <Avatar {...props} ref={ref} size={props.size} radius={100} sx={(theme) => {
       // Get passed in sx
       let sx = {};
       if (props.sx) {
@@ -58,7 +57,9 @@ export default function MemberAvatar(props: MemberAvatarProps) {
       {content}
     </Avatar>
   );
-}
+});
+MemberAvatar.displayName = 'MemberAvatar';
+export default MemberAvatar;
 
 
 ////////////////////////////////////////////////////////////
