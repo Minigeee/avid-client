@@ -28,6 +28,8 @@ const _caches: Record<string, {
 /** Which fields should be selected */
 const MEMBER_SELECT_FIELDS = [
 	'in AS id',
+	'is_admin',
+	'is_owner',
 	'alias',
 	'roles',
 	'in.profile_picture AS profile_picture',
@@ -216,7 +218,7 @@ export async function listMembers(domain_id: string, options: MemberListOptions,
 				where: matchStr || undefined,
 				limit,
 				start: options.page !== undefined ? options.page * limit : undefined,
-				sort: 'alias',
+				sort: [{ field: 'is_admin', order: 'DESC' }, { field: 'alias', mode: 'COLLATE' }],
 			}),
 		];
 		

@@ -67,6 +67,7 @@ import { Editor } from '@tiptap/react';
 
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
+import { throttle } from 'lodash';
 
 const AVATAR_SIZE = 38;
 const MIN_IMAGE_WIDTH = 400;
@@ -705,6 +706,24 @@ function MessagesViewport(props: MessagesViewportProps) {
     setViewportSizeLagged(viewport.scrollHeight);
   }, [messages]);
 
+  // Called when scroll position changes
+  const onScrollPosChange = throttle((e: { x: number; y: number }) => {
+    const viewport = context.refs.viewport.current;
+    if (!viewport || !messages._exists) return;
+
+    // Load more if approaching top
+    if (e.y < config.app.ui.load_next_treshold)
+      messages._next();
+
+    // Show scroll to bottom button if getting far from bottom
+    if (e.y < viewport.scrollHeight - viewport.clientHeight - 500) {
+      if (!props.showScrollBottom)
+        props.setShowScrollBottom?.(true);
+    }
+    else if (props.showScrollBottom)
+      props.setShowScrollBottom?.(false);
+  }, 50, { leading: false });
+
 
   // TODO : Show messages skeleton
   if (!context.sender._exists || !messages._exists) return null;
@@ -714,22 +733,7 @@ function MessagesViewport(props: MessagesViewportProps) {
     <>
       <ScrollArea
         viewportRef={context.refs.viewport}
-        onScrollPositionChange={(e) => {
-          const viewport = context.refs.viewport.current;
-          if (!viewport) return;
-
-          // Load more if approaching top
-          if (e.y < config.app.ui.load_next_treshold)
-            messages._next();
-
-          // Show scroll to bottom button if getting far from bottom
-          if (e.y < viewport.scrollHeight - viewport.clientHeight - 500) {
-            if (!props.showScrollBottom)
-              props.setShowScrollBottom?.(true);
-          }
-          else if (props.showScrollBottom)
-            props.setShowScrollBottom?.(false);
-        }}
+        onScrollPositionChange={onScrollPosChange}
         styles={{
           viewport: {
             padding: `0rem ${context.style.p} 0rem 0rem`,

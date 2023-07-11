@@ -204,9 +204,9 @@ const config = {
 			/** The number of seconds where data in a member cache is considered to be valid */
 			cache_lifetime: 60 * 60,
 			/** The maximum number of members returned in any given query */
-			query_limit: 200,
+			query_limit: 500,
 			/** The number of seconds for which a member query is considered to be stale */
-			query_interval: 5 * 60,
+			query_interval: 60 * 60,
 			/** The number of members under which a new query should be requested when searching members */
 			new_query_threshold: 20,
 		},

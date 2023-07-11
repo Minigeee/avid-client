@@ -6,7 +6,9 @@ import {
   CloseButton,
   Group,
   Menu,
+  Tabs,
   Title,
+  Tooltip,
   useMantineTheme,
 } from '@mantine/core';
 
@@ -150,36 +152,55 @@ export default function HeaderView(props: HeaderViewProps) {
         <Group spacing={2} sx={(theme) => ({
           width: '16rem',
           height: '100%',
-          paddingLeft: '0.5rem',
+          paddingLeft: '0.25rem',
           paddingRight: '0.5rem',
           borderLeft: `1px solid ${theme.colors.dark[7]}`,
         })}>
-          <RightPanelTabIcon
-            app={app}
-            value='members'
-            label='Members'
-            icon={<IconUsers size={18} />}
-            selected={rpTab}
-          />
-          <RightPanelTabIcon
-            app={app}
-            value='activity'
-            label='Activity'
-            icon={<IconBell size={18} />}
-            selected={rpTab}
-          />
-          <RightPanelTabIcon
-            app={app}
-            value='upcoming'
-            label='Upcoming Events'
-            icon={<IconCalendarTime size={18} />}
-            selected={rpTab}
-          />
+          <Tabs
+            value={rpTab}
+            onTabChange={(value) => app._mutators.navigation.setRightPanelTab(value as RightPanelTab)}
+            variant='pills'
+            color='dark'
+            styles={(theme) => ({
+              root: {
+                flexGrow: 1,
+              },
+              tab: {
+                color: theme.colors.dark[1],
+                fontWeight: 600,
+                transition: 'background-color 0.1s',
 
-          <div style={{ flexGrow: 1 }} />
+                '&:hover': {
+                  backgroundColor: theme.colors.dark[5],
+                },
+                '&[data-active]': {
+                  backgroundColor: theme.colors.dark[5],
+                  '&:hover': {
+                    backgroundColor: theme.colors.dark[5],
+                  },
+                },
+              },
+              tabsList: {
+                gap: 2,
+              },
+            })}
+          >
+            <Tabs.List>
+              <Tooltip label='Members' withArrow>
+                <Tabs.Tab icon={<IconUsers size={18} />} value='members' />
+              </Tooltip>
+              <Tooltip label='Activity' withArrow>
+                <Tabs.Tab icon={<IconBell size={18} />} value='activity' disabled />
+              </Tooltip>
+              <Tooltip label='Upcoming' withArrow>
+                <Tabs.Tab icon={<IconCalendarTime size={18} />} value='upcoming' disabled />
+              </Tooltip>
+            </Tabs.List>
+          </Tabs>
 
           <CloseButton
-            size={22}
+            size='lg'
+            iconSize={20}
             onClick={() => app._mutators.general.setRightPanelOpened(false)}
           />
         </Group>

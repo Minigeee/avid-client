@@ -195,6 +195,8 @@ export type SqlSelectOptions<T extends object> = {
 		field: Selectables<T>;
 		/** Sort order */
 		order?: 'ASC' | 'DESC';
+		/** Sort mode */
+		mode?: 'COLLATE' | 'NUMERIC';
 	}[];
 	/** Fetch option */
 	fetch?: (Selectables<T> | (string & {}))[];
@@ -439,7 +441,7 @@ export const sql = {
 
 		if (options.sort) {
 			if (Array.isArray(options.sort))
-				q += `ORDER BY ${options.sort.map(x => `${x.field} ${x.order || 'ASC'}`).join(',')} `;
+				q += `ORDER BY ${options.sort.map(x => `${x.field} ${x.mode ? x.mode + ' ' : ''}${x.order || 'ASC'}`).join(',')} `;
 			else
 				q += `ORDER BY ${options.sort} `;
 		}

@@ -1,10 +1,11 @@
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   Accordion,
   CloseButton,
   Divider,
   Group,
+  Indicator,
   ScrollArea,
   Stack,
   Text,
@@ -14,11 +15,15 @@ import {
 import { useDebouncedValue, useIntersection } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 
+import MemberAvatar from '@/lib/ui/components/MemberAvatar';
+import RoleBadges, { BadgeMap, useRoleBadges } from '@/lib/ui/components/RoleBadges';
+
 import config from '@/config';
-import { DomainWrapper, useSession } from '@/lib/hooks';
+import { DomainWrapper, useApp, useSession } from '@/lib/hooks';
 import { MemberListOptions, MemberListResults, listMembers } from '@/lib/db';
-import { ExpandedMember } from '@/lib/types';
-import MemberAvatar from '../../components/MemberAvatar';
+import { ExpandedMember, Role } from '@/lib/types';
+
+import { throttle } from 'lodash';
 
 
 /** Page size */
@@ -44,7 +49,7 @@ type QueryMetadata = {
 };
 
 ////////////////////////////////////////////////////////////
-function useMemberInfinite(domain_id: string, search: string) {
+function useMemberInfinite(domain_id: string, search: string, options?: { badges?: BadgeMap; }) {
   // Normalize search term
   search = search.toLocaleLowerCase();
 
@@ -65,7 +70,8 @@ function useMemberInfinite(domain_id: string, search: string) {
 
   // List of members filtered to match options
   const filtered = useMemo(() => {
-    if (!search) return members;
+    if (!search)
+      return members.sort((a, b) => a.is_admin === b.is_admin ? a.alias.localeCompare(b.alias) : a.is_admin ? -1 : 1);
 
     // Map of member to the subquery
     const substrIdx: Record<string, number> = {};
@@ -181,8 +187,8 @@ function useMemberInfinite(domain_id: string, search: string) {
   
   // Member item
   const MemberListItem = useMemo(() => {
-    const component = forwardRef<HTMLDivElement, { member: ExpandedMember }>(
-      ({ member, ...others }, ref) => {
+    const component = memo(forwardRef<HTMLDivElement, { member: ExpandedMember; online?: boolean }>(
+      ({ member, online, ...others }, ref) => {
         let alias = member.alias;
         if (search.length > 0) {
           const idx = alias.toLocaleLowerCase().indexOf(search.toLocaleLowerCase());
@@ -191,21 +197,42 @@ function useMemberInfinite(domain_id: string, search: string) {
         }
 
         return (
-          <Group ref={ref} {...others} noWrap sx={{
+          <Group ref={ref} {...others} spacing={6} noWrap sx={{
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            opacity: online ? undefined : 0.6,
           }}>
-            <MemberAvatar size={32} member={member} />
-            <Text size='sm' weight={search.length > 0 ? 400 : 600} sx={(theme) => ({ color: theme.colors.gray[4] })} dangerouslySetInnerHTML={{ __html: alias }} />
+            <Indicator
+              inline
+              position='bottom-end'
+              offset={4}
+              size={12}
+              color='teal'
+              withBorder
+              disabled={!online}
+            >
+              <MemberAvatar size={32} member={member} />
+            </Indicator>
+            <Text
+              ml={6}
+              size='sm'
+              weight={search.length > 0 ? 400 : 600}
+              sx={(theme) => ({ color: theme.colors.gray[4] })}
+              dangerouslySetInnerHTML={{ __html: alias }}
+            />
+
+            {options?.badges && (
+              <RoleBadges role_ids={member.roles || []} badges={options.badges} />
+            )}
           </Group>
         );
       }
-    );
+    ));
     component.displayName = 'MemberListItem';
 
     return component;
-  }, [search]);
+  }, [search, options?.badges]);
 
 
   return {
@@ -213,20 +240,44 @@ function useMemberInfinite(domain_id: string, search: string) {
     filtered,
     MemberListItem,
     _loading: queries[search] === undefined ? true : queries[search].loading || false,
-    _next: next,
+    _next: throttle(next, 50, { leading: false }),
   };
 }
 
 ////////////////////////////////////////////////////////////
 function MembersTab(props: RightPanelViewProps) {
+  const app = useApp();
+
+  // Used for infinite scroll
   const containerRef = useRef<HTMLDivElement>(null);
   const { ref: nextTriggerRef, entry: nextTrigger } = useIntersection({ root: containerRef.current, threshold: 0.5 });
 
   // Real time search value
   const [search, setSearch] = useState<string>('');
 
+  // Role badges
+  const badges = useRoleBadges(props.domain, { cursor: 'pointer' });
+
+
   // Members
-  const { filtered, MemberListItem, _loading, _next } = useMemberInfinite(props.domain.id, search);
+  const { filtered, MemberListItem, _loading, _next } = useMemberInfinite(props.domain.id, search, { badges });
+
+  // Filtered members grouped
+  const grouped = useMemo(() => {
+    const set = new Set<string>(app.general.online);
+
+    const online: ExpandedMember[] = [];
+    const offline: ExpandedMember[] = [];
+
+    for (const member of filtered) {
+      if (set.has(member.id))
+        online.push(member);
+      else
+        offline.push(member);
+    }
+
+    return { online, offline };
+  }, [filtered, app.general.online]);
 
   // Called when next trigger comes into view
   useEffect(() => {
@@ -254,20 +305,72 @@ function MembersTab(props: RightPanelViewProps) {
       <Divider sx={(theme) => ({ color: theme.colors.dark[5], borderColor: theme.colors.dark[5] })} />
 
       <ScrollArea m={8} ref={containerRef} sx={{ flexGrow: 1 }}>
-        <Stack spacing={0}>
-          {filtered.map((member, i) => (
-            <UnstyledButton
-              ref={i === filtered.length - 10 ? nextTriggerRef : undefined}
-              sx={(theme) => ({
-                padding: '0.25rem 0.4rem',
-                borderRadius: theme.radius.sm,
-                '&:hover': { backgroundColor: theme.colors.dark[5] }
-              })}
-            >
-              <MemberListItem member={member} />
-            </UnstyledButton>
-          ))}
-        </Stack>
+        <Accordion
+          multiple
+          defaultValue={['online']}
+          styles={(theme) => ({
+            control: {
+              paddingLeft: 0,
+              paddingRight: '0.25rem',
+              borderRadius: theme.radius.sm,
+              '&:hover': {
+                backgroundColor: theme.colors.dark[5],
+              },
+            },
+            label: {
+              padding: '0.4rem 0.5rem',
+              fontSize: theme.fontSizes.sm,
+              fontWeight: 600,
+              color: theme.colors.dark[2],
+            },
+            item: {
+              borderBottom: 'none',
+            },
+            content: {
+              padding: 0,
+            },
+          })}
+        >
+          <Accordion.Item value='online'>
+            <Accordion.Control>Online - {grouped.online.length}</Accordion.Control>
+            <Accordion.Panel>
+              <Stack mb={16} spacing={0}>
+                {grouped.online.map((member, i) => (
+                  <UnstyledButton
+                    ref={i === grouped.online.length - 10 ? nextTriggerRef : undefined}
+                    sx={(theme) => ({
+                      padding: '0.25rem 0.4rem',
+                      borderRadius: theme.radius.sm,
+                      '&:hover': { backgroundColor: theme.colors.dark[5] }
+                    })}
+                  >
+                    <MemberListItem member={member}  online />
+                  </UnstyledButton>
+                ))}
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          <Accordion.Item value='offline'>
+            <Accordion.Control>Offline - {grouped.offline.length}</Accordion.Control>
+            <Accordion.Panel>
+              <Stack mb={16} spacing={0}>
+                {grouped.offline.map((member, i) => (
+                  <UnstyledButton
+                    ref={i === grouped.offline.length - 10 ? nextTriggerRef : undefined}
+                    sx={(theme) => ({
+                      padding: '0.25rem 0.4rem',
+                      borderRadius: theme.radius.sm,
+                      '&:hover': { backgroundColor: theme.colors.dark[5] }
+                    })}
+                  >
+                    <MemberListItem member={member} />
+                  </UnstyledButton>
+                ))}
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
       </ScrollArea>
     </>
   );

@@ -70,6 +70,8 @@ type _GeneralState = {
 	/** A map of channels to stale status */
 	stale: Record<string, boolean>;
 
+	/** A set of online members */
+	online: Set<string>;
 	/** Indicates if the right side panel is opened */
 	right_panel_opened?: boolean;
 };
@@ -141,6 +143,40 @@ function generalMutatorFactory(general: _GeneralState, setGeneral: (state: _Gene
 			setGeneral({
 				...general,
 				stale: { ...general.stale, [channel_id]: stale },
+			});
+		},
+
+		/**
+		 * Add users to online set
+		 * 
+		 * @param profile_ids The list of profile ids to add to the online set
+		 */
+		addOnline: (profile_ids: string[]) => {
+			// Online
+			const copy = new Set<string>(general.online);
+			for (const id of profile_ids)
+				copy.add(id);
+
+			setGeneral({
+				...general,
+				online: copy,
+			});
+		},
+
+		/**
+		 * Remove users from the online set
+		 * 
+		 * @param profile_ids The list of profile ids to remove from the online set
+		 */
+		removeOnline: (profile_ids: string[]) => {
+			// Online
+			const copy = new Set<string>(general.online);
+			for (const id of profile_ids)
+				copy.delete(id);
+
+			setGeneral({
+				...general,
+				online: copy,
 			});
 		},
 
@@ -281,9 +317,14 @@ export default function AppProvider({ children }: PropsWithChildren) {
 
 	const [general, setGeneral] = useState<_GeneralState>({
 		stale: {},
+		online: new Set<string>(),
 	});
 	const [nav, setNav] = useState<_NavState>({});
 	const rtc = useRtc(session);
+
+	// Use separate saved state to merge with latest values
+	const [savedState, setSavedState] = useState<DeepPartial<_AppState> | null>(null);
+
 	
 	// Timeout used to save nav state
 	const timeout = useTimeout(async () => {
@@ -334,19 +375,18 @@ export default function AppProvider({ children }: PropsWithChildren) {
 				if (results && _exists) {
 					const data = results[0];
 
-					// Set general
-					setGeneral({
-						...general,
-						right_panel_opened: data.general?.right_panel_opened === undefined ? true : data.general.right_panel_opened,
-					});
-
-					// Set state if it exists
 					const remoteNav = data.navigation || {};
-					setNav({
-						...nav,
-						domain: remoteNav.domain ? `domains:${remoteNav.domain}` : undefined,
-						channels: _addPrefix(remoteNav.channels || {}, 'domains', 'channels'),
-						expansions: _addPrefix(remoteNav.expansions || {}, 'domains'),
+
+					// Set saved state (this is async function so the initial state values may be stale)
+					setSavedState({
+						general: {
+							right_panel_opened: data.general?.right_panel_opened === undefined ? true : data.general.right_panel_opened,
+						},
+						navigation: {
+							domain: remoteNav.domain ? `domains:${remoteNav.domain}` : undefined,
+							channels: _addPrefix(remoteNav.channels || {}, 'domains', 'channels'),
+							expansions: _addPrefix(remoteNav.expansions || {}, 'domains'),
+						},
 					});
 				}
 				else {
@@ -362,6 +402,17 @@ export default function AppProvider({ children }: PropsWithChildren) {
 				setSave(merge({}, save, initialSave, { _exists: false, _loading: false }));
 			});
 	}, [session.profile_id]);
+
+	// Merge save state with initial values
+	useEffect(() => {
+		if (!savedState) return;
+
+		setGeneral(merge({}, general, savedState.general || {}));
+		setNav(merge({}, nav, savedState.navigation || {}));
+
+		setSavedState(null);
+	}, [savedState]);
+
 
 	return (
 		<AppContext.Provider value={{

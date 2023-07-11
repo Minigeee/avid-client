@@ -4,6 +4,10 @@ import { Message } from './message';
 /** All events signatures that are sent from server to client */
 export interface ServerToClientEvents {
 	'error': (message: string, status?: number) => void,
+	'joined': (online: string[]) => void,
+
+	'general:user-joined': (profile_id: string) => void,
+	'general:user-left': (profile_id: string) => void,
 
 	'chat:message': (domain_id: string, message: Message) => void;
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;

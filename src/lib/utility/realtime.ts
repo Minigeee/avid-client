@@ -77,9 +77,39 @@ export function connect(session: SessionState) {
 export function useRealtimeHandlers() {
 	const app = useApp();
 
+	
+	// Join/leave handler
+	useEffect(() => {
+		if (!_socket.connected) return;
+
+		function onInitialJoin(online: string[]) {
+			// Add all initial online
+			app._mutators.general.addOnline(online);
+		}
+
+		function onUserJoin(profile_id: string) {
+			app._mutators.general.addOnline([profile_id]);
+		}
+
+		function onUserLeft(profile_id: string) {
+			app._mutators.general.removeOnline([profile_id]);
+		}
+
+		_socket.on('joined', onInitialJoin);
+		_socket.on('general:user-joined', onUserJoin);
+		_socket.on('general:user-left', onUserLeft);
+
+		return () => {
+			_socket.off('joined', onInitialJoin);
+			_socket.off('general:user-joined', onUserJoin);
+			_socket.off('general:user-left', onUserLeft);
+		};
+	}, [_socket.connected, app]);
 
 	// Chat message handler
 	useEffect(() => {
+		if (!_socket.connected) return;
+
 		function onChatMessage(domain_id: string, message: Message) {
 			// If the channel of the message is not the same as the one the user is currently on,
 			// mark the message channel as stale
@@ -94,5 +124,5 @@ export function useRealtimeHandlers() {
 		return () => {
 			_socket.off('chat:message', onChatMessage);
 		};
-	}, [app]);
+	}, [_socket.connected, app]);
 }
