@@ -51,6 +51,9 @@ function _addPrefix(x: Record<string, string>, kpre?: string, vpre?: string) {
 }
 
 
+/** Right panel tab values */
+export type RightPanelTab = 'members' | 'activity' | 'upcoming';
+
 /** State used for saving app state */
 type _SaveState = {
 	/** Indicates if app state fetch is still loading */
@@ -66,16 +69,22 @@ type _SaveState = {
 type _GeneralState = {
 	/** A map of channels to stale status */
 	stale: Record<string, boolean>;
+
+	/** Indicates if the right side panel is opened */
+	right_panel_opened?: boolean;
 };
 
 /** Holds navigation context state */
 type _NavState = {
-	/** The current domain the user is viewing */
+	/** The current domain the user is viewing (saved) */
 	domain?: string;
-	/** The ids of the current channel the user is viewing per domain */
+	/** The ids of the current channel the user is viewing per domain (saved) */
 	channels?: Record<string, string>;
-	/** The ids of the expansion the user is viewing per domain */
+	/** The ids of the expansion the user is viewing per domain (saved) */
 	expansions?: Record<string, string>;
+
+	/** The right panel tab the user is viewing for each domain */
+	right_panel_tab?: Record<string, RightPanelTab>;
 };
 
 /** All subparts put together */
@@ -91,7 +100,7 @@ type SaveFunc = <K extends keyof _AppState>(section: K, diff: DeepPartial<_AppSt
 
 
 ////////////////////////////////////////////////////////////
-async function _saveAll(nav: _NavState, session: SessionState) {
+async function _saveAll(general: _GeneralState, nav: _NavState, session: SessionState) {
 	// Can't save without a profile
 	if (!session.profile_id) return;
 
@@ -101,6 +110,10 @@ async function _saveAll(nav: _NavState, session: SessionState) {
 	await query(
 		sql.update(id, {
 			content: {
+				// General state
+				general: {
+					right_panel_opened: general.right_panel_opened,
+				},
 				// Nav state
 				navigation: {
 					domain: nav.domain?.split(':').at(-1),
@@ -130,6 +143,24 @@ function generalMutatorFactory(general: _GeneralState, setGeneral: (state: _Gene
 				stale: { ...general.stale, [channel_id]: stale },
 			});
 		},
+
+		/**
+		 * Set whether the right side panel should be opened or not
+		 * 
+		 * @param opened Whether the panel should be opened
+		 */
+		setRightPanelOpened: (opened: boolean) => {
+			// Don't set if already the same
+			if (general.right_panel_opened === opened) return;
+
+			const diff = { right_panel_opened: opened };
+			setGeneral({
+				...general,
+				right_panel_opened: opened,
+			});
+			
+			save('general', diff);
+		}
 	};
 }
 
@@ -199,6 +230,27 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 
 			save('navigation', diff);
 		},
+
+		/**
+		 * Switch to viewing the given expansion. If a domain id is provided,
+		 * then it is used, otherwise the current domain is used. If neither
+		 * exist, then the function is not executed.
+		 * 
+		 * @param tab The id of the tab to switch to
+		 * @param domain_id The id of the domain to switch to
+		 */
+		setRightPanelTab: (tab: RightPanelTab, domain_id?: string) => {
+			domain_id = domain_id || nav.domain
+			if (!domain_id) return;
+
+			// Don't set if already the same
+			if (nav.right_panel_tab?.[domain_id] === tab) return;
+
+			const diff: DeepPartial<_NavState> = {
+				right_panel_tab: { [domain_id]: tab },
+			};
+			setNav(merge({}, nav, diff));
+		},
 	};
 }
 
@@ -265,6 +317,13 @@ export default function AppProvider({ children }: PropsWithChildren) {
 	useEffect(() => {
 		if (!session._exists) return;
 
+		// Initial save state for fallback
+		const initialSave: DeepPartial<_AppState> = {
+			general: {
+				right_panel_opened: true,
+			},
+		};
+
 		const id = _id(session);
 		query<(_AppState & { id: string })[]>(
 			sql.select('*', { from: id }),
@@ -274,6 +333,12 @@ export default function AppProvider({ children }: PropsWithChildren) {
 				const _exists = results && results.length > 0 || false;
 				if (results && _exists) {
 					const data = results[0];
+
+					// Set general
+					setGeneral({
+						...general,
+						right_panel_opened: data.general?.right_panel_opened === undefined ? true : data.general.right_panel_opened,
+					});
 
 					// Set state if it exists
 					const remoteNav = data.navigation || {};
@@ -286,15 +351,15 @@ export default function AppProvider({ children }: PropsWithChildren) {
 				}
 				else {
 					// Save doesn't exist on db, save to push initial state
-					_saveAll(nav, session);
+					_saveAll({ ...general, ...initialSave?.general } as _GeneralState, nav, session);
 				}
 
 				// Set save state
-				setSave({ ...save, _exists, _loading: false });
+				setSave(merge({}, initialSave, save, { _exists, _loading: false }));
 			})
 			.catch((error) => {
 				// Indicate that db version does not exist
-				setSave({ ...save, _exists: false, _loading: false });
+				setSave(merge({}, save, initialSave, { _exists: false, _loading: false }));
 			});
 	}, [session.profile_id]);
 

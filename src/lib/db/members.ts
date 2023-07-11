@@ -52,7 +52,7 @@ export function getMemberQueryKey(options: MemberListOptions) {
 		constraints.push(`role!=${options.role_id}`);
 	if (options.limit !== undefined)
 		constraints.push(`limit=${Math.min(options.limit, config.app.member.query_limit)}`);
-	if (options.page !== undefined)
+	if (options.page)
 		constraints.push(`page=${options.page}`);
 
 	// Query key
@@ -216,7 +216,7 @@ export async function listMembers(domain_id: string, options: MemberListOptions,
 				where: matchStr || undefined,
 				limit,
 				start: options.page !== undefined ? options.page * limit : undefined,
-				sort: !search ? 'alias' : undefined,
+				sort: 'alias',
 			}),
 		];
 		

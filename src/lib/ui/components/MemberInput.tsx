@@ -21,7 +21,7 @@ import { useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
-function useMemberInput(domain_id: string, exclude_role?: string, exclude?: string[]) {
+export function useMemberInput(domain_id: string, search: string, exclude_role?: string, exclude?: string[]) {
   const session = useSession();
   
   // Members data that apperas in dropdown
@@ -42,7 +42,10 @@ function useMemberInput(domain_id: string, exclude_role?: string, exclude?: stri
     setQuery(query);
 
     // Filter members by name
-    let filtered = members.filter(x => x.alias.toLocaleLowerCase().startsWith(query));
+    let substrIdx: Record<string, number> = {};
+    for (const m of members)
+      substrIdx[m.id] = m.alias.toLocaleLowerCase().indexOf(query);
+    let filtered = members.filter(x => substrIdx[x.id] >= 0);
 
     // Check if more members need to be requested
     if (filtered.length <= config.app.member.new_query_threshold && (query.length && hasMoreResults[query.slice(0, -1)])) {
@@ -68,7 +71,10 @@ function useMemberInput(domain_id: string, exclude_role?: string, exclude?: stri
       setMembers(newMembers.filter(x => !excludeSet.has(x.id)));
 
       // Refilter and evaluate
-      filtered = members.filter(x => x.alias.toLocaleLowerCase().startsWith(query.toLocaleLowerCase()));
+      substrIdx = {};
+      for (const m of members)
+        substrIdx[m.id] = m.alias.toLocaleLowerCase().indexOf(query);
+      filtered = members.filter(x => substrIdx[x.id] >= 0);
       setHasMoreResults({
         ...hasMoreResults,
         [query]: newMembers.length >= config.app.member.query_limit,
@@ -81,6 +87,8 @@ function useMemberInput(domain_id: string, exclude_role?: string, exclude?: stri
         [query]: hasMoreResults[query.slice(0, -1)],
       });
     }
+
+    return filtered.sort((a, b) => substrIdx[a.id] === substrIdx[b.id] ? a.alias.localeCompare(b.alias) : substrIdx[a.id] - substrIdx[b.id]);
   }, [members, hasMoreResults]);
 
   // Used to get initial members

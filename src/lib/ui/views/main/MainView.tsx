@@ -15,6 +15,7 @@ import BoardView from '@/lib/ui/views/projects/BoardView';
 
 import { useApp, useDomain } from '@/lib/hooks';
 import { Channel } from '@/lib/types';
+import RightPanelView from './RightPanelView';
 
 const HEADER_HEIGHT = '2.8rem';
 
@@ -53,7 +54,7 @@ export default function MainView() {
       <Flex w='100%' h={`calc(100% - ${HEADER_HEIGHT})`}>
         <Box sx={(theme) => ({
           flexShrink: 0,
-          width: '30ch',
+          width: '16rem',
           height: '100%',
           backgroundColor: theme.colors.dark[6],
         })}>
@@ -95,6 +96,20 @@ export default function MainView() {
             </Box>
           )}
         </ErrorBoundary>
+
+        {app.general.right_panel_opened && (
+          <Flex direction='column' sx={(theme) => ({
+            flexShrink: 0,
+            width: '16rem',
+            height: '100%',
+            backgroundColor: theme.colors.dark[6],
+          })}>
+            <RightPanelView
+              key={domain.id}
+              domain={domain}
+            />
+          </Flex>
+        )}
       </Flex>
     </>
   )

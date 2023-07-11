@@ -94,11 +94,11 @@ function TabView({ board, type, ...props }: TabViewProps) {
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
   // Real time search value
-  const [search, setSearch] = useState<string>('');
+  const [search, setSearch] = useCachedState<string>(`${board.id}.${props.collection}.${type}.search`, '');
   // Debounced search value
   const [debouncedSearch] = useDebouncedValue(search, 200, { leading: true });
   // Selected assignee filter
-  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
+  const [selectedAssignee, setSelectedAssignee] = useCachedState<string | null>(`${board.id}.${props.collection}.${type}.assignee`, null);
   // Extra assignee if it was chosen from dropdown
   const [extraAssignee, setExtraAssignee] = useState<ExpandedMember | null>(null);
   // Refresh enabled
