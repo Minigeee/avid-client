@@ -33,6 +33,8 @@ import {
   IconPlus,
   IconRefresh,
   IconSearch,
+  IconStar,
+  IconStarFilled,
   IconTag
 } from '@tabler/icons-react';
 
@@ -524,15 +526,12 @@ interface GroupSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
   ({ label, start_date, end_date, ...others }: GroupSelectItemProps, ref) => {
     const t = new Date();
-    const current = start_date && end_date &&
-      t >= new Date(start_date) &&
-      t <= moment(end_date).add(1, 'day').toDate();
+    const current = (start_date && t >= new Date(start_date)) && (!end_date || t <= moment(end_date).add(1, 'day').toDate());
 
     return (
       <div ref={ref} {...others}>
-        <Group spacing={3} align='center'>
-          {/* TODO : Implement better default/chosen collection */}
-          {/* current && <IconChevronRight size={18} style={{ marginLeft: -4, marginTop: 1 }} /> */}
+        <Group spacing={8} align='center'>
+          {current && <IconStarFilled size={16} />}
           <Text weight={600}>{label}</Text>
         </Group>
         {(start_date || end_date) && (

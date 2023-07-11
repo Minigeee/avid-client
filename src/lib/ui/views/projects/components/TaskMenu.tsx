@@ -20,6 +20,7 @@ import {
   IconChevronDown,
   IconFolderSymlink,
   IconPlus,
+  IconStarFilled,
   IconStatusChange,
   IconTrash,
   IconUserPlus
@@ -151,18 +152,27 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
             sx: { minWidth: '15rem' },
           }}
         >
-          {collectionSelections.map((c) => c.id !== props.collection ? (
-            <Menu.Item key={c.id} onClick={updateHandler({ collection: c.id })}>
-              <Stack spacing={6}>
-                <Text inline weight={600} size='sm'>{c.name}</Text>
-                {(c.start_date || c.end_date) && (
-                  <Text inline size='xs' color='dimmed'>
-                    {c.start_date ? moment(c.start_date).format('l') : ''} - {c.end_date ? moment(c.end_date).format('l') : ''}
-                  </Text>
-                )}
-              </Stack>
-            </Menu.Item>
-          ) : null)}
+          {collectionSelections.map((c) => {
+            const t = new Date();
+            const current = (c.start_date && t >= new Date(c.start_date)) && (!c.end_date || t <= moment(c.end_date).add(1, 'day').toDate());
+
+            return c.id !== props.collection ? (
+              <Menu.Item key={c.id} onClick={updateHandler({ collection: c.id })}>
+                <Stack spacing={6}>
+                  <Group spacing={8} align='center'>
+                    {current && <IconStarFilled size={16} />}
+                    <Text inline weight={600} size='sm'>{c.name}</Text>
+                  </Group>
+
+                  {(c.start_date || c.end_date) && (
+                    <Text inline size='xs' color='dimmed'>
+                      {c.start_date ? moment(c.start_date).format('l') : ''} - {c.end_date ? moment(c.end_date).format('l') : ''}
+                    </Text>
+                  )}
+                </Stack>
+              </Menu.Item>
+            ) : null;
+          })}
         </ContextMenu.Submenu>
       )}
 
