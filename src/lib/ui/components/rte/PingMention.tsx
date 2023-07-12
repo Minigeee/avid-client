@@ -197,7 +197,7 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
     <ScrollArea.Autosize mah='25ch'>
       <Stack spacing={0} sx={(theme) => ({
         padding: 3,
-        width: '20ch',
+        width: '15rem',
         maxWidth: '100%',
         backgroundColor: theme.colors.dark[5],
         border: `1px solid ${theme.colors.dark[6]}`,

@@ -403,7 +403,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
                       member={member}
                       sx={(theme) => ({
                         cursor: 'pointer',
-                        border: `2px solid ${selectedAssignee === member.id ? theme.colors.indigo[5] : theme.colors.dark[6]}`,
+                        border: `3px solid ${selectedAssignee === member.id ? theme.colors.indigo[5] : theme.colors.dark[6]}`,
                         filter: selectedAssignee === member.id ? undefined : 'brightness(0.9)',
                       })}
                       onClick={() => setSelectedAssignee(member.id)}

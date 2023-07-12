@@ -651,8 +651,10 @@ function MessagesViewport(props: MessagesViewportProps) {
   const { messages } = context;
   const { classes } = useChatStyles();
 
-  // Lagged viewport size for scroll pos calculations
-  const [viewportSizeLagged, setViewportSizeLagged] = useState<number>(0);
+  // Holds viewport position relative to bottom of chat, used to maintain (or not) the position of scroll when messages change
+  const viewportPos = useRef<number>(0);
+  // Indicates whether or not scroll pos should be maintained (relative to bottom of chat)
+  const [maintainPos, setMaintainPos] = useState<boolean>(true);
 
   // Update state ref to not activate memo rerender
   const setStateRef = useRef(context.state._set);
@@ -694,29 +696,30 @@ function MessagesViewport(props: MessagesViewportProps) {
   // Keep current position when new messages are added (doubles as setting scroll to bottom at beginning)
   useEffect(() => {
     const viewport = context.refs.viewport.current;
-    if (!viewport) return;
-    
-    // Maintain constant distance from bottom
-    const pos = viewportSizeLagged - viewport.scrollTop;
-    viewport.scrollTo({
-      top: viewport.scrollHeight - pos,
-    });
+    if (!viewport || !maintainPos) return;
 
-    // Update viewport size
-    setViewportSizeLagged(viewport.scrollHeight);
-  }, [messages]);
+    // Maintain position
+    viewport.scrollTo({ top: viewport.scrollHeight - viewport.clientHeight - viewportPos.current });
+  }, [messages, maintainPos]);
 
   // Called when scroll position changes
   const onScrollPosChange = throttle((e: { x: number; y: number }) => {
     const viewport = context.refs.viewport.current;
     if (!viewport || !messages._exists) return;
 
+    // Update viewport pos
+    viewportPos.current = viewport.scrollHeight - viewport.clientHeight - e.y;
+    if (viewportPos.current < 100 && !maintainPos)
+      setMaintainPos(true);
+    else if (viewportPos.current >= 100 && maintainPos)
+      setMaintainPos(false);
+
     // Load more if approaching top
     if (e.y < config.app.ui.load_next_treshold)
       messages._next();
 
     // Show scroll to bottom button if getting far from bottom
-    if (e.y < viewport.scrollHeight - viewport.clientHeight - 500) {
+    if (e.y < viewport.scrollHeight - viewport.clientHeight - 100) {
       if (!props.showScrollBottom)
         props.setShowScrollBottom?.(true);
     }
@@ -985,7 +988,6 @@ export default function MessagesView(props: MessagesViewProps) {
     if (context.refs.viewport.current) {
       context.refs.viewport.current.scrollTo({
         top: context.refs.viewport.current.scrollHeight,
-        behavior: 'smooth',
       });
     }
   }
