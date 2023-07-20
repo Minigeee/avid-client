@@ -134,21 +134,19 @@ const config = {
 			/** Max width for general settings UI */
 			settings_maw: '36rem',
 			/** The viewport position threshold the user must be at to trigger more data fetching (px) */
-			load_next_treshold: 1200,
+			load_next_treshold: 1000,
 		},
 
 		/** Message config */
 		message: {
-			/** Query limit */
-			query_limit: 100,
+			/** Page size */
+			query_limit: 50,
 			/** Max role id length limit */
 			max_mention_length: 24,
 			/** Characters used for member mentions */
 			member_mention_chars: '{}',
 			/** Characters used for role mentions */
 			role_mention_chars: '[]',
-			/** Number of seconds before messages view should be reset to a single page of data */
-			multiple_pages_time: 5 * 60,
 		},
 
 		/** Project board config */
@@ -203,8 +201,8 @@ const config = {
 		member: {
 			/** The number of seconds where data in a member cache is considered to be valid */
 			cache_lifetime: 60 * 60,
-			/** The maximum number of members returned in any given query */
-			query_limit: 500,
+			/** Member page size */
+			query_limit: 100,
 			/** The number of seconds for which a member query is considered to be stale */
 			query_interval: 60 * 60,
 			/** The number of members under which a new query should be requested when searching members */

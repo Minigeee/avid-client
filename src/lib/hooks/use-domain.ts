@@ -1,21 +1,21 @@
 
 import { KeyedMutator } from 'swr';
-import { cache } from 'swr/_internal';
+import { ScopedMutator, cache, useSWRConfig } from 'swr/_internal';
 import assert from 'assert';
 
-import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
+import { api, deleteDomainImage, uploadDomainImage } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { addChannel, getDomainCache, new_Record, query, removeChannel, sql } from '@/lib/db';
-import { AclEntry, AllPermissions, Channel, ChannelData, ChannelGroup, ChannelOptions, ChannelTypes, Domain, ExpandedChannelGroup, ExpandedDomain, Member, Role, UserPermissions } from '@/lib/types';
+import { AllPermissions, ChannelData, ChannelOptions, ChannelTypes, ExpandedDomain, ExpandedMember, Role } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
-import { useDbQuery } from './use-db-query';
+import { useApiQuery } from './use-api-query';
 import { SwrWrapper } from './use-swr-wrapper';
 import { useSession } from './use-session';
+import { setSwrMembers } from './use-members';
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) {
+function mutators(mutate: KeyedMutator<ExpandedDomain>, session: SessionState | undefined, _mutate: ScopedMutator) {
 	assert(session);
 
 	return {
@@ -31,36 +31,27 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		addChannel: <T extends ChannelTypes>(name: string, type: T, group_id: string, data?: ChannelData<T>, options?: ChannelOptions<T>) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				if (!domain) return;
-
-				// Create channel
-				const channel: Omit<Channel, 'id'> = {
-					domain: domain.id,
-					inherit: group_id,
-					name,
-					type,
-					data,
-					time_created: new Date().toISOString(),
-				};
-
-				// Create channel
-				const { id, data: newData } = await addChannel(channel, group_id, options, session);
-
-				// Merge data
-				let merged: any = { ...data, ...newData };
-				if (Object.keys(merged).length === 0)
-					merged = undefined;
+				const channel = await api('POST /channels', {
+					body: {
+						domain: domain.id,
+						group: group_id,
+						type,
+						name,
+						data,
+						options,
+					},
+				}, { session });
 
 				// Update channels
 				const channels = {
 					...domain.channels,
-					[id]: { ...channel, id, data: merged },
+					[channel.id]: channel,
 				};
 
 				// Update groups
 				const groups = domain.groups.slice();
 				const idx = groups.findIndex(x => x.id === group_id);
-				groups[idx] = { ...groups[idx], channels: [...groups[idx].channels, id] };
+				groups[idx] = { ...groups[idx], channels: [...groups[idx].channels, channel.id] };
 
 				return {
 					...domain,
@@ -80,19 +71,15 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		renameChannel: (channel_id: string, name: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				const results = await query<Channel[]>(
-					sql.update<Channel>(channel_id, {
-						set: { name },
-						return: ['name'],
-					}),
-					{ session }
-				);
-				assert(results && results.length > 0);
+				const results = await api('PATCH /channels/:channel_id', {
+					params: { channel_id },
+					body: { name },
+				}, { session });
 
 				// Replace channel with new object
 				const channels = {
 					...domain.channels,
-					[channel_id]: { ...domain.channels[channel_id], name: results[0].name },
+					[channel_id]: { ...domain.channels[channel_id], name: results?.name || name },
 				};
 
 				return { ...domain, channels };
@@ -121,12 +108,10 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		removeChannel: (channel_id: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				// Get channel type
-				const channel = domain.channels[channel_id];
-				if (!channel) return domain;
-
 				// Delete channel
-				await removeChannel(channel_id, channel.type, session);
+				await api('DELETE /channels/:channel_id', {
+					params: { channel_id },
+				}, { session });
 
 				// Update channels list
 				const channels = { ...domain.channels };
@@ -194,68 +179,18 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 
 					// Modify group channels
 					const { groups, dstChannels, same } = modifyGroups(domain);
-					const ops: string[] = [];
 
 					// Id of the channel before dst index
 					const before = to.index === 0 ? null : dstChannels[to.index - 1];
-					// The id of the channel being moved
-					const target_id = channel_id.split(':')[1];
 
-					if (same) {
-						ops.push(sql.update<ChannelGroup>(to.group_id, {
-							set: {
-								channels: sql.fn<ChannelGroup>('move_channel_dst_same', function() {
-									const targetRecord = `channels:${target_id}`;
-	
-									const from = this.channels.findIndex(x => x.toString() === targetRecord);
-									const to = before ? this.channels.findIndex(x => x.toString() === before) + 1 : 0;
-	
-									this.channels.splice(from, 1);
-									this.channels.splice(to, 0, new_Record('channels', target_id));
-	
-									return this.channels;
-								}, { before, target_id }),
-							},
-						}));
-					}
-
-					else {
-						// Modify src group
-						ops.push(sql.update<ChannelGroup>(from.group_id, {
-							set: {
-								channels: sql.fn<ChannelGroup>('move_channel_src_diff', function() {
-									const from = this.channels.findIndex(x => x.toString() === target_id);
-									this.channels.splice(from, 1);
-	
-									return this.channels;
-								}, { target_id: `channels:${target_id}` }),
-							},
-						}));
-
-						// Modify dst group
-						ops.push(sql.update<ChannelGroup>(to.group_id, {
-							set: {
-								channels: sql.fn<ChannelGroup>('move_channel_dst_diff', function() {
-									const to = before ? this.channels.findIndex(x => x.toString() === before) + 1 : 0;
-									this.channels.splice(to, 0, new_Record('channels', target_id));
-	
-									return this.channels;
-								}, { before, target_id }),
-							},
-						}));
-
-						// Switch inherited channel group if needed (use local inherit value bc user is the one that dragged channel, so db should use their perspective)
-						const channel = domain.channels[channel_id];
-						ops.push(sql.update<Channel>(channel_id, {
-							set: {
-								inherit: sql.$(channel.inherit ? to.group_id : 'NONE'),
-							}
-						}));
-					}
-
-					// Perform transaction
-					const results = await query(sql.transaction(ops), { session });
-					assert(results);
+					// Move channel
+					await api('PATCH /channels/:channel_id', {
+						params: { channel_id },
+						body: {
+							after: before,
+							group: same ? undefined : to.group_id,
+						},
+					}, { session });
 
 					return { ...domain, groups };
 				}, { message: 'An error occurred while changing channel order' }),
@@ -282,35 +217,14 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		addGroup: (name: string, allow_everyone: boolean = true) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				// List of operations
-				const ops = [
-					sql.let('$group', sql.create<ChannelGroup>('channel_groups', {
+				// Create group
+				const results = await api('POST /channel_groups', {
+					body: {
 						domain: domain.id,
 						name,
-						channels: [],
-					})),
-					sql.return('$group'),
-				];
-
-				// Add entry list
-				if (allow_everyone) {
-					ops.splice(1, 0, sql.create<AclEntry>('acl', {
-						domain: domain.id,
-						resource: sql.$('$group.id'),
-						role: domain._default_role,
-						permissions: [
-							'can_view',
-							'can_send_messages',
-							'can_send_attachments',
-							'can_broadcast_audio',
-							'can_broadcast_video',
-						],
-					}));
-				}
-
-				// Create group
-				const results = await query<ChannelGroup>(sql.transaction(ops), { session });
-				assert(results);
+						allow_everyone,
+					},
+				}, { session });
 
 				// Add to domain
 				return {
@@ -330,12 +244,11 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		renameGroup: (group_id: string, name: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				// Perform query
-				const results = await query<ChannelGroup[]>(
-					sql.update<ChannelGroup>(group_id, { set: { name } }),
-					{ session }
-				);
-				assert(results);
+				// Change name
+				await api('PATCH /channel_groups/:group_id', {
+					params: { group_id },
+					body: { name },
+				}, { session });
 
 				// Change group name
 				const copy = domain.groups.slice();
@@ -376,30 +289,21 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		 */
 		removeGroup: (group_id: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				// Delete group
+				await api('DELETE /channel_groups/:group_id', {
+					params: { group_id }
+				}, { session });
+
 				// Find group
 				const idx = domain.groups.findIndex(x => x.id === group_id);
 				if (idx < 0) return domain;
 				const group = domain.groups[idx];
-
-				// List of db ops
-				const ops = [
-					sql.delete(group_id),
-				];
 				
 				// Delete every channel
 				const channels = { ...domain.channels };
-				for (const channel_id of group.channels) {
-					const channel = domain.channels[channel_id];
-					if (!channel) continue;
-
-					ops.push(...(await removeChannel(channel_id, channel.type)) as string[]);
-
+				for (const channel_id of group.channels)
 					// Remove from list
 					delete channels[channel_id];
-				}
-
-				// Delete
-				await query(sql.transaction(ops), { session });
 
 				// Update groups list
 				const groups = domain.groups.slice();
@@ -451,25 +355,11 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				// The group being moved
 				const group_id = group.id.split(':')[1];
 
-				// Set list
-				await query(
-					sql.update<Domain>(domain.id, {
-						set: {
-							groups: sql.fn<Domain>('move_group', function() {
-								const targetRecord = `channel_groups:${group_id}`;
-
-								const from = this.groups.findIndex(x => x.toString() === targetRecord);
-								const to = before ? this.groups.findIndex(x => x.toString() === before) + 1 : 0;
-
-								this.groups.splice(from, 1);
-								this.groups.splice(to, 0, new_Record('channel_groups', group_id));
-
-								return this.groups;
-							}, { before, group_id }),
-						},
-					}),
-					{ session }
-				);
+				// Move group
+				await api('PATCH /channel_groups/:group_id', {
+					params: { group_id },
+					body: { after: before },
+				}, { session });
 
 				return { ...domain, groups: copy };
 
@@ -535,71 +425,75 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 				}
 			}
 		),
+		
+		/**
+		 * Create a new role
+		 * 
+		 * @param label The initial label to assign the role
+		 * @returns The new domain object
+		 */
+		addRole: (label?: string) => mutate(
+			swrErrorWrapper(async (domain: ExpandedDomain) => {
+				const results = await api('POST /roles', {
+					body: { domain: domain.id, label: label || 'New Role' },
+				}, { session });
+
+				return { ...domain, roles: [...domain.roles, results] };
+			}, { message: 'An error occurred while adding role to domain' }),
+			{ revalidate: false }
+		),
 
 		/**
 		 * Perform a batch of role operations
 		 * 
 		 * @param options Role update options
-		 * @param options.added A list of roles to be added
 		 * @param options.changed A map of role ids to new roles to be merged into existing ones
-		 * @param options.order A list of role ids in the order they should appear (including newly added roles, which should be using unique ids)
+		 * @param options.order A list of role ids in the order they should appear
 		 * @returns The new domain object
 		 */
-		updateRoles: (options: { added?: Partial<Role>[]; changed?: Record<string, Partial<Role>>; order?: string[]; }) => mutate(
+		updateRoles: (options: { changed?: Record<string, Partial<Role>>; order?: string[]; }) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
-				// Operations
-				const operations: string[] = [];
-
-				// Add
-				if (options.added?.length) {
-					// Create operations
-					for (let i = 0; i < options.added.length; ++i) {
-						const role = options.added[i];
-						operations.push(sql.let(`$role_${i}`, sql.create<Role>('roles', {
-							...role,
-							id: undefined,
-							domain: domain.id,
-						})));
-					}
-				}
-
-				// Order
-				if (options.order) {
-					// Map of new role ids
-					const newIds: Record<string, any> = {};
-					for (let i = 0; options.added && i < options.added.length; ++i) {
-						assert(options.added[i].id);
-						newIds[options.added[i].id || ''] = sql.$(`$role_${i}.id`);
-					}
-					
-					const roles = options.order.map(id => newIds[id] || id);
-					
-					// Add update operation
-					operations.push(sql.update<Domain>(domain.id, {
-						set: { roles },
-					}));
-				}
+				let copy = domain.roles.slice();
+				console.log(options)
 
 				// Change
-				if (options.changed) {
-					// Update operations
-					for (const [id, role] of Object.entries(options.changed))
-						operations.push(sql.update<Role>(id, { content: role }));
+				if (options.changed && Object.keys(options.changed).length > 0) {
+					// Update all roles
+					const results = await api('PATCH /roles', {
+						body: {
+							roles: Object.entries(options.changed).map(([id, role]) => ({ ...role, id })),
+						},
+					}, { session });
+
+					// Update roles locally
+					const map: Record<string, Role> = {};
+					for (const role of results)
+						map[role.id] = role;
+
+					for (let i = 0; i < copy.length; ++i) {
+						if (map[copy[i].id])
+							copy[i] = map[copy[i].id];
+					}
 				}
 
-				// Refetch all roles
-				operations.push(sql.select<Domain>(['roles'], {
-					from: domain.id,
-					fetch: ['roles'],
-				}));
+				// Order (every domain member has access to view all roles, so direct array set can be used)
+				if (options.order) {
+					const results = await api('PUT /domains/:domain_id/role_order', {
+						params: { domain_id: domain.id },
+						body: { roles: options.order },
+					}, { session });
 
-				// Execute as transaction
-				const results = await query<ExpandedDomain[]>(sql.transaction(operations), { session });
-				assert(results && results.length > 0);
+					// Rearrange roles
+					const map: Record<string, Role> = {};
+					for (const role of copy)
+						map[role.id] = role;
+
+					copy = results.roles.map(id => map[id]);
+				}
 
 				return {
 					...domain,
-					roles: results[0].roles,
+					roles: copy,
 				};
 			}, { message: 'An error occurred while updating roles' }),
 			{ revalidate: false }
@@ -615,23 +509,25 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session?: SessionState) 
 		deleteRole: (role_id: string) => mutate(
 			swrErrorWrapper(async (domain: ExpandedDomain) => {
 				// Delete role
-				await query<Domain[]>(
-					// Delete role object, rest handled by event
-					sql.delete(role_id),
-					{ session }
-				);
+				await api('DELETE /roles/:role_id', { params: { role_id } }, { session });
 
-				// Update all members locally
-				const cache = await getDomainCache(domain.id, session);
-				for (const id of Object.keys(cache.cache._data)) {
-					const member = cache.cache._data[id].data;
-					if (!member?.roles) continue;
+				// Get a list of members to update
+				const updated: ExpandedMember[] = [];
+				for (const key of Array.from(cache.keys())) {
+					if (key.startsWith(`${domain.id}.profiles:`)) {
+						const member = cache.get(key)?.data as ExpandedMember;
+						const idx = member?.roles?.findIndex(r => r === role_id);
 
-					// Remove role from members if they contain it
-					const idx = member.roles.findIndex(r => r === role_id);
-					if (idx >= 0)
-						member.roles.splice(idx, 1);
+						if (idx !== undefined && idx >= 0) {
+							const copy = member.roles?.slice() || [];
+							copy.splice(idx);
+							updated.push({ ...member, roles: copy });
+						}
+					}
 				}
+
+				// Update members
+				setSwrMembers(domain.id, updated, undefined, _mutate);
 
 				// Update domain object
 				return { ...domain, roles: domain.roles.filter(r => r.id !== role_id) };
@@ -656,80 +552,18 @@ export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDo
  */
 export function useDomain(domain_id: string | undefined) {
 	const session = useSession();
+	const { mutate } = useSWRConfig();
 
-	return useDbQuery<ExpandedDomain, DomainMutators>(domain_id, {
-		builder: (key) => {
-			assert(domain_id);
-
-			return sql.multi([
-				sql.let('$member', sql.wrap(
-					sql.select<Member>(['roles', 'is_admin', 'is_owner'], {
-						from: `${domain_id}<-member_of`,
-						where: sql.match({ in: session.profile_id }),
-					}),
-					{ append: '[0]' }
-				)),
-				sql.select<AclEntry>('*', {
-					from: 'acl',
-					where: sql.match<AclEntry>({
-						domain: domain_id,
-						role: ['IN', sql.$('$member.roles')]
-					}),
-				}),
-				sql.select<Channel>('*', {
-					from: 'channels',
-					where: sql.match({ domain: domain_id }),
-				}),
-				sql.select<Domain>('*', { from: domain_id, fetch: ['groups', 'roles'] }),
-				sql.return('$member'),
-			]);
-		},
-		complete: true,
-		then: (results: [unknown, AclEntry[], Channel[], ExpandedDomain[], Member]) => {
-			assert(results);
-
-			const [_, entries, channels, domains, member] = results;
-
-			// WIP : Fix missing permissions list, then fix db code that caused it to fail (tried to enable some permissions was not allowed to)
-
-			// Member info
-			const info: UserPermissions = {
-				roles: member.roles || [],
-				is_admin: member.is_admin || false,
-				is_owner: member.is_owner || false,
-				permissions: {},
-				entries: entries.map(x => ({ ...x, permissions: x.permissions || [] })),
-			};
-
-			// Add entries to map
-			for (const entry of entries) {
-				if (!info.permissions[entry.resource])
-					info.permissions[entry.resource] = new Set<AllPermissions>(entry.permissions);
-				else {
-					const set = info.permissions[entry.resource];
-					for (const perm of entry.permissions)
-						set.add(perm);
-				}
-			}
-
-			// Map channel id to channel object
-			const channelMap: Record<string, Channel> = {};
-			for (const channel of channels) {
-				if (channel)
-					channelMap[channel.id] = channel;
-			}
-
-			return results?.length ? {
-				...domains[0],
-				channels: channelMap,
-				groups: domains[0].groups.filter(x => x).map(group => ({
-					...group,
-					channels: group.channels.filter(id => channelMap[id]),
-				})),
-				_permissions: info,
-			} : null;
+	return useApiQuery(domain_id, 'GET /domains/:domain_id', {
+		params: { domain_id: domain_id || '' }
+	}, {
+		then: (results) => {
+			for (const [resource, perms] of Object.entries(results._permissions.permissions))
+				results._permissions.permissions[resource] = new Set(perms);
+			return results;
 		},
 		mutators,
+		mutatorParams: [mutate],
 	});
 }
 

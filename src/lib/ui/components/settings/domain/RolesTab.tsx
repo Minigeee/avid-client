@@ -1,4 +1,6 @@
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSWRConfig } from 'swr';
+import assert from 'assert';
 
 import {
   ActionIcon,
@@ -23,6 +25,7 @@ import {
   useMantineTheme
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { useDebouncedValue } from '@mantine/hooks';
 import { UseFormReturnType } from '@mantine/form/lib/types';
 
 import {
@@ -51,21 +54,31 @@ import { MultiMemberInput } from '@/lib/ui/components/MemberInput';
 import PermissionSetting from '@/lib/ui/components/settings/PermissionSetting';
 import PortalAwareItem from '@/lib/ui/components/PortalAwareItem';
 import { SettingsModal, popUnsaved, pushUnsaved } from '@/lib/ui/components/settings/SettingsModal';
+import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { AclEntriesByRoleWrapper, AclEntriesWrapper, DomainWrapper, MemberListWrapper, canSetPermissions, hasPermission, setPermissions, setPermissionsByRole, useAclEntries, useAclEntriesByRole, useCachedState, useDomain, useMemberQuery } from '@/lib/hooks';
+import {
+  AclEntriesWrapper,
+  DomainWrapper,
+  MemberListWrapper,
+  canSetPermissions,
+  listMembers,
+  hasPermission,
+  useAclEntries,
+  useAclEntriesByRole,
+  useCachedState,
+  useDomain,
+  useMemberQuery,
+  setAclEntries,
+  useSession
+} from '@/lib/hooks';
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, ExpandedMember, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
+
 import { TableColumn } from 'react-data-table-component';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
-
-import { v4 as uuid } from 'uuid';
 import { merge } from 'lodash';
-import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
-import { useDebouncedValue } from '@mantine/hooks';
-import { listMembers } from '@/lib/db';
-import assert from 'assert';
 
 
 ////////////////////////////////////////////////////////////
@@ -490,7 +503,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
 }
 
 ////////////////////////////////////////////////////////////
-function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl: AclEntriesByRoleWrapper }) {
+function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl: AclEntriesWrapper }) {
   const theme = useMantineTheme();
 
   // Currently opened manager id
@@ -519,7 +532,6 @@ function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl:
     for (const [childId, perms] of Object.entries(form.values.child_roles[role.id] || {})) {
       if (entries.findIndex(x => x.resource === childId) < 0) {
         entries.push({
-          id: '',
           domain: domain.id,
           resource: childId,
           role: role.id,
@@ -789,7 +801,7 @@ function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl:
 }
 
 ////////////////////////////////////////////////////////////
-function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps & { roleAcl: AclEntriesByRoleWrapper }) {
+function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps & { roleAcl: AclEntriesWrapper }) {
 
   // Is current role the default role
   const isDefaultRole = role.id === domain._default_role;
@@ -1056,6 +1068,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
     limit: 100,
     page: page - 1,
   });
+  console.log('role tab', members.data)
 
   // Cancel debounced value if there are no more members to query
   useEffect(() => {
@@ -1285,6 +1298,9 @@ function RoleSettingsTabs(props: RoleSettingsTabsProps) {
 
 ////////////////////////////////////////////////////////////
 export function RolesTab({ ...props }: TabProps) {
+  const { mutate } = useSWRConfig();
+
+  const session = useSession();
   const domain = useDomain(props.domain.id);
   assert(domain._exists);
 
@@ -1413,12 +1429,7 @@ export function RolesTab({ ...props }: TabProps) {
                   setNewRoleLoading(true);
 
                   // Create new role
-                  const newDomain = await domain._mutators.updateRoles({
-                    added: [{
-                      domain: domain.id,
-                      label: 'New Role',
-                    }]
-                  });
+                  const newDomain = await domain._mutators.addRole('New Role');
 
                   if (newDomain) {
                     // Find the role id that doesn't belong
@@ -1592,20 +1603,17 @@ export function RolesTab({ ...props }: TabProps) {
           // The remaining values in unaccounted are deleted
           if (Object.keys(changes).length > 0 || Object.keys(newRoles).length > 0 || orderChanged) {
             await domain._mutators.updateRoles({
-              added: Object.values(newRoles),
               changed: changes,
               order: orderChanged ? form.values.roles.map(x => x.id) : undefined,
             }).catch(() => {});
           }
 
-          // Indicates if permission settings changed
-          let permissionsChanged = false;
+          // List of all permission entry updates
+          const entryUpdates: Omit<AclEntry, 'domain'>[] = [];
 
           // Set child role permissions if changed
           const childPermsDiff = diff(initialValues.child_roles, form.values.child_roles);
           if (childPermsDiff && Object.keys(childPermsDiff).length > 0) {
-            permissionsChanged = true;
-
             // Update child roles bc domain updates with new permission values, and need to set latest child roles version
             setChildRoles(form.values.child_roles);
             
@@ -1613,34 +1621,40 @@ export function RolesTab({ ...props }: TabProps) {
             for (const [parent_id, childRoles] of Object.entries(childPermsDiff)) {
               if (!childRoles || Object.keys(childRoles).length === 0) continue;
 
-              // Get permissions list for each one that changed (map of parent id to child permission changes)
-              const permChanges: Record<string, AllPermissions[]> = {};
-              for (const child_id of Object.keys(childRoles || {}))
-                permChanges[child_id] = Object.entries(form.values.child_roles[parent_id][child_id] || {}).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
-
-              // Mutation
-              // console.log(parent_id, permChanges, form.values.child_roles, childPermsDiff)
-              await setPermissionsByRole(parent_id, permChanges, props.session).catch(() => {});
+              // Get permissions list for each one that changed (map of parent id to child permission changes), and add it to list of entry updates
+              for (const child_id of Object.keys(childRoles || {})) {
+                const permissions = Object.entries(form.values.child_roles[parent_id][child_id] || {}).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
+                entryUpdates.push({
+                  resource: child_id,
+                  role: parent_id,
+                  permissions,
+                });
+              }
             }
           }
 
           // Set domain permissions if changed
           const domainPermsDiff = diff(initialValues.domain_permissions, form.values.domain_permissions);
           if (aclEntries._exists && domainPermsDiff && Object.keys(domainPermsDiff).length > 0) {
-            permissionsChanged = true;
-
             // Get permissions list for each one that changed
-            const permChanges: Record<string, AllPermissions[]> = {};
-            for (const role_id of Object.keys(domainPermsDiff || {}))
-              permChanges[role_id] = Object.entries(form.values.domain_permissions[role_id]).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
-
-            // Mutation
-            await aclEntries._mutators.setPermissions(permChanges).catch(() => {});
+            for (const role_id of Object.keys(domainPermsDiff || {})) {
+              const permissions = Object.entries(form.values.domain_permissions[role_id]).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
+              entryUpdates.push({
+                resource: domain.id,
+                role: role_id,
+                permissions,
+              });
+            }
           }
 
           // Update user permissions
-          if (permissionsChanged)
+          if (entryUpdates.length > 0) {
+            // Update acl entries
+            setAclEntries(domain.id, entryUpdates, session, mutate);
+
+            // Update personal permission entries
             await domain._refresh();
+          }
         }}
       />
     </>

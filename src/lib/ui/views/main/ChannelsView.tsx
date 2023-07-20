@@ -42,6 +42,7 @@ type SingleChannelProps = {
   group_id: string;
   selected: boolean;
   onClick: () => void;
+  onDelete: () => void;
 
   index: number;
 }
@@ -405,6 +406,11 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                       onClick={() => {
                         if (props.domain._exists)
                           app._mutators.navigation.setChannel(channel_id);
+                      }}
+                      onDelete={() => {
+                        const channels = Object.values(props.domain.channels);
+                        if (channels.length > 0)
+                          app._mutators.navigation.setChannel(channels[0].id);
                       }}
 
                       index={i}

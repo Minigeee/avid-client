@@ -97,6 +97,15 @@ export default function MainView() {
           )}
         </ErrorBoundary>
 
+        {!channel && (
+          <Box sx={(theme) => ({
+            flexGrow: 1,
+            width: 0, // idk why this works
+            height: '100%',
+            backgroundColor: theme.colors.dark[7],
+          })} />
+        )}
+
         {app.general.right_panel_opened && (
           <Flex direction='column' sx={(theme) => ({
             flexShrink: 0,

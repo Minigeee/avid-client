@@ -16,8 +16,7 @@ import MemberAvatar from './MemberAvatar';
 
 import config from '@/config';
 import { ExpandedMember } from '@/lib/types';
-import { listMembers } from '@/lib/db';
-import { useSession } from '@/lib/hooks';
+import { listMembers, useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////

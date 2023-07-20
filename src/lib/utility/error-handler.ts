@@ -153,6 +153,28 @@ export function swrHandler(error: AxiosError | Error, key: string) {
 }
 
 
+/** General error handler */
+export function errorHandler(error: any, options?: AxiosErrorHandlerOptions) {
+	if (error instanceof AxiosError) {
+		// An error occured while communicating with server
+		axiosHandler(error, options);
+	}
+
+	else {
+		// An error occurred in code somewhere else
+		notifyError(
+			error, {
+			title: 'Application Error',
+			message: `${options?.message || 'An application error has occurred'}. ${config.app.support_message}`,
+		});
+
+		// Propagate error
+		if (options?.propagate)
+			throw error;
+	}
+};
+
+
 /** Options for general error wrapper */
 export type ErrorWrapperOptions = AxiosErrorHandlerOptions & { onError?: (error: any) => any; finally?: () => any };
 

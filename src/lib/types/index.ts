@@ -1,4 +1,6 @@
+export * from './api';
 export * from './attachment';
+export * from './auth';
 export * from './board';
 export * from './channel';
 export * from './common';

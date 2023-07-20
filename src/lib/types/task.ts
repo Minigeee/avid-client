@@ -1,5 +1,5 @@
 import { Date } from './util';
-import { Member } from './member';
+import { ExpandedMember, Member } from './member';
 
 
 /** The priority levels that can be assigned to a task */
@@ -44,5 +44,5 @@ export type Task = {
 /** A task with expanded fields */
 export type ExpandedTask = Omit<Task, 'assignee'> & {
 	/** The member this task is assigned to */
-	assignee?: Member | null;
+	assignee?: ExpandedMember | null;
 };

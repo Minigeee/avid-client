@@ -43,15 +43,16 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
 import { AppState } from '@/lib/contexts';
-import { getChannel, getMembers } from '@/lib/db';
 import {
   DomainWrapper,
+  getMembers,
   hasPermission,
   rtcIo,
   useApp,
   useSession,
 } from '@/lib/hooks';
 import { Channel, Member } from '@/lib/types';
+import { api } from '@/lib/api';
 
 
 ////////////////////////////////////////////////////////////
@@ -203,8 +204,12 @@ function JoinScreen({ app, ...props }: SubviewProps) {
   // Load channel data directly (need latest data always)
   const [participants, setParticipants] = useState<Member[] | null>(null);
   useEffect(() => {
-    getChannel<'rtc'>(props.channel.id, session)
-      .then((channel) => {
+    // TODO : Use websockets to sync room participants
+    api('GET /channels/:channel_id', {
+      params: { channel_id: props.channel.id },
+    }, { session })
+      .then((results) => {
+        const channel = results as Channel<'rtc'>;
         const filtered = channel.data?.participants.filter(x => x !== session.profile_id);
         return filtered ? getMembers(props.domain.id, filtered, session) : [];
       })

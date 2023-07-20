@@ -1,8 +1,7 @@
 import { forwardRef, useEffect, useState, useImperativeHandle, useMemo, PropsWithChildren, useRef } from 'react';
 
-import { Node, nodeInputRule, nodePasteRule } from '@tiptap/core';
+import { Node, nodePasteRule } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
-import Mention, { MentionOptions } from '@tiptap/extension-mention';
 import Suggestion, { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion';
 
 import {
@@ -14,22 +13,13 @@ import {
   Text,
   UnstyledButton,
 } from '@mantine/core';
-import { IconBadgeOff } from '@tabler/icons-react';
+import { useElementSize } from '@mantine/hooks';
 
 import { Emoji, EmojiType, emojiSearch } from '../Emoji';
-import MemberAvatar from '../MemberAvatar';
-
-import config from '@/config';
-import { SessionState } from '@/lib/contexts';
-import { listMembers } from '@/lib/db';
-import { ExpandedMember, Role } from '@/lib/types';
-import { DomainWrapper } from '@/lib/hooks';
 
 import data from '@emoji-mart/data';
 import emojiRegex from 'emoji-regex';
 import tippy, { Instance, Props as TippyProps } from 'tippy.js';
-import assert from 'assert';
-import { useElementSize } from '@mantine/hooks';
 
 
 const _emojiRegex = emojiRegex();

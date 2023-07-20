@@ -40,11 +40,11 @@ import { TaskContextMenu, TaskMenuContext } from './components/TaskMenu';
 import { DoubleGrouped, GroupableFields, SingleGrouped } from './BoardView';
 
 import config from '@/config';
-import { getMemberSync } from '@/lib/db';
 import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  getMemberSync,
   hasPermission,
   useMemoState,
   useSession,

@@ -1,4 +1,5 @@
 import { PropsWithChildren, RefObject, forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { useSWRConfig } from 'swr';
 
 import {
   ActionIcon,
@@ -34,8 +35,21 @@ import { SettingsModal } from '@/lib/ui/components/settings/SettingsModal';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { DomainWrapper, ProfileWrapper, canSetPermissions, hasPermission, useAclEntries, useApp, useCachedState, useDomain, useMemoState, useProfile, useSession } from '@/lib/hooks';
-import { AllPermissions, ChannelGroup, Role } from '@/lib/types';
+import {
+  DomainWrapper,
+  ProfileWrapper,
+  canSetPermissions,
+  hasPermission,
+  setAclEntries,
+  useAclEntries,
+  useApp,
+  useCachedState,
+  useDomain,
+  useMemoState,
+  useProfile,
+  useSession
+} from '@/lib/hooks';
+import { AclEntry, AllPermissions, ChannelGroup, Role } from '@/lib/types';
 import { useForm } from '@mantine/form';
 import { diff } from '@/lib/utility';
 
@@ -160,8 +174,8 @@ function AddRolePopover(props: { domain: DomainWrapper; onSelect: (role_id: stri
 ////////////////////////////////////////////////////////////
 function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role }) {
   const theme = useMantineTheme();
-
-  // WIP : Implement delete group acl entry from group permissions settings, delete group acl entry from domain settings
+  const { mutate } = useSWRConfig();
+  const session = useSession();
 
   // Group permissions
   const aclEntries = useAclEntries(group.id);
@@ -188,7 +202,6 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
     const data = aclEntries.data.filter(e => domainRoles.has(e.role));
     if (props.role && aclEntries.data.findIndex(x => x.role === props.role?.id) < 0) {
       data.push({
-        id: '',
         domain: domain.id,
         resource: group.id,
         role: props.role.id,
@@ -243,7 +256,6 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
     for (const [roleId, perms] of Object.entries(form.values.permissions)) {
       if (entries.findIndex(x => x.role === roleId) < 0) {
         entries.push({
-          id: '',
           domain: domain.id,
           resource: group.id,
           role: roleId,
@@ -570,12 +582,24 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
 
           if (aclEntries._exists && diffs && Object.keys(diffs).length > 0) {
             // Get permissions list for each one that changed
-            const permChanges: Record<string, AllPermissions[]> = {};
-            for (const role_id of Object.keys(diffs || {}))
-              permChanges[role_id] = Object.entries(form.values.permissions[role_id] || {}).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
+            const entryUpdates: Omit<AclEntry, 'domain'>[] = [];
+            for (const role_id of Object.keys(diffs || {})) {
+              const permissions = Object.entries(form.values.permissions[role_id] || {}).filter(([k, v]) => v).map(x => x[0]).sort() as AllPermissions[];
+              entryUpdates.push({
+                resource: group.id,
+                role: role_id,
+                permissions,
+              });
+            }
 
             // Mutation
-            await aclEntries._mutators.setPermissions(permChanges);
+            if (entryUpdates.length > 0) {
+              // Update acl entries
+              setAclEntries(domain.id, entryUpdates, session, mutate);
+
+              // Update personal permission entries
+              await domain._refresh();
+            }
           }
         }}
       />

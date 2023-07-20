@@ -10,6 +10,7 @@ import { uid } from 'uid';
 import config from '@/config';
 import api_config from '@/api-config';
 import { users } from '@/lib/db';
+import { AccessToken } from '@/lib/types';
 
 import { getJwtPrivate, getJwtPublic } from './keys';
 import { serialize, parse } from 'cookie';
@@ -26,16 +27,6 @@ export type JwtPayload = {
 	provider_id: string;
 	/** The provider used to sign in */
 	provider: AuthProviders;
-	/** An email associated with user */
-	email?: string;
-};
-
-/** Access token payload */
-export type AccessToken = {
-	/** User id */
-	user_id: string;
-	/** Current profile id */
-	profile_id: string;
 	/** An email associated with user */
 	email?: string;
 };

@@ -88,8 +88,6 @@ export type AllPermissions = DomainPermissions | RolePermissions | MemberPermiss
 
 /** Access control list entry */
 export type AclEntry = {
-	/** Id of the entry */
-	id: string;
 	/** The id of the domain the protected resource is contained in */
 	domain: string;
 	/** The id of the protected resource */

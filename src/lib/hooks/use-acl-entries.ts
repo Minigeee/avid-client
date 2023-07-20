@@ -2,339 +2,30 @@ import { KeyedMutator, useSWRConfig, mutate as globalMutate } from 'swr';
 import { ScopedMutator } from 'swr/_internal';
 import assert from 'assert';
 
-import { deleteDomainImage, uploadDomainImage } from '@/lib/api';
+import { api } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { addChannel, query, removeChannel, sql } from '@/lib/db';
-import { AclEntry, AllPermissions, Channel, ChannelData, ChannelOptions, ChannelTypes, Domain, ExpandedDomain, Member, Role, UserPermissions } from '@/lib/types';
-import { swrErrorWrapper } from '@/lib/utility/error-handler';
+import { AclEntry } from '@/lib/types';
+import { errorHandler } from '@/lib/utility/error-handler';
 
-import { useDbQuery } from './use-db-query';
+import { useApiQuery } from './use-api-query';
 import { SwrWrapper } from './use-swr-wrapper';
-import { useSession } from './use-session';
 
 
-////////////////////////////////////////////////////////////
-function _setPermissions(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resource_id: string, _mutate: ScopedMutator, permissions: Record<string, AllPermissions[]>) {
-	return mutate(
-		swrErrorWrapper(async (entries: AclEntry[]) => {
-			const operations: string[] = [];
-			const updated: Partial<AclEntry>[] = [];
-
-			// Add operations
-			let hasUpdateStatements = false;
-			for (const [role_id, perms] of Object.entries(permissions)) {
-				if (perms.length > 0) {
-					operations.push(
-						sql.if({
-							cond: `$entries CONTAINS ${role_id}`,
-							body: sql.update<AclEntry>('acl', {
-								set: { permissions: perms },
-								where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
-								return: 'AFTER',
-							}),
-						}, {
-							body: sql.create<AclEntry>('acl', {
-								domain: sql.$(`${role_id}.domain`),
-								resource: resource_id,
-								role: role_id,
-								permissions: perms,
-							}),
-						})
-					);
-
-					hasUpdateStatements = true;
-				}
-				else {
-					operations.push(
-						sql.delete<AclEntry>('acl', {
-							where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
-						})
-					);
-				}
-
-				// Track entries that are updated
-				const entry = entries.find(x => x.role === role_id);
-				updated.push({
-					...(entry || {
-						resource: resource_id,
-						role: role_id,
-					}),
-					permissions: perms,
-				});
-			}
-
-			// Add select for entries that point to given resource
-			if (hasUpdateStatements) {
-				operations.splice(0, 0,
-					sql.let('$entries', sql.wrap(sql.select<AclEntry>(['role'], {
-						from: 'acl',
-						where: sql.match<AclEntry>({ resource: resource_id }),
-					}), { append: '.role' }))
-				);
-			}
-
-			// Perform query
-			const results = await query<(AclEntry | AclEntry[])[]>(sql.transaction(operations), { session, complete: true });
-			assert(results);
-			const offset = hasUpdateStatements ? 1 : 0;
-
-			// Update data
-			const copy = entries.slice();
-			for (let i = 0; i < updated.length; ++i) {
-				const entry = updated[i];
-				// These should be present by default
-				assert(entry.role && entry.resource && entry.permissions);
-
-				// Check what type of operation was performed
-				const result = results[offset + i];
-				const updatedEntry = Array.isArray(result) ? result.length ? result[0] : null : result;
-
-				// Update resource based data
-				const idx = copy.findIndex(x => x.role === entry.role);
-				if (idx < 0 && updatedEntry)
-					copy.push(updatedEntry);
-				else {
-					if (updatedEntry)
-						copy[idx] = updatedEntry;
-					else
-						copy.splice(idx, 1);
-				}
-
-				// Update role based data
-				_mutate<AclEntry[]>(`${entry.role}.acl_roles`, async (entries) => {
-					if (!entries) return;
-
-					const copy = entries.slice();
-
-					// Find entries with matching resource
-					const idx = copy.findIndex(entry => entry.resource === resource_id);
-					if (idx < 0 && updatedEntry)
-						copy.push(updatedEntry);
-					else {
-						if (updatedEntry)
-							copy[idx] = updatedEntry;
-						else
-							copy.splice(idx, 1);
-					}
-
-					return copy;
-				}, { revalidate: false });
-			}
-
-			return copy;
-		}, { message: 'An error occurred while setting permissions' }),
-		{ revalidate: false }
-	);
-}
-
-/**
- * Set the permissions list for an entry with the given role
- * 
- * @param resource_id The id of the resource for which to set permissions for
- * @param permissions A map of role ids to new (complete) list of permissions to set in the entry
- * @returns The new list of acl entries
- */
-export function setPermissions(resource_id: string, permissions: Record<string, AllPermissions[]>, session: SessionState) {
-	return _setPermissions(
-		(...args: any[]) => globalMutate(`${resource_id}.acl`, ...args),
-		session,
-		resource_id,
-		globalMutate,
-		permissions,
-	);
-}
-
-
-////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, resource_id: string, _mutate: ScopedMutator) {
-	return {
-		/**
-		 * Set the permissions list for an entry with the given role
-		 * 
-		 * @param permissions A map of role ids to new (complete) list of permissions to set in the entry
-		 * @returns The new list of acl entries
-		 */
-		setPermissions: (permissions: Record<string, AllPermissions[]>) => _setPermissions(mutate, session, resource_id, _mutate, permissions),
-	};
-}
-
-
-/** Mutators that will be attached to the acl entries swr wrapper */
-export type AclEntriesMutators = ReturnType<typeof mutators>;
-/** Swr data wrapper for acl entries */
-export type AclEntriesWrapper<Loaded extends boolean = true> = SwrWrapper<AclEntry[], Loaded, AclEntriesMutators>;
+/** Acl entries wrapper */
+export type AclEntriesWrapper<Loaded extends boolean = true> = SwrWrapper<AclEntry[], Loaded>;
 
 
 /**
- * Get a list of ACL entries for the given resource
+ * Get a list of ACL entries for all roles with a given resource
  * 
  * @param resource_id The id of the resource to retrieve ACL entries for
  * @returns A swr wrapper with a list of ACL entries
  */
 export function useAclEntries(resource_id: string | undefined) {
-	const { mutate } = useSWRConfig();
-
-	return useDbQuery<AclEntry[], AclEntriesMutators>(resource_id ? `${resource_id}.acl` : undefined, {
-		builder: (key) => sql.select<AclEntry>('*', {
-			from: 'acl',
-			where: sql.match<AclEntry>({ resource: resource_id }),
-		}),
-		then: (entries: AclEntry[]) => entries.map(e => ({ ...e, permissions: e.permissions || [] })),
-		mutators,
-		mutatorParams: [resource_id, mutate],
-	});
+	return useApiQuery(resource_id ? `acl.by_resource.${resource_id}` : undefined, 'GET /permissions', {
+		query: { resource: resource_id, resource_type: resource_id?.split(':')[0] },
+	}, {});
 }
-
-
-
-////////////////////////////////////////////////////////////
-function _setPermissionsByRole(mutate: KeyedMutator<AclEntry[]>, session: SessionState, role_id: string, _mutate: ScopedMutator, permissions: Record<string, AllPermissions[]>) {
-	return mutate(
-		swrErrorWrapper(async (entries: AclEntry[]) => {
-			const operations: string[] = [];
-			const updated: Partial<AclEntry>[] = [];
-
-			// Add operations
-			let hasUpdateStatements = false;
-			for (const [resource_id, perms] of Object.entries(permissions)) {
-				if (perms.length > 0) {
-					operations.push(
-						sql.if({
-							cond: `$entries CONTAINS ${resource_id}`,
-							body: sql.update<AclEntry>('acl', {
-								set: { permissions: perms },
-								where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
-								return: 'AFTER',
-							}),
-						}, {
-							body: sql.create<AclEntry>('acl', {
-								domain: sql.$(`${role_id}.domain`),
-								resource: resource_id,
-								role: role_id,
-								permissions: perms,
-							}),
-						})
-					);
-
-					hasUpdateStatements = true;
-				}
-				else {
-					operations.push(
-						sql.delete<AclEntry>('acl', {
-							where: sql.match<AclEntry>({ resource: resource_id, role: role_id }),
-						})
-					);
-				}
-
-				// Track entries that are updated
-				const entry = entries.find(x => x.resource === resource_id);
-				updated.push({
-					...(entry || {
-						resource: resource_id,
-						role: role_id,
-					}),
-					permissions: perms,
-				});
-			}
-
-			// Add select for entries that point to given resource
-			if (hasUpdateStatements) {
-				operations.splice(0, 0,
-					sql.let('$entries', sql.wrap(sql.select<AclEntry>(['resource'], {
-						from: 'acl',
-						where: sql.match<AclEntry>({ role: role_id }),
-					}), { append: '.resource' }))
-				);
-			}
-
-			// Perform query
-			const results = await query<(AclEntry | AclEntry[])[]>(sql.transaction(operations), { session, complete: true });
-			assert(results);
-			const offset = hasUpdateStatements ? 1 : 0;
-
-			// Update data
-			const copy = entries.slice();
-			for (let i = 0; i < updated.length; ++i) {
-				const entry = updated[i];
-				// These should be present by default
-				assert(entry.role && entry.resource && entry.permissions);
-
-				// Check what type of operation was performed
-				const result = results[offset + i];
-				const updatedEntry = Array.isArray(result) ? result.length ? result[0] : null : result;
-
-				// Update role based data
-				const idx = copy.findIndex(x => x.resource === entry.resource);
-				if (idx < 0 && updatedEntry)
-					copy.push(updatedEntry);
-				else {
-					if (updatedEntry)
-						copy[idx] = updatedEntry;
-					else
-						copy.splice(idx, 1);
-				}
-
-				// Update resource based data
-				_mutate<AclEntry[]>(`${entry.resource}.acl`, async (entries) => {
-					if (!entries) return;
-
-					const copy = entries.slice();
-
-					// Find entries with matching resource
-					const idx = copy.findIndex(entry => entry.role === role_id);
-					if (idx < 0 && updatedEntry)
-						copy.push(updatedEntry);
-					else {
-						if (updatedEntry)
-							copy[idx] = updatedEntry;
-						else
-							copy.splice(idx, 1);
-					}
-
-					return copy;
-				}, { revalidate: false });
-			}
-
-			return copy;
-		}, { message: 'An error occurred while setting permissions' }),
-		{ revalidate: false }
-	);
-}
-
-/**
- * Set the permissions list for an entry with the given role
- * 
- * @param role_id The id of the role for which to set permissions for
- * @param permissions A map of resource ids to new (complete) list of permissions to set in the entry
- * @returns The new list of acl entries
- */
-export function setPermissionsByRole(role_id: string, permissions: Record<string, AllPermissions[]>, session: SessionState) {
-	return _setPermissionsByRole(
-		(...args: any[]) => globalMutate(`${role_id}.acl_roles`, ...args),
-		session,
-		role_id,
-		globalMutate,
-		permissions,
-	);
-}
-
-////////////////////////////////////////////////////////////
-function byRoleMutators(mutate: KeyedMutator<AclEntry[]>, session: SessionState, role_id: string, _mutate: ScopedMutator) {
-	return {
-		/**
-		 * Set the permissions list for an entry with the given role
-		 * 
-		 * @param permissions A map of resource ids to new (complete) list of permissions to set in the entry
-		 * @returns The new list of acl entries
-		 */
-		setPermissions: (permissions: Record<string, AllPermissions[]>) => _setPermissionsByRole(mutate, session, role_id, _mutate, permissions),
-	};
-}
-
-/** Mutators that will be attached to the acl entries swr wrapper */
-export type AclEntriesByRoleMutators = ReturnType<typeof byRoleMutators>;
-/** Swr data wrapper for acl entries */
-export type AclEntriesByRoleWrapper<Loaded extends boolean = true> = SwrWrapper<AclEntry[], Loaded, AclEntriesByRoleMutators>;
 
 
 /**
@@ -344,15 +35,98 @@ export type AclEntriesByRoleWrapper<Loaded extends boolean = true> = SwrWrapper<
  * @returns A swr wrapper with a list of ACL entries
  */
 export function useAclEntriesByRole(role_id: string | undefined) {
-	const { mutate } = useSWRConfig();
+	return useApiQuery(role_id ? `acl.by_role.${role_id}` : undefined, 'GET /permissions', {
+		query: { role: role_id },
+	}, {});
+}
 
-	return useDbQuery<AclEntry[], AclEntriesByRoleMutators>(role_id ? `${role_id}.acl_roles` : undefined, {
-		builder: (key) => sql.select<AclEntry>('*', {
-			from: 'acl',
-			where: sql.match<AclEntry>({ role: role_id }),
-		}),
-		then: (entries: AclEntry[]) => entries.map(e => ({ ...e, permissions: e.permissions || [] })),
-		mutators,
-		mutatorParams: [role_id, mutate],
-	});
+
+/**
+ * Set acl entries for a domain
+ * 
+ * @param domain_id The domain to set acl entries for
+ * @param entries A list of entries with new permissions lists
+ * @param session Session object used to authenticate api call
+ * @param _mutate Global mutation function to keep local state synced
+ */
+export async function setAclEntries(domain_id: string, entries: (Omit<AclEntry, 'domain'> & { domain?: string })[], session: SessionState, _mutate: ScopedMutator) {
+	try {
+		// Patch permissions
+		const { updated, deleted } = await api('PATCH /permissions', {
+			body: {
+				domain: domain_id,
+				permissions: entries,
+			}
+		}, { session });
+
+		// Sets and maps
+		const hookSet = new Set<string>();
+		const newMap: Record<string, AclEntry | null> = {};
+
+		for (const entry of updated) {
+			hookSet.add(`acl.by_resource.${entry.resource}`);
+			hookSet.add(`acl.by_role.${entry.role}`);
+
+			newMap[`${entry.resource}.${entry.role}`] = entry;
+		}
+
+		for (const entry of deleted) {
+			hookSet.add(`acl.by_resource.${entry.resource}`);
+			hookSet.add(`acl.by_role.${entry.role}`);
+
+			newMap[`${entry.resource}.${entry.role}`] = null;
+		}
+
+		// Update all entries locally
+		for (const key of Array.from(hookSet)) {
+			// Track the resource/role grouping this set is
+			const [_, type, group] = key.split('.');
+
+			// The list of entries that should be updated
+			const unaccounted = new Set<string>(Object.keys(newMap).filter(x => {
+				const [resource, role] = x.split('.');
+				return (type === 'by_resource' && resource === group) || (type === 'by_role' && role === group);
+			}));
+
+			_mutate(
+				key, (data: AclEntry[] | undefined) => {
+					if (!data) return data;
+					assert(Array.isArray(data));
+	
+					const copy = data.slice();
+					for (let i = 0; i < copy.length; ++i) {
+						const entry = copy[i];
+						const entryKey = `${entry.resource}.${entry.role}`;
+						const newVal = newMap[entryKey];
+
+						if (newVal === undefined) continue;
+	
+						if (newVal === null) {
+							copy.splice(i, 1);
+							--i;
+						}
+						else {
+							copy[i] = newVal;
+						}
+
+						// Mark this entry as accounted for
+						unaccounted.delete(entryKey);
+					}
+
+					// Push unaccounted
+					for (const entryKey of Array.from(unaccounted)) {
+						const entry = newMap[entryKey];
+						if (entry)
+							copy.push(entry);
+					}
+	
+					return copy;
+				},
+				{ revalidate: false }
+			);
+		}
+	}
+	catch (err) {
+		errorHandler(err, { message: 'An error occurred while updating permissions' });
+	}
 }

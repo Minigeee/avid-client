@@ -19,8 +19,7 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RoleBadges, { BadgeMap, useRoleBadges } from '@/lib/ui/components/RoleBadges';
 
 import config from '@/config';
-import { DomainWrapper, useApp, useSession } from '@/lib/hooks';
-import { MemberListOptions, MemberListResults, listMembers } from '@/lib/db';
+import { DomainWrapper, listMembers, MemberListResults, useApp, useSession } from '@/lib/hooks';
 import { ExpandedMember, Role } from '@/lib/types';
 
 import { throttle } from 'lodash';

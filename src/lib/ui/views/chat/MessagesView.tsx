@@ -44,10 +44,10 @@ import { MessageContextMenu } from './components/MessageMenu';
 
 
 import config from '@/config';
-import { getMembers } from '@/lib/db';
 import {
   DomainWrapper,
   ExpandedMessageWithPing,
+  getMembers,
   MemberWrapper,
   MessagesWrapper,
   hasPermission,
@@ -68,6 +68,7 @@ import { Editor } from '@tiptap/react';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
 import { throttle } from 'lodash';
+import { api } from '@/lib/api';
 
 const AVATAR_SIZE = 38;
 const MIN_IMAGE_WIDTH = 400;
@@ -791,6 +792,7 @@ type TextEditorProps = {
 
 ////////////////////////////////////////////////////////////
 function TextEditor(props: TextEditorProps) {
+  const session = useSession();
   const context = useMessageViewContext();
 
   const fileInputRef = useRef<HTMLInputElement>(null);

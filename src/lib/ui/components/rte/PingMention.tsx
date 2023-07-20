@@ -21,9 +21,8 @@ import MemberAvatar from '../MemberAvatar';
 
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
-import { listMembers } from '@/lib/db';
 import { ExpandedMember, Role } from '@/lib/types';
-import { DomainWrapper } from '@/lib/hooks';
+import { DomainWrapper, listMembers } from '@/lib/hooks';
 import { IconBadgeOff } from '@tabler/icons-react';
 
 

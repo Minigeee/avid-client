@@ -2,12 +2,12 @@ import { KeyedMutator, mutate as _mutate } from 'swr';
 import assert from 'assert';
 
 import config from '@/config';
+import { api } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { query, sql } from '@/lib/db';
 import { Board, ExpandedTask, Label, NoId, Task, TaskCollection, WithId } from '@/lib/types'; 
-import { useDbQuery } from '@/lib/hooks/use-db-query';
-import { SwrWrapper } from '@/lib/hooks/use-swr-wrapper';
 
+import { useApiQuery } from './use-api-query';
+import { SwrWrapper } from '@/lib/hooks/use-swr-wrapper';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import sanitizeHtml from 'sanitize-html';
@@ -43,23 +43,16 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		 */
 		addCollection: (collection: NoId<TaskCollection>) => mutate(
 			swrErrorWrapper(async (board: Board) => {
-				// Add group, iterate id counter
-				const results = await query<Board[]>(
-					sql.update<Board>(board.id, {
-						set: {
-							collections: ['+=', { id: sql.$('_id_counter'), ..._sanitizeCollection(collection) }],
-							_id_counter: ['+=', 1],
-						},
-						return: ['collections', '_id_counter'],
-					}),
-					{ session }
-				);
-				assert(results && results.length);
+				// Post new collection
+				const results = await api('POST /boards/:board_id/collections', {
+					params: { board_id: board.id },
+					body: collection
+				}, { session });
 
 				return {
 					...board,
-					_id_counter: results[0]._id_counter,
-					collections: results[0].collections.map(_sanitizeCollection),
+					_id_counter: results._id_counter,
+					collections: results.collections.map(_sanitizeCollection),
 				};
 			}, { message: 'An error occurred while creating task collection' }),
 			{ revalidate: false }
@@ -74,30 +67,15 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		 */
 		updateCollection: (collection_id: string, collection: Partial<NoId<TaskCollection>>) => mutate(
 			swrErrorWrapper(async (board: Board) => {
-				collection = _sanitizeCollection(collection);
-
-				// Add group, iterate id counter
-				const results = await query<Board[]>(
-					sql.update<Board>(board.id, {
-						set: {
-							collections: sql.fn<Board>('update_collection', function() {
-								// Find index
-								const idx = this.collections.findIndex(x => x.id === collection_id);
-								if (idx >= 0)
-									this.collections[idx] = { ...this.collections[idx], ...collection };
-
-								return this.collections;
-							}, { collection_id, collection }),
-						},
-						return: ['collections'],
-					}),
-					{ session }
-				);
-				assert(results && results.length);
+				// Update collection
+				const results = await api('PATCH /boards/:board_id/collections/:collection_id', {
+					params: { board_id: board.id, collection_id },
+					body: collection,
+				}, { session });
 
 				return {
 					...board,
-					collections: results[0].collections.map(_sanitizeCollection),
+					collections: results.collections.map(_sanitizeCollection),
 				};
 			}, { message: 'An error occurred while updating task collection' }),
 			{ revalidate: false }
@@ -112,32 +90,15 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		 */
 		removeCollection: (collection_id: string) => mutate(
 			swrErrorWrapper(async (board: Board) => {
-				// Delete collection, move all tasks in collection, get a list of task ids
-				const results = await query<[Board[], Task[]]>(sql.transaction([
-					sql.update<Board>(board.id, {
-						set: {
-							collections: sql.fn<Board>('remove_collection', function() {
-								return this.collections.filter(x => x.id !== collection_id);
-							}, { collection_id }),
-						},
-						return: ['collections'],
-					}),
-					sql.update<Task>('tasks', {
-						content: { collection: config.app.board.default_backlog.id },
-						where: sql.match<Task>({ board: board.id, collection: collection_id }),
-						return: ['id'],
-					}),
-				]), { session, complete: true });
-				assert(results);
-
-				const [newBoards, tasks] = results;
-				assert(newBoards.length > 0);
+				const results = await api('DELETE /boards/:board_id/collections/:collection_id', {
+					params: { board_id: board.id, collection_id },
+				}, { session });
 
 				// Id set
-				const idSet = new Set<string>(tasks.map(x => x.id));
+				const idSet = new Set<string>(results.tasks_changed);
 
 				// Update tasks that got changed
-				if (tasks.length > 0) {
+				if (idSet.size > 0) {
 					_mutate(`${board.id}.tasks`, (tasks: ExpandedTask[] | undefined) => {
 						if (!tasks) return;
 	
@@ -148,11 +109,16 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 						}
 						return copy;
 					});
+
+					_mutate((key) => typeof key === 'string' && idSet.has(key), (data: ExpandedTask | undefined) => {
+						if (!data) return data;
+						return { ...data, collection: config.app.board.default_backlog.id };
+					});
 				}
 
 				return {
 					...board,
-					collections: newBoards[0].collections.map(_sanitizeCollection),
+					collections: results.collections.map(_sanitizeCollection),
 				};
 			}, { message: 'An error occurred while removing task collection' }),
 			{
@@ -179,38 +145,16 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		 */
 		addTags: (options: { add?: Label[], update?: WithId<Partial<Label>>[] }) => mutate(
 			swrErrorWrapper(async (board: Board) => {
-				const add = options.add || [];
-				const update = options.update || [];
-
-				// Add tags
-				const results = await query<Board[]>(
-					sql.update<Board>(board.id, {
-						set: {
-							// Function that updates existing tags and adds new ones
-							tags: sql.fn<Board>('add_tags', function() {
-								// Merge updates
-								for (const tag of update) {
-									const idx = this.tags.findIndex(x => x.id === tag.id);
-									if (idx >= 0)
-										this.tags[idx] = { ...this.tags[idx], ...tag };
-								}
-
-								// Add new tags
-								return this.tags.concat(add.map((x, i) => ({ ...x, id: (this._id_counter + i).toString() })));
-							}, { add, update }),
-
-							_id_counter: ['+=', add.length],
-						},
-						return: ['tags', '_id_counter'],
-					}),
-					{ session }
-				);
-				assert(results && results[0]);
+				// Update tags
+				const results = await api('PATCH /boards/:board_id/tags', {
+					params: { board_id: board.id },
+					body: options,
+				}, { session });
 
 				return {
 					...board,
-					_id_counter: results[0]._id_counter,
-					tags: results[0].tags,
+					_id_counter: results._id_counter,
+					tags: results.tags,
 				};
 			}, { message: 'An error occurred while creating tags' }),
 			{ revalidate: false }
@@ -232,14 +176,11 @@ export type BoardWrapper<Loaded extends boolean = true> = SwrWrapper<Board, Load
  * @param board_id The id of the board to retrieve
  * @returns A swr object containing the requested profile
  */
-export function useBoard(board_id?: string) {
-	assert(!board_id || board_id.startsWith('boards:'));
-
-	return useDbQuery(board_id, {
-		builder: (key) => {
-			return sql.select<Board[]>('*', { from: board_id || '' });
-		},
-		then: (results: Board[]) => results?.length ? _sanitize(results[0]) : null,
+export function useBoard(board_id: string | undefined) {
+	return useApiQuery(board_id, 'GET /boards/:board_id', {
+		params: { board_id: board_id || '' },
+	}, {
+		then: (results) => _sanitize(results),
 		mutators,
 	});
 }

@@ -1,9 +1,10 @@
 import { KeyedMutator } from 'swr';
+import { ScopedMutator, useSWRConfig } from 'swr/_internal';
 import assert from 'assert';
 
 import { deleteProfile, uploadDomainImage, uploadProfile } from '@/lib/api';
-import { getDomainCache, id, query, sql } from '@/lib/db';
-import { Channel, Domain, ExpandedProfile, Member, Role } from '@/lib/types';
+import { id, query, sql } from '@/lib/db';
+import { Channel, Domain, ExpandedMember, ExpandedProfile, Member, Role } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
 import { withAccessToken } from '@/lib/api/utility';
@@ -16,7 +17,32 @@ import axios from 'axios';
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState) {
+function updateLocalMembers(profile_id: string, url: string | null, _mutate: ScopedMutator) {
+	// Update member objects
+	_mutate(
+		(key) => typeof key === 'string' && (new RegExp(`^domains:\\w+\\.${profile_id}$`).test(key) || /^domains:\w+\.members/.test(key)),
+		(data: ExpandedMember | { data: ExpandedMember[] } | undefined) => {
+			if (!data) return data;
+
+			if (!(data as { data: ExpandedMember[] }).data) {
+				return { ...data, profile_picture: url };
+			}
+			else {
+				const members = (data as { data: ExpandedMember[] }).data;
+				const idx = members.findIndex(x => x.id === profile_id);
+				if (idx < 0) return data;
+
+				const copy = members.slice();
+				copy[idx] = { ...members[idx], profile_picture: url };
+				return { ...data, data: copy };
+			}
+		},
+		{ revalidate: false }
+	);
+}
+
+////////////////////////////////////////////////////////////
+function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState | undefined, _mutate: ScopedMutator) {
 	assert(session);
 
 	return {
@@ -83,16 +109,8 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 				// Upload profile image
 				const url = await uploadProfile(profile, image, fname, session);
 
-				// Change profile pictures of all domains that are loaded
-				for (const d of profile.domains) {
-					try {
-						const cache = await getDomainCache(d.id, session, true);
-						const obj = cache.cache._data[profile.id];
-						if (obj?.data)
-							obj.data.profile_picture = url;
-					}
-					catch (err) { }
-				}
+				// Update member objects
+				updateLocalMembers(profile.id, url, _mutate);
 
 				return {
 					...profile,
@@ -113,36 +131,14 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session?: SessionState)
 				// Delete profile image
 				await deleteProfile(profile, session);
 
-				// Unset profile pictures of all domains that are loaded
-				for (const d of profile.domains) {
-					try {
-						const cache = await getDomainCache(d.id, session, true);
-						const obj = cache.cache._data[profile.id];
-						if (obj?.data)
-							obj.data.profile_picture = null;
-					}
-					catch (err) { }
-				}
+				// Update member objects
+				updateLocalMembers(profile.id, null, _mutate);
 
 				return {
 					...profile,
 					profile_picture: null,
 				};
-			}, {
-				message: 'An error occurred while removing profile picture',
-				onError: async (error) => {
-					// Reset profile image (swr doesn't handle rollback for these values)
-					for (const d of old_profile.domains) {
-						try {
-							const cache = await getDomainCache(d.id, session, true);
-							const obj = cache.cache._data[old_profile.id];
-							if (obj?.data)
-								obj.data.profile_picture = old_profile.profile_picture;
-						}
-						catch (err) { }
-					}
-				}
-			}),
+			}, { message: 'An error occurred while removing profile picture' }),
 			{
 				revalidate: false,
 				optimisticData: (profile) => {
@@ -172,6 +168,7 @@ export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedP
  */
 export function useProfile(profile_id: string | undefined) {
 	assert(!profile_id || profile_id.startsWith('profiles:'));
+	const { mutate } = useSWRConfig();
 
 	return useDbQuery<ExpandedProfile, ProfileMutators>(profile_id, {
 		builder: (key) => {
@@ -192,5 +189,6 @@ export function useProfile(profile_id: string | undefined) {
 		} : null,
 		
 		mutators,
+		mutatorParams: [mutate],
 	});
 }

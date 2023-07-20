@@ -7,8 +7,7 @@ import {
 import { GroupableFields, SingleGrouped } from '../views/projects/BoardView';
 import MemberAvatar from './MemberAvatar';
 
-import { getMemberSync } from '@/lib/db';
-import { DomainWrapper } from '@/lib/hooks';
+import { DomainWrapper, getMemberSync } from '@/lib/hooks';
 import { Label } from '@/lib/types';
 
 import { capitalize } from 'lodash';

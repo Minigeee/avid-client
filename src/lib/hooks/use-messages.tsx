@@ -2,24 +2,22 @@ import { useMemo } from 'react';
 import ReactDomServer from 'react-dom/server';
 import assert from 'assert';
 
-import useSWR, { KeyedMutator } from 'swr';
+import useSWR, { KeyedMutator, mutate as _mutate } from 'swr';
 import useSWRInfinite from 'swr/infinite';
+import { cache, ScopedMutator, useSWRConfig } from 'swr/_internal';
 
 import config from '@/config';
-import { uploadAttachments } from '@/lib/api';
+import { api, uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { getMember, getMemberSync, getMembers, query, sql } from '@/lib/db';
 import { ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
 
 import { DomainWrapper } from './use-domain';
-import { MemberWrapper } from './use-members';
+import { getMember, getMemberSync, MemberWrapper, setSwrMembers } from './use-members';
 import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
 import { Emoji, emojiSearch } from '@/lib/ui/components/Emoji';
-import { SyncCache } from '@/lib/utility/cache';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
-import { socket } from '@/lib/utility/realtime';
 
 import hljs from 'highlight.js';
 import { groupBy } from 'lodash';
@@ -372,7 +370,7 @@ function groupAllMessages(messages: ExpandedMessageWithPing[]): GroupedMessages 
 }
 
 /** Message fetcher */
-function fetcher(session: SessionState, reader: MemberWrapper<false>, env: MarkdownEnv | undefined) {
+function fetcher(session: SessionState, reader: MemberWrapper<false>, env: MarkdownEnv | undefined, mutate: ScopedMutator) {
 	return async (key: string) => {	
 		// Domain and member should be loaded by the time the fetcher is called
 		assert(env && reader._exists);
@@ -380,36 +378,27 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>, env: Markd
 		const channel_id = key.split('.')[0];
 		const page = parseInt(key.split('=').at(-1) as string);
 
-		// Get messages, sorted by creation time
-		const results = await query<Message[]>(
-			sql.select<Message>('*', {
-				from: 'messages',
-				where: sql.match({ channel: channel_id }),
-				sort: [{ field: 'created_at', order: 'DESC' }],
-				limit: config.app.message.query_limit,
-				start: page * config.app.message.query_limit,
-			}),
-			{ session }
-		);
-		if (!results?.length) return [];
+		const results = await api('GET /messages', {
+			query: { channel: channel_id, page, limit: config.app.message.query_limit },
+		}, { session });
+		if (!results.messages.length) return [];
 		
 
 		// Messages are an array ordered newest first. To make appending messages easy, reverse page order
 		// so that new messages are appended
-		const messages = results.reverse();
+		const messages = results.messages.reverse();
 
-		// Get set of senders and determine if each message has a ping aimed at user
-		const senders: Record<string, Member | null> = {};
+		// Determine if each message has a ping aimed at user
 		const hasPing: boolean[] = [];
 		// Map of messages for quick lookup
 		const messageMap: Record<string, Message> = {};
 
 		for (const msg of messages) {
-			if (msg.sender)
-				senders[msg.sender] = null;
-
 			// Analyze message for pings
-			const mentions = findMentions(msg.message);
+			const mentions = {
+				members: new Set(msg.mentions?.members),
+				roles: new Set(msg.mentions?.roles),
+			};
 			
 			let ping = mentions.members.has(reader.id);
 			if (reader.roles) {
@@ -418,24 +407,19 @@ function fetcher(session: SessionState, reader: MemberWrapper<false>, env: Markd
 			}
 			hasPing.push(ping);
 
-			// Add member pings to senders list to get fetched
-			mentions.members.forEach(m => senders[m] = null);
-
 			// Add message to map for fast lookup
 			messageMap[msg.id] = msg;
 		}
 
-		// Get members data
-		const members = await getMembers(env.domain.id, Object.keys(senders), session);
-		for (const member of members)
-			senders[member.id] = member;
+		// Set swr members
+		await setSwrMembers(env.domain.id, Object.values(results.members), undefined, mutate);
 
 		// Render messages, attach senders and pings to message
 		const expanded: ExpandedMessageWithPing[] = messages.map((msg, i) => {
 			// Modify object in place
 			const expandedMsg = msg as ExpandedMessageWithPing;
 			expandedMsg.message = renderMessage(msg.id, msg.message, env);
-			expandedMsg.sender = msg.sender ? senders[msg.sender] : null;
+			expandedMsg.sender = msg.sender ? cache.get(`${env.domain.id}.${msg.sender}`)?.data : null;
 			expandedMsg.pinged = hasPing[i];
 			expandedMsg.reply_to = msg.reply_to ? messageMap[msg.reply_to] as ExpandedMessage : undefined;
 
@@ -555,24 +539,17 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 				const uploads = hasAttachments ? await uploadAttachments(domain_id, options?.attachments || [], session) : [];
 
 				// Post message
-				const results = await query<Message[]>(
-					sql.create<Message>('messages', {
+				const results = await api('POST /messages', {
+					body: {
 						channel: channel_id,
-						sender: sender.id,
 						reply_to: options?.reply_to?.id,
 						message,
 						attachments: hasAttachments ? uploads : undefined,
-						created_at: now,
-					}),
-					{ session }
-				);
-				assert(results);
-
-				// Send event to realtime server
-				socket().emit('chat:message', results[0]);
+					},
+				}, { session });
 
 				// Update message with the correct id
-				return addMessageLocal(messages, results[0], sender, env);
+				return addMessageLocal(messages, results, sender, env);
 			}, { message: 'An error occurred while posting message' }), {
 				optimisticData: (messages) => {
 					// Add message locally with temp id
@@ -628,20 +605,13 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 			swrErrorWrapper(
 				async (messages: ExpandedMessageWithPing[][]) => {
 					// Send update query
-					const results = await query<Message[]>(
-						sql.update<Message>(message_id, {
-							set: {
-								message,
-								edited: true,
-							},
-							return: ['message'],
-						}),
-						{ session }
-					);
-					assert(results && results.length > 0);
+					const results = await api('PATCH /messages/:message_id', {
+						params: { message_id },
+						body: { message },
+					}, { session });
 
 					// Update message locally
-					return editMessageLocal(messages, message_id, message, reader, env);
+					return editMessageLocal(messages, message_id, results.message, reader, env);
 				},
 				{ message: 'An error occurred while editing message' }
 			),
@@ -669,10 +639,8 @@ function mutators(mutate: KeyedMutator<ExpandedMessageWithPing[][]>, session: Se
 		deleteMessage: (message_id: string) => mutate(
 			swrErrorWrapper(
 				async (messages: ExpandedMessageWithPing[][]) => {
-					assert(message_id.startsWith('messages:'));
-
 					// Send delete query
-					await query<Message[]>(sql.delete(message_id), { session });
+					await api('DELETE /messages/:message_id', { params: { message_id } }, { session });
 
 					// Update message locally
 					return deleteMessageLocal(messages, message_id);
@@ -708,6 +676,7 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<GroupedM
  */
 export function useMessages(channel_id: string, domain: DomainWrapper<false>, reader: MemberWrapper<false>) {
 	const session = useSession();
+	const { mutate } = useSWRConfig();
 
 	// Env object for markdown rendering
 	const env = useMemo<MarkdownEnv | undefined>(() => {
@@ -733,7 +702,7 @@ export function useMessages(channel_id: string, domain: DomainWrapper<false>, re
 			// Return key with page number
 			return `${channel_id}.messages?page=${idx}`;
 		},
-		fetcher(session, reader, env),
+		fetcher(session, reader, env, mutate),
 		{ revalidateFirstPage: false }
 	);
 

@@ -147,6 +147,9 @@ export default function HeaderView(props: HeaderViewProps) {
           )}
         </Group>
       )}
+      {!props.channel && (
+        <div style={{ flexGrow: 1 }} />
+      )}
 
       {app.general.right_panel_opened && (
         <Group spacing={2} sx={(theme) => ({

@@ -1,3 +1,4 @@
+import { Member } from './member';
 import { Message } from './message';
 
 
@@ -10,6 +11,8 @@ export interface ServerToClientEvents {
 	'general:user-left': (profile_id: string) => void,
 
 	'chat:message': (domain_id: string, message: Message) => void;
+	'chat:edit-message': (domain_id: string, channel_id: string, message_id: string, message: string) => void;
+	'chat:delete-message': (domain_id: string, channel_id: string, message_id: string) => void;
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
 }
 

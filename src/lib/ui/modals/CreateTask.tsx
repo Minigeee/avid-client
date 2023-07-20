@@ -46,6 +46,8 @@ import config from '@/config';
 import {
   BoardWrapper,
   DomainWrapper,
+  getMember,
+  getMemberSync,
   hasPermission,
   TasksWrapper,
   useBoard,
@@ -66,7 +68,6 @@ import {
 import moment from 'moment';
 import { v4 as uuid } from 'uuid';
 import assert from 'assert';
-import { getMember, getMemberSync } from '@/lib/db';
 
 
 ////////////////////////////////////////////////////////////
@@ -391,7 +392,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       status: props.status || config.app.board.default_status_id,
       priority: props.priority || null,
       due_date: props.due_date ? new Date(props.due_date) : null,
-      assignee: props.assignee || (canManageAny ? null : getMemberSync(props.domain.id, session.profile_id, false)),
+      assignee: props.assignee || (canManageAny ? null : getMemberSync(props.domain.id, session.profile_id)),
       collection: props.collection || config.app.board.default_backlog.id,
       tags: props.tag !== undefined ? [props.tag.trim()] : [],
     } as FormValues,

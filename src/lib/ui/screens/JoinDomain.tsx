@@ -16,7 +16,6 @@ import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 
 import { useApp, useDomain, useProfile, useSession } from '@/lib/hooks';
 import { socket } from '@/lib/utility/realtime';
-import { query, sql } from '@/lib/db';
 import { Domain, ExpandedDomain, Member } from '@/lib/types';
 import { withAccessToken } from '@/lib/api/utility';
 
