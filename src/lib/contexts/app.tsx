@@ -4,13 +4,13 @@ import assert from 'assert';
 import { useTimeout } from '@mantine/hooks';
 
 import config from '@/config';
-import { query, sql } from '@/lib/db';
 import { RtcMutators, RtcState, useRtc, useSession } from '@/lib/hooks';
 import { DeepPartial } from '@/lib/types';
 
 import { SessionState } from './session';
 
 import { merge } from 'lodash';
+import { api } from '../api';
 
 
 /** Get app state id from session */
@@ -104,26 +104,22 @@ async function _saveAll(general: _GeneralState, nav: _NavState, session: Session
 	// Can't save without a profile
 	if (!session.profile_id) return;
 
-	// Id equal to profile id
-	const id = _id(session);
+	await api('POST /app', {
+		body: {
+			// General state
+			general: {
+				right_panel_opened: general.right_panel_opened,
+			},
+			// Nav state
+			navigation: {
+				domain: nav.domain?.split(':').at(-1),
+				channels: _rmPrefix(nav.channels || {}),
+				expansions: _rmPrefix(nav.expansions || {}),
+			},
 
-	await query(
-		sql.update(id, {
-			content: {
-				// General state
-				general: {
-					right_panel_opened: general.right_panel_opened,
-				},
-				// Nav state
-				navigation: {
-					domain: nav.domain?.split(':').at(-1),
-					channels: _rmPrefix(nav.channels || {}),
-					expansions: _rmPrefix(nav.expansions || {}),
-				},
-			}, merge: false
-		}),
-		{ session }
-	);
+			_merge: false,
+		},
+	}, { session });
 }
 
 ////////////////////////////////////////////////////////////
@@ -295,12 +291,9 @@ export default function AppProvider({ children }: PropsWithChildren) {
 		if (Object.keys(save._diff).length === 0) return;
 
 		// Update everything in diff object
-		await query(
-			sql.update<_AppState>(_id(session), {
-				content: _rmPrefix(save._diff),
-			}),
-			{ session }
-		);
+		await api('POST /app', {
+			body: _rmPrefix(save._diff),
+		}, { session });
 
 		// Reset diff
 		setSave({ ...save, _diff: {} });
@@ -328,15 +321,11 @@ export default function AppProvider({ children }: PropsWithChildren) {
 			},
 		};
 
-		const id = _id(session);
-		query<(_AppState & { id: string })[]>(
-			sql.select('*', { from: id }),
-			{ session }
-		)
-			.then((results) => {
-				const _exists = results && results.length > 0 || false;
-				if (results && _exists) {
-					const data = results[0];
+		api('GET /app', {}, { session })
+			.then((results: (_AppState & { id: string }) | null) => {
+				const _exists = results != null;
+				if (_exists) {
+					const data = results;
 
 					const remoteNav = data.navigation || {};
 

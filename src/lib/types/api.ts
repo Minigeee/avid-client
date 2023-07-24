@@ -40,6 +40,16 @@ type Api_Task = Omit<Task, 'id' | 'sid' | 'board' | 'time_created' | 'time_updat
 /** All api paths and their schemas */
 export type ApiSchema = {
 
+	/** App state */
+	'GET /app': {
+		return: any;
+	},
+
+	'POST /app': {
+		body: any & { _merge: boolean };
+	},
+
+
 	/** Boards */
 	'GET /boards/:board_id': {
 		params: ['board_id'],
