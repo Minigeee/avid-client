@@ -93,6 +93,7 @@ function useMemberInput(domain_id: string, exclude_role?: string, exclude?: stri
   const SelectItem = useMemo(() => {
     const component = forwardRef<HTMLDivElement, ItemProps>(
       ({ label, member, ...others }: ItemProps, ref) => {
+        label = label.replace(/<[^>]*>/g, '');
         const idx = label.toLocaleLowerCase().indexOf(query.toLocaleLowerCase());
         if (idx >= 0)
           label = `${label.slice(0, idx)}<b>${label.slice(idx, idx + query.length)}</b>${label.slice(idx + query.length)}`;

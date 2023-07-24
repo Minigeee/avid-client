@@ -134,7 +134,7 @@ const config = {
 			/** Max width for general settings UI */
 			settings_maw: '36rem',
 			/** The viewport position threshold the user must be at to trigger more data fetching (px) */
-			load_next_treshold: 1000,
+			load_next_treshold: 800,
 		},
 
 		/** Message config */
@@ -204,7 +204,7 @@ const config = {
 			/** Member page size */
 			query_limit: 100,
 			/** The number of seconds for which a member query is considered to be stale */
-			query_interval: 60 * 60,
+			query_interval: 20 * 60,
 			/** The number of members under which a new query should be requested when searching members */
 			new_query_threshold: 20,
 		},

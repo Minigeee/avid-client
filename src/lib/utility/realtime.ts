@@ -79,13 +79,8 @@ export function useRealtimeHandlers() {
 
 	
 	// Join/leave handler
-	useEffect(() => {
+	/* useEffect(() => {
 		if (!_socket.connected) return;
-
-		function onInitialJoin(online: string[]) {
-			// Add all initial online
-			app._mutators.general.addOnline(online);
-		}
 
 		function onUserJoin(profile_id: string) {
 			app._mutators.general.addOnline([profile_id]);
@@ -95,16 +90,14 @@ export function useRealtimeHandlers() {
 			app._mutators.general.removeOnline([profile_id]);
 		}
 
-		_socket.on('joined', onInitialJoin);
 		_socket.on('general:user-joined', onUserJoin);
 		_socket.on('general:user-left', onUserLeft);
 
 		return () => {
-			_socket.off('joined', onInitialJoin);
 			_socket.off('general:user-joined', onUserJoin);
 			_socket.off('general:user-left', onUserLeft);
 		};
-	}, [_socket.connected, app]);
+	}, [_socket.connected, app]); */
 
 	// Chat message handler
 	useEffect(() => {

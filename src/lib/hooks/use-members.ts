@@ -1,473 +1,517 @@
-import useSWR, { KeyedMutator, useSWRConfig } from 'swr';
-import { cache, mutate as _mutate, ScopedMutator } from 'swr/_internal';
+import { useContext, useMemo, useState, useSyncExternalStore } from 'react';
 import assert from 'assert';
 
 import config from '@/config';
+import { ExpandedMember } from '@/lib/types';
 import { api } from '@/lib/api';
-import { ExpandedMember, Member } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
 import { useSession } from './use-session';
-import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
-import { swrErrorWrapper } from '../utility/error-handler';
-import { Mutex } from 'async-mutex';
+import { errorWrapper } from '@/lib/utility/error-handler';
 
 
-/** Mutex used to access caches */
-const _mutex = new Mutex();
-
-/** Member dedupe interval in seconds */
-const DEDUPE_INTERVAL = 10 * 60;
-
-
-/** List member options */
-export type MemberListOptions = {
-	/** The string to search for in member alias */
-	search?: string;
-	/** Only include members that have the specified role (mutually exclusive w/ `exclude_role_id`, this takes priority) */
-	role_id?: string;
-	/** Exclude members that have the specified role (mutually exclusive w/ `role_id`) */
-	exclude_role_id?: string;
-	/** Limit the number of members returned, the app limit will override this limit if this limit is larger */
-	limit?: number;
-	/** The page of results to return */
-	page?: number;
+/** Member cache entry */
+export type MemberEntry = {
+	/** Member data */
+	data: ExpandedMember;
+	/** Time the entry was updated */
+	time: number;
 };
 
-/** Object returned from member list query */
-export type MemberListResults = {
-	/** The members from the query */
-	data: ExpandedMember[];
-	/** The total number of results in query, only available for paginated queries */
-	count?: number;
+/** Member cache */
+type MemberCache = Record<string, MemberEntry>;
+
+/** Query entry */
+export type QueryEntry = {
+	/** The time the query was performed */
+	time: number;
+	/** The total number of results existing for the query */
+	total: number;
+};
+
+/** Query cache */
+type QueryCache = Record<string, QueryEntry>;
+
+
+/** Global state */
+const _ = {
+	/** Member cache */
+	members: {} as MemberCache,
+	/** Query cache */
+	queries: {} as QueryCache,
+	/** Map of keys that are loading a fetch */
+	loading: new Set<string>(),
+	/** List of listeners */
+	listeners: [] as (() => void)[],
 };
 
 
-/** Swr data wrapper for a member object */
-export type MemberWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedMember, Loaded>;
+/** Subscribe func for external store */
+function _subscribe(listener: () => void) {
+	_.listeners = [..._.listeners, listener];
+	return () => {
+		_.listeners = _.listeners.filter(l => l !== listener);
+	};
+}
 
-/**
- * A swr hook that retrieves domain member data.
- * 
- * @param domain_id The id of the domain to retrieve member data from
- * @param member_id The id of the member to retrieve data
- * @returns Member data
- */
-export function useMember(domain_id: string, member_id: string) {
+/** Snapshot func for external store */
+function _getSnapshot() {
+	return _.members;
+}
+
+/** Function to notify that store changes occurred */
+function _emitChange() {
+	for (const listener of _.listeners)
+		listener();
+}
+
+/** Checks if an entry needs to be fetched */
+function _needFetch(key: string, entry: { time: number } | undefined, lifetime: number = config.app.member.cache_lifetime) {
+	return (entry === undefined || entry === null || Date.now() - entry.time >= lifetime * 1000) && (!key || !_.loading.has(key));
+}
+
+
+/** Set members to store */
+export function setMembers(domain_id: string, members: ExpandedMember[], emit: boolean = true) {
+	const now = Date.now();
+
+	const cache = { ..._.members };
+	for (const member of members)
+		cache[`${domain_id}.${member.id}`] = { data: member, time: now };
+	_.members = cache;
+
+	// Emit changes
+	if (emit)
+		_emitChange();
+}
+
+
+/** Get member mutators */
+export function useMemberMutators() {
 	const session = useSession();
-	const response = useSWR<ExpandedMember | null>(
-		domain_id && member_id && session.token ? `${domain_id}.${member_id}` : null,
-		async () => {
-			// Get member if no cached
-			const member = await api('GET /members/:member_id', {
-				params: { member_id },
-				query: { domain: domain_id },
-			}, { session });
-		
-			// Store in swr
-			setSwrMembers(domain_id, [member], `${domain_id}.${member_id}`, _mutate);
-
-			return member;
-		},
-		{ dedupingInterval: DEDUPE_INTERVAL * 1000 }
-	);
-
-	return useSwrWrapper<Member>(response, { session });
-}
-
-
-
-
-/** Create query key from the given options */
-function getMemberQueryKey(options: MemberListOptions) {
-	// Create query string
-	const constraints: string[] = [];
-
-	if (options.search)
-		constraints.push(`search=${options.search.toLocaleLowerCase()}`);
-	if (options.role_id)
-		constraints.push(`role=${options.role_id}`);
-	else if (options.exclude_role_id)
-		constraints.push(`role!=${options.role_id}`);
-	if (options.limit !== undefined)
-		constraints.push(`limit=${Math.min(options.limit, config.app.member.query_limit)}`);
-	if (options.page)
-		constraints.push(`page=${options.page}`);
-
-	// Query key
-	return constraints.length ? constraints.join('&') : '';
-}
-
-/** Filter members */
-function filterMembers(members: ExpandedMember[], options: MemberListOptions) {
-	const search = options.search?.toLocaleLowerCase();
-	return members.filter(m => {
-		return (!search || m.alias.toLocaleLowerCase().indexOf(search) >= 0) && (!options.role_id || m.roles && m.roles?.indexOf(options.role_id) >= 0) && (!options.exclude_role_id || !m.roles || m.roles.indexOf(options.exclude_role_id) < 0);
-	}).sort((a, b) => a.alias.localeCompare(b.alias));
-}
-
-
-////////////////////////////////////////////////////////////
-function queryMutators(mutate: KeyedMutator<MemberListResults>, session: SessionState | undefined, domain_id: string, options: MemberListOptions, _mutate: ScopedMutator) {
-	assert(session);
-	
-	// Create query key
-	const qkey = getMemberQueryKey(options);
-	const queryKey = `${domain_id}.members${qkey ? '?' + qkey : ''}`;
 
 	return {
 		/**
-		 * Add a role to many members
+		 * Add a single role to multiple members of a domain
 		 * 
-		 * @param profile_ids A list of profile ids for members to add the role to
-		 * @param role_id The id of the role to add to the member
-		 * @returns The new member query data
+		 * @param domain_id The domain of the members
+		 * @param profile_ids The list of profiles to add the role to
+		 * @param role_id The id of the role to add
 		 */
-		addRoles: (profile_ids: string[], role_id: string) => mutate(
-			swrErrorWrapper(async (members: MemberListResults) => {
-				// Add role to members
-				const results = await api('PATCH /roles/:role_id/members', {
-					params: { role_id },
-					body: { members: profile_ids },
-				}, { session });
-				assert(results.length === profile_ids.length);
+		addRoles: errorWrapper(async (domain_id: string, profile_ids: string[], role_id: string) => {
+			const results = await api('PATCH /roles/:role_id/members', {
+				params: { role_id },
+				body: { members: profile_ids },
+			}, { session });
 
-				const map: Record<string, ExpandedMember> = {};
-				for (let i = 0; i < profile_ids.length; ++i)
-					map[results[i].id] = results[i];
-
-				// Replace members with new
-				const copy = members.data.map(m => {
-					const updated = map[m.id];
-					if (updated)
-						delete map[m.id];
-
-					return updated || m;
-				});
-
-				// Create new filtered list
-				const filtered = filterMembers(copy.concat(Object.values(map)), options);
-				const countDiff = options.role_id || options.exclude_role_id ? filtered.length - members.data.length : 0;
-
-				// Apply these changes to other hooks
-				await setSwrMembers(domain_id, results, queryKey, _mutate);
-
-				return {
-					data: options.limit !== undefined ? filtered.slice(0, options.limit) : filtered,
-					count: (members.count || 0) + countDiff,
-				};
-			}, { message: 'An error occurred while adding role to members' }),
-			{ revalidate: false }
-		),
+			// Set new members to cache
+			setMembers(domain_id, results);
+		}, { message: 'An error occurred while adding role to members' }),
 
 		/**
 		 * Remove a role from a member
 		 * 
-		 * @param profile_id The profile id of the member
+		 * @param domain_id The domain of the member
+		 * @param profile_id The profile of the member
 		 * @param role_id The id of the role to remove
-		 * @returns The new member query data
 		 */
-		removeRole: (profile_id: string, role_id: string) => mutate(
-			swrErrorWrapper(async (members: MemberListResults) => {
-				const results = await api('DELETE /members/:member_id/roles/:role_id', {
-					params: { member_id: profile_id, role_id },
-					query: { domain: domain_id },
-				}, { session });
+		removeRole: errorWrapper(async (domain_id: string, profile_id: string, role_id: string) => {
+			// Optimistic update
+			const entry = _.members[`${domain_id}.${profile_id}`];
+			if (entry)
+				// Set new member to cache
+				setMembers(domain_id, [{ ...entry.data, roles: entry.data.roles?.filter(r => r !== role_id) }]);
 
-				// Create new member
-				const idx = members.data.findIndex(x => x.id === profile_id);
-				const newMember = idx >= 0 ? { ...members.data[idx], roles: results } : null;
-				if (!newMember) return members;
-
-				// Apply new member
-				await setSwrMembers(domain_id, [newMember], queryKey, _mutate);
-
-				const copy = members.data.slice();
-				copy[idx] = newMember;
-
-				// Create new filtered list
-				const filtered = filterMembers(copy.concat([newMember]), options);
-				const countDiff = options.role_id || options.exclude_role_id ? filtered.length - members.data.length : 0;
-
-				return {
-					data: options.limit !== undefined ? filtered.slice(0, options.limit) : filtered,
-					count: (members.count || 0) + countDiff,
-				};
-			}, { message: 'An error occurred while removing role from member' }),
-			{
-				revalidate: false,
-				optimisticData: (members) => {
-					assert(members);
-
-					// Find member
-					const idx = members.data.findIndex(x => x.id === profile_id);
-					if (idx < 0) return members;
-
-					// Find role
-					const member = members.data[idx];
-					const roleIdx = (member.roles || []).findIndex(x => x === role_id);
-					if (roleIdx < 0) return members;
-
-					// New roles array
-					const roles = member.roles?.slice() || [];
-					roles.splice(roleIdx, 1);
-
-					const list = idx >= 0 ? members.data.slice() : members.data;
-					if (idx >= 0)
-						list[idx] = { ...member, roles };
-
-					return { ...members, data: list };
-				}
-			}
-		),
+			await api('DELETE /members/:member_id/roles/:role_id', {
+				params: { member_id: profile_id, role_id },
+				query: { domain: domain_id },
+			}, { session });
+		}, {
+			message: 'An error occurred while removing role from member',
+			onError: (err, domain_id: string, profile_id: string, role_id: string) => {
+				// Revert change
+				const entry = _.members[`${domain_id}.${profile_id}`];
+				if (entry)
+					setMembers(domain_id, [{ ...entry.data, roles: [...(entry.data.roles || []), role_id] }]);
+			},
+		})
 	};
 }
 
-/** Mutators that will be attached to the member query swr wrapper */
-export type MemberListMutators = ReturnType<typeof queryMutators>;
-/** Swr data wrapper for a list of members */
-export type MemberListWrapper<Loaded extends boolean = true> = SwrWrapper<MemberListResults, Loaded, MemberListMutators>;
+export type MemberMutators = ReturnType<typeof useMemberMutators>;
 
 
 /**
- * A swr hook that retrieves domain member data.
+ * Get member cache. Should be used in a component for it to recieve member cache changes.
  * 
- * @param domain_id The id of the domain to retrieve member data from
- * @param options Member list options
- * @returns A list of members
+ * @returns Member cache
  */
-export function useMemberQuery(domain_id: string, options: MemberListOptions) {
-	const { mutate } = useSWRConfig();
+export function useMemberCache() {
+	return useSyncExternalStore(_subscribe, _getSnapshot);
+}
 
-	// Create query key
-	const qkey = getMemberQueryKey(options);
-	const queryKey = `${domain_id}.members${qkey ? '?' + qkey : ''}`;
 
+/** Single member wrapper */
+export type MemberWrapper<Loaded extends boolean = true> = ({ _exists: true } & ExpandedMember) | (Loaded extends true ? never : { _exists: false } & Partial<ExpandedMember>);
+
+/**
+ * Get a single member from a domain
+ * 
+ * @param domain_id The domain to retrieve the member from
+ * @param profile_id The profile id of the member
+ * @returns The member
+ */
+export function useMember(domain_id: string, profile_id: string | undefined) {
 	const session = useSession();
-	const response = useSWR<MemberListResults | null>(
-		domain_id && session.token ? queryKey : null,
-		async () => {
-			const limit = Math.min(options.limit || config.app.member.query_limit, 1000);
+	const members = useSyncExternalStore(_subscribe, _getSnapshot);
 
-			// Api member query
-			const results = await api('GET /members', {
-				query: {
-					domain: domain_id,
-					search: options.search,
-					page: options.page,
-					limit: limit,
-					role: options.role_id,
-					exclude_role: options.exclude_role_id,
-				},
-			}, { session });
-			assert(!Array.isArray(results));
+	return useMemo(() => {
+		if (!profile_id)
+			return { _exists: false } as MemberWrapper<false>;
 
-			// Update other hooks
-			setSwrMembers(domain_id, results.data, queryKey, mutate);
+		const key = `${domain_id}.${profile_id}`;
+		const cached = members[key];
+		const _exists = cached !== undefined;
 
-			return results;
-		},
-		{ dedupingInterval: DEDUPE_INTERVAL * 1000 }
-	);
+		// Check if need fetch
+		const needFetch = _needFetch(key, cached);
+		if (needFetch) {
+			_.loading.add(key);
 
-	return useSwrWrapper<MemberListResults, MemberListMutators>(response, {
-		session,
-		mutators: queryMutators,
-		mutatorParams: [domain_id, options, mutate],
-	});
-}
-
-
-/**
- * Get a member from a domain. The local cache is first checked
- * and if valid data exists, it is used. Otherwise, the data is fetched
- * from the api server.
- * 
- * @param domain_id The id of the domain to retrieve the member from
- * @param member_id The id of the member to retrieve
- */
-export async function getMember(domain_id: string, member_id: string, session: SessionState): Promise<ExpandedMember> {
-	const release = await _mutex.acquire();
-
-	try {
-		const cached = cache.get(`${domain_id}.${member_id}`);
-		if (cached?.data !== undefined) return cached.data;
-
-		// Get member if no cached
-		const member = await api('GET /members/:member_id', {
-			params: { member_id },
-			query: { domain: domain_id },
-		}, { session });
-
-		// Store in swr
-		setSwrMembers(domain_id, [member], undefined, _mutate);
-
-		return member;
-	}
-	finally {
-		release();
-	}
-}
-
-/**
- * Get a list members from a domain. The local cache is first checked
- * and if valid data exists, it is used. Otherwise, the data is fetched
- * from the api server.
- * 
- * @param domain_id The id of the domain to retrieve the member from
- * @param member_ids The ids of the members to retrieve
- */
-export async function getMembers(domain_id: string, member_ids: string[], session: SessionState) {
-	if (!member_ids.length) return [];
-
-	const release = await _mutex.acquire();
-
-	try {
-		// Track if any members are missing from cache
-		let missing = false;
-
-		const cached: ExpandedMember[] = [];
-		for (const id of member_ids) {
-			const obj = cache.get(`${domain_id}.${id}`);
-			if (obj?.data === undefined) {
-				missing = true;
-				break;
-			}
-
-			cached.push(obj.data);
+			// Fetch member and set to store
+			api('GET /members/:member_id', {
+				params: { member_id: profile_id },
+				query: { domain: domain_id },
+			}, { session })
+				.then((member) => {
+					setMembers(domain_id, [member]);
+					_.loading.delete(key);
+				});
 		}
 
-		// Return cached if none missing
-		if (!missing) return cached;
+		// Return null or existing while refetching
+		return { ...cached?.data, _exists } as MemberWrapper<false>;
+	}, [domain_id, profile_id, members]);
+}
 
-		// Get member if missing
-		const members = await api('GET /members', {
-			query: {
-				domain: domain_id,
-				ids: member_ids,
-			},
-		}, { session });
-		assert(Array.isArray(members));
 
-		// Store in swr
-		setSwrMembers(domain_id, members, undefined, _mutate);
+/** Multi member wrapper */
+export type MembersWrapper<Loaded extends boolean = true> = ({ _exists: true; data: ExpandedMember[] }) | (Loaded extends true ? never : { _exists: false; data?: ExpandedMember[] });
 
-		return members;
-	}
-	finally {
-		release();
-	}
+/**
+ * Get a single member from a domain
+ * 
+ * @param domain_id The domain to retrieve the member from
+ * @param profile_id The profile id of the member
+ * @returns The member
+ */
+export function useMembers(domain_id: string, profile_ids: string[]) {
+	const session = useSession();
+	const members = useSyncExternalStore(_subscribe, _getSnapshot);
+
+	return useMemo(() => {
+		if (!profile_ids.length)
+			return { _exists: true, data: [] };
+
+		let needFetch = false;
+		let _exists = true;
+
+		// Cache keys
+		const keys = profile_ids.map(id => `${domain_id}.${id}`);
+
+		// Get cached
+		const cached: MemberEntry[] = [];
+		for (let i = 0; i < profile_ids.length; ++i) {
+			const entry = members[keys[i]];
+			needFetch = needFetch || _needFetch(keys[i], entry);
+			_exists = entry !== undefined;
+
+			cached.push(entry);
+		}
+
+		// Check if need fetch
+		if (needFetch) {
+			for (const key of keys)
+				_.loading.add(key);
+
+			// Fetch member and set to store
+			api('GET /members', {
+				query: { domain: domain_id, ids: profile_ids },
+			}, { session })
+				.then((members) => {
+					assert(Array.isArray(members))
+					setMembers(domain_id, members);
+
+					for (const key of keys)
+						_.loading.delete(key);
+				});
+		}
+
+		// Return null or existing while refetching
+		return { _exists, data: _exists ? cached.map(x => x.data) : undefined } as MembersWrapper<false>;
+	}, [domain_id, profile_ids, members]);
+}
+
+
+/** Member query options */
+export type MemberQueryOptions = {
+	/** An alias search value */
+	search?: string;
+	/** A role to whitelist */
+	role_id?: string;
+	/** A role to blacklist */
+	exclude_role_id?: string;
+	/** The page to fetch (if this is excluded, then the first page will be fetched, or if the query has been performed before, all existing members that match the query will be fetched) */
+	page?: number;
+	/** Indicates if only online/offline members should be included */
+	online?: boolean;
+	/** Set to true to get only the count */
+	no_data?: boolean;
+};
+
+/** Member query results */
+export type MemberQueryResults = {
+	/** The member data */
+	data: ExpandedMember[];
+	/** The total number of members that match the query */
+	count: number;
+};
+
+/** Multi member wrapper */
+export type MemberQueryWrapper<Loaded extends boolean = true> = ({ _exists: true } & MemberQueryResults) | (Loaded extends true ? never : { _exists: false } & Partial<MemberQueryResults> );
+
+/** Get query key */
+function _getQueryKey(domain_id: string, options?: MemberQueryOptions) {
+	let key = domain_id;
+
+	const extra: string[] = [];
+	if (options?.search)
+		extra.push(`search=${options.search.toLocaleLowerCase()}`);
+	if (options?.role_id)
+		extra.push(`role=${options.role_id}`);
+	else if (options?.exclude_role_id)
+		extra.push(`exclude_role=${options.exclude_role_id}`);
+	if (options?.page)
+		extra.push(`page=${options.page}`);
+	if (options?.online !== undefined)
+		extra.push(`online=${options.online}`);
+	if (options?.no_data)
+		extra.push(`no_data`);
+
+	return key + (extra.length > 0 ? '?' + extra.join('&') : '');
+}
+
+/** Filter member entries according to options */
+function _filterEntries(entries: MemberEntry[], options?: MemberQueryOptions) {
+	const search = options?.search?.toLocaleLowerCase();
+	const limit = config.app.member.query_limit;
+
+	const filtered = entries.filter((entry) =>
+		(!search || entry.data.alias.toLocaleLowerCase().indexOf(search) >= 0) &&
+		(!options?.role_id || (entry.data.roles && entry.data.roles.indexOf(options.role_id) >= 0)) &&
+		(!options?.exclude_role_id || (!entry.data.roles || entry.data.roles.indexOf(options.exclude_role_id) < 0)) &&
+		(options?.online === undefined || (entry.data.online || false) == options.online)
+	).sort((a, b) => a.data.alias.localeCompare(b.data.alias));
+
+	return options?.page !== undefined ? filtered.slice(options.page * limit, (options.page + 1) * limit) : filtered;
 }
 
 /**
- * Get members from a domain that match the specified query. The local cache is first checked
- * and if valid data exists, it is used. Otherwise, the data is fetched
- * from the api server.
+ * Get members from a member query
  * 
- * @param domain_id The id of the domain to retrieve the member from
- * @param substr The alias query to use for searching
+ * @param domain_id The domain to retrieve the member from
+ * @param options The query options
+ * @returns The query result
  */
-export async function listMembers(domain_id: string, options: MemberListOptions, session: SessionState): Promise<MemberListResults> {
-	const release = await _mutex.acquire();
+export function useMemberQuery(domain_id: string | undefined, options?: MemberQueryOptions) {
+	const session = useSession();
+	const members = useSyncExternalStore(_subscribe, _getSnapshot);
 
-	try {
-		// Create query key
-		const qkey = getMemberQueryKey(options);
-		const queryKey = `${domain_id}.members${qkey ? '?' + qkey : ''}`;
+	return useMemo(() => {
+		if (!domain_id)
+			return { _exists: false } as MemberQueryWrapper<false>;
 
-		// Get cached query
-		const cached = cache.get(queryKey);
-		if (cached?.data !== undefined) return cached.data;
+		// Page size
+		const limit = config.app.member.query_limit;
 
-		// Perform query
-		const limit = Math.min(options.limit || config.app.member.query_limit, 1000);
+		// Get query entry
+		const queryKey = _getQueryKey(domain_id, options);
+		const queryEntry = _.queries[queryKey];
+
+		// Check if query needs to be refetched
+		let _exists = queryEntry !== undefined;
+		let needFetch = _needFetch(queryKey, queryEntry, config.app.member.query_interval);
+
+		// Filter results and check for stales if query entry exists
+		let filtered: MemberEntry[] = [];
+		if (_exists) {
+			const prefiltered = Object.entries(_.members).filter(([k, _]) => k.startsWith(domain_id)).map(([_, v]) => v);
+			filtered = _filterEntries(prefiltered, options);
+	
+			if (!needFetch) {
+				for (const entry of filtered) {
+					const fetch = _needFetch('', entry);
+					if (fetch) {
+						needFetch = fetch;
+						break;
+					}
+				}
+			}
+		}
+
+		// Refetch if needed
+		if (needFetch) {
+			_.loading.add(queryKey);
+
+			console.log('fetch', members)
+			api('GET /members', {
+				query: {
+					domain: domain_id,
+					search: options?.search || undefined,
+					role: options?.role_id,
+					exclude_role: options?.exclude_role_id,
+					online: options?.online,
+					limit: limit,
+					page: options?.page,
+					with_data: options?.no_data ? false : undefined,
+				},
+			}, { session })
+			.then((results) => {
+				assert(!Array.isArray(results));
+
+				// Save query results
+				console.log(results)
+				setMembers(domain_id, results.data);
+				_.queries[queryKey] = { time: Date.now(), total: results.count };
+
+				_.loading.delete(queryKey);
+			});
+		}
+
+		return {
+			_exists,
+			data: _exists ? filtered.map(x => x.data) : undefined,
+			count: queryEntry?.total,
+		} as MemberQueryWrapper<false>;
+
+	}, [domain_id, options?.search, options?.role_id, options?.exclude_role_id, options?.page, options?.online, options?.no_data, members]);
+}
+
+/**
+ * Get members from a member query
+ * 
+ * @param domain_id The domain to retrieve the member from
+ * @param options The query options
+ * @param store The member store used to get data from
+ * @param session The session object used to authenticate requests
+ * @returns The query result
+ */
+export async function listMembers(domain_id: string, options: MemberQueryOptions, session: SessionState) {
+	// Page size
+	const limit = config.app.member.query_limit;
+
+	// Get query entry
+	const queryKey = _getQueryKey(domain_id, options);
+
+	// Wait until done loading
+	if (_.loading.has(queryKey)) {
+		await (new Promise<void>((resolve) => {
+			var start_time = Date.now();
+			function checkFlag() {
+				if (!_.loading.has(queryKey)) {
+					resolve();
+				} else if (Date.now() > start_time + 3000) {
+					resolve();
+				} else {
+					window.setTimeout(checkFlag, 100);
+				}
+			}
+			checkFlag();
+		}));
+	}
+
+	// Check if query needs to be refetched
+	const queryEntry = _.queries[queryKey];
+	let _exists = queryEntry !== undefined;
+	let needFetch = _needFetch('', queryEntry, config.app.member.query_interval);
+
+	// Filter results and check for stales if query entry exists
+	let filtered: MemberEntry[] = [];
+	if (_exists) {
+		const prefiltered = Object.entries(_.members).filter(([k, _]) => k.startsWith(domain_id)).map(([_, v]) => v);
+		filtered = _filterEntries(prefiltered, options);
+
+		if (!needFetch) {
+			for (const entry of filtered) {
+				const fetch = _needFetch('', entry);
+				if (fetch) {
+					needFetch = fetch;
+					break;
+				}
+			}
+		}
+	}
+
+	// Refetch if needed
+	if (needFetch) {
+		_.loading.add(queryKey);
+
 		const results = await api('GET /members', {
 			query: {
 				domain: domain_id,
-				search: options.search,
-				page: options.page,
+				search: options?.search || undefined,
+				role: options?.role_id,
+				exclude_role: options?.exclude_role_id,
+				online: options?.online,
 				limit: limit,
-				role: options.role_id,
-				exclude_role: options.exclude_role_id,
+				page: options?.page,
+				with_data: options?.no_data ? false : undefined,
 			},
 		}, { session });
 		assert(!Array.isArray(results));
 
-		// Store in swr
-		setSwrMembers(domain_id, results.data, undefined, _mutate);
-		// Set query hook
-		_mutate(queryKey, results, { revalidate: false });
+		// Save query results
+		setMembers(domain_id, results.data);
+		_.queries[queryKey] = { time: Date.now(), total: results.count };
 
-		return results;
-	}
-	finally {
-		release();
-	}
-}
+		_.loading.delete(queryKey);
 
-/**
- * A synchronous alternative to member fetching. If the data does not
- * exist, null will be returned. After returning existing data, new data will be
- * fetched if no data exists or existing data is stale.
- * Any data that is returned may be stale.
- * 
- * @param domain_id The id of the domain to retrieve the member from
- * @param member_id The id of the member to retrieve
- * @returns The member if it exists, otherwise null
- */
-export function getMemberSync(domain_id: string, member_id: string) {
-	const cached = cache.get(`${domain_id}.${member_id}`);
-	return cached?.data === undefined ? null : cached.data as ExpandedMember;
+		return {
+			_exists: true,
+			data: results.data,
+			count: results.count,
+		} as MemberQueryWrapper;
+	}
+
+	assert(_exists && queryEntry);
+	return {
+		_exists: true,
+		data: filtered.map(x => x.data),
+		count: queryEntry.total,
+	} as MemberQueryWrapper;
 }
 
 
 /**
- * Set member values in member swr hooks. This is used to update
- * swr data when it has changed without using the swr hook mutator functions.
+ * Perform a query on local existing member data
  * 
- * @param domain_id The domain of the members
- * @param members The list of new member objects
- * @param exclude_key The key to exclude when setting members
- * @param mutate A global mutator
+ * @param domain_id The id to query members from
+ * @param options Query options
+ * @returns A list of members matching the query options
  */
-export async function setSwrMembers(domain_id: string, members: ExpandedMember[], exclude_key: string | undefined, mutate: ScopedMutator) {
-	// Map id to object
-	const memberMap: Record<string, ExpandedMember> = {};
-	
-	// Set individual hooks
-	const promises: Promise<ExpandedMember | undefined>[] = [];
-	for (const member of Object.values(members)) {
-		const key = `${domain_id}.${member.id}`;
-		promises.push(mutate(key !== exclude_key ? key : undefined, member, { revalidate: false }));
+export function listMembersLocal(domain_id: string, options: MemberQueryOptions) {
+	const prefiltered = Object.entries(_.members).filter(([k, _]) => k.startsWith(domain_id)).map(([_, v]) => v);
+	const filtered = _filterEntries(prefiltered, options);
+	return filtered.map(x => x.data);
+}
 
-		memberMap[member.id] = member;
-	}
-	await Promise.all(promises);
-
-	// Set list queries
-	await mutate<{ data: ExpandedMember[] }>(
-		(key) => {
-			const pass = typeof key === 'string' && key.startsWith(`${domain_id}.members`) && key !== exclude_key;
-			return pass;
-		},
-		(data) => {
-			if (!data) return data;
-
-			// Members array
-			const members = data.data;
-
-			let replaced = false;
-			const copy = members.map(m => {
-				const replace = memberMap[m.id];
-				if (replace)
-					replaced = true;
-
-				return replace || m;
-			});
-
-			// Only return new copy if replaced
-			return !replaced ? data : { data: copy };
-		},
-		{ revalidate: false }
-	);
+/**
+ * Get a member from cache, even if the data is stale
+ * 
+ * @param domain_id The id to fetch member from
+ * @param profile_id The profile id of the member
+ * @returns The member object
+ */
+export function getMemberSync(domain_id: string, profile_id: string): ExpandedMember | null {
+	return _.members[`${domain_id}.${profile_id}`]?.data || null;
 }

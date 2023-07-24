@@ -1,4 +1,4 @@
-import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ExoticComponent, RefObject, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   Accordion,
@@ -19,180 +19,117 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RoleBadges, { BadgeMap, useRoleBadges } from '@/lib/ui/components/RoleBadges';
 
 import config from '@/config';
-import { DomainWrapper, listMembers, MemberListResults, useApp, useSession } from '@/lib/hooks';
+import { DomainWrapper, listMembers, listMembersLocal, useApp, useMemberQuery, useSession } from '@/lib/hooks';
 import { ExpandedMember, Role } from '@/lib/types';
 
-import { throttle } from 'lodash';
-
-
-/** Page size */
-const PSIZE = config.app.member.new_query_threshold;
+import { range, throttle } from 'lodash';
 
 
 ////////////////////////////////////////////////////////////
-type MemberListInfiniteOptions = {
-  /** Search string */
-  search?: string;
-  /** Number of pages to load */
-  size?: number;
+const _prevMembers: Record<string, ExpandedMember[]> = {};
+
+////////////////////////////////////////////////////////////
+type MembersPageProps = {
+  containerRef: RefObject<HTMLDivElement>;
+
+  domain_id: string;
+  page: number;
+  total: number;
+  online: boolean;
+  search: string;
+  debouncedSearch: string;
+
+  MemberListItem: ExoticComponent<any>;
 };
 
 ////////////////////////////////////////////////////////////
-type QueryMetadata = {
-  /** Total number of entries that match query */
-  count?: number;
-  /** The total number of pages that have been loaded for this query */
-  size: number;
-  /** Indicates if this query is fetching */
-  loading?: boolean;
-};
-
-////////////////////////////////////////////////////////////
-function useMemberInfinite(domain_id: string, search: string, options?: { badges?: BadgeMap; }) {
-  // Normalize search term
-  search = search.toLocaleLowerCase();
-
-  const session = useSession();
-
-  // Debounced search value (for performing fetches)
-  const [debouncedSearch] = useDebouncedValue(search, 500, { leading: true });
-  // Cumulative list of all members searched for
-  const [members, setMembers] = useState<ExpandedMember[]>([]);
-
-  // Used to track if member query has retrieved all members
-  const [queries, setQueries] = useState<Record<string, QueryMetadata>>({});
-  // Queue of fetch requests
-  const [fetchReqs, setFetchReqs] = useState<(() => Promise<MemberListResults>)[]>([]);
-  // Used to indicate when next fetch req should start
-  const [nextReqToggle, setNextReqToggle] = useState<boolean>(false);
-
-
-  // List of members filtered to match options
-  const filtered = useMemo(() => {
-    if (!search)
-      return members.sort((a, b) => a.is_admin === b.is_admin ? a.alias.localeCompare(b.alias) : a.is_admin ? -1 : 1);
-
-    // Map of member to the subquery
-    const substrIdx: Record<string, number> = {};
-    for (const m of members)
-      substrIdx[m.id] = m.alias.toLocaleLowerCase().indexOf(search);
-
-    // Filtered list
-    const filtered = members.filter(m => substrIdx[m.id] >= 0);
-    filtered.sort((a, b) => substrIdx[a.id] === substrIdx[b.id] ? a.alias.localeCompare(b.alias) : substrIdx[a.id] - substrIdx[b.id]);
-
-    return filtered;
-  }, [members, search]);
-
-  // Handles change of query options
-  useEffect(() => {
-    // Search referst to debounced value in this function
-    const search = debouncedSearch;
-
-    // Get query metadata
-    let query = queries[search];
-    if (!query) {
-      query = { size: 1 };
-      setQueries({ ...queries, [search]: query });
-    }
-
-    // Get number of members that are required to be loaded
-    const needLoaded = query.size * PSIZE;
-    // Get current members that match criteria
-    const filtered = members.filter(m => m.alias.toLocaleLowerCase().includes(search));
-
-    // Fetch function
-    const fn = async () => {
-      const results = await listMembers(domain_id, { search, page: query.size - 1 }, session);
-      // Update query entry
-      setQueries({ ...queries, [search]: { size: query.size, count: results.count, loading: false } });
-
-      return results;
-    };
-
-    // Check if more values need to be loaded
-    if (filtered.length < needLoaded) {
-      if (query.count !== undefined) {
-        // Total number of members for this query is known, perform fetch if there are still members to be retrieved
-        if (filtered.length < query.count) {
-          setFetchReqs([...fetchReqs, fn]);
-          setQueries({ ...queries, [search]: { ...query, loading: true } });
-        }
-      }
-      else {
-        // The total count for current query is unknown, check previous query to see if more needs to be fetched
-        const prev = queries[search.slice(0, -1)];
-
-        // Check if prev count is greater than single page (<single page is minimum needed to skip fetch)
-        if (prev?.count !== undefined && prev.count > PSIZE) {
-          setFetchReqs([...fetchReqs, fn]);
-          setQueries({ ...queries, [search]: { ...query, loading: true } });
-        }
-      }
-    }
-    // Do nothing if the number that is needed to be loaded is greater than
-
-    // Downside to this method: if the user searches for members later down the list, those will be loaded and used in the next search
-    // When the user does next search, the results list may show values early in the list and late in the list (bc of the initial search)
-    // but not those in the middle bc the total number of current results may > page size (therefore not triggering a fetch)
-    // I think this is a minor issue that is not important enough to address
-  }, [debouncedSearch, queries[debouncedSearch]?.size]);
-
-  // Handles fetch requests
-  useEffect(() => {
-    if (!fetchReqs.length) return;
-
-    fetchReqs[0]().then((results) => {
-      const newMembers = results.data;
-
-      // Merge members lists
-      const memberMap: Record<string, ExpandedMember> = {};
-      for (const member of newMembers)
-        memberMap[member.id] = member;
-
-      // Add old members to new list
-      for (const member of members) {
-        if (!memberMap[member.id])
-          newMembers.push(member);
-      }
-      // Sort members array
-      newMembers.sort((a, b) => a.alias.localeCompare(b.alias));
-      setMembers(newMembers);
-
-      // Remove this fetch req from list
-      const copy = fetchReqs.slice();
-      copy.splice(0);
-      setFetchReqs(copy);
-      setNextReqToggle(!nextReqToggle);
-    });
-  }, [fetchReqs.length > 0, nextReqToggle]);
-
-  // Used to fetch first batch of members
-  useEffect(() => {
-    listMembers(domain_id, { search, page: 0 }, session).then(results => {
-      setMembers(results.data);
-      setQueries({ ...queries, ['']: { size: 1, count: results.count } });
-    });
-  }, []);
-
-
-  // Function used to load next page
-  const next = () => {
-    const query = queries[debouncedSearch];
-    // In order toload next page, query obj (w/ member count) must exist, number loaded members must be less than total, and this query can not be loading
-    if (query && (query.count !== undefined && query.size * PSIZE < query.count) && !query.loading)
-      setQueries({ ...queries, [debouncedSearch]: { ...query, size: query.size + 1 } });
-  };
+function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
+  const limit = config.app.member.query_limit;
+  const numElems = props.total - props.page * limit;
   
+  const { ref: pageRef, entry } = useIntersection({ root: props.containerRef.current, threshold: 0 });
+  const [isIntersecting] = useDebouncedValue(entry?.isIntersecting || false, 200);
+
+  // Only load query if intersecting
+  const members = useMemberQuery(props.page === 0 && entry?.isIntersecting || isIntersecting ? props.domain_id : undefined, {
+    page: props.page,
+    online: props.online,
+    search: props.debouncedSearch,
+  });
+
+
+  // Saves prev members list
+  useEffect(() => {
+    if (props.search !== props.debouncedSearch)
+      _prevMembers[`${props.domain_id}?${props.page}`] = members.data || [];
+  }, [props.search]);
+
+  // Filter search results
+  const filtered = useMemo(() => {
+    if (!props.search || !members._exists) return members.data || [];
+
+    const search = props.search.toLocaleLowerCase();
+    return members.data.filter(x => x.alias.toLocaleLowerCase().indexOf(search) >= 0);
+  }, [members.data, props.search]);
+
+
+  if (!isIntersecting || (!members._exists && _prevMembers[`${props.domain_id}?${props.page}`].length == 0))
+    return (<div ref={pageRef} style={{ height: `${numElems * 2.0}rem` }} />);
+  else {
+    return (
+      <Stack ref={pageRef} spacing={0}>
+        {(members._exists ? filtered : _prevMembers[`${props.domain_id}?${props.page}`]).map((member) => (
+          <MemberListItem
+            key={member.id}
+            member={member}
+            online={props.online}
+          />
+        ))}
+      </Stack>
+    );
+  }
+}
+
+
+////////////////////////////////////////////////////////////
+function MembersTab(props: RightPanelViewProps) {
+  const app = useApp();
+
+  // Used for infinite scroll
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Real time search value
+  const [search, setSearch] = useState<string>('');
+  const [debouncedSearchRaw] = useDebouncedValue(search, 500);
+  const debouncedSearch = search ? debouncedSearchRaw : '';
+
+  // Get member counts
+  const allMembers = useMemberQuery(props.domain.id, { search: debouncedSearch }); // Use all member query bc it will be used elsewhere (reduce query calls)
+  const online = useMemberQuery(props.domain.id, { online: true, search: debouncedSearch });
+  const counts = useMemo(() => {
+    if (allMembers._exists && online._exists && search === debouncedSearch) return { total: allMembers.count, online: online.count };
+
+    const lc = search.toLocaleLowerCase();
+    const filtered = allMembers.data?.filter(x => x.alias.toLocaleLowerCase().indexOf(lc) >= 0) || [];
+    const onlineFiltered = filtered.filter(x => x.online);
+    return { total: filtered.length, online: onlineFiltered.length };
+  }, [allMembers.count, online.count, search]);
+  
+  const offline = { count: counts.total - counts.online };
+
+  // Role badges
+  const badges = useRoleBadges(props.domain, { cursor: 'pointer' });
+
+
   // Member item
   const MemberListItem = useMemo(() => {
     const component = memo(forwardRef<HTMLDivElement, { member: ExpandedMember; online?: boolean }>(
       ({ member, online, ...others }, ref) => {
-        let alias = member.alias;
+        let alias = member.alias.replace(/<[^>]*>/g, '');
         if (search.length > 0) {
           const idx = alias.toLocaleLowerCase().indexOf(search.toLocaleLowerCase());
           if (idx >= 0)
-            alias = `${alias.slice(0, idx)}<b>${alias.slice(idx, idx + search.length)}</b>${alias.slice(idx + search.length)}`;
+            alias = `${alias.slice(0, idx)}<b>"${alias.slice(idx, idx + search.length)}"</b>${alias.slice(idx + search.length)}`;
         }
 
         return (
@@ -221,8 +158,8 @@ function useMemberInfinite(domain_id: string, search: string, options?: { badges
               dangerouslySetInnerHTML={{ __html: alias }}
             />
 
-            {options?.badges && (
-              <RoleBadges role_ids={member.roles || []} badges={options.badges} />
+            {badges && (
+              <RoleBadges role_ids={member.roles || []} badges={badges} />
             )}
           </Group>
         );
@@ -231,59 +168,18 @@ function useMemberInfinite(domain_id: string, search: string, options?: { badges
     component.displayName = 'MemberListItem';
 
     return component;
-  }, [search, options?.badges]);
+  }, [search, badges]);
 
 
-  return {
-    members,
-    filtered,
-    MemberListItem,
-    _loading: queries[search] === undefined ? true : queries[search].loading || false,
-    _next: throttle(next, 50, { leading: false }),
+  // Calculations
+  const limit = config.app.member.query_limit;
+  const numPages = {
+    online: Math.ceil(counts.online / limit),
+    offline: Math.ceil((offline.count || 0) / limit),
   };
-}
-
-////////////////////////////////////////////////////////////
-function MembersTab(props: RightPanelViewProps) {
-  const app = useApp();
-
-  // Used for infinite scroll
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { ref: nextTriggerRef, entry: nextTrigger } = useIntersection({ root: containerRef.current, threshold: 0.5 });
-
-  // Real time search value
-  const [search, setSearch] = useState<string>('');
-
-  // Role badges
-  const badges = useRoleBadges(props.domain, { cursor: 'pointer' });
-
 
   // Members
-  const { filtered, MemberListItem, _loading, _next } = useMemberInfinite(props.domain.id, search, { badges });
-
-  // Filtered members grouped
-  const grouped = useMemo(() => {
-    const set = new Set<string>(app.general.online);
-
-    const online: ExpandedMember[] = [];
-    const offline: ExpandedMember[] = [];
-
-    for (const member of filtered) {
-      if (set.has(member.id))
-        online.push(member);
-      else
-        offline.push(member);
-    }
-
-    return { online, offline };
-  }, [filtered, app.general.online]);
-
-  // Called when next trigger comes into view
-  useEffect(() => {
-    // Go next if not loading
-    if (nextTrigger?.isIntersecting && !_loading)
-      _next();
-  }, [nextTrigger?.isIntersecting]);
+  // const { filtered, MemberListItem, _loading, _next } = useMemberInfinite(props.domain.id, search, { badges });
 
   
   return (
@@ -331,40 +227,42 @@ function MembersTab(props: RightPanelViewProps) {
           })}
         >
           <Accordion.Item value='online'>
-            <Accordion.Control>Online - {grouped.online.length}</Accordion.Control>
+            <Accordion.Control>Online - {counts.online}</Accordion.Control>
             <Accordion.Panel>
               <Stack mb={16} spacing={0}>
-                {grouped.online.map((member, i) => (
-                  <UnstyledButton
-                    ref={i === grouped.online.length - 10 ? nextTriggerRef : undefined}
-                    sx={(theme) => ({
-                      padding: '0.25rem 0.4rem',
-                      borderRadius: theme.radius.sm,
-                      '&:hover': { backgroundColor: theme.colors.dark[5] }
-                    })}
-                  >
-                    <MemberListItem member={member}  online />
-                  </UnstyledButton>
+                {range(numPages.online).map(i => (
+                  <MembersPage
+                    key={i}
+                    containerRef={containerRef}
+                    domain_id={props.domain.id}
+                    page={i}
+                    total={online.count || 0}
+                    online
+                    search={search}
+                    debouncedSearch={debouncedSearch}
+                    MemberListItem={MemberListItem}
+                  />
                 ))}
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
 
           <Accordion.Item value='offline'>
-            <Accordion.Control>Offline - {grouped.offline.length}</Accordion.Control>
+            <Accordion.Control>Offline - {offline.count || 0}</Accordion.Control>
             <Accordion.Panel>
               <Stack mb={16} spacing={0}>
-                {grouped.offline.map((member, i) => (
-                  <UnstyledButton
-                    ref={i === grouped.offline.length - 10 ? nextTriggerRef : undefined}
-                    sx={(theme) => ({
-                      padding: '0.25rem 0.4rem',
-                      borderRadius: theme.radius.sm,
-                      '&:hover': { backgroundColor: theme.colors.dark[5] }
-                    })}
-                  >
-                    <MemberListItem member={member} />
-                  </UnstyledButton>
+                {range(numPages.offline).map(i => (
+                  <MembersPage
+                    key={i}
+                    containerRef={containerRef}
+                    domain_id={props.domain.id}
+                    page={i}
+                    total={offline.count || 0}
+                    online={false}
+                    search={search}
+                    debouncedSearch={debouncedSearch}
+                    MemberListItem={MemberListItem}
+                  />
                 ))}
               </Stack>
             </Accordion.Panel>

@@ -176,14 +176,14 @@ export function errorHandler(error: any, options?: AxiosErrorHandlerOptions) {
 
 
 /** Options for general error wrapper */
-export type ErrorWrapperOptions = AxiosErrorHandlerOptions & { onError?: (error: any) => any; finally?: () => any };
+export type ErrorWrapperOptions = AxiosErrorHandlerOptions & { onError?: (error: any, ...args: any[]) => any; finally?: () => any };
 
 /** General purpose error wrapper function */
 export function errorWrapper<T extends (...args: any) => any>(fn: T, options?: ErrorWrapperOptions) {
 	// Error handler
-	const handleError = (error: any) => {
+	const handleError = (error: any, ...args: any[]) => {
 		// Custom logic first
-		options?.onError?.(error);
+		options?.onError?.(error, ...args);
 
 		if (error instanceof AxiosError) {
 			// An error occured while communicating with server
@@ -204,28 +204,28 @@ export function errorWrapper<T extends (...args: any) => any>(fn: T, options?: E
 		}
 	};
 
-	return (...args: any) => {
+	return ((...args: any) => {
 		try {
 			const ret = fn(...args);
 			if (ret && typeof ret.catch === "function") {
 				// Async handler
-				ret.catch(handleError).finally(options?.finally);
+				ret.catch((err: any) => handleError(err, ...args)).finally(options?.finally);
 			}
 
 			return ret;
 		} catch (e) {
 			// Sync handler
-			handleError(e);
+			handleError(e, ...args);
 		}
 		finally {
 			options?.finally?.();
 		}
-	};
+	}) as T;
 }
 
 
 /** Wrap a swr function with an error handler */
-export function swrErrorWrapper<T extends (...args: any) => Promise<any>>(fn: T, options?: ErrorWrapperOptions) {
+export function swrErrorWrapper(fn: (...args: any) => Promise<any>, options?: ErrorWrapperOptions) {
 	// Propagate by default (swr reverts data on error, and we want that)
 	if (options && options.propagate === undefined)
 		options.propagate = true;

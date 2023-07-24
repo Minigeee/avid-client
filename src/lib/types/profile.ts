@@ -17,6 +17,8 @@ export type Profile = {
 	profile_picture?: string | null;
 	/** Time the profile was created */
 	time_created: Date;
+	/** Indicates if profile is online or not */
+	online?: boolean;
 };
 
 

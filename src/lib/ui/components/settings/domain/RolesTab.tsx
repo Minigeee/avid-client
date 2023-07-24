@@ -61,7 +61,6 @@ import { AppState, SessionState } from '@/lib/contexts';
 import {
   AclEntriesWrapper,
   DomainWrapper,
-  MemberListWrapper,
   canSetPermissions,
   listMembers,
   hasPermission,
@@ -71,7 +70,9 @@ import {
   useDomain,
   useMemberQuery,
   setAclEntries,
-  useSession
+  useSession,
+  MemberMutators,
+  useMemberMutators,
 } from '@/lib/hooks';
 import { AclEntry, AllChannelPermissions, AllPermissions, ChannelGroup, ChannelTypes, ExpandedMember, Role } from '@/lib/types';
 import { diff } from '@/lib/utility';
@@ -219,7 +220,7 @@ function AddRolePopover(props: { form: UseFormReturnType<RoleFormValues>; onSele
 }
 
 ////////////////////////////////////////////////////////////
-function AddMemberPopover(props: { domain_id: string; role_id: string; members: MemberListWrapper; type: 'empty' | 'table' }) {
+function AddMemberPopover(props: { domain_id: string; role_id: string; mutators: MemberMutators; type: 'empty' | 'table' }) {
   const [opened, setOpened] = useState<boolean>(false);
   const [values, setValues] = useState<ExpandedMember[]>([]);
 
@@ -268,7 +269,7 @@ function AddMemberPopover(props: { domain_id: string; role_id: string; members: 
             variant='gradient'
             disabled={values.length === 0}
             onClick={() => {
-              props.members._mutators.addRoles(values.map(x => x.id), props.role_id);
+              props.mutators.addRoles(props.domain_id, values.map(x => x.id), props.role_id);
               // Close after select
               setOpened(false);
             }}
@@ -462,9 +463,8 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
 
                 // Get number of members
                 const { count } = await listMembers(domain.id, {
-                  limit: 100,
-                  page: 0,
                   role_id: role.id,
+                  no_data: true,
                 }, session);
 
                 setLoading(false);
@@ -1050,6 +1050,7 @@ function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps 
 ////////////////////////////////////////////////////////////
 function MembersTab({ domain, role, session }: SubtabProps) {
   const { open: openConfirmModal } = useConfirmModal();
+  const memberMutators = useMemberMutators();
 
   // Real time search value
   const [search, setSearch] = useState<string>('');
@@ -1065,7 +1066,6 @@ function MembersTab({ domain, role, session }: SubtabProps) {
   const members = useMemberQuery(domain.id, {
     search: debouncedSearch,
     role_id: role.id,
-    limit: 100,
     page: page - 1,
   });
   console.log('role tab', members.data)
@@ -1108,7 +1108,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
               type='table'
               domain_id={domain.id}
               role_id={role.id}
-              members={members}
+              mutators={memberMutators}
             />
           ) : undefined,
           width: '4rem',
@@ -1128,7 +1128,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
                   ),
                   onConfirm: () => {
                     if (!members._exists) return;
-                    members._mutators.removeRole(member.id, role.id);
+                    memberMutators.removeRole(domain.id, member.id, role.id);
                   }
                 })
               }}
@@ -1180,7 +1180,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
                   type='empty'
                   domain_id={domain.id}
                   role_id={role.id}
-                  members={members}
+                  mutators={memberMutators}
                 />
               </Stack>
             )}

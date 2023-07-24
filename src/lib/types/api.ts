@@ -186,6 +186,8 @@ export type ApiSchema = {
 			search?: string;
 			role?: string;
 			exclude_role?: string;
+			online?: boolean;
+			with_data?: boolean;
 		},
 		return: ExpandedMember[] | { data: ExpandedMember[]; count: number };
 	},

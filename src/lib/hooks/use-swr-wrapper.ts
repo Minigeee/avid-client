@@ -76,7 +76,7 @@ export type SwrWrapperOptions<In, Out, Mutators extends SwrMutators = {}, Infini
  */
 export function useSwrWrapper<In, Mutators extends SwrMutators = {}, Infinite extends boolean = false, Out = In, Separate extends boolean = false>
 	(response: Infinite extends true ? SWRInfiniteResponse<In> : SWRResponse<In | null>, options?: SwrWrapperOptions<In, Out, Mutators, Infinite, Separate>):
-	SwrWrapper<Infinite extends true ? Out extends In ? Out[] : Out : Out, false, Mutators, Infinite, Separate> {
+	SwrWrapper<Out, false, Mutators, Infinite, Separate> {
 		
 	return useMemo(() => {
 		// Wrapper behavior

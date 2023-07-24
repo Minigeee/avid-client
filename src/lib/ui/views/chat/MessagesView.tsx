@@ -47,18 +47,20 @@ import config from '@/config';
 import {
   DomainWrapper,
   ExpandedMessageWithPing,
-  getMembers,
+  GroupedMessages,
   MemberWrapper,
   MessagesWrapper,
   hasPermission,
   useApp,
   useChatStyles,
+  useGroupedMessages,
   useMember,
+  useMembers,
   useMessages,
   useSession,
   useTimeout,
 } from '@/lib/hooks';
-import { ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
+import { ExpandedMember, ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
 import notification from '@/lib/utility/notification';
 
@@ -112,8 +114,10 @@ export type MessageViewContextState = {
   channel_id: string;
   /** The sender member */
   sender: MemberWrapper<false>;
-  /** Grouped messages */
+  /** Raw messages */
   messages: MessagesWrapper<false>;
+  /** Grouped messages */
+  grouped: GroupedMessages;
 
   /** Refs */
   refs: {
@@ -156,6 +160,10 @@ export type LoadedMessageViewContextState = Omit<MessageViewContextState, 'sende
 // @ts-ignore
 export const MessageViewContext = createContext<MessageViewContextState>();
 
+
+// Tracks last typing (hack)
+let _lastTyping: ExpandedMember | null = null;
+
 /** Message view context provider */
 function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesViewProps) {
   // Default styling
@@ -167,7 +175,8 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   const app = useApp();
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(channel_id, domain, sender);
+  const messages = useMessages(channel_id, domain.id);
+  const groupedMessages = useGroupedMessages(messages.data || [], domain, sender);
 
   // Editor ref
   const editorRef = useRef<Editor>(null);
@@ -177,14 +186,22 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   });
 
   /** States */
-	const [state, setState] = useState<MessageViewState>({
-    typing: [],
-    last_typing: null,
+	const [state, setState] = useState<Omit<MessageViewState, 'typing' | 'last_typing'>>({
     editing: null,
     replying_to: null,
     scroll_to: null,
 	});
 
+  const [typingIds, setTypingIds] = useState<string[]>([]);
+  const typing = useMembers(domain.id, typingIds);
+  const lastTyping = typing.data?.length ? typing.data[0] : _lastTyping;
+  
+
+  // Updates last typing
+  useEffect(() => {
+    if (typing._exists && typing.data.length > 0)
+      _lastTyping = typing.data[0];
+  }, [typing]);
   
   // Refresh on stale data
   useEffect(() => {
@@ -211,18 +228,12 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       messages._mutators.addMessageLocal(message);
 
       // Remove from typing list
-      const idx = state.typing.findIndex(m => m.id === message.sender);
+      const idx = typingIds.findIndex(id => id === message.sender);
       if (idx >= 0) {
         // Set list
-        const copy = state.typing.slice();
+        const copy = typingIds.slice();
         copy.splice(idx, 1);
-
-        // Update state
-        setState({
-          ...state,
-          typing: copy,
-          last_typing: copy.length === 1 ? copy[0] : state.last_typing,
-        });
+        setTypingIds(copy);
       }
     }
 
@@ -231,7 +242,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     return () => {
       socket().off('chat:message', onNewMessage);
     }
-  }, [channel_id, messages, state.typing]);
+  }, [channel_id, messages, typingIds]);
 
   // Displaying members that are typing
   useEffect(() => {
@@ -240,35 +251,18 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       if (typing_channel_id !== channel_id) return;
 
       // Index of member in list
-      const ids = state.typing.map(x => x.id);
-      const idx = ids.findIndex(x => x === profile_id);
+      const idx = typingIds.findIndex(x => x === profile_id);
       
       // Different actions based on if user started or stopped
       if (type === 'start' && idx < 0) {
-        ids.push(profile_id);
-
-        // Fetch members
-        getMembers(domain.id, ids, session).then((members) => {
-          // Update state
-          setState({
-            ...state,
-            typing: members,
-            last_typing: members.length === 1 ? members[0] : state.last_typing,
-          });
-        });
+        setTypingIds([...typingIds, profile_id]);
       }
 
       else if (type === 'stop' && idx >= 0) {
         // Set list
-        const copy = state.typing.slice();
+        const copy = typingIds.slice();
         copy.splice(idx, 1);
-
-        // Update state
-        setState({
-          ...state,
-          typing: copy,
-          last_typing: copy.length === 1 ? copy[0] : state.last_typing,
-        });
+        setTypingIds(copy);
       }
     }
 
@@ -277,7 +271,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     return () => {
       socket().off('chat:typing', onChatTyping);
     };
-  }, [state.typing]);
+  }, [typingIds]);
 
   // Scroll to message
   useEffect(() => {
@@ -292,6 +286,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     channel_id,
     sender,
     messages,
+    grouped: groupedMessages,
 
     refs: {
       editor: editorRef,
@@ -300,6 +295,8 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     },
     state: {
       ...state,
+      typing: typing.data || [],
+      last_typing: lastTyping,
       _set: (key, value) => setState({ ...state, [key]: value }),
       _setAll: setState,
     },
@@ -649,7 +646,7 @@ type MessagesViewportProps = {
 ////////////////////////////////////////////////////////////
 function MessagesViewport(props: MessagesViewportProps) {
   const context = useMessageViewContext();
-  const { messages } = context;
+  const { messages, grouped } = context;
   const { classes } = useChatStyles();
 
   // Holds viewport position relative to bottom of chat, used to maintain (or not) the position of scroll when messages change
@@ -682,7 +679,7 @@ function MessagesViewport(props: MessagesViewportProps) {
       scrollTo: string | null;
     }> = {};
 
-    for (const [day, groups] of Object.entries(messages.data)) {
+    for (const [day, groups] of Object.entries(grouped)) {
       for (let i = 0; i < groups.length; ++i) {
         map[`${day}.${i}`] = {
           editing: context.state.editing && groups[i].findIndex(x => x.id === context.state.editing) >= 0 ? context.state.editing : null,
@@ -692,7 +689,7 @@ function MessagesViewport(props: MessagesViewportProps) {
     }
 
     return map;
-  }, [messages, context.state]);
+  }, [messages, grouped, context.state]);
 
   // Keep current position when new messages are added (doubles as setting scroll to bottom at beginning)
   useEffect(() => {
@@ -746,7 +743,7 @@ function MessagesViewport(props: MessagesViewportProps) {
       >
         <MessageContextMenu context={context as LoadedMessageViewContextState}>
           <Stack spacing='lg'>
-            {messages._exists && Object.entries(messages.data).map(([day, grouped], i) => (
+            {messages._exists && Object.entries(grouped).map(([day, grouped], i) => (
               <Fragment key={day}>
                 <Divider
                   label={moment(day).format('LL')}

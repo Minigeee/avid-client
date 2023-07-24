@@ -70,8 +70,6 @@ type _GeneralState = {
 	/** A map of channels to stale status */
 	stale: Record<string, boolean>;
 
-	/** A set of online members */
-	online: Set<string>;
 	/** Indicates if the right side panel is opened */
 	right_panel_opened?: boolean;
 };
@@ -143,40 +141,6 @@ function generalMutatorFactory(general: _GeneralState, setGeneral: (state: _Gene
 			setGeneral({
 				...general,
 				stale: { ...general.stale, [channel_id]: stale },
-			});
-		},
-
-		/**
-		 * Add users to online set
-		 * 
-		 * @param profile_ids The list of profile ids to add to the online set
-		 */
-		addOnline: (profile_ids: string[]) => {
-			// Online
-			const copy = new Set<string>(general.online);
-			for (const id of profile_ids)
-				copy.add(id);
-
-			setGeneral({
-				...general,
-				online: copy,
-			});
-		},
-
-		/**
-		 * Remove users from the online set
-		 * 
-		 * @param profile_ids The list of profile ids to remove from the online set
-		 */
-		removeOnline: (profile_ids: string[]) => {
-			// Online
-			const copy = new Set<string>(general.online);
-			for (const id of profile_ids)
-				copy.delete(id);
-
-			setGeneral({
-				...general,
-				online: copy,
 			});
 		},
 
@@ -317,7 +281,6 @@ export default function AppProvider({ children }: PropsWithChildren) {
 
 	const [general, setGeneral] = useState<_GeneralState>({
 		stale: {},
-		online: new Set<string>(),
 	});
 	const [nav, setNav] = useState<_NavState>({});
 	const rtc = useRtc(session);

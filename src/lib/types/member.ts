@@ -26,4 +26,6 @@ export type Member = {
 export type ExpandedMember = Member & {
 	/** The url of the profile picture of the member */
 	profile_picture?: string | null;
+	/** Indicates if the member is online */
+	online?: boolean;
 };

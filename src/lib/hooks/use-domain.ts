@@ -1,6 +1,6 @@
 
 import { KeyedMutator } from 'swr';
-import { ScopedMutator, cache, useSWRConfig } from 'swr/_internal';
+import { cache } from 'swr/_internal';
 import assert from 'assert';
 
 import { api, deleteDomainImage, uploadDomainImage } from '@/lib/api';
@@ -9,13 +9,12 @@ import { AllPermissions, ChannelData, ChannelOptions, ChannelTypes, ExpandedDoma
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { useApiQuery } from './use-api-query';
+import { setMembers } from './use-members';
 import { SwrWrapper } from './use-swr-wrapper';
-import { useSession } from './use-session';
-import { setSwrMembers } from './use-members';
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedDomain>, session: SessionState | undefined, _mutate: ScopedMutator) {
+function mutators(mutate: KeyedMutator<ExpandedDomain>, session: SessionState | undefined) {
 	assert(session);
 
 	return {
@@ -527,7 +526,7 @@ function mutators(mutate: KeyedMutator<ExpandedDomain>, session: SessionState | 
 				}
 
 				// Update members
-				setSwrMembers(domain.id, updated, undefined, _mutate);
+				setMembers(domain.id, updated);
 
 				// Update domain object
 				return { ...domain, roles: domain.roles.filter(r => r.id !== role_id) };
@@ -551,9 +550,6 @@ export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDo
  * @returns A swr wrapper object containing the requested domain
  */
 export function useDomain(domain_id: string | undefined) {
-	const session = useSession();
-	const { mutate } = useSWRConfig();
-
 	return useApiQuery(domain_id, 'GET /domains/:domain_id', {
 		params: { domain_id: domain_id || '' }
 	}, {
@@ -563,7 +559,6 @@ export function useDomain(domain_id: string | undefined) {
 			return results;
 		},
 		mutators,
-		mutatorParams: [mutate],
 	});
 }
 
