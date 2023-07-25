@@ -104,13 +104,14 @@ function MembersTab(props: RightPanelViewProps) {
   const allMembers = useMemberQuery(props.domain.id, { search: debouncedSearch }); // Use all member query bc it will be used elsewhere (reduce query calls)
   const online = useMemberQuery(props.domain.id, { online: true, search: debouncedSearch });
   const counts = useMemo(() => {
-    console.log(allMembers, online)
     if (allMembers._exists && online._exists && search === debouncedSearch) return { total: allMembers.count, online: online.count };
 
     const filtered = listMembersLocal(props.domain.id, { search });
     const onlineFiltered = filtered.filter(x => x.online);
-    console.log('return', { total: filtered.length, online: onlineFiltered.length })
-    return { total: filtered.length, online: onlineFiltered.length };
+    return {
+      total: Math.max(filtered.length, allMembers.count || 0),
+      online: Math.max(onlineFiltered.length, online.count || 0),
+    };
   }, [allMembers.count, online.count, search]);
   
   const offline = { count: counts.total - counts.online };

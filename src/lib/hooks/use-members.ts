@@ -36,7 +36,7 @@ type QueryCache = Record<string, QueryEntry>;
 /** Global state */
 const _ = {
 	/** Member cache */
-	members: {} as MemberCache,
+	members: {} as Record<string, MemberCache>,
 	/** Query cache */
 	queries: {} as QueryCache,
 	/** Map of keys that are loading a fetch */
@@ -70,15 +70,28 @@ function _needFetch(key: string, entry: { time: number } | undefined, lifetime: 
 	return (entry === undefined || entry === null || Date.now() - entry.time >= lifetime * 1000) && (!key || !_.loading.has(key));
 }
 
+/** Gets member entry */
+function _getMemberEntry(domain_id: string, profile_id: string, cache: Record<string, MemberCache> = _.members) {
+	return cache[domain_id]?.[profile_id] as MemberEntry | undefined;
+}
+
 
 /** Set members to store */
 export function setMembers(domain_id: string, members: ExpandedMember[], emit: boolean = true) {
 	const now = Date.now();
 
-	const cache = { ..._.members };
+	// Get domain cache
+	let domain = _.members[domain_id];
+	if (!domain)
+		domain = _.members[domain_id] = {};
+	else
+		domain = { ...domain };
+
+	// Set all members
 	for (const member of members)
-		cache[`${domain_id}.${member.id}`] = { data: member, time: now };
-	_.members = cache;
+		domain[member.id] = { data: member, time: now };
+
+	_.members = { ..._.members, [domain_id]: domain };
 
 	// Emit changes
 	if (emit)
@@ -117,7 +130,7 @@ export function useMemberMutators() {
 		 */
 		removeRole: errorWrapper(async (domain_id: string, profile_id: string, role_id: string) => {
 			// Optimistic update
-			const entry = _.members[`${domain_id}.${profile_id}`];
+			const entry = _getMemberEntry(domain_id, profile_id);
 			if (entry)
 				// Set new member to cache
 				setMembers(domain_id, [{ ...entry.data, roles: entry.data.roles?.filter(r => r !== role_id) }]);
@@ -130,7 +143,7 @@ export function useMemberMutators() {
 			message: 'An error occurred while removing role from member',
 			onError: (err, domain_id: string, profile_id: string, role_id: string) => {
 				// Revert change
-				const entry = _.members[`${domain_id}.${profile_id}`];
+			const entry = _getMemberEntry(domain_id, profile_id);
 				if (entry)
 					setMembers(domain_id, [{ ...entry.data, roles: [...(entry.data.roles || []), role_id] }]);
 			},
@@ -170,7 +183,7 @@ export function useMember(domain_id: string, profile_id: string | undefined) {
 			return { _exists: false } as MemberWrapper<false>;
 
 		const key = `${domain_id}.${profile_id}`;
-		const cached = members[key];
+		const cached = _getMemberEntry(domain_id, profile_id);
 		const _exists = cached !== undefined;
 
 		// Check if need fetch
@@ -222,11 +235,12 @@ export function useMembers(domain_id: string, profile_ids: string[]) {
 		// Get cached
 		const cached: MemberEntry[] = [];
 		for (let i = 0; i < profile_ids.length; ++i) {
-			const entry = members[keys[i]];
+			const entry = _getMemberEntry(domain_id, profile_ids[i]);
 			needFetch = needFetch || _needFetch(keys[i], entry);
 			_exists = entry !== undefined;
 
-			cached.push(entry);
+			if (entry)
+				cached.push(entry);
 		}
 
 		// Check if need fetch
@@ -345,8 +359,7 @@ export function useMemberQuery(domain_id: string | undefined, options?: MemberQu
 		// Filter results and check for stales if query entry exists
 		let filtered: MemberEntry[] = [];
 		if (_exists) {
-			const prefiltered = Object.entries(_.members).filter(([k, _]) => k.startsWith(domain_id)).map(([_, v]) => v);
-			filtered = _filterEntries(prefiltered, options);
+			filtered = _filterEntries(Object.values(_.members[domain_id] || {}), options);
 	
 			if (!needFetch) {
 				for (const entry of filtered) {
@@ -438,8 +451,7 @@ export async function listMembers(domain_id: string, options: MemberQueryOptions
 	// Filter results and check for stales if query entry exists
 	let filtered: MemberEntry[] = [];
 	if (_exists) {
-		const prefiltered = Object.entries(_.members).filter(([k, _]) => k.startsWith(domain_id)).map(([_, v]) => v);
-		filtered = _filterEntries(prefiltered, options);
+		filtered = _filterEntries(Object.values(_.members[domain_id] || {}), options);
 
 		if (!needFetch) {
 			for (const entry of filtered) {
@@ -500,9 +512,7 @@ export async function listMembers(domain_id: string, options: MemberQueryOptions
  * @returns A list of members matching the query options
  */
 export function listMembersLocal(domain_id: string, options: MemberQueryOptions) {
-	const prefiltered = Object.entries(_.members).filter(([k, _]) => k.startsWith(domain_id)).map(([_, v]) => v);
-	const filtered = _filterEntries(prefiltered, options);
-	return filtered.map(x => x.data);
+	return _filterEntries(Object.values(_.members[domain_id] || {}), options).map(x => x.data);
 }
 
 /**
@@ -513,5 +523,78 @@ export function listMembersLocal(domain_id: string, options: MemberQueryOptions)
  * @returns The member object
  */
 export function getMemberSync(domain_id: string, profile_id: string): ExpandedMember | null {
-	return _.members[`${domain_id}.${profile_id}`]?.data || null;
+	return _getMemberEntry(domain_id, profile_id)?.data || null;
+}
+
+
+/**
+ * Update members with the given profile id for all domains that are loaded.
+ * This function only updates member values locally
+ * 
+ * @param profile_id The id of the profile
+ * @param fn The update function
+ * @param emit Indicates if this change should be emitted
+ */
+export function updateMemberLocal(profile_id: string, fn: (member: ExpandedMember) => ExpandedMember, emit: boolean = true) {
+	const cache = { ..._.members };
+
+	for (const [domain_id, members] of Object.entries(cache)) {
+		if (!members[profile_id]) continue;
+
+		// Create copy
+		const copy = { ...members };
+		copy[profile_id] = { ...copy[profile_id], data: fn(copy[profile_id].data) };
+
+		// Set to domain cache
+		cache[domain_id] = copy;
+	}
+
+	// Set members cache
+	_.members = cache;
+
+	if (emit)
+		_emitChange();
+}
+
+/**
+ * Function to update query counts locally
+ * 
+ * @param filter The function used to determine if the entry should be updated
+ * @param fn The query entry update function, should return the new count
+ * @param emit Indicates if this change should be emitted
+ */
+export function updateMemberQueryLocal(filter: (domain_id: string, options: MemberQueryOptions) => boolean, fn: (count: number, domain_id: string, options: MemberQueryOptions) => number, emit: boolean = true) {
+	const copy = { ..._.queries };
+
+	for (const [key, entry] of Object.entries(copy)) {
+		// Parse key
+		const [domain_id, queryStr] = key.split('?');
+		const opts = queryStr?.split('&').map(str => str.split('=')) || [];
+
+		// Parse options
+		const options: MemberQueryOptions = {};
+		for (const opt of opts) {
+			if (opt[0] === 'search')
+				options.search = opt[1];
+			else if (opt[0] === 'role_id')
+				options.role_id = opt[1];
+			else if (opt[0] === 'exclude_role_id')
+				options.exclude_role_id = opt[1];
+			else if (opt[0] === 'page')
+				options.page = parseInt(opt[1]) || undefined;
+			else if (opt[0] === 'online')
+				options.online = opt[1] === 'true';
+			else if (opt[0] === 'no_data')
+				options.no_data = opt[1] === 'true';
+		}
+
+		if (filter(domain_id, options))
+			copy[key] = { ...entry, total: fn(entry.total, domain_id, options) };
+	}
+
+	// Set queries cache
+	_.queries = copy;
+
+	if (emit)
+		_emitChange();
 }

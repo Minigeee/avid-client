@@ -1,5 +1,4 @@
 import { KeyedMutator } from 'swr';
-import { ScopedMutator, useSWRConfig } from 'swr/_internal';
 import assert from 'assert';
 
 import { deleteProfile, uploadDomainImage, uploadProfile } from '@/lib/api';
@@ -12,37 +11,13 @@ import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { SwrWrapper } from './use-swr-wrapper';
 import { useDbQuery } from './use-db-query';
+import { updateMember } from './use-members';
 
 import axios from 'axios';
 
 
 ////////////////////////////////////////////////////////////
-function updateLocalMembers(profile_id: string, url: string | null, _mutate: ScopedMutator) {
-	// Update member objects
-	_mutate(
-		(key) => typeof key === 'string' && (new RegExp(`^domains:\\w+\\.${profile_id}$`).test(key) || /^domains:\w+\.members/.test(key)),
-		(data: ExpandedMember | { data: ExpandedMember[] } | undefined) => {
-			if (!data) return data;
-
-			if (!(data as { data: ExpandedMember[] }).data) {
-				return { ...data, profile_picture: url };
-			}
-			else {
-				const members = (data as { data: ExpandedMember[] }).data;
-				const idx = members.findIndex(x => x.id === profile_id);
-				if (idx < 0) return data;
-
-				const copy = members.slice();
-				copy[idx] = { ...members[idx], profile_picture: url };
-				return { ...data, data: copy };
-			}
-		},
-		{ revalidate: false }
-	);
-}
-
-////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState | undefined, _mutate: ScopedMutator) {
+function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState | undefined) {
 	assert(session);
 
 	return {
@@ -110,7 +85,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState |
 				const url = await uploadProfile(profile, image, fname, session);
 
 				// Update member objects
-				updateLocalMembers(profile.id, url, _mutate);
+				updateMember(profile.id, (member) => ({ ...member, profile_picture: url }));
 
 				return {
 					...profile,
@@ -132,7 +107,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState |
 				await deleteProfile(profile, session);
 
 				// Update member objects
-				updateLocalMembers(profile.id, null, _mutate);
+				updateMember(profile.id, (member) => ({ ...member, profile_picture: null }));
 
 				return {
 					...profile,
@@ -168,7 +143,6 @@ export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedP
  */
 export function useProfile(profile_id: string | undefined) {
 	assert(!profile_id || profile_id.startsWith('profiles:'));
-	const { mutate } = useSWRConfig();
 
 	return useDbQuery<ExpandedProfile, ProfileMutators>(profile_id, {
 		builder: (key) => {
@@ -189,6 +163,5 @@ export function useProfile(profile_id: string | undefined) {
 		} : null,
 		
 		mutators,
-		mutatorParams: [mutate],
 	});
 }

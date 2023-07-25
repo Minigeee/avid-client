@@ -5,7 +5,7 @@ import { io, Socket } from 'socket.io-client';
 
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
-import { useApp, useSession } from '@/lib/hooks';
+import { getMemberSync, updateMemberLocal, updateMemberQueryLocal, useApp, useSession } from '@/lib/hooks';
 import { ClientToServerEvents, Message, ServerToClientEvents } from '@/lib/types';
 
 import { notifyError, errorWrapper } from '@/lib/utility/error-handler';
@@ -79,15 +79,37 @@ export function useRealtimeHandlers() {
 
 	
 	// Join/leave handler
-	/* useEffect(() => {
+	useEffect(() => {
 		if (!_socket.connected) return;
 
 		function onUserJoin(profile_id: string) {
-			app._mutators.general.addOnline([profile_id]);
+			updateMemberLocal(profile_id, (member) => ({ ...member, online: true }), false);
+			updateMemberQueryLocal(
+				(domain, opts) => getMemberSync(domain, profile_id) !== null && opts.online !== undefined,
+				(count, domain, opts) => {
+					if (opts.online)
+						return count + 1;
+					else if (opts.online)
+						return count - 1;
+
+					return count;
+				}
+			);
 		}
 
 		function onUserLeft(profile_id: string) {
-			app._mutators.general.removeOnline([profile_id]);
+			updateMemberLocal(profile_id, (member) => ({ ...member, online: false }), false);
+			updateMemberQueryLocal(
+				(domain, opts) => getMemberSync(domain, profile_id) !== null && opts.online !== undefined,
+				(count, domain, opts) => {
+					if (opts.online)
+						return count - 1;
+					else if (opts.online)
+						return count + 1;
+
+					return count;
+				}
+			);
 		}
 
 		_socket.on('general:user-joined', onUserJoin);
@@ -97,7 +119,7 @@ export function useRealtimeHandlers() {
 			_socket.off('general:user-joined', onUserJoin);
 			_socket.off('general:user-left', onUserLeft);
 		};
-	}, [_socket.connected, app]); */
+	}, [_socket.connected, app]);
 
 	// Chat message handler
 	useEffect(() => {
