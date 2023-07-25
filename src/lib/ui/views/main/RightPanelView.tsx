@@ -26,9 +26,6 @@ import { range, throttle } from 'lodash';
 
 
 ////////////////////////////////////////////////////////////
-const _prevMembers: Record<string, ExpandedMember[]> = {};
-
-////////////////////////////////////////////////////////////
 type MembersPageProps = {
   containerRef: RefObject<HTMLDivElement>;
 
@@ -58,27 +55,27 @@ function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
   });
 
 
-  // Saves prev members list
-  useEffect(() => {
-    if (props.search !== props.debouncedSearch)
-      _prevMembers[`${props.domain_id}?${props.page}`] = members.data || [];
-  }, [props.search]);
-
   // Filter search results
   const filtered = useMemo(() => {
-    if (!props.search || !members._exists) return members.data || [];
+    if (!isIntersecting || !props.search && members._exists)
+      return members.data || [];
+
+    if (!members._exists) {
+      const limit = config.app.member.query_limit;
+      return listMembersLocal(props.domain_id, { search: props.search }).slice(props.page * limit, (props.page + 1) * limit);
+    }
 
     const search = props.search.toLocaleLowerCase();
     return members.data.filter(x => x.alias.toLocaleLowerCase().indexOf(search) >= 0);
   }, [members.data, props.search]);
 
 
-  if (!isIntersecting || (!members._exists && _prevMembers[`${props.domain_id}?${props.page}`].length == 0))
-    return (<div ref={pageRef} style={{ height: `${numElems * 2.0}rem` }} />);
+  if (!isIntersecting)
+    return (<div ref={pageRef} style={{ height: `${numElems * 2.6}rem` }} />);
   else {
     return (
       <Stack ref={pageRef} spacing={0}>
-        {(members._exists ? filtered : _prevMembers[`${props.domain_id}?${props.page}`]).map((member) => (
+        {filtered.map((member) => (
           <MemberListItem
             key={member.id}
             member={member}
@@ -107,11 +104,12 @@ function MembersTab(props: RightPanelViewProps) {
   const allMembers = useMemberQuery(props.domain.id, { search: debouncedSearch }); // Use all member query bc it will be used elsewhere (reduce query calls)
   const online = useMemberQuery(props.domain.id, { online: true, search: debouncedSearch });
   const counts = useMemo(() => {
+    console.log(allMembers, online)
     if (allMembers._exists && online._exists && search === debouncedSearch) return { total: allMembers.count, online: online.count };
 
-    const lc = search.toLocaleLowerCase();
-    const filtered = allMembers.data?.filter(x => x.alias.toLocaleLowerCase().indexOf(lc) >= 0) || [];
+    const filtered = listMembersLocal(props.domain.id, { search });
     const onlineFiltered = filtered.filter(x => x.online);
+    console.log('return', { total: filtered.length, online: onlineFiltered.length })
     return { total: filtered.length, online: onlineFiltered.length };
   }, [allMembers.count, online.count, search]);
   
@@ -129,39 +127,50 @@ function MembersTab(props: RightPanelViewProps) {
         if (search.length > 0) {
           const idx = alias.toLocaleLowerCase().indexOf(search.toLocaleLowerCase());
           if (idx >= 0)
-            alias = `${alias.slice(0, idx)}<b>"${alias.slice(idx, idx + search.length)}"</b>${alias.slice(idx + search.length)}`;
+            alias = `${alias.slice(0, idx)}<b>${alias.slice(idx, idx + search.length)}</b>${alias.slice(idx + search.length)}`;
         }
 
         return (
-          <Group ref={ref} {...others} spacing={6} noWrap sx={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            opacity: online ? undefined : 0.6,
-          }}>
-            <Indicator
-              inline
-              position='bottom-end'
-              offset={4}
-              size={12}
-              color='teal'
-              withBorder
-              disabled={!online}
-            >
-              <MemberAvatar size={32} member={member} />
-            </Indicator>
-            <Text
-              ml={6}
-              size='sm'
-              weight={search.length > 0 ? 400 : 600}
-              sx={(theme) => ({ color: theme.colors.gray[4] })}
-              dangerouslySetInnerHTML={{ __html: alias }}
-            />
+          <UnstyledButton
+            sx={(theme) => ({
+              padding: '0rem 0.5rem',
+              borderRadius: theme.radius.sm,
+              '&:hover': {
+                backgroundColor: theme.colors.dark[5],
+              },
+            })}
+          >
+            <Group ref={ref} {...others} spacing={6} noWrap sx={{
+              height: '2.6rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              opacity: online ? undefined : 0.6,
+            }}>
+              <Indicator
+                inline
+                position='bottom-end'
+                offset={4}
+                size={12}
+                color='teal'
+                withBorder
+                disabled={!online}
+              >
+                <MemberAvatar size={32} member={member} />
+              </Indicator>
+              <Text
+                ml={6}
+                size='sm'
+                weight={search.length > 0 ? 400 : 600}
+                sx={(theme) => ({ color: theme.colors.gray[4] })}
+                dangerouslySetInnerHTML={{ __html: alias }}
+              />
 
-            {badges && (
-              <RoleBadges role_ids={member.roles || []} badges={badges} />
-            )}
-          </Group>
+              {badges && (
+                <RoleBadges role_ids={member.roles || []} badges={badges} />
+              )}
+            </Group>
+          </UnstyledButton>
         );
       }
     ));
@@ -177,9 +186,6 @@ function MembersTab(props: RightPanelViewProps) {
     online: Math.ceil(counts.online / limit),
     offline: Math.ceil((offline.count || 0) / limit),
   };
-
-  // Members
-  // const { filtered, MemberListItem, _loading, _next } = useMemberInfinite(props.domain.id, search, { badges });
 
   
   return (

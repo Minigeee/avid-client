@@ -112,10 +112,20 @@ export function useRealtimeHandlers() {
 			app._mutators.general.setStale(message.channel, true);
 		}
 
+		// Handles marking channels stale
+		function onReactionChange(channel_id: string) {
+			if (app.navigation.channels?.[app.navigation.domain || ''] === channel_id) return;
+
+			// Mark stale
+			app._mutators.general.setStale(channel_id, true);
+		}
+
 		_socket.on('chat:message', onChatMessage);
+		_socket.on('chat:reactions', onReactionChange);
 
 		return () => {
 			_socket.off('chat:message', onChatMessage);
+			_socket.off('chat:reactions', onReactionChange);
 		};
 	}, [_socket.connected, app]);
 }

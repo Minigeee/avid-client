@@ -11,6 +11,7 @@ import { SessionState } from './session';
 
 import { merge } from 'lodash';
 import { api } from '../api';
+import { socket } from '../utility/realtime';
 
 
 /** Get app state id from session */
@@ -177,6 +178,9 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			setNav(merge({}, nav, diff));
 			
 			save('navigation', diff);
+
+			// Notify change domain
+			socket().emit('general:switch-room', domain_id, nav.channels?.[domain_id] || '');
 		},
 
 		/**
@@ -201,6 +205,9 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 			setNav(merge({}, nav, diff));
 
 			save('navigation', diff);
+
+			// Notify change channel
+			socket().emit('general:switch-room', domain_id, channel_id);
 		},
 
 		/**

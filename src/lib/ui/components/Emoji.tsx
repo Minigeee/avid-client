@@ -370,9 +370,9 @@ export function EmojiPicker(props: EmojiPickerProps) {
     }
 
     // New search query
-    const query = debouncedSearch.replace(/\s+/g, '_');
+    const query = debouncedSearch.toLocaleLowerCase().replace(/\s+/g, '_');
     const filtered = Object.values(data.emojis).filter((emoji) =>
-      emoji.id.indexOf(query) >= 0 || emoji.keywords.findIndex(kw => kw.indexOf(query) >= 0) >= 0
+      emoji.id.indexOf(query) >= 0 || emoji.keywords.findIndex(kw => kw.indexOf(query) >= 0) >= 0 || emoji.name.toLocaleLowerCase().replace(/\s+/g, '_').indexOf(query) >= 0
     ).map(x => x.id);
     
     // Rows

@@ -51,6 +51,7 @@
     "emoji-regex": "^10.2.1",
     "eslint": "8.38.0",
     "eslint-config-next": "13.3.0",
+    "framer-motion": "^10.13.1",
     "highlight.js": "^11.7.0",
     "jsonwebtoken": "^9.0.0",
     "katex": "^0.16.6",

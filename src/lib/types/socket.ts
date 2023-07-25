@@ -6,18 +6,23 @@ import { Message } from './message';
 export interface ServerToClientEvents {
 	'error': (message: string, status?: number) => void,
 
+	// WIP : Continue broadcast system
 	'general:user-joined': (profile_id: string) => void,
 	'general:user-left': (profile_id: string) => void,
+	'general:activity': (domain_id: string, channel_id: string) => void,
 
 	'chat:message': (domain_id: string, message: Message) => void;
 	'chat:edit-message': (domain_id: string, channel_id: string, message_id: string, message: string) => void;
 	'chat:delete-message': (domain_id: string, channel_id: string, message_id: string) => void;
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
+	'chat:reactions': (channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) => void;
 }
 
 
 /** All events signatures that are sent from client to server */
 export interface ClientToServerEvents {
+	'general:switch-room': (domain_id: string, channel_id: string) => void;
+
 	'chat:message': (message: Message) => void;
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
 }

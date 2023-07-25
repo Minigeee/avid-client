@@ -14,6 +14,8 @@ import {
   ScrollArea,
 } from '@mantine/core';
 import { useTimeout } from '@mantine/hooks';
+import { FloatingPosition } from '@mantine/core/lib/Floating';
+
 import { IconChevronRight } from '@tabler/icons-react';
 
 import { merge } from 'lodash';
@@ -185,8 +187,10 @@ type ContextMenuSubmenuProps = PropsWithChildren & {
   label: string | JSX.Element;
   icon?: JSX.Element;
   color?: MantineColor;
-  maxHeight?: string | number;
+  position?: FloatingPosition;
   hoverDelay?: number;
+  maxHeight?: string | number;
+  noScroll?: boolean;
 
   styles?: PopoverProps['styles'];
   dropdownProps?: PopoverDropdownProps;
@@ -204,7 +208,7 @@ export function ContextMenuSubmenu(props: ContextMenuSubmenuProps) {
   return useMemo(() => (
     <Popover
       opened={submenu === props.id}
-      position='right-start'
+      position={props.position || 'right-start'}
       offset={{ mainAxis: 12, crossAxis: 9 }}
       withArrow
       styles={(theme, params, context) => {
@@ -251,9 +255,12 @@ export function ContextMenuSubmenu(props: ContextMenuSubmenuProps) {
         p={4}
         {...props.dropdownProps}
       >
-        <ScrollArea.Autosize mah={props.maxHeight || '25rem'}>
-          {props.children}
-        </ScrollArea.Autosize>
+        {!props.noScroll && (
+          <ScrollArea.Autosize mah={props.maxHeight || '25rem'}>
+            {props.children}
+          </ScrollArea.Autosize>
+        )}
+        {props.noScroll && props.children}
       </Popover.Dropdown>
     </Popover>
   ), [props, submenu]);

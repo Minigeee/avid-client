@@ -9,7 +9,7 @@ import { cache, ScopedMutator, useSWRConfig } from 'swr/_internal';
 import config from '@/config';
 import { api, uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { ExpandedMessage, FileAttachment, Member, Message, Reaction, Role } from '@/lib/types';
+import { AggregatedReaction, ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
 
 import { DomainWrapper } from './use-domain';
 import { MemberWrapper, getMemberSync, setMembers, useMemberCache } from './use-members';
@@ -17,7 +17,7 @@ import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 
 import { Emoji, emojiSearch } from '@/lib/ui/components/Emoji';
-import { swrErrorWrapper } from '@/lib/utility/error-handler';
+import { errorWrapper, swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import hljs from 'highlight.js';
 import { groupBy } from 'lodash';
@@ -33,7 +33,7 @@ import emojiRegex from 'emoji-regex';
 
 
 /** Message recieved from api */
-export type RawMessage = Message & { reactions?: Reaction[] };
+export type RawMessage = Message & { reactions?: AggregatedReaction[] };
 
 /** An expanded message with information on if a target member was pinged within message */
 export type ExpandedMessageWithPing = ExpandedMessage & {
@@ -255,7 +255,6 @@ function fetcher(session: SessionState, domain_id: string) {
 		}, { session });
 
 		// Set members
-		console.log('fetch msg')
 		setMembers(domain_id, Object.values(results.members), false);
 
 		// Messages are an array ordered newest first. To make appending messages easy, reverse page order
@@ -321,6 +320,90 @@ function deleteMessageLocal(messages: RawMessage[][] | undefined, message_id: st
 	pagesCopy[page] = msgsCopy;
 
 	return pagesCopy;
+}
+
+
+////////////////////////////////////////////////////////////
+function _editMessageTemplate(messages: RawMessage[][] | undefined, message_id: string, fn: (msg: RawMessage) => RawMessage) {
+	if (!messages) return undefined;
+
+	// Find message
+	const { page, idx } = findMessage(messages, message_id);
+	if (idx < 0) return messages;
+
+	// Create copies
+	const pagesCopy = messages.slice();
+	const msgsCopy = pagesCopy[page].slice();
+	msgsCopy[idx] = fn(msgsCopy[idx]);
+	pagesCopy[page] = msgsCopy;
+
+	return pagesCopy;
+}
+
+////////////////////////////////////////////////////////////
+const _selfReactions: Record<string, number> = {};
+
+////////////////////////////////////////////////////////////
+function addReactionLocal(messages: RawMessage[][] | undefined, message_id: string, emoji: string) {
+	return _editMessageTemplate(messages, message_id, (msg) => {
+		const copy = msg.reactions?.slice() || [];
+
+		const idx = copy.findIndex(r => r.emoji === emoji);
+		if (idx >= 0)
+			copy[idx] = { ...copy[idx], count: copy[idx].count + 1, self: 1 };
+		else
+			copy.push({ emoji, count: 1, self: 1 });
+
+		// Mark this reaction as added
+		_selfReactions[message_id + emoji] = (_selfReactions[message_id + emoji] || 0) + 1;
+
+		return { ...msg, reactions: copy };
+	});
+}
+
+////////////////////////////////////////////////////////////
+function removeReactionsLocal(messages: RawMessage[][] | undefined, message_id: string, emoji: string | undefined, self: boolean) {
+	return _editMessageTemplate(messages, message_id, (msg) => {
+		const copy = msg.reactions?.slice() || [];
+
+		// If neither specified, remove all reactions
+		if (!self && !emoji)
+			return { ...msg, reactions: undefined };
+
+		if (emoji) {
+			const idx = copy.findIndex(r => r.emoji === emoji);
+			if (idx >= 0) {
+				// If self specified (should remove self emojis), then set self to 0
+				copy[idx] = { ...copy[idx], count: copy[idx].count - 1 };
+				if (self) {
+					_selfReactions[message_id + emoji] = (_selfReactions[message_id + emoji] || 0) - 1;
+					copy[idx].self = 0;
+				}
+
+				// Remove entry if empty
+				if (copy[idx].count <= 0)
+					copy.splice(idx, 1);
+			}
+		}
+		else if (self) {
+			for (let i = 0; i < copy.length; ++i) {
+				if (copy[i].self) {
+					copy[i] = { ...copy[i], count: copy[i].count - 1, self: 0 };
+
+					// Remove entry if empty
+					if (copy[i].count <= 0) {
+						copy.splice(i, 1);
+						--i;
+					}
+					
+					const e = copy[i].emoji;
+					_selfReactions[message_id + e] = (_selfReactions[message_id + e] || 0) - 1;
+				}
+			}
+		}
+
+		return { ...msg, reactions: copy };
+	});
 }
 
 
@@ -456,6 +539,106 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 				},
 				revalidate: false,
 			}
+		),
+
+		/**
+		 * Add a reaction to a message
+		 * 
+		 * @param message_id The id of the mssage to add the reaction to
+		 * @param emoji The emoji to react with
+		 * @returns The new messages array
+		 */
+		addReaction: errorWrapper(async (message_id: string, emoji: string) => {
+			// Optimistic update
+			mutate((messages) => addReactionLocal(messages, message_id, emoji), { revalidate: false });
+
+			// Actual update
+			await api('POST /reactions', {
+				body: { message: message_id, emoji },
+			}, { session });
+		}, { message: 'An error occurred while adding message reaction' }),
+
+		/**
+		 * Remove reactions from a message, based on certain options
+		 * 
+		 * @param message_id The id of the mssage to add the reaction to
+		 * @param emoji The emoji to react with
+		 * @returns The new messages array
+		 */
+		removeReactions: errorWrapper(async (message_id: string, options?: { self?: boolean; emoji?: string }) => {
+			// Optimistic update
+			mutate((messages) => removeReactionsLocal(messages, message_id, options?.emoji, options?.self || false), { revalidate: false });
+
+			// Actual update
+			await api('DELETE /reactions', {
+				query: {
+					message: message_id,
+					member: options?.self ? session.profile_id : undefined,
+					emoji: options?.emoji,
+				},
+			}, { session });
+		}, { message: 'An error occurred while removing message reactions' }),
+
+		/**
+		 * Apply a group of reactions changes for a message. This data is only applied locally.
+		 * 
+		 * @param message_id The message to apply reaction changes for
+		 * @param changes A map of emojis to the difference in count since the last update
+		 * @param removeAll Set this to true to remove all reactions on message
+		 * @returns The new messages
+		 */
+		applyReactionChanges: (message_id: string, changes: Record<string, number>, removeAll?: boolean) => mutate(
+			swrErrorWrapper(
+				async (messages: RawMessage[][]) => {
+					// Remove all
+					if (removeAll) {
+						return _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, reactions: undefined }));
+					}
+					
+					return _editMessageTemplate(messages, message_id, (msg) => {
+						const copy = msg.reactions?.slice() || [];
+
+						// Create map of emoji to index
+						const emojiMap: Record<string, number> = {};
+						for (let i = 0; i < copy.length; ++i)
+							emojiMap[copy[i].emoji] = i;
+
+						// Array of deleted reaction indices
+						const deleted: number[] = [];
+						console.log(_selfReactions)
+
+						for (const [emoji, delta] of Object.entries(changes)) {
+							// Get self reactions
+							const key = message_id + emoji;
+							const self = _selfReactions[key];
+
+							// Total change in count
+							const deltaWithSelf = delta - (self || 0);
+
+							const idx = emojiMap[emoji];
+							if (idx !== undefined) {
+								copy[idx] = { ...copy[idx], count: copy[idx].count + deltaWithSelf };
+								if (copy[idx].count <= 0)
+									deleted.push(idx);
+							}
+							else if (deltaWithSelf > 0)
+								copy.push({ emoji, count: deltaWithSelf, self: self === undefined ? 0 : 1 });
+
+							// Delete self reaction
+							delete _selfReactions[key];
+						}
+
+						// Delete reactions
+						deleted.sort((a, b) => b - a);
+						for (const idx of deleted)
+							copy.splice(idx, 1);
+
+						return { ...msg, reactions: copy };
+					});
+				},
+				{ message: 'An error occurred while updating reactions' }
+			),
+			{ revalidate: false }
 		),
 	};
 }

@@ -3,12 +3,20 @@ import { Member } from './member';
 import { Date } from './util';
 
 
-/** A message reaction object */
+/** A single reaction object */
 export type Reaction = {
+	/** The emoji id */
+	emoji: string;
+};
+
+/** Reactions aggregated into single object */
+export type AggregatedReaction = {
 	/** The emoji id */
 	emoji: string;
 	/** The number of people that used this emoji */
 	count: number;
+	/** Indicates if the user sent this reaction emoji (1 if so, 0 if not) */
+	self?: number;
 };
 
 
@@ -46,5 +54,5 @@ export type ExpandedMessage = Omit<Message, 'sender' | 'reply_to'> & {
 	/** The message this message is replying to */
 	reply_to?: ExpandedMessage;
 	/** A list of reactions attached to this message */
-	reactions?: Reaction[];
+	reactions?: AggregatedReaction[];
 };

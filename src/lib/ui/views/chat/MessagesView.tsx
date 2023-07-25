@@ -21,6 +21,7 @@ import {
   Title,
   Tooltip,
   Transition,
+  UnstyledButton,
 } from '@mantine/core';
 import { useScrollIntoView } from '@mantine/hooks';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
@@ -29,6 +30,7 @@ import {
   IconArrowForwardUp,
   IconChevronsDown,
   IconMoodHappy,
+  IconMoodPlus,
   IconPaperclip,
   IconPencilPlus,
   IconSend,
@@ -44,11 +46,13 @@ import { MessageContextMenu } from './components/MessageMenu';
 
 
 import config from '@/config';
+import { api } from '@/lib/api';
 import {
   DomainWrapper,
   ExpandedMessageWithPing,
   GroupedMessages,
   MemberWrapper,
+  MessageMutators,
   MessagesWrapper,
   hasPermission,
   useApp,
@@ -66,11 +70,11 @@ import notification from '@/lib/utility/notification';
 
 import moment from 'moment';
 import { Editor } from '@tiptap/react';
+import { motion } from 'framer-motion';
 
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
 import { throttle } from 'lodash';
-import { api } from '@/lib/api';
 
 const AVATAR_SIZE = 38;
 const MIN_IMAGE_WIDTH = 400;
@@ -244,6 +248,23 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     }
   }, [channel_id, messages, typingIds]);
 
+  // Reaction handler
+  useEffect(() => {
+    function onReactionChanges(p_channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) {
+      // Ignore if message isn't in this channel, it is handled by another handler
+      if (!messages._exists || p_channel_id !== channel_id) return;
+  
+      // Apply changes locally
+      messages._mutators.applyReactionChanges(message_id, changes, removeAll);
+    }
+
+    socket().on('chat:reactions', onReactionChanges);
+
+    return () => {
+      socket().off('chat:reactions', onReactionChanges);
+    }
+  }, [channel_id, messages]);
+
   // Displaying members that are typing
   useEffect(() => {
     function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
@@ -384,6 +405,9 @@ type MessageGroupProps = {
   setState: MutableRefObject<<K extends keyof MessageViewState>(key: K, value: MessageViewState[K]) => void>;
   scrollToRef: RefObject<HTMLDivElement>;
   scrollTo: string | null;
+
+  canSendReactions: boolean;
+  mutators: MutableRefObject<MessageMutators | null>;
 }
 
 ////////////////////////////////////////////////////////////
@@ -395,6 +419,9 @@ type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
 
 ////////////////////////////////////////////////////////////
 function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
+  const addReactionBtnRef = useRef<HTMLButtonElement>(null);
+
+  // User's badges
   const badges = useMemo(() => {
     // Create list of role ids, sort by role order
     const roleIds: string[] = msg.sender?.roles?.slice() || [];
@@ -414,6 +441,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
 
     return badges;
   }, [msg.sender?.roles, props.rolesMap]);
+
 
   return (
     <ContextMenu.Trigger
@@ -570,6 +598,80 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             );
           }
         })}
+
+        {msg.reactions && msg.reactions.length > 0 && (
+          <Group spacing={6} maw='80ch'>
+            {msg.reactions.map((reaction) => (
+              <Button
+                variant='default'
+                disabled={!props.canSendReactions && !reaction.self}
+                p='0rem 0.4rem'
+                h='1.5625rem'
+                styles={reaction.self ? (theme) => ({
+                  root: {
+                    background: theme.fn.linearGradient(60, `${theme.colors.indigo[9]}40`, `${theme.colors.grape[9]}40`),
+                    border: `1px solid ${theme.colors.grape[6]}`,
+                  }
+                }) : undefined}
+                onClick={() => {
+                  if (reaction.self)
+                    // Remove reaction
+                    props.mutators.current?.removeReactions(msg.id, { emoji: reaction.emoji, self: true });
+                  else
+                    // Add reaction
+                    props.mutators.current?.addReaction(msg.id, reaction.emoji);
+                }}
+              >
+                <Group spacing={6} noWrap>
+                  <Emoji id={reaction.emoji} size={14} />
+                  <motion.div key={reaction.count} initial={{ y: -10 }} animate={{ y: 0 }}>
+                    <Text span size='xs' weight={600} sx={(theme) => ({ color: theme.colors.dark[0] })}>{reaction.count}</Text>
+                  </motion.div>
+                </Group>
+              </Button>
+            ))}
+            {props.canSendReactions && (
+              <Popover position='right' withArrow>
+                <Tooltip
+                  label='Add reaction'
+                  withArrow
+                >
+                  <Popover.Target>
+                    <ActionIcon ref={addReactionBtnRef} variant='filled' size='1.5625rem' sx={(theme) => ({
+                      backgroundColor: theme.colors.dark[5],
+                      '&:hover': {
+                        backgroundColor: theme.colors.dark[5],
+                      },
+                    })}>
+                      <IconMoodPlus size='1rem' />
+                    </ActionIcon>
+                  </Popover.Target>
+                </Tooltip>
+
+                <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
+                  backgroundColor: theme.colors.dark[7],
+                  borderColor: theme.colors.dark[5],
+                  boxShadow: '0px 4px 16px #00000030',
+                })}>
+                  <EmojiPicker
+                    emojiSize={32}
+                    onSelect={(emoji) => {
+                      // Check if this emoji has already been used
+                      const reaction = msg.reactions?.find(x => x.self && (x.emoji === emoji.id || x.emoji === emoji.skins[0].native))
+
+                      // Add reaction
+                      if (!reaction && emoji.skins.length > 0)
+                        props.mutators.current?.addReaction(msg.id, emoji.id);
+
+                      // Close menu
+                      addReactionBtnRef.current?.click();
+                    }}
+                  />
+                </Popover.Dropdown>
+              </Popover>
+            )}
+          </Group>
+        )}
       </Stack>
     </ContextMenu.Trigger>
   );
@@ -649,6 +751,8 @@ function MessagesViewport(props: MessagesViewportProps) {
   const { messages, grouped } = context;
   const { classes } = useChatStyles();
 
+  // Ref to message mutators, so messages can call latest mutators without rerendering each time
+  const mutatorsRef = useRef<MessageMutators | null>(messages._exists ? messages._mutators : null);
   // Holds viewport position relative to bottom of chat, used to maintain (or not) the position of scroll when messages change
   const viewportPos = useRef<number>(0);
   // Indicates whether or not scroll pos should be maintained (relative to bottom of chat)
@@ -726,6 +830,9 @@ function MessagesViewport(props: MessagesViewportProps) {
   }, 50, { leading: false });
 
 
+  // Determines if user can send reactions
+  const canSendReactions = hasPermission(context.domain, context.channel_id, 'can_send_reactions');
+
   // TODO : Show messages skeleton
   if (!context.sender._exists || !messages._exists) return null;
 
@@ -766,6 +873,9 @@ function MessagesViewport(props: MessagesViewportProps) {
                       setState={setStateRef}
                       scrollToRef={context.refs.scroll_to}
                       scrollTo={cachedProps[`${day}.${j}`].scrollTo}
+
+                      canSendReactions={canSendReactions}
+                      mutators={mutatorsRef}
                     />
                   </>
                 ))}

@@ -70,7 +70,8 @@ type PermissionSet = {
   can_manage_resources: boolean;
   can_send_messages: boolean;
   can_send_attachments: boolean;
-  can_delete_messages: boolean;
+  can_send_reactions: boolean;
+  can_manage_messages: boolean;
   can_broadcast_audio: boolean;
   can_broadcast_video: boolean;
   can_manage_participants: boolean;
@@ -92,7 +93,8 @@ const DEFAULT_PERMISSION_SET = {
   can_manage_resources: false,
   can_send_messages: true,
   can_send_attachments: true,
-  can_delete_messages: false,
+  can_send_reactions: true,
+  can_manage_messages: false,
   can_broadcast_audio: true,
   can_broadcast_video: true,
   can_manage_participants: false,
@@ -217,7 +219,8 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
         can_manage_resources: hasPerm(entry?.permissions, 'can_manage_resources'),
         can_send_messages: hasPerm(entry?.permissions, 'can_send_messages'),
         can_send_attachments: hasPerm(entry?.permissions, 'can_send_attachments'),
-        can_delete_messages: hasPerm(entry?.permissions, 'can_delete_messages'),
+        can_send_reactions: hasPerm(entry?.permissions, 'can_send_reactions'),
+        can_manage_messages: hasPerm(entry?.permissions, 'can_manage_messages'),
         can_broadcast_audio: hasPerm(entry?.permissions, 'can_broadcast_audio'),
         can_broadcast_video: hasPerm(entry?.permissions, 'can_broadcast_video'),
         can_manage_participants: hasPerm(entry?.permissions, 'can_manage_participants'),
@@ -371,7 +374,8 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
       can_manage_resources: canSet && hasPermission(domain, group.id, 'can_manage_resources'),
       can_send_messages: canSet && hasPermission(domain, group.id, 'can_send_messages'),
       can_send_attachments: canSet && hasPermission(domain, group.id, 'can_send_attachments'),
-      can_delete_messages: canSet && hasPermission(domain, group.id, 'can_delete_messages'),
+      can_send_reactions: canSet && hasPermission(domain, group.id, 'can_send_reactions'),
+      can_manage_messages: canSet && hasPermission(domain, group.id, 'can_manage_messages'),
       can_broadcast_audio: canSet && hasPermission(domain, group.id, 'can_broadcast_audio'),
       can_broadcast_video: canSet && hasPermission(domain, group.id, 'can_broadcast_video'),
       can_manage_participants: canSet && hasPermission(domain, group.id, 'can_manage_participants'),
@@ -500,10 +504,17 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
           />
 
           <PermissionSetting
-            title='Delete Messages'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages sent by other users in text channels.</>}
-            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_delete_messages`, { type: 'checkbox' })}
-            disabled={!_perms.can_delete_messages}
+            title='Send Reactions'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send emoji reactions to messages in text channels.</>}
+            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_send_reactions`, { type: 'checkbox' })}
+            disabled={!_perms.can_send_reactions}
+          />
+
+          <PermissionSetting
+            title='Manage Messages'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages and remove reactions sent by other users in text channels.</>}
+            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_messages`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_messages}
             withDivider={false}
           />
 

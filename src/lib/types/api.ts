@@ -4,7 +4,7 @@ import { Channel, ChannelData, ChannelGroup, ChannelOptions, ChannelTypes } from
 import { Label } from './common';
 import { ExpandedDomain } from './domain';
 import { ExpandedMember, Member } from './member';
-import { ExpandedMessage, Message, Reaction } from './message';
+import { AggregatedReaction, ExpandedMessage, Message } from './message';
 import { AclEntry } from './permissions';
 import { Role } from './role';
 import { ExpandedTask, Task, TaskPriority } from './task';
@@ -247,7 +247,7 @@ export type ApiSchema = {
 			limit?: number;
 		},
 		return: {
-			messages: (Message & { reactions?: Reaction[] })[];
+			messages: (Message & { reactions?: AggregatedReaction[] })[];
 			members: Record<string, ExpandedMember>;
 		},
 	},
@@ -295,6 +295,23 @@ export type ApiSchema = {
 			updated: AclEntry[];
 			deleted: AclEntry[];
 		};
+	},
+
+
+	/** Reactions */
+	'POST /reactions': {
+		body: {
+			message: string;
+			emoji: string;
+		};
+	},
+
+	'DELETE /reactions': {
+		query: {
+			message: string;
+			member?: string;
+			emoji?: string;
+		},
 	},
 
 	

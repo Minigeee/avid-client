@@ -45,10 +45,10 @@ import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import { AppState } from '@/lib/contexts';
 import {
   DomainWrapper,
-  getMembers,
   hasPermission,
   rtcIo,
   useApp,
+  useMembers,
   useSession,
 } from '@/lib/hooks';
 import { Channel, Member } from '@/lib/types';
@@ -202,7 +202,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
   const [loading, setLoading] = useState<boolean>(false);
 
   // Load channel data directly (need latest data always)
-  const [participants, setParticipants] = useState<Member[] | null>(null);
+  const [participantIds, setParticipantIds] = useState<string[]>([]);
   useEffect(() => {
     // TODO : Use websockets to sync room participants
     api('GET /channels/:channel_id', {
@@ -211,10 +211,11 @@ function JoinScreen({ app, ...props }: SubviewProps) {
       .then((results) => {
         const channel = results as Channel<'rtc'>;
         const filtered = channel.data?.participants.filter(x => x !== session.profile_id);
-        return filtered ? getMembers(props.domain.id, filtered, session) : [];
-      })
-      .then(setParticipants);
+        setParticipantIds(filtered || []);
+      });
   }, []);
+
+  const participants = useMembers(props.domain.id, participantIds);
 
   // Rtc permissions
   const canSpeak = hasPermission(props.domain, props.channel.id, 'can_broadcast_audio');
@@ -255,7 +256,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
         </Stack>
 
         <Stack spacing={6} align='center'>
-          {!participants?.length && (
+          {!participants.data?.length && (
             <>
               <Avatar size={48} radius={100} sx={{ backgroundColor: '#333333' }} />
               <Text size='xs' color='dimmed'>
@@ -263,10 +264,10 @@ function JoinScreen({ app, ...props }: SubviewProps) {
               </Text>
             </>
           )}
-          {participants && participants.length > 0 && (
+          {participants._exists && participants.data.length > 0 && (
             <>
               <Avatar.Group spacing='md'>
-                {participants.slice(0, 3).map((member, i) => (
+                {participants.data.slice(0, 3).map((member, i) => (
                   <MemberAvatar
                     key={member.id}
                     size={48}
@@ -274,18 +275,18 @@ function JoinScreen({ app, ...props }: SubviewProps) {
                     sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
                   />
                 ))}
-                {participants.length > 3 && (
+                {participants.data.length > 3 && (
                   <Avatar
                     size={48}
                     radius={48}
                     sx={(theme) => ({ borderWidth: 3, borderColor: theme.colors.dark[8] })}
                   >
-                    +{participants.length - 3}
+                    +{participants.data.length - 3}
                   </Avatar>
                 )}
               </Avatar.Group>
               <Text size='xs' color='dimmed'>
-                {participants.length} Participant{participants.length > 1 ? 's' : ''}
+                {participants.data.length} Participant{participants.data.length > 1 ? 's' : ''}
               </Text>
             </>
           )}
@@ -363,32 +364,25 @@ function RoomScreen({ app, ...props }: SubviewProps) {
   const session = useSession();
 
   // Get list of participants
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  useEffect(() => {
-    if (!props.domain._exists || !app.rtc) return;
+  const memberIds = useMemo(() => app.rtc ? Object.keys(app.rtc.participants) : [], [app.rtc?.participants]);
+  const members = useMembers(props.domain.id, memberIds);
 
-    // Get members
-    const ids = Object.keys(app.rtc.participants);
-    if (ids.length > 0)
-      getMembers(props.domain.id, ids, session).then((members) => setParticipants(members.map(m => ({ ...m, is_talking: false }))));
-    else
-      setParticipants([]);
-  }, [app.rtc?.participants]);
+  // Map of which participants are talking
+  const [isTalking, setIsTalking] = useState<Record<string, boolean>>({});
+
+  const participants = useMemo(
+    () => members.data?.map(x => ({ ...x, is_talking: isTalking[x.id] || false })) || [],
+    [members, isTalking]
+  );
 
   // Handle talking indicators
   useEffect(() => {
     function onTalk(participant_id: string, status: 'start' | 'stop') {
-
-      const idx = participants.findIndex(p => p.id === participant_id);
-      if (idx < 0) return;
+      const talking = isTalking[participant_id] || false;
 
       // Update particpant talking status if different
-      const p = participants[idx];
-      if ((p.is_talking && status === 'stop') || (!p.is_talking && status === 'start')) {
-        const copy = participants.slice();
-        copy[idx] = { ...p, is_talking: status === 'start' };
-        setParticipants(copy);
-      }
+      if ((talking && status === 'stop') || (!talking && status === 'start'))
+        setIsTalking({ ...isTalking, [participant_id]: !talking });
     }
 
     rtcIo()?.on('participant-talk', onTalk);
