@@ -11,7 +11,6 @@ import {
   TextInput,
   UnstyledButton,
 } from '@mantine/core';
-import { openConfirmModal } from '@mantine/modals';
 import { useForm } from '@mantine/form';
 
 import {
@@ -25,9 +24,10 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 
-import { openChannelGroupSettings, openCreateChannel, openTypeConfirm } from '@/lib/ui/modals';
+import { openChannelGroupSettings, openCreateChannel } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
+import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
 import { DomainWrapper, hasPermission, useApp } from '@/lib/hooks';
 import { Channel, ChannelGroup } from '@/lib/types';
@@ -49,6 +49,8 @@ type SingleChannelProps = {
 
 ////////////////////////////////////////////////////////////
 function SingleChannel(props: SingleChannelProps) {
+  const { open: openConfirmModal } = useConfirmModal();
+
   const form = useForm({
     initialValues: { name: props.channel.name },
   });
@@ -174,17 +176,8 @@ function SingleChannel(props: SingleChannelProps) {
                       onClick={() => {
                         openConfirmModal({
                           title: 'Delete Channel',
-                          labels: { cancel: 'Cancel', confirm: 'Delete' },
-                          children: (
-                            <>Are you sure you want to delete <b>{props.channel.name}</b>?</>
-                          ),
-                          groupProps: {
-                            spacing: 'xs',
-                            sx: { marginTop: '0.5rem' },
-                          },
-                          confirmProps: {
-                            color: 'red',
-                          },
+                          content: (<Text>Are you sure you want to delete <b>{props.channel.name}</b>?</Text>),
+                          confirmLabel: 'Delete',
                           onConfirm: () => {
                             props.domain._mutators.removeChannel(props.channel.id);
                           }
@@ -217,6 +210,7 @@ type ChannelGroupProps = {
 ////////////////////////////////////////////////////////////
 function ChannelGroupComponent(props: ChannelGroupProps) {
   const app = useApp();
+  const { open: openConfirmModal } = useConfirmModal();
   
   const form = useForm({
     initialValues: { name: props.group.name },
@@ -358,9 +352,12 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                         color='red'
                         icon={<IconTrash size={16} />}
                         onClick={() => {
-                          openTypeConfirm({
+                          openConfirmModal({
                             title: 'Delete Channel Group',
-                            children: (
+                            modalProps: {
+                              yOffset: `${Math.max(30 - props.group.channels.length * 0.6, 1)}vh`,
+                            },
+                            content: (
                               <>
                                 <p style={{ marginBlockEnd: 0 }}>Are you sure you want to delete <b>{props.group.name}</b> and the following channels?</p>
                                 <ul style={{ marginBlockStart: 0, marginBlockEnd: 0 }}>
@@ -370,8 +367,9 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                                 </ul>
                               </>
                             ),
-                            confirm: props.group.name,
-                            confirmText: 'Please type the name of this group to confirm this action.',
+                            confirmLabel: 'Delete',
+                            typeToConfirm: props.group.channels.length > 2 ? props.group.name : undefined,
+                            confirmText: (<>Please type <b>{props.group.name}</b> to confirm this action.</>),
                             onConfirm: () => {
                               props.domain._mutators.removeGroup(props.group.id);
                             }

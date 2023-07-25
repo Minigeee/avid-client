@@ -28,7 +28,7 @@ import {
 } from '@mantine/core';
 import { DatePickerInput, DatePickerInputProps } from '@mantine/dates';
 import { useForm } from '@mantine/form';
-import { closeAllModals, ContextModalProps, openConfirmModal } from '@mantine/modals';
+import { closeAllModals, ContextModalProps } from '@mantine/modals';
 
 import {
   IconCalendarEvent,
@@ -41,12 +41,12 @@ import {
 import MemberInput from '@/lib/ui/components/MemberInput';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
+import { useConfirmModal } from './ConfirmModal';
 
 import config from '@/config';
 import {
   BoardWrapper,
   DomainWrapper,
-  getMember,
   getMemberSync,
   hasPermission,
   TasksWrapper,
@@ -411,7 +411,8 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
   // Set base assignee if needed (can only manage own tasks)
   useEffect(() => {
     if (!canManageAny && !form.values.assignee) {
-      getMember(props.domain.id, session.profile_id, session).then((member) => form.setFieldValue('assignee', member));
+      const member = getMemberSync(props.domain.id, session.profile_id);
+      form.setFieldValue('assignee', member);
     }
   }, []);
 
@@ -618,6 +619,8 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   const board = useBoard(props.board_id);
   const tasks = useTasks(props.board_id);
   const task = useTask(props.task.id, props.task);
+
+  const { open: openConfirmModal } = useConfirmModal();
   
   // Check if task is editable
   const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
@@ -720,19 +723,12 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                         onClick={() => {
                           openConfirmModal({
                             title: 'Delete Task',
-                            labels: { cancel: 'Cancel', confirm: 'Delete' },
-                            children: (
-                              <p>
+                            content: (
+                              <Text>
                                 Are you sure you want to delete <b>{props.board_prefix}-{props.task.sid}</b>?
-                              </p>
+                              </Text>
                             ),
-                            groupProps: {
-                              spacing: 'xs',
-                              sx: { marginTop: '0.5rem' },
-                            },
-                            confirmProps: {
-                              color: 'red',
-                            },
+                            confirmLabel: 'Delete',
                             onConfirm: () => {
                               if (!tasks._exists || !task._exists) return;
                               tasks._mutators.removeTasks([task.id]);

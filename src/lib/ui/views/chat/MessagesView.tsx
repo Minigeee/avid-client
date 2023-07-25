@@ -609,8 +609,8 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                 h='1.5625rem'
                 styles={reaction.self ? (theme) => ({
                   root: {
-                    background: theme.fn.linearGradient(60, `${theme.colors.indigo[9]}40`, `${theme.colors.grape[9]}40`),
-                    border: `1px solid ${theme.colors.grape[6]}`,
+                    background: theme.fn.linearGradient(60, `${theme.colors.indigo[6]}60`, `${theme.colors.grape[6]}60`),
+                    border: `1px solid ${theme.colors.grape[7]}`,
                   }
                 }) : undefined}
                 onClick={() => {

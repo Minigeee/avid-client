@@ -82,9 +82,7 @@ export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropd
       color='red'
       onClick={() => {
         openConfirmModal({
-          modalProps: {
-            title: 'Remove All Reactions'
-          },
+          title: 'Remove All Reactions',
           content: (
             <Text>
               Are you sure you want to remove all reactions from this message?
@@ -110,9 +108,7 @@ export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropd
         color='red'
         onClick={() => {
           openConfirmModal({
-            modalProps: {
-              title: 'Delete Message',
-            },
+            title: 'Delete Message',
             confirmLabel: 'Delete',
             content: (
               <Text>Are you sure you want to delete this message?</Text>

@@ -9,11 +9,12 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { ContextModalProps, openConfirmModal } from '@mantine/modals';
+import { ContextModalProps } from '@mantine/modals';
 
 import { IconTrash } from '@tabler/icons-react';
 
 import { useImageModal } from '.';
+import { useConfirmModal } from './ConfirmModal';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 import { RolesTab } from '@/lib/ui/components/settings/domain/RolesTab';
@@ -35,6 +36,7 @@ type TabProps = {
 function GeneralTab({ domain, ...props }: TabProps) {
   const profile = useProfile(props.session.profile_id);
 
+  const { open: openConfirmModal } = useConfirmModal();
   const { ImageModal, open: openImageModal } = useImageModal();
 
   return (
@@ -87,16 +89,8 @@ function GeneralTab({ domain, ...props }: TabProps) {
                 onClick={() => {
                   openConfirmModal({
                     title: 'Remove Domain Icon',
-                    labels: { cancel: 'Cancel', confirm: 'Remove' },
-                    children: 'Are you sure you want to remove the domain icon picture?',
-                    groupProps: {
-                      spacing: 'xs',
-                      sx: { marginTop: '0.5rem' },
-                    },
-                    confirmProps: {
-                      color: 'red',
-                    },
-
+                    confirmLabel: 'Remove',
+                    content: (<Text>Are you sure you want to remove the domain icon picture?</Text>),
                     // Optimistic mutation
                     onConfirm: async () => {
                       // Remove domain icon picture

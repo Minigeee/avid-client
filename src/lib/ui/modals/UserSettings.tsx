@@ -15,11 +15,12 @@ import {
   TextInput,
   Title
 } from '@mantine/core';
-import { ContextModalProps, openConfirmModal } from '@mantine/modals';
+import { ContextModalProps } from '@mantine/modals';
 
 import { IconTrash } from '@tabler/icons-react';
 
 import { useImageModal } from '.';
+import { useConfirmModal } from './ConfirmModal';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ProfileAvatar from '@/lib/ui/components/ProfileAvatar';
 import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
@@ -58,6 +59,7 @@ type TabProps = {
 
 ////////////////////////////////////////////////////////////
 function AccountTab({ session, profile, ...props }: TabProps) {
+  const { open: openConfirmModal } = useConfirmModal();
   const { ImageModal, open: openImageModal } = useImageModal();
 
   return (
@@ -106,16 +108,8 @@ function AccountTab({ session, profile, ...props }: TabProps) {
                   onClick={() => {
                     openConfirmModal({
                       title: 'Remove Profile Picture',
-                      labels: { cancel: 'Cancel', confirm: 'Remove' },
-                      children: 'Are you sure you want to remove your profile picture?',
-                      groupProps: {
-                        spacing: 'xs',
-                        sx: { marginTop: '0.5rem' },
-                      },
-                      confirmProps: {
-                        color: 'red',
-                      },
-
+                      confirmLabel: 'Remove',
+                      content: (<Text>Are you sure you want to remove your profile picture?</Text>),
                       // Optimistic mutation
                       onConfirm: () => {
                         // Remove profile picture

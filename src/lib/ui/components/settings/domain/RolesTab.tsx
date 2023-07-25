@@ -471,9 +471,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
 
                 // Make user confirm action
                 openConfirmModal({
-                  modalProps: {
-                    title: 'Delete Role'
-                  },
+                  title: 'Delete Role',
                   content: (
                     <Text>
                       Are you sure you want to delete <b>@{role.label}</b>?
@@ -1119,9 +1117,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
               iconSize={18}
               onClick={() => {
                 openConfirmModal({
-                  modalProps: {
-                    title: 'Remove Member',
-                  },
+                  title: 'Remove Member',
                   confirmLabel: 'Remove',
                   content: (
                     <Text>Are you sure you want to remove <b>{member.alias}</b> from the role <b>@{role.label}</b>?</Text>

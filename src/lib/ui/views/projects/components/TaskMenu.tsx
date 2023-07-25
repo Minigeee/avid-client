@@ -13,7 +13,7 @@ import {
   Text,
   useMantineTheme,
 } from '@mantine/core';
-import { closeAllModals, openConfirmModal } from '@mantine/modals';
+import { closeAllModals } from '@mantine/modals';
 
 import {
   IconArrowsSort,
@@ -27,6 +27,7 @@ import {
 } from '@tabler/icons-react';
 
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
+import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
@@ -86,6 +87,8 @@ type TaskMenuDropdownProps = Omit<TaskMenuProps, 'children'> & TaskMenuContext;
 
 ////////////////////////////////////////////////////////////
 function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownProps) {
+  const { open: openConfirmModal } = useConfirmModal();
+
   const [assignee, setAssignee] = useState<Member | null>(task?.assignee || null);
   const [origAssignee, setOrigAssignee] = useState<Member | null | undefined>(task?.assignee || null);
 
@@ -282,19 +285,12 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
         onClick={() => {
           openConfirmModal({
             title: 'Delete Task',
-            labels: { cancel: 'Cancel', confirm: 'Delete' },
-            children: (
-              <p>
+            confirmLabel: 'Delete',
+            content: (
+              <Text>
                 Are you sure you want to delete <b>{selected?.length || `${board.prefix}-${task?.sid}`}</b>{selected?.length ? ' tasks' : ''}?
-              </p>
+              </Text>
             ),
-            groupProps: {
-              spacing: 'xs',
-              sx: { marginTop: '0.5rem' },
-            },
-            confirmProps: {
-              color: 'red',
-            },
             onConfirm: () => {
               if (task || selected?.length)
                 props.tasks._mutators.removeTasks(selected?.length ? selected.map(x => x.id) : [task?.id || '']);

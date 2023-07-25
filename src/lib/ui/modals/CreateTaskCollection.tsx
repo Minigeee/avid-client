@@ -15,11 +15,12 @@ import {
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
-import { ContextModalProps, closeAllModals, openConfirmModal } from '@mantine/modals';
+import { ContextModalProps, closeAllModals } from '@mantine/modals';
 
 import { IconCalendarEvent, IconTrash } from '@tabler/icons-react';
 
 import RichTextEditor from '../components/rte/RichTextEditor';
+import { useConfirmModal } from './ConfirmModal';
 
 import config from '@/config';
 import { BoardWrapper, DomainWrapper } from '@/lib/hooks';
@@ -204,6 +205,8 @@ export type EditTaskCollectionProps = {
 
 ////////////////////////////////////////////////////////////
 export function EditTaskCollection({ context, id, innerProps: props }: ContextModalProps<EditTaskCollectionProps>) {
+  const { open: openConfirmModal } = useConfirmModal();
+
   const form = useForm({
     initialValues: {
       name: props.collection.name,
@@ -316,20 +319,13 @@ export function EditTaskCollection({ context, id, innerProps: props }: ContextMo
             onClick={() => {
               openConfirmModal({
                 title: `Delete ${isObjective ? 'Objective' : 'Collection'}`,
-                labels: { cancel: 'Cancel', confirm: 'Delete' },
-                children: (
+                confirmLabel: 'Delete',
+                content: (
                   <Text>
                     Are you sure you want to delete <b>{props.collection.name}</b>?<br />
                     <Text span size='sm' color='dimmed'>All tasks in this {isObjective ? 'objective' : 'collection'} will be moved to <b>Backlog</b>.</Text>
                   </Text>
                 ),
-                groupProps: {
-                  spacing: 'xs',
-                  sx: { marginTop: '0.5rem' },
-                },
-                confirmProps: {
-                  color: 'red',
-                },
                 onConfirm: () => {
                   props.board._mutators.removeCollection(props.collection.id);
                   closeAllModals();

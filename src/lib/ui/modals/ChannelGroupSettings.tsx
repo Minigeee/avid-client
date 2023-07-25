@@ -21,7 +21,7 @@ import {
   Tooltip,
   useMantineTheme
 } from '@mantine/core';
-import { ContextModalProps, openConfirmModal } from '@mantine/modals';
+import { ContextModalProps } from '@mantine/modals';
 
 import { IconAt, IconBadgeOff, IconFolder, IconPlus, IconTrash } from '@tabler/icons-react';
 

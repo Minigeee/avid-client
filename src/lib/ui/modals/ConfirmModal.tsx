@@ -25,6 +25,8 @@ import { useElementSize } from '@mantine/hooks';
 
 ////////////////////////////////////////////////////////////
 export type ConfirmModalProps = {
+  /** The title of the modal */
+  title: string;
   /** Modal content */
   content: JSX.Element;
   /** Props passed to modal component */
@@ -34,7 +36,7 @@ export type ConfirmModalProps = {
   /** The label shown on the cancel button */
   cancelLabel?: string;
   /** The label above the type to confirm input */
-  confirmText?: JSX.Element;
+  confirmText?: JSX.Element | string;
   /** Text the user must type to confirm action */
   typeToConfirm?: string;
   /** Function called when user cancels */
@@ -55,6 +57,8 @@ function ConfirmModalImpl(props: ConfirmModalProps & { setProps: (props: Confirm
 
   return (
     <Modal
+      title={props.title}
+      yOffset='30vh'
       {...props.modalProps}
       opened
       onClose={() => props.setProps(null)}
