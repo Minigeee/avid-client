@@ -11,7 +11,7 @@ import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { SwrWrapper } from './use-swr-wrapper';
 import { useDbQuery } from './use-db-query';
-import { updateMember } from './use-members';
+import { updateMemberLocal } from './use-members';
 
 import axios from 'axios';
 
@@ -85,7 +85,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState |
 				const url = await uploadProfile(profile, image, fname, session);
 
 				// Update member objects
-				updateMember(profile.id, (member) => ({ ...member, profile_picture: url }));
+				updateMemberLocal(profile.id, (member) => ({ ...member, profile_picture: url }));
 
 				return {
 					...profile,
@@ -107,7 +107,7 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState |
 				await deleteProfile(profile, session);
 
 				// Update member objects
-				updateMember(profile.id, (member) => ({ ...member, profile_picture: null }));
+				updateMemberLocal(profile.id, (member) => ({ ...member, profile_picture: null }));
 
 				return {
 					...profile,

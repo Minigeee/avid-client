@@ -1,4 +1,4 @@
-import { CSSProperties, ComponentPropsWithoutRef, forwardRef, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, ComponentPropsWithoutRef, RefObject, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
@@ -15,9 +15,10 @@ import {
   Tabs,
   Text,
   TextInput,
-  Tooltip
+  Tooltip,
+  createStyles
 } from '@mantine/core';
-import { useDebouncedState, useDebouncedValue } from '@mantine/hooks';
+import { useDebouncedState, useDebouncedValue, useIntersection } from '@mantine/hooks';
 
 import {
   IconApple,
@@ -38,6 +39,25 @@ import { SearchIndex } from 'emoji-mart';
 import { FixedSizeList, areEqual } from './VirtualList';
 import type { ListOnScrollProps } from 'react-window';
 import { throttle } from 'lodash';
+
+
+////////////////////////////////////////////////////////////
+const useStyles = createStyles((theme) => ({
+  list: {
+    '&::-webkit-scrollbar': {
+      width: 12,
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: theme.colors.dark[7],
+    },
+    '&::-webkit-scrollbar-thumb': {
+      minHeight: '3rem',
+      backgroundColor: theme.colors.dark[2],
+      borderRadius: 10,
+      border: `2px solid ${theme.colors.dark[7]}`,
+    },
+  },
+}));
 
 
 ////////////////////////////////////////////////////////////
@@ -319,17 +339,155 @@ SkinSelectItem.displayName = 'SkinSelectItem';
 
 
 ////////////////////////////////////////////////////////////
-type ScrollInfo = {
-  rows: ((style: CSSProperties) => JSX.Element)[];
-  titleIndices: number[];
-};
-
-////////////////////////////////////////////////////////////
 // Row component function
 const ItemWrapper = memo(({ data, index, style }: { data: ((style: CSSProperties) => JSX.Element)[], index: number, style: CSSProperties }) => {
   return data[index](style);
 }, areEqual);
 ItemWrapper.displayName = 'EmojiItemWrapper';
+
+
+////////////////////////////////////////////////////////////
+type EmojiPickerPageProps = {
+  containerRef: RefObject<HTMLDivElement>;
+
+  buttons: JSX.Element[];
+  emojiSize: number;
+  emojisPerRow: number;
+  gutter: number;
+};
+
+////////////////////////////////////////////////////////////
+function EmojiPickerPage(props: EmojiPickerPageProps) {
+  const numRows = Math.ceil(props.buttons.length / props.emojisPerRow);
+
+  const { ref: pageRef, entry } = useIntersection({ root: props.containerRef.current, threshold: 0 });
+
+  const [isIntersecting, setIsIntersecting] = useState<boolean>(false);
+  const [debounced] = useDebouncedValue(isIntersecting, 100);
+  useEffect(() => {
+    if (!entry) return;
+    setIsIntersecting(entry.isIntersecting);
+  }, [entry?.isIntersecting || false]);
+
+  // Filler element
+  const filler = useMemo(() => (
+    <div
+      ref={pageRef}
+      style={{
+        height: numRows * (props.emojiSize + props.gutter + 8),
+        width: props.emojisPerRow * (props.emojiSize + props.gutter + 8) - props.gutter,
+      }}
+    />
+  ), []);
+
+  // Content
+  const page = useMemo(() => {
+    return (
+      <SimpleGrid
+        ref={pageRef}
+        spacing={props.gutter}
+        verticalSpacing={props.gutter}
+        mb={props.gutter}
+        cols={props.emojisPerRow}
+      >
+        {props.buttons}
+      </SimpleGrid>
+    );
+  }, [props.buttons]);
+
+  
+  return debounced ? page : filler;
+}
+
+
+////////////////////////////////////////////////////////////
+type EmojiPickerScrollAreaProps = {
+  containerRef: RefObject<HTMLDivElement>;
+  scrollInfo: {
+    categories: Record<string, JSX.Element[]>;
+    positions: Record<string, number>;
+    hideAfter: Record<string, number>;
+    titlePos: number[];
+  };
+  searchPages: JSX.Element[];
+  activeCategoryIdx: number;
+  setActiveCategoryIdx: (value: number) => void;
+};
+
+////////////////////////////////////////////////////////////
+function EmojiPickerScrollArea({ containerRef, scrollInfo, activeCategoryIdx, ...props }: EmojiPickerScrollAreaProps) {
+  const [scrollPos, setScrollPos] = useState<number>(0);
+
+  // Called on scroll change
+  const onScrollChange = useCallback(
+    throttle(({ y }: { y: number }) => {
+      if (props.searchPages.length > 0) return;
+
+      // Get new index
+      let idx = activeCategoryIdx;
+      if (y > scrollInfo.titlePos[idx]) {
+        while (idx < scrollInfo.titlePos.length && y > scrollInfo.titlePos[idx])
+          ++idx;
+        --idx;
+      }
+      else {
+        while (idx > 0 && y < scrollInfo.titlePos[idx])
+          --idx;
+      }
+
+      // Update category index if changed
+      if (idx !== activeCategoryIdx)
+        props.setActiveCategoryIdx(idx);
+
+      setScrollPos(y);
+    }, 100, { leading: false }),
+    [props.searchPages.length, activeCategoryIdx]
+  );
+
+  return (
+    <ScrollArea viewportRef={containerRef} h={350} offsetScrollbars onScrollPositionChange={onScrollChange}>
+      {props.searchPages.length > 0 && (
+        <>
+          <Text
+            size='md'
+            weight={600}
+            sx={(theme) => ({
+              position: 'sticky',
+              height: 32,
+              top: 0,
+              zIndex: 1,
+              backgroundColor: `${theme.colors.dark[7]}D0`,
+              backdropFilter: 'blur(6px)',
+            })}
+          >
+            Search Results
+          </Text>
+          {props.searchPages}
+        </>
+      )}
+      {props.searchPages.length === 0 && Object.entries(scrollInfo.categories).map(([category, pages]) => (
+        <>
+          <Text
+            size='md'
+            weight={600}
+            sx={(theme) => ({
+              visibility: scrollPos >= (scrollInfo.hideAfter[category] || 1000000) ? 'hidden' : undefined,
+              position: 'sticky',
+              height: 32,
+              top: 0,
+              zIndex: 1,
+              backgroundColor: `${theme.colors.dark[7]}D0`,
+              backdropFilter: 'blur(6px)',
+            })}
+          >
+            {getCategoryLabel(category)}
+          </Text>
+          {pages}
+        </>
+      ))}
+    </ScrollArea>
+  );
+}
 
 
 ////////////////////////////////////////////////////////////
@@ -345,10 +503,11 @@ type EmojiPickerProps = {
 export function EmojiPicker(props: EmojiPickerProps) {
   const iconSize = props.iconSize || 24;
   const iconsPerRow = props.iconsPerRow || 7;
+  const rowsPerPage = 20;
   const emojiSize = props.emojiSize || 24;
-
+  
   // Ref for scoll list
-  const listRef = useRef<any>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const [search, setSearch] = useState<string>('');
   const [debouncedSearch] = useDebouncedValue(search, 50, { leading: true });
@@ -363,10 +522,10 @@ export function EmojiPicker(props: EmojiPickerProps) {
   }, [hovered]);
 
   // Filtered search results
-  const searchRows = useMemo(() => {
+  const searchPages = useMemo(() => {
     // Return all if no search
     if (debouncedSearch.length === 0) {
-      return null;
+      return [];
     }
 
     // New search query
@@ -374,130 +533,98 @@ export function EmojiPicker(props: EmojiPickerProps) {
     const filtered = Object.values(data.emojis).filter((emoji) =>
       emoji.id.indexOf(query) >= 0 || emoji.keywords.findIndex(kw => kw.indexOf(query) >= 0) >= 0 || emoji.name.toLocaleLowerCase().replace(/\s+/g, '_').indexOf(query) >= 0
     ).map(x => x.id);
-    
-    // Rows
+
+    if (filtered.length === 0)
+      return [];
+
+    // Calculate num pages
     const skinNum = parseInt(skin) + 1;
-    const rows: ((style: CSSProperties) => JSX.Element)[] = [];
-    const rh = emojiSize + 8;
+    const iconsPerPage = iconsPerRow * rowsPerPage;
+    const numPages = Math.ceil(filtered.length / iconsPerPage);
 
-    // Category title
-    rows.push((style) => (
-      <Text size='md' weight={600} h={rh} pt={6} style={style}>
-        Search Results
-      </Text>
-    ));
-
-    // Emojis
-    for (let i = 0; i < filtered.length; i += iconsPerRow) {
-      rows.push((style) => (
-        <Flex h={rh} mb={8} gap={8} style={style}>
-          {filtered.slice(i, i + iconsPerRow).map((id) => (
-            <EmojiButton
-              key={id}
-              id={id}
-              skin={skinNum}
-              size={emojiSize}
-              setHovered={setHovered}
-              onClick={() => props.onSelect?.(emojiSearch.get(id))}
-            />
-          ))}
-        </Flex>
+    const pages: JSX.Element[] = [];
+    
+    // WIP : Finish emoji picker
+    for (let i = 0; i < numPages; ++i) {
+      // Emoji buttons
+      const buttons = filtered.slice(i * iconsPerPage, (i + 1) * iconsPerPage).map((id) => (
+        <EmojiButton
+          key={id}
+          id={id}
+          skin={skinNum}
+          size={emojiSize}
+          setHovered={setHovered}
+          onClick={() => props.onSelect?.(emojiSearch.get(id))}
+        />
       ));
-    }
 
-    return rows;
+      // Add page
+      pages.push(
+        <EmojiPickerPage
+          containerRef={listRef}
+          buttons={buttons}
+          emojiSize={emojiSize}
+          emojisPerRow={iconsPerRow}
+          gutter={8}
+        />
+      );
+    }
+    
+    return pages;
   }, [debouncedSearch, skin]);
 
   // Scroll info
   const scrollInfo = useMemo(() => {
     const skinNum = parseInt(skin) + 1;
+    const categories: Record<string, JSX.Element[]> = {};
+    const positions: Record<string, number> = {};
+    const hideAfter: Record<string, number> = {};
+    const titlePos: number[] = [];
 
-    const rows: ((style: CSSProperties) => JSX.Element)[] = [];
-    const titleIndices: number[] = [];
-    const rh = emojiSize + 8;
+    for (let i = 0; i < data.categories.length; ++i) {
+      const category = data.categories[i];
+      const pages = categories[category.id] = [] as JSX.Element[];
 
-    for (const category of data.categories) {
-      // Category title
-      titleIndices.push(rows.length);
-      rows.push((style) => (
-        <div style={style}>
-          <Text
-            size='md'
-            weight={600}
-            p='0.5rem 0 0.6rem 0'
-            sx={(theme) => ({
-              backgroundColor: `${theme.colors.dark[7]}D0`,
-              backdropFilter: 'blur(6px)',
-            })}
-          >
-            {getCategoryLabel(category.id)}
-          </Text>
-        </div>
-      ));
+      // Calculate num pages
+      const iconsPerPage = iconsPerRow * rowsPerPage;
+      const numPages = Math.ceil(category.emojis.length / iconsPerPage);
 
-      // Emojis
-      for (let i = 0; i < category.emojis.length; i += iconsPerRow) {
-        rows.push((style) => (
-          <Flex h={rh} mb={8} gap={8} style={style}>
-            {category.emojis.slice(i, i + iconsPerRow).map((id) => (
-              <EmojiButton
-                key={id}
-                id={id}
-                skin={skinNum}
-                size={emojiSize}
-                setHovered={setHovered}
-                onClick={() => props.onSelect?.(emojiSearch.get(id))}
-              />
-            ))}
-          </Flex>
+      // Calculate position
+      const prevCategory = i === 0 ? null : data.categories[i - 1];
+      const pos = prevCategory ? hideAfter[prevCategory.id] : 0;
+      const size = Math.ceil(category.emojis.length / iconsPerRow) * (emojiSize + 8 + 8) + (32);
+      hideAfter[category.id] = pos + size;
+      positions[category.id] = pos;
+      titlePos.push(pos);
+
+      for (let i = 0; i < numPages; ++i) {
+        // Emoji buttons
+        const buttons = category.emojis.slice(i * iconsPerPage, (i + 1) * iconsPerPage).map((id) => (
+          <EmojiButton
+            key={id}
+            id={id}
+            skin={skinNum}
+            size={emojiSize}
+            setHovered={setHovered}
+            onClick={() => props.onSelect?.(emojiSearch.get(id))}
+          />
         ));
+
+        // Add page
+        pages.push(
+          <EmojiPickerPage
+            containerRef={listRef}
+            buttons={buttons}
+            emojiSize={emojiSize}
+            emojisPerRow={iconsPerRow}
+            gutter={8}
+          />
+        );
       }
     }
 
-    return { rows, titleIndices } as ScrollInfo;
+    return { categories, positions, hideAfter, titlePos };
   }, [skin]);
-
-  // Scroll callback
-  const onScroll = useMemo(() => throttle((props: ListOnScrollProps) => {
-    if (searchRows) return;
-
-    const rh = emojiSize + 8 + 8;
-    const offset = props.scrollOffset + 64;
-
-    // Check prev section
-    if (offset < scrollInfo.titleIndices[activeCategoryIdx] * rh)
-      setActiveCategoryIdx(activeCategoryIdx - 1);
-
-    // Check next section
-    else if (activeCategoryIdx < data.categories.length - 1 && offset >= scrollInfo.titleIndices[activeCategoryIdx + 1] * rh)
-      setActiveCategoryIdx(activeCategoryIdx + 1);
-
-  }, 50, { leading: false }), [
-    activeCategoryIdx,
-    searchRows,
-  ]);
-
-  // Scroll area
-  const scrollArea = useMemo(() => (
-    <FixedSizeList
-      ref={listRef}
-      height={350}
-      width={(emojiSize + 16) * iconsPerRow + 16}
-      itemCount={(searchRows || scrollInfo.rows).length}
-      itemData={searchRows || scrollInfo.rows}
-      itemSize={emojiSize + 16}
-      stickyIndices={searchRows ? undefined : scrollInfo.titleIndices}
-      onScroll={onScroll}
-    >
-      {ItemWrapper}
-    </FixedSizeList>
-  ), [
-    emojiSize,
-    iconsPerRow,
-    searchRows,
-    scrollInfo,
-    onScroll,
-  ]);
 
 
   return (
@@ -519,10 +646,10 @@ export function EmojiPicker(props: EmojiPickerProps) {
                   transition: 'color, 0.1s',
                 })}
                 onClick={() => {
-                  if (!listRef.current) return;
+                  if (!listRef.current || searchPages.length > 0) return;
 
                   setActiveCategoryIdx(idx);
-                  listRef.current.scrollToItem(scrollInfo.titleIndices[idx], 'start');
+                  listRef.current?.scrollTo({ top: scrollInfo.positions[category.id] });
                 }}
               >
                 <CategoryIcon category={category.id} size={iconSize} />
@@ -578,7 +705,13 @@ export function EmojiPicker(props: EmojiPickerProps) {
         />
       </Group>
 
-      {scrollArea}
+      <EmojiPickerScrollArea
+        containerRef={listRef}
+        scrollInfo={scrollInfo}
+        searchPages={searchPages}
+        activeCategoryIdx={activeCategoryIdx}
+        setActiveCategoryIdx={setActiveCategoryIdx}
+      />
 
       <Divider />
 
