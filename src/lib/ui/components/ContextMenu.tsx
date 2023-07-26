@@ -1,4 +1,4 @@
-import { DependencyList, PropsWithChildren, ReactNode, createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
+import { DependencyList, MouseEventHandler, PropsWithChildren, ReactNode, createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
   Box,
@@ -150,6 +150,8 @@ type ContextMenuTriggerProps = PropsWithChildren & BoxProps & {
   context?: any;
   /** Set this to true to prevent context menu from trigger, does default behavior instead */
   disabled?: boolean;
+
+  onClick?: MouseEventHandler<HTMLDivElement>;
 };
 
 ////////////////////////////////////////////////////////////

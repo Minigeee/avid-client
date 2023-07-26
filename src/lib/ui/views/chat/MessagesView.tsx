@@ -37,6 +37,7 @@ import {
   IconTool,
 } from '@tabler/icons-react';
 
+import { openAttachmentPreview } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
@@ -585,7 +586,12 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             }
 
             return (
-              <ContextMenu.Trigger key={attachment.filename} context={{ msg, img: attachment.url }} sx={{ width: 'fit-content' }}>
+              <ContextMenu.Trigger
+                key={attachment.filename}
+                context={{ msg, img: attachment.url }}
+                sx={{ width: 'fit-content', cursor: 'pointer' }}
+                onClick={() => openAttachmentPreview({ attachment })}
+              >
                 <Image
                   key={attachment.filename}
                   src={attachment.url}
@@ -593,6 +599,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                   width={w}
                   height={h}
                   style={{ borderRadius: 6 }}
+                  title={attachment.filename}
                 />
               </ContextMenu.Trigger>
             );
@@ -609,8 +616,8 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                 h='1.5625rem'
                 styles={reaction.self ? (theme) => ({
                   root: {
-                    background: theme.fn.linearGradient(60, `${theme.colors.indigo[6]}60`, `${theme.colors.grape[6]}60`),
-                    border: `1px solid ${theme.colors.grape[7]}`,
+                    background: `${theme.colors.violet[8]}50`,
+                    border: `1px solid ${theme.colors.grape[8]}`,
                   }
                 }) : undefined}
                 onClick={() => {

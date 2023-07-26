@@ -1,6 +1,5 @@
 import { openContextModal } from '@mantine/modals';
 
-import TypeConfirm, { TypeConfirmProps } from './TypeConfirm';
 import CreateChannel, { CreateChannelProps } from './CreateChannel';
 import CreateChannelGroup, { CreateChannelGroupProps } from './CreateChannelGroup';
 import CreateDomain, { CreateDomainProps } from './CreateDomain';
@@ -14,10 +13,11 @@ import DomainSettings, { DomainSettingsProps } from './DomainSettings';
 import ChannelGroupSettings, { ChannelGroupSettingsProps } from './ChannelGroupSettings';
 import UserSettings, { UserSettingsProps } from './UserSettings';
 
+import AttachmentPreview, { AttachmentPreviewProps } from './AttachmentPreview';
+
 
 ////////////////////////////////////////////////////////////
 export const modals = {
-	'type-confirm': TypeConfirm,
 	'create-channel': CreateChannel,
 	'create-channel-group': CreateChannelGroup,
 	'create-domain': CreateDomain,
@@ -29,16 +29,9 @@ export const modals = {
 	'domain-settings': DomainSettings,
 	'channel-group-settings': ChannelGroupSettings,
 	'user-settings': UserSettings,
+
+	'attachment-preview': AttachmentPreview,
 };
-
-
-/** Opens a modal that asks user to confirm their action by typing */
-export const openTypeConfirm = (props: TypeConfirmProps) => openContextModal({
-	modal: 'type-confirm',
-	title: props.title || 'Confirm Action',
-	innerProps: props,
-	size: 'md',
-});
 
 
 /** Opens the modal to create channels */
@@ -150,6 +143,21 @@ export const openUserSettings = (props: UserSettingsProps) => openContextModal({
 			maxHeight: '90vh',
 		},
 	},
+});
+
+
+/** Opens the modal to create channel groups */
+export const openAttachmentPreview = (props: AttachmentPreviewProps) => openContextModal({
+	modal: 'attachment-preview',
+	withCloseButton: false,
+	size: 'auto',
+	centered: true,
+	styles: {
+		body: {
+			padding: 0,
+		},
+	},
+	innerProps: props,
 });
 
 
