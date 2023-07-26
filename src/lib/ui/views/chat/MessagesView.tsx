@@ -610,6 +610,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           <Group spacing={6} maw='80ch'>
             {msg.reactions.map((reaction) => (
               <Button
+                key={reaction.emoji}
                 variant='default'
                 disabled={!props.canSendReactions && !reaction.self}
                 p='0rem 0.4rem'

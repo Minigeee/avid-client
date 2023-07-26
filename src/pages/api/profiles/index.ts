@@ -3,10 +3,10 @@ import { createRouter, expressWrapper } from 'next-connect';
 import assert from 'assert';
 
 import _config from '@/config';
-import { AclEntry, Channel, ChannelGroup, Domain, Member, Role } from '@/lib/types';
+import { AccessToken } from '@/lib/types';
 import { profiles, query, sql } from '@/lib/db';
 
-import { AccessToken, refresh, token } from '@/lib/utility/authenticate';
+import { refresh, token } from '@/lib/utility/authenticate';
 
 
 const router = createRouter<NextApiRequest & { token: AccessToken }, NextApiResponse>();

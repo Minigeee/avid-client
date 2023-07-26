@@ -363,7 +363,7 @@ function EmojiPickerPage(props: EmojiPickerPageProps) {
   const { ref: pageRef, entry } = useIntersection({ root: props.containerRef.current, threshold: 0 });
 
   const [isIntersecting, setIsIntersecting] = useState<boolean>(false);
-  const [debounced] = useDebouncedValue(isIntersecting, 100);
+  const [debounced] = useDebouncedValue(isIntersecting, 50);
   useEffect(() => {
     if (!entry) return;
     setIsIntersecting(entry.isIntersecting);

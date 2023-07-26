@@ -1415,8 +1415,8 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 	}, { message: 'An error occurred while updating RTC state' }));
 
 	// Called when a consumer is resumed from the server side
-	_.socket.on('consumer-layers-changed', errorWrapper((consumer_id: string, spatial: number, temporal: number) => {
-		// Get consumer info
+	_.socket.on('consumer-layers-changed', errorWrapper((consumer_id, spatial, temporal) => {
+		// Get consumer 
 		const info = _.consumers[consumer_id];
 		if (!info) return;
 

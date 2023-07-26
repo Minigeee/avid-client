@@ -395,6 +395,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
               <Avatar.Group>
                 {assignees.slice(0, 5).map(member => (
                   <Tooltip
+                    key={member.id}
                     label={member.alias}
                     withArrow
                   >
@@ -454,6 +455,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
                     <Menu.Dropdown>
                       {assignees.slice(5).map(member => (
                         <Menu.Item
+                          key={member.id}
                           icon={<MemberAvatar size={32} member={member} />}
                           sx={(theme) => ({
                             backgroundColor: selectedAssignee === member.id ? theme.colors.dark[4] : undefined,
