@@ -29,6 +29,7 @@ import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import {
   IconArrowForwardUp,
   IconChevronsDown,
+  IconMessages,
   IconMoodHappy,
   IconMoodPlus,
   IconPaperclip,
@@ -44,6 +45,7 @@ import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
 import { MessageContextMenu } from './components/MessageMenu';
+import SidePanelView from './SidePanelView';
 
 
 import config from '@/config';
@@ -88,6 +90,12 @@ const MAX_IMAGE_HEIGHT = 1000;
 type MessagesViewProps = {
   channel_id: string;
   domain: DomainWrapper;
+  /** Thread that should be shown in message view */
+  thread_id?: string;
+  /** Should the side panel be shown */
+  withSidePanel?: boolean;
+  /** Input box placeholder */
+  placeholder?: string;
 
   /** Side padding */
   p?: string;
@@ -109,6 +117,8 @@ type MessageViewState = {
   replying_to: ExpandedMessage | null;
   /** The id of the message to scroll to */
   scroll_to: string | null;
+  /** The thread that should be viewed */
+  view_thread: string | null;
 };
 
 /** Message view context state, used to pass current state within message view */
@@ -117,6 +127,8 @@ export type MessageViewContextState = {
   domain: DomainWrapper;
   /** Id of the message channel */
   channel_id: string;
+  /** Thread that should be shown in message view */
+  thread_id: string | undefined;
   /** The sender member */
   sender: MemberWrapper<false>;
   /** Raw messages */
@@ -150,6 +162,8 @@ export type MessageViewContextState = {
     pb: string;
     /** Gap between pfp and message */
     avatarGap: 'sm' | 'md' | 'lg';
+    /** Indicates if side panel should be opened */
+    withSidePanel: boolean;
   },
 };
 
@@ -180,7 +194,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   const app = useApp();
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(channel_id, domain.id);
+  const messages = useMessages(channel_id, domain.id, props.thread_id);
   const groupedMessages = useGroupedMessages(messages.data || [], domain, sender);
 
   // Editor ref
@@ -195,6 +209,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     editing: null,
     replying_to: null,
     scroll_to: null,
+    view_thread: null,
 	});
 
   const [typingIds, setTypingIds] = useState<string[]>([]);
@@ -225,6 +240,9 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
 
   // New message event
   useEffect(() => {
+    // Skip if thread view
+    if (props.thread_id) return;
+
     function onNewMessage(domain_id: string, message: Message) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || message.channel !== channel_id) return;
@@ -251,6 +269,9 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
 
   // Reaction handler
   useEffect(() => {
+    // Skip if thread view
+    if (props.thread_id) return;
+
     function onReactionChanges(p_channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || p_channel_id !== channel_id) return;
@@ -268,6 +289,9 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
 
   // Displaying members that are typing
   useEffect(() => {
+    // Skip if thread view
+    if (props.thread_id) return;
+
     function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
       // Only care about members in this channel
       if (typing_channel_id !== channel_id) return;
@@ -306,6 +330,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   return {
     domain,
     channel_id,
+    thread_id: props.thread_id,
     sender,
     messages,
     grouped: groupedMessages,
@@ -326,6 +351,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       p: sidePadding,
       pb: bottomPadding,
       avatarGap: avatarGap,
+      withSidePanel: props.withSidePanel !== false,
     }
   } as MessageViewContextState;
 }
@@ -399,6 +425,7 @@ type MessageGroupProps = {
   rolesMap: Record<string, Role & { index: number }>;
 
   sender: MemberWrapper;
+  thread_id: string | undefined;
   editing: string | null;
   p: string;
   avatarGap: 'sm' | 'md' | 'lg';
@@ -476,7 +503,10 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
         />
       )}
 
-      <Stack spacing={6} sx={(theme) => ({ marginLeft: props.idx !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined })}>
+      <Stack spacing={6} sx={(theme) => ({
+        flexGrow: 1,
+        marginLeft: props.idx !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined,
+      })}>
         {props.editing !== msg.id && (
           <>
             {props.idx === 0 && (
@@ -681,6 +711,24 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           </Group>
         )}
       </Stack>
+
+      {!props.thread_id && msg.thread && (
+        <ActionButton
+          tooltip='View Thread'
+          tooltipProps={{ position: 'left' }}
+          mr={4}
+          sx={(theme) => ({
+            color: theme.colors.dark[1],
+            '&:hover': {
+              backgroundColor: 'transparent',
+              color: theme.colors.dark[0],
+            }
+          })}
+          onClick={() => props.setState.current?.('view_thread', msg.thread || null)}
+        >
+          <IconMessages size={16} />
+        </ActionButton>
+      )}
     </ContextMenu.Trigger>
   );
 }
@@ -874,6 +922,7 @@ function MessagesViewport(props: MessagesViewportProps) {
                       rolesMap={rolesMap}
 
                       sender={context.sender as MemberWrapper}
+                      thread_id={context.style.withSidePanel ? context.thread_id : '_'}
                       editing={cachedProps[`${day}.${j}`].editing}
                       p={context.style.p}
                       avatarGap={context.style.avatarGap}
@@ -901,6 +950,7 @@ function MessagesViewport(props: MessagesViewportProps) {
 
 ////////////////////////////////////////////////////////////
 type TextEditorProps = {
+  placeholder?: string;
   canSendAttachments: boolean;
   onSubmit: (message: string, attachments: FileAttachment[]) => boolean;
 };
@@ -961,7 +1011,7 @@ function TextEditor(props: TextEditorProps) {
       domain={context.domain}
 
       variant={useFormattedEditor ? 'full' : 'minimal'}
-      placeholder='Message'
+      placeholder={props.placeholder || 'Message'}
       markdown
       autofocus
       focusRing={false}
@@ -1111,143 +1161,162 @@ export default function MessagesView(props: MessagesViewProps) {
 
   return (
     <MessageViewContext.Provider value={context}>
-      <Box sx={(theme) => ({
-        display: 'flex',
-        position: 'relative',
-        flexFlow: 'column',
-        width: '100%',
-        height: '100%',
-        backgroundColor: theme.colors.dark[7],
-      })}>
-        {/* Work around to broken justify-content: flex-end */}
-        <div style={{ flexGrow: 1 }} />
-        {lagged && sender._exists && messages._exists && (
-          <MessagesViewport
-            showScrollBottom={showScrollBottom}
-            setShowScrollBottom={setShowScrollBottom}
-          />
-        )}
-
-        <Box sx={{
+      <Flex h='100%' align='stretch'>
+        <Box sx={(theme) => ({
+          flexGrow: 1,
+          display: 'flex',
           position: 'relative',
-          margin: `0rem ${context.style.p} ${context.style.pb} ${context.style.p}`,
-        }}>
-          <Transition mounted={context.state.typing.length > 0} transition='slide-up' duration={200}>
-            {(styles) => (
-              <Group spacing={9} sx={(theme) => ({
-                position: 'absolute',
-                top: '-1.45rem',
-                padding: '1px 0.5rem 1px 0.3rem',
-                backgroundColor: `${theme.colors.dark[7]}bb`,
-                borderRadius: 3,
-                zIndex: 0,
-              })} style={styles}>
-                <Loader variant='dots' size='xs' />
-                <Text size={11.5}>
-                  {context.state.typing.length <= 1 && (
-                    <><b>{context.state.last_typing?.alias}</b> is typing...</>
-                  )}
-                  {context.state.typing.length == 2 && (
-                    <><b>{context.state.typing[0].alias}</b> and <b>{context.state.typing[1].alias}</b> are typing...</>
-                  )}
-                  {context.state.typing.length == 3 && (
-                    <><b>{context.state.typing[0].alias}</b>, <b>{context.state.typing[1].alias}</b>, and <b>{context.state.typing[2].alias}</b> are typing...</>
-                  )}
-                  {context.state.typing.length > 3 && 'Several people are typing...'}
-                </Text>
-              </Group>
-            )}
-          </Transition>
-
-          {showScrollBottom && (
-            <ActionButton
-              tooltip='Scroll To Bottom'
-              tooltipProps={{ position: 'left', openDelay: 500 }}
-              variant='filled'
-              size='xl'
-              radius='xl'
-              sx={(theme) => ({
-                position: 'absolute',
-                top: '-3.75rem',
-                right: '0.25rem',
-                backgroundColor: theme.colors.dark[8],
-                '&:hover': {
-                  backgroundColor: theme.colors.dark[6],
-                },
-              })}
-              onClick={scrollToBottom}
-            >
-              <IconChevronsDown />
-            </ActionButton>
-          )}
-
-          {context.state.replying_to && (
-            <Group
-              h='1.75rem'
-              p='0.15rem 0.5rem'
-              spacing={6}
-              align='start'
-              sx={(theme) => ({
-                backgroundColor: theme.colors.dark[8],
-                borderTopLeftRadius: 3,
-                borderTopRightRadius: 3,
-              })}
-            >
-              <IconArrowForwardUp size={18} style={{ marginTop: '0.1rem' }} />
-              <MemberAvatar
-                member={context.state.replying_to.sender}
-                size={20}
-                sx={{ marginTop: '0.0625rem' }}
-              />
-              <Text
-                size={12}
-                weight={600}
-                mt={2}
-              >
-                {context.state.replying_to.sender?.alias}
-              </Text>
-              <Text
-                size={11}
-                mt={3}
-                mah='1.25rem'
-                sx={{
-                  maxWidth: '80ch',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {replyToMsg}
-              </Text>
-
-              <div style={{ flexGrow: 1 }} />
-              <CloseButton
-                size={'xs'}
-                iconSize={15}
-                mt={2}
-                onClick={() => context.state._set('replying_to', null)}
-              />
-            </Group>
-          )}
-
-          {hasPermission(props.domain, props.channel_id, 'can_send_messages') && (
-            <TextEditor
-              canSendAttachments={hasPermission(props.domain, props.channel_id, 'can_send_attachments')}
-              onSubmit={(message, attachments) => {
-                // If these don't exist, return false to indicate submit was not handled, don't clear input
-                if (!messages._exists || !sender._exists)
-                  return false;
-
-                // Send message
-                messages._mutators.addMessage(message, sender, {
-                  attachments,
-                  reply_to: context.state.replying_to || undefined,
-                });
-                return true;
-              }}
+          flexFlow: 'column',
+          height: '100%',
+          backgroundColor: theme.colors.dark[7],
+        })}>
+          {/* Work around to broken justify-content: flex-end */}
+          <div style={{ flexGrow: 1 }} />
+          {lagged && sender._exists && messages._exists && (
+            <MessagesViewport
+              showScrollBottom={showScrollBottom}
+              setShowScrollBottom={setShowScrollBottom}
             />
           )}
+
+          <Box sx={{
+            position: 'relative',
+            margin: `0rem ${context.style.p} ${context.style.pb} ${context.style.p}`,
+          }}>
+            <Transition mounted={context.state.typing.length > 0} transition='slide-up' duration={200}>
+              {(styles) => (
+                <Group spacing={9} sx={(theme) => ({
+                  position: 'absolute',
+                  top: '-1.45rem',
+                  padding: '1px 0.5rem 1px 0.3rem',
+                  backgroundColor: `${theme.colors.dark[7]}bb`,
+                  borderRadius: 3,
+                  zIndex: 0,
+                })} style={styles}>
+                  <Loader variant='dots' size='xs' />
+                  <Text size={11.5}>
+                    {context.state.typing.length <= 1 && (
+                      <><b>{context.state.last_typing?.alias}</b> is typing...</>
+                    )}
+                    {context.state.typing.length == 2 && (
+                      <><b>{context.state.typing[0].alias}</b> and <b>{context.state.typing[1].alias}</b> are typing...</>
+                    )}
+                    {context.state.typing.length == 3 && (
+                      <><b>{context.state.typing[0].alias}</b>, <b>{context.state.typing[1].alias}</b>, and <b>{context.state.typing[2].alias}</b> are typing...</>
+                    )}
+                    {context.state.typing.length > 3 && 'Several people are typing...'}
+                  </Text>
+                </Group>
+              )}
+            </Transition>
+
+            {showScrollBottom && (
+              <ActionButton
+                tooltip='Scroll To Bottom'
+                tooltipProps={{ position: 'left', openDelay: 500 }}
+                variant='filled'
+                size='xl'
+                radius='xl'
+                sx={(theme) => ({
+                  position: 'absolute',
+                  top: '-3.75rem',
+                  right: '0.25rem',
+                  backgroundColor: theme.colors.dark[8],
+                  '&:hover': {
+                    backgroundColor: theme.colors.dark[6],
+                  },
+                })}
+                onClick={scrollToBottom}
+              >
+                <IconChevronsDown />
+              </ActionButton>
+            )}
+
+            {context.state.replying_to && (
+              <Group
+                h='1.75rem'
+                p='0.15rem 0.5rem'
+                spacing={6}
+                align='start'
+                sx={(theme) => ({
+                  backgroundColor: theme.colors.dark[8],
+                  borderTopLeftRadius: 3,
+                  borderTopRightRadius: 3,
+                })}
+              >
+                <IconArrowForwardUp size={18} style={{ marginTop: '0.1rem' }} />
+                <MemberAvatar
+                  member={context.state.replying_to.sender}
+                  size={20}
+                  sx={{ marginTop: '0.0625rem' }}
+                />
+                <Text
+                  size={12}
+                  weight={600}
+                  mt={2}
+                >
+                  {context.state.replying_to.sender?.alias}
+                </Text>
+                <Text
+                  size={11}
+                  mt={3}
+                  mah='1.25rem'
+                  sx={{
+                    maxWidth: '80ch',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {replyToMsg}
+                </Text>
+
+                <div style={{ flexGrow: 1 }} />
+                <CloseButton
+                  size={'xs'}
+                  iconSize={15}
+                  mt={2}
+                  onClick={() => context.state._set('replying_to', null)}
+                />
+              </Group>
+            )}
+
+            {hasPermission(props.domain, props.channel_id, 'can_send_messages') && (
+              <TextEditor
+                placeholder={props.placeholder}
+                canSendAttachments={hasPermission(props.domain, props.channel_id, 'can_send_attachments')}
+                onSubmit={(message, attachments) => {
+                  // If these don't exist, return false to indicate submit was not handled, don't clear input
+                  if (!messages._exists || !sender._exists)
+                    return false;
+
+                  // Send message
+                  messages._mutators.addMessage(message, sender, {
+                    attachments,
+                    reply_to: context.state.replying_to || undefined,
+                  });
+                  return true;
+                }}
+              />
+            )}
+          </Box>
         </Box>
-      </Box>
+
+        {props.withSidePanel !== false && (
+          <Box sx={(theme) => ({
+            flexBasis: '24rem',
+            height: '100%',
+            /* position: 'relative',
+            boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`, */
+            borderLeft: `1px solid ${theme.colors.dark[6]}`,
+          })}>
+            <SidePanelView
+              channel_id={props.channel_id}
+              domain={props.domain}
+              context={context}
+            />
+          </Box>
+        )}
+      </Flex>
     </MessageViewContext.Provider>
   );
 }

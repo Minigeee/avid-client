@@ -94,6 +94,7 @@ export function ContextMenu(props: ContextMenuProps) {
               return merge({
                 dropdown: {
                   borderColor: theme.colors.dark[5],
+                  boxShadow: `0px 0px 12px #00000020`,
                 },
                 divider: {
                   borderColor: theme.colors.dark[5],

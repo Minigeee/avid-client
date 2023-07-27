@@ -1,15 +1,14 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import ReactDomServer from 'react-dom/server';
 import assert from 'assert';
 
 import useSWR, { KeyedMutator, mutate as _mutate } from 'swr';
-import useSWRInfinite from 'swr/infinite';
-import { cache, ScopedMutator, useSWRConfig } from 'swr/_internal';
+import useSWRInfinite, { unstable_serialize } from 'swr/infinite';
 
 import config from '@/config';
 import { api, uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { AggregatedReaction, ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
+import { AggregatedReaction, ExpandedMessage, FileAttachment, Member, Message, Role, Thread } from '@/lib/types';
 
 import { DomainWrapper } from './use-domain';
 import { MemberWrapper, getMemberSync, setMembers, useMemberCache } from './use-members';
@@ -43,6 +42,9 @@ export type ExpandedMessageWithPing = ExpandedMessage & {
 
 /** Type for grouped messages within a channel. It is grouped by day, then by sender */
 export type GroupedMessages = Record<string, ExpandedMessageWithPing[][]>;
+
+/** Key function for infinite loader */
+type _KeyFn = (idx: number, prevData: RawMessage[]) => string;
 
 ////////////////////////////////////////////////////////////
 type MarkdownEnv = {
@@ -244,14 +246,33 @@ let _cache = {
 // Message fetcher
 ////////////////////////////////////////////////////////////
 
+/** Key function */
+function makeKeyFn(channel_id: string, thread_id: string | undefined, session: SessionState) {
+	return (idx: number, prevData: RawMessage[]) => {
+		// Don't retrieve if reached end
+		if (prevData && prevData.length < config.app.message.query_limit) return;
+		if (!session.token || !channel_id) return;
+
+		// Return key with page number
+		return `${channel_id}${thread_id ? '.' + thread_id : ''}.messages?page=${idx}`;
+	};
+}
+
 /** Message fetcher */
 function fetcher(session: SessionState, domain_id: string) {
 	return async (key: string) => {
-		const channel_id = key.split('.')[0];
+		const parts = key.split('.');
+		const channel_id = parts[0];
+		const thread_id = parts.length === 3 ? parts[1] : undefined;
 		const page = parseInt(key.split('=').at(-1) as string);
 
 		const results = await api('GET /messages', {
-			query: { channel: channel_id, page, limit: config.app.message.query_limit },
+			query: {
+				channel: channel_id,
+				thread: thread_id,
+				page,
+				limit: config.app.message.query_limit,
+			},
 		}, { session });
 
 		// Set members
@@ -275,6 +296,44 @@ function findMessage(messages: RawMessage[][], message_id: string) {
 	}
 
 	return { page, idx };
+}
+
+////////////////////////////////////////////////////////////
+function updateSwrMessages(updater: (messages: RawMessage[][]) => RawMessage[][] | undefined, message: { thread?: string }, channel_id: string, thread_id: string | undefined, session: SessionState) {
+	// If thread id given, then should update main message hook
+	if (thread_id) {
+		const key = makeKeyFn(channel_id, undefined, session);
+		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || []), { revalidate: false });
+	}
+	else if (message.thread) {
+		const key = makeKeyFn(channel_id, message.thread, session);
+		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || []), { revalidate: false });
+	}
+}
+
+////////////////////////////////////////////////////////////
+function copyToOtherHooks(messages: RawMessage[][] | undefined, message_id: string, channel_id: string, thread_id: string | undefined, session: SessionState) {
+	if (!messages) return;
+
+	// Find new message
+	const { page, idx } = findMessage(messages, message_id);
+	if (idx < 0) return;
+
+	// Copy new message to other hooks
+	const newMessage = messages[page][idx];
+	updateSwrMessages((messages) => {
+		// Find message
+		const { page, idx } = findMessage(messages, message_id);
+		if (idx < 0) return messages;
+	
+		// Create copies
+		const pagesCopy = messages.slice();
+		const msgsCopy = pagesCopy[page].slice();
+		msgsCopy[idx] = newMessage;
+		pagesCopy[page] = msgsCopy;
+	
+		return pagesCopy;
+	}, newMessage, channel_id, thread_id, session);
 }
 
 ////////////////////////////////////////////////////////////
@@ -408,7 +467,7 @@ function removeReactionsLocal(messages: RawMessage[][] | undefined, message_id: 
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, channel_id: string, domain_id: string) {
+function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, channel_id: string, domain_id: string, thread_id: string | undefined) {
 	return {
 		/**
 		 * Add a message to the specified channel
@@ -436,20 +495,48 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 					body: {
 						channel: channel_id,
 						reply_to: options?.reply_to?.id,
+						thread: thread_id,
 						message,
 						attachments: hasAttachments ? uploads : undefined,
 					},
 				}, { session });
 
+				// For updating threads
+				updateSwrMessages((messages) => {
+					const copy = addMessageLocal(messages, results) || [];
+
+					// Remove temp id message
+					const { page, idx } = findMessage(copy, tempId);
+					if (idx >= 0)
+						copy[page].splice(idx, 1);
+
+					return copy;
+				}, results, channel_id, thread_id, session);
+
+				// Update thread latest activity
+				if (results.thread) {
+					_mutate(`${channel_id}.threads`, (threads: Thread[] | undefined) => {
+						if (!threads) return;
+						const idx = threads.findIndex(x => x.id === results.thread);
+						if (idx < 0) return threads;
+
+						const copy = threads.slice();
+						copy[idx] = { ...copy[idx], last_active: new Date().toISOString() };
+
+						return copy;
+					});
+				}
+
 				// Update message with the correct id
 				return addMessageLocal(messages, results);
 			}, { message: 'An error occurred while posting message' }), {
 				optimisticData: (messages) => {
-					// Add message locally with temp id
-					return addMessageLocal(messages, {
+					const msg = {
 						id: tempId,
 						channel: channel_id,
 						sender: sender.id,
+						reply_to: options?.reply_to?.id,
+						thread: thread_id,
 						message,
 						attachments: options?.attachments?.map(f => ({
 							...f,
@@ -458,7 +545,13 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 							file: undefined,
 						})),
 						created_at: now,
-					}) || [];
+					};
+
+					// optimistically update other message hooks
+					updateSwrMessages((messages) => addMessageLocal(messages, msg), msg, channel_id, thread_id, session);
+
+					// Add message locally with temp id
+					return addMessageLocal(messages, msg) || [];
 				},
 				revalidate: false,
 			});
@@ -475,6 +568,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		addMessageLocal: (message: Message) => mutate(
 			swrErrorWrapper(
 				async (messages: RawMessage[][]) => {
+					updateSwrMessages((messages) => addMessageLocal(messages, message), message, channel_id, thread_id, session);
 					return addMessageLocal(messages, message);
 				},
 				{ message: 'An error occurred while displaying a message' }
@@ -498,8 +592,13 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 						body: { message },
 					}, { session });
 
-					// Update message locally
-					return editMessageLocal(messages, message_id, results.message);
+					// Create new messages array
+					const newMessages = editMessageLocal(messages, message_id, results.message);
+
+					// Update for other hooks
+					copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
+					
+					return newMessages;
 				},
 				{ message: 'An error occurred while editing message' }
 			),
@@ -527,8 +626,13 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 				async (messages: RawMessage[][]) => {
 					// Send delete query
 					await api('DELETE /messages/:message_id', { params: { message_id } }, { session });
+					
+					// Find message to check if it needs to be updated in thread view
+					const { page, idx } = findMessage(messages, message_id);
+					const messageObj = idx >= 0 ? messages[page][idx] : {};
 
 					// Update message locally
+					updateSwrMessages((messages) => deleteMessageLocal(messages, message_id), messageObj, channel_id, thread_id, session);
 					return deleteMessageLocal(messages, message_id);
 				},
 				{ message: 'An error occurred while deleting message' }
@@ -550,12 +654,19 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		 */
 		addReaction: errorWrapper(async (message_id: string, emoji: string) => {
 			// Optimistic update
-			mutate((messages) => addReactionLocal(messages, message_id, emoji), { revalidate: false });
+			let newMessages: RawMessage[][] = [];
+			await mutate((messages) => {
+				newMessages = addReactionLocal(messages, message_id, emoji) || [];
+				return newMessages
+			}, { revalidate: false });
 
 			// Actual update
 			await api('POST /reactions', {
 				body: { message: message_id, emoji },
 			}, { session });
+
+			// Update for other hooks
+			copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
 		}, { message: 'An error occurred while adding message reaction' }),
 
 		/**
@@ -567,7 +678,11 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		 */
 		removeReactions: errorWrapper(async (message_id: string, options?: { self?: boolean; emoji?: string }) => {
 			// Optimistic update
-			mutate((messages) => removeReactionsLocal(messages, message_id, options?.emoji, options?.self || false), { revalidate: false });
+			let newMessages: RawMessage[][] = [];
+			await mutate((messages) => {
+				newMessages = removeReactionsLocal(messages, message_id, options?.emoji, options?.self || false) || [];
+				return newMessages;
+			}, { revalidate: false });
 
 			// Actual update
 			await api('DELETE /reactions', {
@@ -577,6 +692,9 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 					emoji: options?.emoji,
 				},
 			}, { session });
+
+			// Update for other hooks
+			copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
 		}, { message: 'An error occurred while removing message reactions' }),
 
 		/**
@@ -590,12 +708,18 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		applyReactionChanges: (message_id: string, changes: Record<string, number>, removeAll?: boolean) => mutate(
 			swrErrorWrapper(
 				async (messages: RawMessage[][]) => {
+					// Find message to check if it needs to be updated in thread view
+					const { page, idx } = findMessage(messages, message_id);
+					const messageObj = idx >= 0 ? messages[page][idx] : {};
+
 					// Remove all
 					if (removeAll) {
+						updateSwrMessages((messages) => _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, reactions: undefined })), messageObj, channel_id, thread_id, session);
 						return _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, reactions: undefined }));
 					}
 					
-					return _editMessageTemplate(messages, message_id, (msg) => {
+					// New messages for this hook
+					const newMessages = _editMessageTemplate(messages, message_id, (msg: RawMessage) => {
 						const copy = msg.reactions?.slice() || [];
 
 						// Create map of emoji to index
@@ -605,7 +729,6 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 
 						// Array of deleted reaction indices
 						const deleted: number[] = [];
-						console.log(_selfReactions)
 
 						for (const [emoji, delta] of Object.entries(changes)) {
 							// Get self reactions
@@ -635,6 +758,11 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 
 						return { ...msg, reactions: copy };
 					});
+					
+					// Update for other hooks
+					copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
+
+					return newMessages;
 				},
 				{ message: 'An error occurred while updating reactions' }
 			),
@@ -657,21 +785,18 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<RawMessa
  * 
  * @param channel_id The id of the channel to retrieve messages from
  * @param domain_id The domain the channel belongs to (used to cache member objects)
+ * @param thread_id The thread id for which only messages of this thread should be fetched
  * @returns A list of messages sorted oldest first
  */
-export function useMessages(channel_id: string, domain_id: string) {
+export function useMessages(channel_id: string, domain_id: string, thread_id?: string) {
 	const session = useSession();
+
+	// Key function
+	const keyFn = useMemo(() => makeKeyFn(channel_id, thread_id, session), [channel_id, thread_id, session]);
 
 	// Infinite loader
 	const swr = useSWRInfinite<RawMessage[]>(
-		(idx, prevData: RawMessage[]) => {
-			// Don't retrieve if reached end
-			if (prevData && prevData.length < config.app.message.query_limit) return;
-			if (!session.token || !channel_id) return;
-
-			// Return key with page number
-			return `${channel_id}.messages?page=${idx}`;
-		},
+		keyFn,
 		fetcher(session, domain_id),
 		{ revalidateFirstPage: false }
 	);
@@ -688,7 +813,7 @@ export function useMessages(channel_id: string, domain_id: string) {
 		},
 		pageSize: config.app.message.query_limit,
 		mutators,
-		mutatorParams: [channel_id, domain_id],
+		mutatorParams: [channel_id, domain_id, thread_id],
 		separate: true,
 		session,
 	});
@@ -701,8 +826,20 @@ export function useMessages(channel_id: string, domain_id: string) {
 // Message grouper + renderer
 ////////////////////////////////////////////////////////////
 
+/** Create markdown render env */
+export function makeMarkdownEnv(domain: DomainWrapper) {
+	// Construct roles map
+	const roleMap: Record<string, Role> = {};
+	for (const r of (domain.roles || []))
+		roleMap[r.id] = r;
+
+	return {
+		domain: { id: domain.id, roles: roleMap },
+	};
+}
+
 /** Render a single message */
-function renderMessage(message: string, env: MarkdownEnv) {
+export function renderMessage(message: string, env: MarkdownEnv) {
 	// Render new message
 	let rendered = _md.render(message, env);
 
@@ -837,15 +974,7 @@ export function useGroupedMessages(messages: RawMessage[], domain: DomainWrapper
 	// Create md render env
 	const env = useMemo<MarkdownEnv | undefined>(() => {
 		if (!domain._exists) return;
-
-		// Construct roles map
-		const roleMap: Record<string, Role> = {};
-		for (const r of (domain.roles || []))
-			roleMap[r.id] = r;
-
-		return {
-			domain: { id: domain.id, roles: roleMap },
-		};
+		return makeMarkdownEnv(domain);
 	}, [domain.id, domain.roles]);
 
 	return useMemo(() => {

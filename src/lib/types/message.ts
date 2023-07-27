@@ -30,6 +30,8 @@ export type Message = {
 	sender: string | null;
 	/** The id of the message this message is replying to */
 	reply_to?: string;
+	/** The id of the thread the message belongs to, if it exists */
+	thread?: string;
 	/** The content of the message */
 	message: string;
 	/** A list of attachments */

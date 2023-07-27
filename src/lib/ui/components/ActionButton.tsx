@@ -3,12 +3,14 @@ import { MouseEvent } from 'react';
 import {
   ActionIcon,
   ActionIconProps,
+  MantineTheme,
   Tooltip,
   TooltipProps,
 } from '@mantine/core';
 
 
 export type ActionButtonProps = ActionIconProps & {
+  hoverBg?: (theme: MantineTheme) => string;
   tooltip?: string;
   tooltipProps?: Omit<TooltipProps, 'label' | 'children'>;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void,
@@ -35,7 +37,7 @@ export default function ActionButton(props: ActionButtonProps) {
 
         return {
           '&:hover': {
-            backgroundColor: theme.colors.dark[4],
+            backgroundColor: props.hoverBg?.(theme) || theme.colors.dark[4],
           },
           ...sx
         };

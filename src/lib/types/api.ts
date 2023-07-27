@@ -8,6 +8,7 @@ import { AggregatedReaction, ExpandedMessage, Message } from './message';
 import { AclEntry } from './permissions';
 import { Role } from './role';
 import { ExpandedTask, Task, TaskPriority } from './task';
+import { Thread } from './thread';
 import { NoId, WithId } from './util';
 
 
@@ -243,6 +244,7 @@ export type ApiSchema = {
 	'GET /messages': {
 		query: {
 			channel: string;
+			thread?: string;
 			page?: number;
 			limit?: number;
 		},
@@ -258,6 +260,7 @@ export type ApiSchema = {
 			message: string;
 			attachments?: Attachment[];
 			reply_to?: string;
+			thread?: string;
 		},
 		return: Message,
 	},
@@ -407,5 +410,24 @@ export type ApiSchema = {
 
 	'DELETE /tasks/:task_id': {
 		params: ['task_id'],
+	},
+
+
+	/** Threads */
+	'GET /threads': {
+		query: {
+			channel: string;
+			page?: number;
+			limit?: number;
+		},
+		return: Thread[],
+	},
+
+	'PATCH /threads/:thread_id': {
+		params: ['thread_id'],
+		body: {
+			name: string;
+		},
+		return: Thread,
 	},
 };

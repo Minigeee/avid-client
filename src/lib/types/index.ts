@@ -12,5 +12,6 @@ export * from './profile';
 export * from './role';
 export * from './socket';
 export * from './task';
+export * from './thread';
 export * from './user';
 export type { DeepPartial, NoId, WithId } from './util';

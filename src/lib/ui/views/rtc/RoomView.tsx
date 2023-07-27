@@ -455,7 +455,8 @@ function RoomScreen({ app, ...props }: SubviewProps) {
 
       <Box sx={(theme) => ({
         flexBasis: '45ch',
-        boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`,
+        // boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`,
+        borderLeft: `1px solid ${theme.colors.dark[6]}`,
       })}>
         <SidePanelView
           channel_id={props.channel.id}

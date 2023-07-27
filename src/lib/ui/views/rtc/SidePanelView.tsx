@@ -82,6 +82,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
           p='1.2rem'
           pb='1.5rem'
           avatarGap='md'
+          withSidePanel={false}
         />
       </Box>
       

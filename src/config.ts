@@ -149,6 +149,12 @@ const config = {
 			role_mention_chars: '[]',
 		},
 
+		/** Thread config */
+		thread: {
+			/** Page size */
+			query_limit: 30,
+		},
+
 		/** Project board config */
 		board: {
 			/** Default task view */
