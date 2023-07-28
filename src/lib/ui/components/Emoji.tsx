@@ -544,7 +544,6 @@ export function EmojiPicker(props: EmojiPickerProps) {
 
     const pages: JSX.Element[] = [];
     
-    // WIP : Finish emoji picker
     for (let i = 0; i < numPages; ++i) {
       // Emoji buttons
       const buttons = filtered.slice(i * iconsPerPage, (i + 1) * iconsPerPage).map((id) => (
@@ -561,6 +560,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
       // Add page
       pages.push(
         <EmojiPickerPage
+          key={pages.length}
           containerRef={listRef}
           buttons={buttons}
           emojiSize={emojiSize}
@@ -613,6 +613,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
         // Add page
         pages.push(
           <EmojiPickerPage
+            key={pages.length}
             containerRef={listRef}
             buttons={buttons}
             emojiSize={emojiSize}
@@ -673,7 +674,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
         />
       </Box>
 
-      <Group noWrap spacing='xs'>
+      <Flex wrap='nowrap' gap='xs'>
         <TextInput
           placeholder='Search'
           icon={<IconSearch size={18} />}
@@ -703,7 +704,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
             },
           }}
         />
-      </Group>
+      </Flex>
 
       <EmojiPickerScrollArea
         containerRef={listRef}

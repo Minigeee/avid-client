@@ -45,7 +45,13 @@ function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
   const numElems = props.total - props.page * limit;
   
   const { ref: pageRef, entry } = useIntersection({ root: props.containerRef.current, threshold: 0 });
-  const [isIntersecting] = useDebouncedValue(entry?.isIntersecting || false, 200);
+
+  const [intersecting, setIntersecting] = useState<boolean>(props.page === 0);
+  const [isIntersecting] = useDebouncedValue(intersecting, 200);
+  useEffect(() => {
+    if (!entry) return;
+    setIntersecting(entry.isIntersecting);
+  }, [entry?.isIntersecting || false]);
 
   // Only load query if intersecting
   const members = useMemberQuery(props.page === 0 && entry?.isIntersecting || isIntersecting ? props.domain_id : undefined, {
