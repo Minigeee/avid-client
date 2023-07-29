@@ -141,6 +141,8 @@ const config = {
 		message: {
 			/** Page size */
 			query_limit: 50,
+			/** Page size for pinned */
+			pinned_query_limit: 30,
 			/** Max role id length limit */
 			max_mention_length: 24,
 			/** Characters used for member mentions */

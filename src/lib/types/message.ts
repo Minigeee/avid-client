@@ -32,6 +32,8 @@ export type Message = {
 	reply_to?: string;
 	/** The id of the thread the message belongs to, if it exists */
 	thread?: string;
+	/** Indicates if the message is pinned in its channel */
+	pinned?: boolean;
 	/** The content of the message */
 	message: string;
 	/** A list of attachments */

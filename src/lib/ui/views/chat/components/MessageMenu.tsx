@@ -13,6 +13,7 @@ import {
   IconPencil,
   IconPhoto,
   IconPin,
+  IconPinnedOff,
   IconTrash
 } from '@tabler/icons-react';
 
@@ -34,6 +35,8 @@ export type MessageMenuContext = {
   msg: ExpandedMessage;
   /** Url of the image the user right clicked on */
   img?: string;
+  /** Custom edit function */
+  onEdit?: (message_id: string) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -133,7 +136,7 @@ export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropd
       {context.sender.id === msg.sender?.id && (
         <Menu.Item
           icon={<IconPencil size={16} />}
-          onClick={() => context.state._set('editing', msg.id)}
+          onClick={() => props.onEdit ? props.onEdit(msg.id) : context.state._set('editing', msg.id)}
         >
           Edit
         </Menu.Item>
@@ -175,9 +178,29 @@ export function MessageMenuDropdown({ context, msg, ...props }: MessageMenuDropd
         </ContextMenu.Submenu>
       )}
 
-      <Menu.Item icon={<IconPin size={16} />} disabled>
-        Pin
-      </Menu.Item>
+      {hasPermission(context.domain, context.channel_id, 'can_manage_messages') && (
+        <Menu.Item
+          icon={msg.pinned ? <IconPinnedOff size={16} /> : <IconPin size={16} />}
+          onClick={() => {
+            if (!msg.pinned)
+              context.messages._mutators.pinMessage(msg.id);
+            else {
+              openConfirmModal({
+                title: 'Unpin Message',
+                content: (
+                  <Text>Are you sure you want to unpin this message?</Text>
+                ),
+                confirmLabel: 'Unpin',
+                onConfirm: () => {
+                  context.messages._mutators.unpinMessage(msg.id);
+                },
+              });
+            }
+          }}
+        >
+          {msg.pinned ? 'Unpin' : 'Pin'}
+        </Menu.Item>
+      )}
 
       <Menu.Item
         icon={<IconCopy size={16} />}

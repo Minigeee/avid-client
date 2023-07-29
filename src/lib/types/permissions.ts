@@ -57,7 +57,7 @@ export type TextChannelPermissions =
 	'can_send_attachments' |
 	/** Allows role to send reactions */
 	'can_send_reactions' |
-	/** Roles that can delete and manage others' messages */
+	/** Roles that can delete and manage others' messages (pin, remove reactions, etc.) */
 	'can_manage_messages';
 
 /** Board related permissions */

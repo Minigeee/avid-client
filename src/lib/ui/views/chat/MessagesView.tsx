@@ -34,6 +34,7 @@ import {
   IconMoodPlus,
   IconPaperclip,
   IconPencilPlus,
+  IconPin,
   IconSend,
   IconTool,
 } from '@tabler/icons-react';
@@ -194,7 +195,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   const app = useApp();
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(channel_id, domain.id, props.thread_id);
+  const messages = useMessages(channel_id, domain.id, { thread_id: props.thread_id });
   const groupedMessages = useGroupedMessages(messages.data || [], domain, sender);
 
   // Editor ref
@@ -478,7 +479,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
       context={{ msg }}
       sx={(theme) => ({
         display: 'flex',
-        gap: theme.spacing[props.avatarGap],
+        gap: 0,
 
         padding: `0.25rem 0rem 0.25rem calc(${props.p} - 3px)`,
         backgroundColor: props.hasPing ? '#2B293A' : undefined,
@@ -498,6 +499,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           size={AVATAR_SIZE}
           sx={(theme) => ({
             marginTop: '0.25rem',
+            marginRight: theme.spacing[props.avatarGap],
             backgroundColor: theme.colors.dark[5],
           })}
         />
@@ -728,6 +730,12 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
         >
           <IconMessages size={16} />
         </ActionButton>
+      )}
+      
+      {msg.pinned && (
+        <Box mr={8} mt={3} sx={(theme) => ({ color: theme.colors.green[7] })}>
+          <IconPin size={16} />
+        </Box>
       )}
     </ContextMenu.Trigger>
   );
@@ -1303,7 +1311,7 @@ export default function MessagesView(props: MessagesViewProps) {
 
         {props.withSidePanel !== false && (
           <Box sx={(theme) => ({
-            flexBasis: '24rem',
+            flexBasis: '25rem',
             height: '100%',
             /* position: 'relative',
             boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`, */

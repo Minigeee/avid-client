@@ -247,14 +247,14 @@ let _cache = {
 ////////////////////////////////////////////////////////////
 
 /** Key function */
-function makeKeyFn(channel_id: string, thread_id: string | undefined, session: SessionState) {
+function makeKeyFn(channel_id: string, thread_id: string | undefined, pinned: boolean | undefined, session: SessionState) {
 	return (idx: number, prevData: RawMessage[]) => {
 		// Don't retrieve if reached end
 		if (prevData && prevData.length < config.app.message.query_limit) return;
 		if (!session.token || !channel_id) return;
 
 		// Return key with page number
-		return `${channel_id}${thread_id ? '.' + thread_id : ''}.messages?page=${idx}`;
+		return `${channel_id}${thread_id ? '.' + thread_id : ''}.messages?${pinned ? 'pinned&' : ''}page=${idx}`;
 	};
 }
 
@@ -265,13 +265,15 @@ function fetcher(session: SessionState, domain_id: string) {
 		const channel_id = parts[0];
 		const thread_id = parts.length === 3 ? parts[1] : undefined;
 		const page = parseInt(key.split('=').at(-1) as string);
+		const pinned = (parts.at(-1)?.split('&').length || 0) > 1;
 
 		const results = await api('GET /messages', {
 			query: {
 				channel: channel_id,
 				thread: thread_id,
+				pinned,
 				page,
-				limit: config.app.message.query_limit,
+				limit: pinned ? config.app.message.pinned_query_limit : config.app.message.query_limit,
 			},
 		}, { session });
 
@@ -299,20 +301,25 @@ function findMessage(messages: RawMessage[][], message_id: string) {
 }
 
 ////////////////////////////////////////////////////////////
-function updateSwrMessages(updater: (messages: RawMessage[][]) => RawMessage[][] | undefined, message: { thread?: string }, channel_id: string, thread_id: string | undefined, session: SessionState) {
+function updateSwrMessages(updater: (messages: RawMessage[][], thread_id: string | undefined, pinned: boolean | undefined) => RawMessage[][] | undefined, message: { thread?: string; pinned?: boolean }, channel_id: string, thread_id: string | undefined, pinned: boolean | undefined, session: SessionState) {
 	// If thread id given, then should update main message hook
-	if (thread_id) {
-		const key = makeKeyFn(channel_id, undefined, session);
-		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || []), { revalidate: false });
+	if (thread_id || pinned !== undefined) {
+		const key = makeKeyFn(channel_id, undefined, undefined, session);
+		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || [], undefined, undefined), { revalidate: false });
 	}
-	else if (message.thread) {
-		const key = makeKeyFn(channel_id, message.thread, session);
-		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || []), { revalidate: false });
+
+	if (!thread_id && message.thread) {
+		const key = makeKeyFn(channel_id, message.thread, undefined, session);
+		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || [], message.thread, undefined), { revalidate: false });
+	}
+	if (pinned === undefined && message.pinned !== undefined) {
+		const key = makeKeyFn(channel_id, undefined, message.pinned, session);
+		_mutate(unstable_serialize(key), async (messages: RawMessage[][] | undefined) => updater(messages || [], undefined, message.pinned), { revalidate: false });
 	}
 }
 
 ////////////////////////////////////////////////////////////
-function copyToOtherHooks(messages: RawMessage[][] | undefined, message_id: string, channel_id: string, thread_id: string | undefined, session: SessionState) {
+function copyToOtherHooks(messages: RawMessage[][] | undefined, message_id: string, channel_id: string, thread_id: string | undefined, pinned: boolean | undefined, session: SessionState) {
 	if (!messages) return;
 
 	// Find new message
@@ -333,7 +340,7 @@ function copyToOtherHooks(messages: RawMessage[][] | undefined, message_id: stri
 		pagesCopy[page] = msgsCopy;
 	
 		return pagesCopy;
-	}, newMessage, channel_id, thread_id, session);
+	}, newMessage, channel_id, thread_id, pinned, session);
 }
 
 ////////////////////////////////////////////////////////////
@@ -467,7 +474,7 @@ function removeReactionsLocal(messages: RawMessage[][] | undefined, message_id: 
 
 
 ////////////////////////////////////////////////////////////
-function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, channel_id: string, domain_id: string, thread_id: string | undefined) {
+function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, channel_id: string, domain_id: string, thread_id: string | undefined, pinned: boolean | undefined) {
 	return {
 		/**
 		 * Add a message to the specified channel
@@ -511,7 +518,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 						copy[page].splice(idx, 1);
 
 					return copy;
-				}, results, channel_id, thread_id, session);
+				}, results, channel_id, thread_id, pinned, session);
 
 				// Update thread latest activity
 				if (results.thread) {
@@ -548,7 +555,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 					};
 
 					// optimistically update other message hooks
-					updateSwrMessages((messages) => addMessageLocal(messages, msg), msg, channel_id, thread_id, session);
+					updateSwrMessages((messages) => addMessageLocal(messages, msg), msg, channel_id, thread_id, pinned, session);
 
 					// Add message locally with temp id
 					return addMessageLocal(messages, msg) || [];
@@ -568,7 +575,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		addMessageLocal: (message: Message) => mutate(
 			swrErrorWrapper(
 				async (messages: RawMessage[][]) => {
-					updateSwrMessages((messages) => addMessageLocal(messages, message), message, channel_id, thread_id, session);
+					updateSwrMessages((messages) => addMessageLocal(messages, message), message, channel_id, thread_id, pinned, session);
 					return addMessageLocal(messages, message);
 				},
 				{ message: 'An error occurred while displaying a message' }
@@ -596,7 +603,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 					const newMessages = editMessageLocal(messages, message_id, results.message);
 
 					// Update for other hooks
-					copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
+					copyToOtherHooks(newMessages, message_id, channel_id, thread_id, pinned, session);
 					
 					return newMessages;
 				},
@@ -632,7 +639,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 					const messageObj = idx >= 0 ? messages[page][idx] : {};
 
 					// Update message locally
-					updateSwrMessages((messages) => deleteMessageLocal(messages, message_id), messageObj, channel_id, thread_id, session);
+					updateSwrMessages((messages) => deleteMessageLocal(messages, message_id), messageObj, channel_id, thread_id, pinned, session);
 					return deleteMessageLocal(messages, message_id);
 				},
 				{ message: 'An error occurred while deleting message' }
@@ -643,6 +650,91 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 				},
 				revalidate: false,
 			}
+		),
+
+		/**
+		 * Pin a message to a channel
+		 *
+		 * @param message_id The id of the message to pin
+		 * @returns The new messages array
+		 */
+		pinMessage: (message_id: string) => mutate(
+			swrErrorWrapper(async (messages: RawMessage[][]) => {
+				// Pin message
+				await api('PATCH /messages/:message_id', {
+					params: { message_id },
+					body: { pinned: true },
+				}, { session });
+
+				// Add to pinned hook
+				const { page, idx } = findMessage(messages, message_id);
+				if (idx >= 0) {
+					const messageObj = { ...messages[page][idx], pinned: true };
+					updateSwrMessages((messages) => {
+						const { page, idx } = findMessage(messages, message_id);
+
+						// If message already exists, update the object
+						if (idx >= 0) {
+							const copy = messages.slice();
+							const pagesCopy = copy[page].slice();
+							pagesCopy[idx] = messageObj;
+							copy[page] = pagesCopy;
+							return copy;
+						}
+
+						// Otherwise insert this message
+						else {
+							// The chance of a user pinning a message that goes past the first page is low, so don't bother handling it
+							const newMessages = addMessageLocal(messages, messageObj) || [];
+							// Sort to keep correct order
+							if (newMessages.length > 0)
+								newMessages[newMessages.length - 1].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+							return newMessages;
+						}
+					}, messageObj, channel_id, thread_id, pinned, session);
+				}
+
+				return _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, pinned: true }));
+			}),
+			{ revalidate: false },
+		),
+
+		/**
+		 * Unpin a message to a channel
+		 * 
+		 * @param message_id The id of the message to unpin
+		 * @returns The new messages array
+		 */
+		unpinMessage: (message_id: string) => mutate(
+			swrErrorWrapper(async (messages: RawMessage[][]) => {
+				// Pin message
+				await api('PATCH /messages/:message_id', {
+					params: { message_id },
+					body: { pinned: false },
+				}, { session });
+
+				// Update other hooks
+				const { page, idx } = findMessage(messages, message_id);
+				if (idx >= 0) {
+					const messageObj = { ...messages[page][idx], pinned: true };
+					updateSwrMessages((messages, thread_id, pinned) => {
+						// If a pin hook, delete the message
+						console.log(messages, thread_id, pinned)
+						if (pinned !== undefined)
+							return deleteMessageLocal(messages, message_id);
+						else
+							return _editMessageTemplate(messages, message_id, (msg) => messageObj);
+					}, messageObj, channel_id, thread_id, pinned, session);
+				}
+
+				// If this is a pinned message hook, the remove it from list
+				if (pinned)
+					return deleteMessageLocal(messages, message_id) || [];
+				else
+					return _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, pinned: false }));
+			}),
+			{ revalidate: false },
 		),
 
 		/**
@@ -666,7 +758,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 			}, { session });
 
 			// Update for other hooks
-			copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
+			copyToOtherHooks(newMessages, message_id, channel_id, thread_id, pinned, session);
 		}, { message: 'An error occurred while adding message reaction' }),
 
 		/**
@@ -694,7 +786,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 			}, { session });
 
 			// Update for other hooks
-			copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
+			copyToOtherHooks(newMessages, message_id, channel_id, thread_id, pinned, session);
 		}, { message: 'An error occurred while removing message reactions' }),
 
 		/**
@@ -714,8 +806,13 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 
 					// Remove all
 					if (removeAll) {
-						updateSwrMessages((messages) => _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, reactions: undefined })), messageObj, channel_id, thread_id, session);
-						return _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, reactions: undefined }));
+						// Remove all reactions
+						const newMessages = _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, reactions: undefined }));
+					
+						// Update for other hooks
+						copyToOtherHooks(newMessages, message_id, channel_id, thread_id, pinned, session);
+	
+						return newMessages;
 					}
 					
 					// New messages for this hook
@@ -760,7 +857,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 					});
 					
 					// Update for other hooks
-					copyToOtherHooks(newMessages, message_id, channel_id, thread_id, session);
+					copyToOtherHooks(newMessages, message_id, channel_id, thread_id, pinned, session);
 
 					return newMessages;
 				},
@@ -785,14 +882,15 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<RawMessa
  * 
  * @param channel_id The id of the channel to retrieve messages from
  * @param domain_id The domain the channel belongs to (used to cache member objects)
- * @param thread_id The thread id for which only messages of this thread should be fetched
+ * @param options.thread_id The thread id for which only messages of this thread should be fetched
+ * @param options.pinned If only pinned messages should be fetched
  * @returns A list of messages sorted oldest first
  */
-export function useMessages(channel_id: string, domain_id: string, thread_id?: string) {
+export function useMessages(channel_id: string, domain_id: string, options?: { thread_id?: string; pinned?: boolean; }) {
 	const session = useSession();
 
 	// Key function
-	const keyFn = useMemo(() => makeKeyFn(channel_id, thread_id, session), [channel_id, thread_id, session]);
+	const keyFn = useMemo(() => makeKeyFn(channel_id, options?.thread_id, options?.pinned, session), [channel_id, options?.thread_id, options?.pinned, session]);
 
 	// Infinite loader
 	const swr = useSWRInfinite<RawMessage[]>(
@@ -813,7 +911,7 @@ export function useMessages(channel_id: string, domain_id: string, thread_id?: s
 		},
 		pageSize: config.app.message.query_limit,
 		mutators,
-		mutatorParams: [channel_id, domain_id, thread_id],
+		mutatorParams: [channel_id, domain_id, options?.thread_id, options?.pinned],
 		separate: true,
 		session,
 	});

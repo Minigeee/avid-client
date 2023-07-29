@@ -512,7 +512,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
 
           <PermissionSetting
             title='Manage Messages'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages and remove reactions sent by other users in text channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages and remove reactions sent by other users, and pin messages in text channels.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_messages`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_messages}
             withDivider={false}

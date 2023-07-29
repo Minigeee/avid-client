@@ -245,6 +245,7 @@ export type ApiSchema = {
 		query: {
 			channel: string;
 			thread?: string;
+			pinned?: boolean;
 			page?: number;
 			limit?: number;
 		},
@@ -268,7 +269,8 @@ export type ApiSchema = {
 	'PATCH /messages/:message_id': {
 		params: ['message_id'],
 		body: {
-			message: string;
+			message?: string;
+			pinned?: boolean;
 		},
 		return: { message: string },
 	},

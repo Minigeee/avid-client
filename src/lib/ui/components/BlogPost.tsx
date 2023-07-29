@@ -41,7 +41,7 @@ export type BlogPostProps = {
 
 ////////////////////////////////////////////////////////////
 export default function BlogPost(props: BlogPostProps) {
-  const { classes } = useChatStyles(props.fontScale);
+  const { classes } = useChatStyles({ scale: props.fontScale });
 
   // Render post
   const rendered = useMemo(() => {
