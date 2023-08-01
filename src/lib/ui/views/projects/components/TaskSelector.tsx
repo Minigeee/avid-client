@@ -132,7 +132,7 @@ export function TaskSelector(props: TaskSelectorProps) {
       statusMap[status.id] = status;
 
     // Set to exclude
-    const exclude = new Set<string>(props.task.subtasks?.concat([props.task.id]));
+    const exclude = new Set<string>((props.task[props.type === 'subtask' ? 'subtasks' : 'dependencies'] || []).concat([props.task.id]));
 
     return props.tasks.data.filter(x => !exclude.has(x.id)).sort((a, b) => b.sid - a.sid).map((task) => ({
       value: task.id,
@@ -141,7 +141,7 @@ export function TaskSelector(props: TaskSelectorProps) {
       assignee: task.assignee,
       status: statusMap[task.status],
     }));
-  }, [props.tasks.data, props.board.prefix, props.task.subtasks]);
+  }, [props.tasks.data, props.board.prefix, props.task.subtasks, props.task.dependencies]);
 
 
   return (
@@ -158,7 +158,7 @@ export function TaskSelector(props: TaskSelectorProps) {
             if (!id) return;
 
             // Perform update
-            const update = props.type === 'subtask' ? { subtasks: props.task.subtasks?.concat([id]) } : { dependencies: props.task.dependencies?.concat([id]) };
+            const update = props.type === 'subtask' ? { subtasks: (props.task.subtasks || []).concat([id]) } : { dependencies: (props.task.dependencies || []).concat([id]) };
             props.tasks._mutators.updateTask(props.task.id, update, true);
 
             props.onSelect?.(id);

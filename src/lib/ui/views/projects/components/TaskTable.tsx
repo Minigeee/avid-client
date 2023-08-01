@@ -14,6 +14,7 @@ import {
 
 import {
   IconChevronDown,
+  IconGitMerge,
   IconPlus,
   IconSubtask,
 } from '@tabler/icons-react';
@@ -161,7 +162,23 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                   cursor: 'default'
                 })}>
                   <Text size='sm' data-tag='allowRowEvents'>{task.subtasks.length}</Text>
-                  <IconSubtask data-tag='allowRowEvents' size={15} style={{ marginTop: '2px' }} />
+                  <IconSubtask data-tag='allowRowEvents' size={15} style={{ marginTop: '1px' }} />
+                </Group>
+              </Tooltip>
+            )}
+            {task.dependencies && task.dependencies.length > 0 && (
+              <Tooltip
+                label={`${task.dependencies.length} dependenc${task.dependencies.length > 1 ? 'ies' : 'y'}`}
+                position='right'
+                withArrow
+                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+              >
+                <Group spacing={1} align='center' sx={(theme) => ({
+                  color: theme.colors.dark[2],
+                  cursor: 'default'
+                })}>
+                  <Text size='sm'>{task.dependencies.length}</Text>
+                  <IconGitMerge size={15} style={{ marginTop: '1px' }} />
                 </Group>
               </Tooltip>
             )}
@@ -307,6 +324,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
     props.creatable,
     props.columns,
     props.columnOverrides,
+    props.actionColumn,
   ]);
 
   // Task menu action

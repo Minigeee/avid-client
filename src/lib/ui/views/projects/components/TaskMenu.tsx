@@ -19,6 +19,7 @@ import {
   IconArrowsSort,
   IconChevronDown,
   IconFolderSymlink,
+  IconGitMerge,
   IconPlus,
   IconStarFilled,
   IconStatusChange,
@@ -97,7 +98,8 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
   const { open: openConfirmModal } = useConfirmModal();
 
   // Used to close menu for submenus that dont have dedicated button for it
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const subtaskCloseBtnRef = useRef<HTMLButtonElement>(null);
+  const depCloseBtnRef = useRef<HTMLButtonElement>(null);
 
   const [assignee, setAssignee] = useState<Member | null>(task?.assignee || null);
   const [origAssignee, setOrigAssignee] = useState<Member | null | undefined>(task?.assignee || null);
@@ -309,10 +311,33 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
               board={board}
               tasks={props.tasks}
               task={task as ExpandedTask}
-              onSelect={() => closeBtnRef.current?.click()}
+              onSelect={() => subtaskCloseBtnRef.current?.click()}
               buttonComponent={Menu.Item}
             />
-            <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+            <Menu.Item ref={subtaskCloseBtnRef} sx={{ display: 'none' }} />
+          </ContextMenu.Submenu>
+
+          <ContextMenu.Submenu
+            id='add-dependency'
+            label='Add dependency'
+            icon={<IconGitMerge size={16} />}
+            dropdownProps={{
+              p: '1.0rem',
+              sx: (theme) => ({
+                boxShadow: '0px 0px 16px #00000030',
+              }),
+            }}
+          >
+            <TaskSelector
+              type='dependency'
+              domain={props.domain}
+              board={board}
+              tasks={props.tasks}
+              task={task as ExpandedTask}
+              onSelect={() => depCloseBtnRef.current?.click()}
+              buttonComponent={Menu.Item}
+            />
+            <Menu.Item ref={depCloseBtnRef} sx={{ display: 'none' }} />
           </ContextMenu.Submenu>
         </>
       )}
@@ -340,6 +365,30 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
           }}
         >
           Remove subtask
+        </Menu.Item>
+      )}
+
+      {task && props.relation?.type === 'dependency' && (
+        <Menu.Item
+          color='red'
+          icon={<IconTrash size={16} />}
+          onClick={() => {
+            openConfirmModal({
+              title: 'Remove Dependency',
+              content: (
+                <Text>Are you sure you want to remove <b>{board.prefix}-{task.sid}</b> as a dependency of <b>{board.prefix}-{props.relation?.task.sid}</b>?</Text>
+              ),
+              confirmLabel: 'Remove',
+              onConfirm: () => {
+                if (!props.relation) return;
+                props.tasks._mutators.updateTask(props.relation.task.id, {
+                  dependencies: props.relation.task.dependencies?.filter(id => id !== task.id),
+                }, true);
+              },
+            })
+          }}
+        >
+          Remove dependency
         </Menu.Item>
       )}
 

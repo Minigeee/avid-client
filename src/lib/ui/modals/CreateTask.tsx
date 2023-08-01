@@ -37,6 +37,7 @@ import {
   IconCalendarEvent,
   IconDotsVertical,
   IconFileDatabase,
+  IconGitMerge,
   IconHash,
   IconPlus,
   IconSearch,
@@ -445,6 +446,21 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
   } = useTaskHooks(board);
 
 
+  // Tasks to exclude from task relation select
+  const relationExcludeIds = useMemo(() => {
+    if (!tasks._exists || !form.values.type || form.values.type === 'task' || !form.values.extra_task) return;
+
+    // Get extra task
+    const extraTask = tasks.data.find(task => task.id === form.values.extra_task);
+
+    if (form.values.type === 'subtask')
+      return extraTask?.subtasks || [];
+    else if (form.values.type === 'dependency')
+      return extraTask?.dependencies || [];
+    else
+      return [];
+  }, [tasks._exists, form.values.type, form.values.extra_task]);
+
   // Set base assignee if needed (can only manage own tasks)
   useEffect(() => {
     if (!canManageAny && !form.values.assignee) {
@@ -529,11 +545,13 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
 
         {tasks._exists && form.values.type !== 'task' && (
           <TaskSelect
-            label={form.values.type === 'subtask' ? 'Parent Task' : 'Child Task'}
-            description={`Select the task that this task will become a ${form.values.type === 'subtask' ? 'subtask' : 'dependency'} of. More tasks can be assigned later`}
+            required
+            label={form.values.type === 'subtask' ? 'Parent Task' : 'Dependent Task'}
+            description={form.values.type === 'subtask' ? 'Select the parent task for this task' : 'Select the task that is dependent on the completion of this task'}
             placeholder='Select a task'
             board={board}
             tasks={tasks}
+            exclude_ids={relationExcludeIds}
             {...form.getInputProps('extra_task')}
             sx={{ maxWidth: config.app.ui.med_input_width }}
           />
@@ -722,6 +740,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   // Used to close menu
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const subtaskAddBtnRef = useRef<HTMLButtonElement>(null);
+  const depAddBtnRef = useRef<HTMLButtonElement>(null);
   
   // Check if task is editable
   const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
@@ -771,6 +790,15 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
 
     return tasks.data.filter(x => set.has(x.id));
   }, [task.subtasks]);
+  
+  // Dependencies
+  const dependencies = useMemo(() => {
+    if (!tasks._exists) return [];
+    const set = new Set<string>(task.dependencies);
+    if (!set.size) return [];
+
+    return tasks.data.filter(x => set.has(x.id));
+  }, [task.dependencies]);
 
   // Set description
   useEffect(() => {
@@ -837,6 +865,51 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     };
   }, [board, tasks, task.subtasks]);
 
+  // Dependency table action column
+  const depActionCol = useMemo(() => {
+    if (!board._exists || !tasks._exists) return;
+    return {
+      name: (
+        <Popover withArrow shadow='lg'>
+          <Popover.Target>
+            <ActionIcon ref={depAddBtnRef}>
+              <IconPlus size={19} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+            <TaskSelector
+              type='dependency'
+              domain={props.domain}
+              board={board}
+              tasks={tasks}
+              task={task as ExpandedTask}
+              onSelect={() => depAddBtnRef.current?.click()}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      ),
+      cell: (dependency: ExpandedTask) => (
+        <CloseButton
+          size='md'
+          onClick={() => openConfirmModal({
+            title: 'Remove Dependency',
+            content: (
+              <Text>Are you sure you want to remove <b>{props.board_prefix}-{dependency.sid}</b> as a dependency of <b>{props.board_prefix}-{task.sid}</b>?</Text>
+            ),
+            confirmLabel: 'Remove',
+            onConfirm: () => {
+              tasks._mutators.updateTask(props.task.id, {
+                dependencies: task.dependencies?.filter(id => id !== dependency.id),
+              }, true);
+            },
+          })}
+        />
+      ),
+      width: '4rem',
+      right: true,
+    };
+  }, [board, tasks, task.dependencies]);
+
 
   if (!board._exists) return null;
 
@@ -875,28 +948,53 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
 
                     <Menu.Dropdown onKeyDown={(e) => e.stopPropagation()}>
                       {tasks._exists && (
-                        <Submenu
-                          id='add-subtask'
-                          label='Add Subtask'
-                          icon={<IconSubtask size={16} />}
-                          dropdownProps={{
-                            p: '1.0rem',
-                            sx: (theme) => ({
-                              borderColor: theme.colors.dark[4],
-                              boxShadow: '0px 0px 16px #00000030',
-                            }),
-                          }}
-                        >
-                          <TaskSelector
-                            type='subtask'
-                            domain={props.domain}
-                            board={board}
-                            tasks={tasks}
-                            task={task as ExpandedTask}
-                            onSelect={() => closeBtnRef.current?.click()}
-                          />
-                          <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
-                        </Submenu>
+                        <>
+                          <Submenu
+                            id='add-subtask'
+                            label='Add Subtask'
+                            icon={<IconSubtask size={16} />}
+                            dropdownProps={{
+                              p: '1.0rem',
+                              sx: (theme) => ({
+                                borderColor: theme.colors.dark[4],
+                                boxShadow: '0px 0px 16px #00000030',
+                              }),
+                            }}
+                          >
+                            <TaskSelector
+                              type='subtask'
+                              domain={props.domain}
+                              board={board}
+                              tasks={tasks}
+                              task={task as ExpandedTask}
+                              onSelect={() => closeBtnRef.current?.click()}
+                            />
+                            <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+                          </Submenu>
+
+                          <Submenu
+                            id='add-dependency'
+                            label='Add Dependency'
+                            icon={<IconGitMerge size={16} />}
+                            dropdownProps={{
+                              p: '1.0rem',
+                              sx: (theme) => ({
+                                borderColor: theme.colors.dark[4],
+                                boxShadow: '0px 0px 16px #00000030',
+                              }),
+                            }}
+                          >
+                            <TaskSelector
+                              type='dependency'
+                              domain={props.domain}
+                              board={board}
+                              tasks={tasks}
+                              task={task as ExpandedTask}
+                              onSelect={() => closeBtnRef.current?.click()}
+                            />
+                            <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+                          </Submenu>
+                        </>
                       )}
 
                       <Menu.Divider />
@@ -1023,6 +1121,36 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                         columns={TASK_COLUMNS}
                         columnOverrides={TASK_COLUMN_OVERRIDES}
                         actionColumn={subtaskActionCol}
+                        multiselectable={false}
+
+                        headerHeight='3rem'
+                        rowHeight='2.75rem'
+                      />
+                    </Box>
+                  </TaskContextMenu>
+                )}
+                
+                {task.dependencies && task.dependencies.length > 0 && (
+                  <TaskContextMenu
+                    board={board}
+                    tasks={tasks}
+                    domain={props.domain}
+                    statuses={statusMap}
+                    relation={task._exists ? { type: 'dependency', task: task } : undefined}
+                  >
+                    <Box>
+                      <Text size='sm' weight={600} mb={6}>Dependencies</Text>
+                      <TaskTable
+                        board={board}
+                        domain={props.domain}
+                        statuses={statusMap}
+                        tags={tagMap}
+                        tasks={dependencies}
+                        tasksWrapper={tasks}
+
+                        columns={TASK_COLUMNS}
+                        columnOverrides={TASK_COLUMN_OVERRIDES}
+                        actionColumn={depActionCol}
                         multiselectable={false}
 
                         headerHeight='3rem'

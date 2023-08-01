@@ -102,7 +102,7 @@ function tasksMutators(mutate: KeyedMutator<ExpandedTask[]>, session: SessionSta
 
 					const copy = tasks.slice();
 					copy[idx] = _sanitize({ ...copy[idx], ...task });
-					
+
 					// Optimistic update for single hook
 					_mutate(task_id, copy[idx], { revalidate: false });
 
@@ -187,8 +187,42 @@ function tasksMutators(mutate: KeyedMutator<ExpandedTask[]>, session: SessionSta
 					},
 				}, { session });
 
+				// Remove tasks
 				const ids = new Set<string>(task_ids);
-				return tasks.filter(x => !ids.has(x.id));
+				const newTasks = tasks.filter(x => !ids.has(x.id));
+
+				// Remove refs of these tasks from subtask and dep lists
+				for (let i = 0; i < newTasks.length; ++i) {
+					const task = newTasks[i];
+
+					let needsSubtaskFilter = false;
+					for (const id of task.subtasks || []) {
+						if (ids.has(id)) {
+							needsSubtaskFilter = true;
+							break;
+						}
+					}
+
+					let needsDepFilter = false;
+					for (const id of task.dependencies || []) {
+						if (ids.has(id)) {
+							needsDepFilter = true;
+							break;
+						}
+					}
+
+					// Continue if no update needed
+					if (!needsSubtaskFilter && !needsDepFilter) continue;
+
+					// Replace object
+					newTasks[i] = {
+						...task,
+						subtasks: needsSubtaskFilter ? task.subtasks?.filter(id => !ids.has(id)) : task.subtasks,
+						dependencies: needsDepFilter ? task.dependencies?.filter(id => !ids.has(id)) : task.dependencies,
+					} as ExpandedTask;
+				}
+
+				return newTasks;
 			}, { message: 'An error occurred while deleting tasks' }),
 			{
 				revalidate: false,
