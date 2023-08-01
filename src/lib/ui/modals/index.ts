@@ -71,6 +71,7 @@ export const openCreateTask = (props: CreateTaskProps) => openContextModal({
 
 /** Opens the modal to edit task */
 export const openEditTask = (props: EditTaskProps) => openContextModal({
+	key: props.task.id,
 	modal: 'edit-task',
 	title: `${props.board_prefix}-${props.task.sid}`,
 	innerProps: props,

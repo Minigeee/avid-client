@@ -45,12 +45,13 @@ import {
   IconTrash
 } from '@tabler/icons-react';
 
+import { openEditTask } from '.';
+import { useConfirmModal } from './ConfirmModal';
 import { SubmenuProvider, Submenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import MemberInput from '@/lib/ui/components/MemberInput';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
-import { useConfirmModal } from './ConfirmModal';
 
 import TaskTable from '@/lib/ui/views/projects/components/TaskTable';
 import { TaskSelect, TaskSelector } from '@/lib/ui/views/projects/components/TaskSelector';
@@ -275,6 +276,7 @@ CollectionSelectItem.displayName = 'CollectionSelectItem';
 
 ////////////////////////////////////////////////////////////
 type FormValues = {
+  id: string;
   summary: string;
   description: string;
   type: string;
@@ -721,6 +723,69 @@ const TASK_COLUMN_OVERRIDES = {
 };
 
 ////////////////////////////////////////////////////////////
+type TaskDropdownProps = {
+  board_id: string;
+  board_prefix: string;
+  domain: DomainWrapper;
+  tasks: ExpandedTask[];
+  statusMap: Record<string, Label>;
+
+  icon: JSX.Element;
+  tooltip: (len: number) => string;
+};
+
+////////////////////////////////////////////////////////////
+function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
+  return (
+    <Menu>
+      <Tooltip
+        label={props.tooltip(tasks.length)}
+        position='right'
+        withArrow
+        sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+      >
+        <Menu.Target>
+          <ActionIcon sx={(theme) => ({ color: theme.colors.dark[2] })}>
+            <Text span size='sm'>{tasks.length}</Text>
+            {props.icon}
+          </ActionIcon>
+        </Menu.Target>
+      </Tooltip>
+
+      <Menu.Dropdown maw='20rem'>
+        {tasks.map((t) => (
+          <Menu.Item onClick={() => {
+            openEditTask({
+              board_id: props.board_id,
+              board_prefix: props.board_prefix,
+              domain: props.domain,
+              task: t,
+            });
+          }}>
+            <Flex gap='sm' wrap='nowrap'>
+              <Box sx={{ flexGrow: 1 }}>
+                <Group spacing={8}>
+                  <ColorSwatch size={16} color={props.statusMap[t.status].color || ''} />
+                  <Text size='sm' weight={600}>{props.board_prefix}-{t.sid}</Text>
+                </Group>
+                <Text size='xs' color='dimmed'>{t.summary}</Text>
+              </Box>
+
+              {t.assignee && (
+                <MemberAvatar
+                  member={t.assignee}
+                  size={32}
+                />
+              )}
+            </Flex>
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+////////////////////////////////////////////////////////////
 export type EditTaskProps = {
   board_id: string;
   board_prefix: string;
@@ -759,6 +824,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   // Create form
   const form = useForm({
     initialValues: {
+      id: task.id,
       summary: task.summary,
       description: task.description || '',
       status: task.status || config.app.board.default_status_id,
@@ -782,6 +848,12 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   } = useTaskHooks(board);
 
 
+  // Set description
+  useEffect(() => {
+    if (form.values.description !== task.description)
+      form.setFieldValue('description', task.description || '');
+  }, [task.description]);
+
   // Subtasks
   const subtasks = useMemo(() => {
     if (!tasks._exists) return [];
@@ -800,10 +872,24 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     return tasks.data.filter(x => set.has(x.id));
   }, [task.dependencies]);
 
-  // Set description
-  useEffect(() => {
-    form.setFieldValue('description', task.description || '');
-  }, [task.description]);
+  // Relations to other tasks not recorded in this task (dependents and parent tasks)
+  const relations = useMemo(() => {
+    const relations = {
+      parents: [] as ExpandedTask[],
+      dependents: [] as ExpandedTask[],
+    };
+    if (!tasks._exists)
+      return relations;
+
+    for (const t of tasks.data) {
+      if (t.subtasks?.includes(props.task.id))
+        relations.parents.push(t);
+      if (t.dependencies?.includes(props.task.id))
+        relations.dependents.push(t);
+    }
+
+    return relations;
+  }, [props.task.id, tasks]);
 
 
   // Handle task field change
@@ -918,131 +1004,154 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
       <Grid gutter='xl'>
         <Grid.Col span={8}>
           <Stack spacing='1.75rem'>
-            {!inEditMode.summary && (
-              <Group spacing='xs' noWrap>
-                <Box sx={(sx) => ({ ...textEditStyle(sx), flexGrow: 1 })}>
-                  <Tooltip
-                    label='Click to edit'
-                    position='left'
-                    openDelay={500}
-                    withArrow
-                    disabled={!editable}
-                    sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
-                  >
-                    <Title
-                      order={3}
-                      onClick={editable ? (() => setInEditMode({ ...inEditMode, summary: true })) : undefined}
+            <Box>
+              {!inEditMode.summary && (
+                <Group spacing='xs' noWrap>
+                  <Box sx={(sx) => ({ ...textEditStyle(sx), flexGrow: 1 })}>
+                    <Tooltip
+                      label='Click to edit'
+                      position='left'
+                      openDelay={500}
+                      withArrow
+                      disabled={!editable}
+                      sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
                     >
-                      {form.values.summary}
-                    </Title>
-                  </Tooltip>
-                </Box>
-
-                {editable && (
-                  <SubmenuProvider shadow='lg' width='15rem' position='bottom-end' withinPortal>
-                    <Menu.Target>
-                      <ActionIcon size='lg' radius={3} sx={(theme) => ({ color: theme.colors.dark[1] })}>
-                        <IconDotsVertical size={20} />
-                      </ActionIcon>
-                    </Menu.Target>
-
-                    <Menu.Dropdown onKeyDown={(e) => e.stopPropagation()}>
-                      {tasks._exists && (
-                        <>
-                          <Submenu
-                            id='add-subtask'
-                            label='Add Subtask'
-                            icon={<IconSubtask size={16} />}
-                            dropdownProps={{
-                              p: '1.0rem',
-                              sx: (theme) => ({
-                                borderColor: theme.colors.dark[4],
-                                boxShadow: '0px 0px 16px #00000030',
-                              }),
-                            }}
-                          >
-                            <TaskSelector
-                              type='subtask'
-                              domain={props.domain}
-                              board={board}
-                              tasks={tasks}
-                              task={task as ExpandedTask}
-                              onSelect={() => closeBtnRef.current?.click()}
-                            />
-                            <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
-                          </Submenu>
-
-                          <Submenu
-                            id='add-dependency'
-                            label='Add Dependency'
-                            icon={<IconGitMerge size={16} />}
-                            dropdownProps={{
-                              p: '1.0rem',
-                              sx: (theme) => ({
-                                borderColor: theme.colors.dark[4],
-                                boxShadow: '0px 0px 16px #00000030',
-                              }),
-                            }}
-                          >
-                            <TaskSelector
-                              type='dependency'
-                              domain={props.domain}
-                              board={board}
-                              tasks={tasks}
-                              task={task as ExpandedTask}
-                              onSelect={() => closeBtnRef.current?.click()}
-                            />
-                            <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
-                          </Submenu>
-                        </>
-                      )}
-
-                      <Menu.Divider />
-
-                      <Menu.Item
-                        color='red'
-                        icon={<IconTrash size={16} />}
-                        onClick={() => {
-                          openConfirmModal({
-                            title: 'Delete Task',
-                            content: (
-                              <Text>
-                                Are you sure you want to delete <b>{props.board_prefix}-{props.task.sid}</b>?
-                              </Text>
-                            ),
-                            confirmLabel: 'Delete',
-                            onConfirm: () => {
-                              if (!tasks._exists || !task._exists) return;
-                              tasks._mutators.removeTasks([task.id]);
-                              closeAllModals();
-                            }
-                          })
-                        }}
+                      <Title
+                        order={3}
+                        onClick={editable ? (() => setInEditMode({ ...inEditMode, summary: true })) : undefined}
                       >
-                        Delete task
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </SubmenuProvider>
-                )}
-              </Group>
-            )}
-            {inEditMode.summary && (
-              <TextInput
-                placeholder='Short task summary'
-                autoFocus
-                {...form.getInputProps('summary')}
-                onBlur={() => {
-                  onFieldChange({ summary: form.values.summary });
-                  setInEditMode({ ...inEditMode, summary: false });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                        {form.values.summary}
+                      </Title>
+                    </Tooltip>
+                  </Box>
+
+                  {editable && (
+                    <SubmenuProvider shadow='lg' width='15rem' position='bottom-end' withinPortal>
+                      <Menu.Target>
+                        <ActionIcon size='lg' radius={3} sx={(theme) => ({ color: theme.colors.dark[1] })}>
+                          <IconDotsVertical size={20} />
+                        </ActionIcon>
+                      </Menu.Target>
+
+                      <Menu.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+                        {tasks._exists && (
+                          <>
+                            <Submenu
+                              id='add-subtask'
+                              label='Add Subtask'
+                              icon={<IconSubtask size={16} />}
+                              dropdownProps={{
+                                p: '1.0rem',
+                                sx: (theme) => ({
+                                  borderColor: theme.colors.dark[4],
+                                  boxShadow: '0px 0px 16px #00000030',
+                                }),
+                              }}
+                            >
+                              <TaskSelector
+                                type='subtask'
+                                domain={props.domain}
+                                board={board}
+                                tasks={tasks}
+                                task={task as ExpandedTask}
+                                onSelect={() => closeBtnRef.current?.click()}
+                              />
+                              <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+                            </Submenu>
+
+                            <Submenu
+                              id='add-dependency'
+                              label='Add Dependency'
+                              icon={<IconGitMerge size={16} />}
+                              dropdownProps={{
+                                p: '1.0rem',
+                                sx: (theme) => ({
+                                  borderColor: theme.colors.dark[4],
+                                  boxShadow: '0px 0px 16px #00000030',
+                                }),
+                              }}
+                            >
+                              <TaskSelector
+                                type='dependency'
+                                domain={props.domain}
+                                board={board}
+                                tasks={tasks}
+                                task={task as ExpandedTask}
+                                onSelect={() => closeBtnRef.current?.click()}
+                              />
+                              <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+                            </Submenu>
+                          </>
+                        )}
+
+                        <Menu.Divider />
+
+                        <Menu.Item
+                          color='red'
+                          icon={<IconTrash size={16} />}
+                          onClick={() => {
+                            openConfirmModal({
+                              title: 'Delete Task',
+                              content: (
+                                <Text>
+                                  Are you sure you want to delete <b>{props.board_prefix}-{props.task.sid}</b>?
+                                </Text>
+                              ),
+                              confirmLabel: 'Delete',
+                              onConfirm: () => {
+                                if (!tasks._exists || !task._exists) return;
+                                tasks._mutators.removeTasks([task.id]);
+                                closeAllModals();
+                              }
+                            })
+                          }}
+                        >
+                          Delete task
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </SubmenuProvider>
+                  )}
+                </Group>
+              )}
+              {inEditMode.summary && (
+                <TextInput
+                  placeholder='Short task summary'
+                  autoFocus
+                  {...form.getInputProps('summary')}
+                  onBlur={() => {
                     onFieldChange({ summary: form.values.summary });
                     setInEditMode({ ...inEditMode, summary: false });
-                  }
-                }}
-              />
-            )}
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onFieldChange({ summary: form.values.summary });
+                      setInEditMode({ ...inEditMode, summary: false });
+                    }
+                  }}
+                />
+              )}
+
+              <Group spacing={4}>
+                {relations.parents.length > 0 && (
+                  <TaskDropdown
+                    {...props}
+                    tasks={relations.parents}
+                    icon={<IconSubtask size={15} style={{ marginTop: 1, marginLeft: 1 }} />}
+                    tooltip={(len => `${len} parent task${len !== 1 ? 's' : ''}`)}
+                    statusMap={statusMap}
+                  />
+                )}
+                {relations.dependents.length > 0 && (
+                  <TaskDropdown
+                    {...props}
+                    tasks={relations.dependents}
+                    icon={<IconGitMerge size={15} style={{ marginTop: 1, marginLeft: 1 }} />}
+                    tooltip={(len => `${len} dependent task${len !== 1 ? 's' : ''}`)}
+                    statusMap={statusMap}
+                  />
+                )}
+              </Group>
+            </Box>
 
             <Stack spacing={5}>
               <Text size='sm' weight={600}>Description</Text>
