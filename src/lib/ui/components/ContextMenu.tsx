@@ -185,7 +185,33 @@ ContextMenu.Trigger = ContextMenuTrigger;
 
 
 ////////////////////////////////////////////////////////////
-type ContextMenuSubmenuProps = PropsWithChildren & {
+export function SubmenuProvider(props: PropsWithChildren & MenuProps) {
+  const [opened, setOpened] = useState<boolean>(false);
+  const [submenu, setSubmenu] = useState<SubmenuState>(null);
+
+  // Reset submenu when close
+  useEffect(() => {
+    if (!opened)
+      setSubmenu(null);
+  }, [opened]);
+
+
+  return (
+    <SubmenuContext.Provider value={{ submenu, setSubmenu }}>
+      <Menu
+        {...props}
+        onOpen={() => setOpened(true)}
+        onClose={() => setOpened(false)}
+      >
+        {props.children}
+      </Menu>
+    </SubmenuContext.Provider>
+  );
+}
+
+
+////////////////////////////////////////////////////////////
+type SubmenuProps = PropsWithChildren & {
   id: string;
   label: string | JSX.Element;
   icon?: JSX.Element;
@@ -200,7 +226,7 @@ type ContextMenuSubmenuProps = PropsWithChildren & {
 };
 
 ////////////////////////////////////////////////////////////
-export function ContextMenuSubmenu(props: ContextMenuSubmenuProps) {
+export function Submenu(props: SubmenuProps) {
   const { submenu, setSubmenu } = useContext(SubmenuContext);
 
   const openTimeout = useTimeout(
@@ -269,4 +295,4 @@ export function ContextMenuSubmenu(props: ContextMenuSubmenuProps) {
   ), [props, submenu]);
 }
 
-ContextMenu.Submenu = ContextMenuSubmenu;
+ContextMenu.Submenu = Submenu;

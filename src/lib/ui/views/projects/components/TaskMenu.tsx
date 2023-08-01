@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
@@ -22,6 +22,7 @@ import {
   IconPlus,
   IconStarFilled,
   IconStatusChange,
+  IconSubtask,
   IconTrash,
   IconUserPlus
 } from '@tabler/icons-react';
@@ -47,6 +48,7 @@ import { ExpandedTask, Label, Member, TaskPriority } from '@/lib/types';
 
 import moment from 'moment';
 import { capitalize } from 'lodash';
+import { TaskSelector } from './TaskSelector';
 
 
 ////////////////////////////////////////////////////////////
@@ -72,10 +74,15 @@ export type TaskMenuProps = PropsWithChildren & {
 
   /** Should be provided for domain related lookups (assignee) */
   domain?: DomainWrapper;
-  /** The current collection being viewed. Should be provided to exclude the collection as a choice for "Move to" */
+  /** The current collection being viewed. Should be provided to enable the "Move to" option */
   collection?: string;
   /** Map of existing statuses. Should be provided for status related actions */
   statuses?: Record<string, Label>;
+  /** Defines the task's relation to another task. Should be provided to enable subtask or dependency related actions */
+  relation?: {
+    type: 'subtask' | 'dependency';
+    task: ExpandedTask;
+  };
 
   /** Called after any action is taken */
   onAction?: () => void;
@@ -88,6 +95,9 @@ type TaskMenuDropdownProps = Omit<TaskMenuProps, 'children'> & TaskMenuContext;
 ////////////////////////////////////////////////////////////
 function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownProps) {
   const { open: openConfirmModal } = useConfirmModal();
+
+  // Used to close menu for submenus that dont have dedicated button for it
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   const [assignee, setAssignee] = useState<Member | null>(task?.assignee || null);
   const [origAssignee, setOrigAssignee] = useState<Member | null | undefined>(task?.assignee || null);
@@ -146,7 +156,7 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
     <>
       <Menu.Label>{selected?.length ? `${selected.length} SELECTED TASK${selected.length > 1 ? 'S' : ''}` : `${board.prefix}-${task?.sid}`}</Menu.Label>
 
-      {board.collections.length > 1 && (
+      {props.collection && board.collections.length > 1 && (
         <ContextMenu.Submenu
           id='move-to'
           label='Move to'
@@ -278,7 +288,61 @@ function TaskMenuDropdown({ board, task, selected, ...props }: TaskMenuDropdownP
         </>
       )}
 
+      {task && (!selected || selected.length === 0) && props.domain && (
+        <>
+          <Menu.Divider />
+
+          <ContextMenu.Submenu
+            id='add-subtask'
+            label='Add subtask'
+            icon={<IconSubtask size={16} />}
+            dropdownProps={{
+              p: '1.0rem',
+              sx: (theme) => ({
+                boxShadow: '0px 0px 16px #00000030',
+              }),
+            }}
+          >
+            <TaskSelector
+              type='subtask'
+              domain={props.domain}
+              board={board}
+              tasks={props.tasks}
+              task={task as ExpandedTask}
+              onSelect={() => closeBtnRef.current?.click()}
+              buttonComponent={Menu.Item}
+            />
+            <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+          </ContextMenu.Submenu>
+        </>
+      )}
+
       <Menu.Divider />
+
+      {task && props.relation?.type === 'subtask' && (
+        <Menu.Item
+          color='red'
+          icon={<IconTrash size={16} />}
+          onClick={() => {
+            openConfirmModal({
+              title: 'Remove Subtask',
+              content: (
+                <Text>Are you sure you want to remove <b>{board.prefix}-{task.sid}</b> as a subtask of <b>{board.prefix}-{props.relation?.task.sid}</b>?</Text>
+              ),
+              confirmLabel: 'Remove',
+              onConfirm: () => {
+                if (!props.relation) return;
+                props.tasks._mutators.updateTask(props.relation.task.id, {
+                  subtasks: props.relation.task.subtasks?.filter(id => id !== task.id),
+                }, true);
+              },
+            })
+          }}
+        >
+          Remove subtask
+        </Menu.Item>
+      )}
+
       <Menu.Item
         color='red'
         icon={<IconTrash size={16} />}
@@ -318,6 +382,7 @@ export function TaskContextMenu(props: TaskMenuProps) {
         props.domain,
         props.collection,
         props.statuses,
+        props.relation,
         props.onAction,
       ]}>
         {(context: TaskMenuContext) => (
@@ -327,6 +392,7 @@ export function TaskContextMenu(props: TaskMenuProps) {
             domain={props.domain}
             collection={props.collection}
             statuses={props.statuses}
+            relation={props.relation}
 
             task={context.task}
             selected={context.selected}

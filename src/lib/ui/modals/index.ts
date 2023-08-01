@@ -74,7 +74,7 @@ export const openEditTask = (props: EditTaskProps) => openContextModal({
 	modal: 'edit-task',
 	title: `${props.board_prefix}-${props.task.sid}`,
 	innerProps: props,
-	size: '120ch',
+	size: '80rem',
 });
 
 

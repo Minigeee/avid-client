@@ -12,6 +12,7 @@ import { SwrWrapper } from './use-swr-wrapper';
 
 import sanitizeHtml from 'sanitize-html';
 import { useApiQuery } from './use-api-query';
+import { setMembers } from './use-members';
 
 
 ////////////////////////////////////////////////////////////
@@ -86,7 +87,8 @@ function tasksMutators(mutate: KeyedMutator<ExpandedTask[]>, session: SessionSta
 				});
 
 				// Mutate task hook
-				_mutate(task_id, copy[index], { revalidate: false });
+				if (!optimistic)
+					_mutate(task_id, copy[index], { revalidate: false });
 
 				return copy;
 			}, { message: 'An error occurred while modifying task' }),
@@ -99,7 +101,11 @@ function tasksMutators(mutate: KeyedMutator<ExpandedTask[]>, session: SessionSta
 					if (idx < 0) return tasks;
 
 					const copy = tasks.slice();
-					copy[idx] = { ...copy[idx], ...task };
+					copy[idx] = _sanitize({ ...copy[idx], ...task });
+					
+					// Optimistic update for single hook
+					_mutate(task_id, copy[idx], { revalidate: false });
+
 					return copy;
 				} : undefined,
 				revalidate: false,
@@ -207,13 +213,17 @@ export type TasksWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedTas
  * All fields are retrieved except `description`, `board`, `time_updated`, and `time_status_changed`.
  * 
  * @param board_id The id of the board to retrieve tasks from
+ * @param domain_id The id of the domain the board belongs to, used to fetch and cache assignees
  * @returns A swr object containing the requested tasks
  */
-export function useTasks(board_id?: string) {
+export function useTasks(board_id: string | undefined, domain_id: string) {
 	return useApiQuery(board_id ? `${board_id}.tasks` : undefined, 'GET /tasks', {
 		query: { board: board_id || '' }
 	}, {
 		then: (results) => {
+			// Cache members
+			setMembers(domain_id, Object.values(results.members));
+
 			return results.tasks.map((task) => ({ ...task, assignee: task.assignee ? results.members[task.assignee] : null })) as ExpandedTask[];
 		},
 		mutators: tasksMutators,

@@ -84,6 +84,7 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
               statuses={statusMap}
               tags={tagMap}
               creatable={creatable}
+              wrapperProps={{ mb: '2.5rem' }}
             />
           )}
 
@@ -105,6 +106,7 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
           statuses={statusMap}
           tags={tagMap}
           creatable={creatable}
+          wrapperProps={{ mb: '2.5rem' }}
         />
       )}
     </TaskContextMenu>

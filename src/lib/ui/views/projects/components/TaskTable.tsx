@@ -3,16 +3,19 @@ import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Box,
+  BoxProps,
   Checkbox,
   CheckboxProps,
   Group,
   Text,
+  Tooltip,
   useMantineTheme,
 } from '@mantine/core';
 
 import {
   IconChevronDown,
   IconPlus,
+  IconSubtask,
 } from '@tabler/icons-react';
 
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
@@ -22,7 +25,7 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
 
 import { GroupableFields } from '../BoardView';
-import { TaskMenuContext } from './TaskMenu';
+import { TaskMenuContext, TaskMenuProps } from './TaskMenu';
 
 import config from '@/config';
 import {
@@ -36,6 +39,7 @@ import { ExpandedTask, Label } from '@/lib/types';
 
 import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import { merge } from 'lodash';
 
 
 ////////////////////////////////////////////////////////////
@@ -64,19 +68,40 @@ CustomCheckbox.displayName = 'CustomTaskTableCheckbox';
 type TaskTableProps = {
   board: BoardWrapper;
   domain: DomainWrapper;
-  collection: string;
+  /** A list of tasks that should be displayed in the table (this should be a subset of the tasks from the swr hook) */
   tasks: ExpandedTask[];
+  /** The tasks wrapper, used for mutations */
   tasksWrapper: TasksWrapper;
 
-  /** Currently chosen grouping field */
-  groupingField: GroupableFields | null;
-  /** The group this table is part of */
-  group: string;
+  /** Currently chosen collection, used for the correctly configuring the create action */
+  collection?: string;
+  /** Currently chosen grouping field, used for the correctly configuring the create action */
+  groupingField?: GroupableFields | null;
+  /** The group this table is part of, used for the correctly configuring the create action */
+  group?: string;
 
+  /** Status map used to display status column */
   statuses: Record<string, Label & { index: number }>;
+  /** Tags map used to display tags column */
   tags: Record<string, Label>;
+
+  /** The columns that should be shown */
+  columns?: (keyof ExpandedTask)[];
+  /** Column overrides */
+  columnOverrides?: Partial<Record<keyof ExpandedTask, TableColumn<ExpandedTask>>>;
+  /** Custom action column */
+  actionColumn?: TableColumn<ExpandedTask>;
+  /** Indicates if the table should multi selectable */
+  multiselectable?: boolean;
   /** Indicates if tasks can be created using table UI */
   creatable?: boolean;
+
+  /** Props for wrapper object */
+  wrapperProps?: BoxProps;
+  /** Min header row height (default 52px) */
+  headerHeight?: string;
+  /** Min row height (default 48px) */
+  rowHeight?: string;
 };
 
 ////////////////////////////////////////////////////////////
@@ -95,11 +120,13 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
 
   // Minimize times columns are reconstructed
   const columns = useMemo(() => {
-    const cols = [
-      {
+    const order = props.columns || ['priority', 'id', 'summary', 'status', 'assignee', 'due_date', 'tags'];
+    const map = {
+      priority: {
         name: 'Priority',
         center: true,
-        grow: 0.8,
+        grow: 0.5,
+        width: '6rem',
         cell: (task: ExpandedTask) => (
           <TaskPriorityIcon priority={task.priority} outerSize={24} innerSize={18} sx={{}} />
         ),
@@ -108,7 +135,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           (b.priority ? config.app.board.sort_keys.priority[b.priority] : 100) -
           (a.priority ? config.app.board.sort_keys.priority[a.priority] : 100),
       },
-      {
+      id: {
         name: 'ID',
         grow: 1,
         style: { fontWeight: 600 },
@@ -116,17 +143,38 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.sid - b.sid,
       },
-      {
+      summary: {
         name: 'Summary',
         grow: 8,
-        selector: (task: ExpandedTask) => task.summary,
+        cell: (task: ExpandedTask) => (
+          <Group spacing={6} align='baseline'>
+            <Text span data-tag='allowRowEvents'>{task.summary}</Text>
+            {task.subtasks && task.subtasks.length > 0 && (
+              <Tooltip
+                label={`${task.subtasks.length} subtask${task.subtasks.length > 1 ? 's' : ''}`}
+                position='right'
+                withArrow
+                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
+              >
+                <Group noWrap spacing={1} align='center' sx={(theme) => ({
+                  color: theme.colors.dark[2],
+                  cursor: 'default'
+                })}>
+                  <Text size='sm' data-tag='allowRowEvents'>{task.subtasks.length}</Text>
+                  <IconSubtask data-tag='allowRowEvents' size={15} style={{ marginTop: '2px' }} />
+                </Group>
+              </Tooltip>
+            )}
+          </Group>
+        ),
       },
-      {
+      status: {
         name: 'Status',
         center: true,
         grow: 2,
+        style: { fontWeight: 600, fontSize: 14 },
         cell: (task: ExpandedTask) => (
-          <Text data-tag='allowRowEvents' weight={600} size='sm' sx={{
+          <Text data-tag='allowRowEvents' sx={{
             padding: '1px 13px 2px 11px',
             width: 'fit-content',
             maxWidth: 'calc(100% - 1.0rem)',
@@ -142,7 +190,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => props.statuses[a.status].index - props.statuses[b.status].index,
       },
-      {
+      assignee: {
         name: 'Assignee',
         center: true,
         grow: 1,
@@ -156,7 +204,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
       },
-      {
+      due_date: {
         name: 'Due Date',
         grow: 2,
         cell: (task: ExpandedTask) =>
@@ -168,7 +216,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
       },
-      {
+      tags: {
         name: 'Tags',
         grow: 3,
         cell: (task: ExpandedTask) => {
@@ -176,7 +224,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
 
           // Prioritize tag group if grouping by tags
           let tags: string[];
-          if (props.groupingField === 'tags')
+          if (props.group && props.groupingField === 'tags')
             tags = [props.group, ...task.tags.filter(x => x !== props.group).sort()];
           else
             tags = [...task.tags].sort();
@@ -202,10 +250,18 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           );
         },
       },
-    ] as TableColumn<ExpandedTask>[];
+    } as Partial<Record<keyof ExpandedTask, TableColumn<ExpandedTask>>>;
+
+    // Create array
+    const cols = order.map(k => merge(map[k], props.columnOverrides?.[k] || {})).filter(x => x) as TableColumn<ExpandedTask>[];
+
+    // Action column
+    if (props.actionColumn) {
+      cols.push(props.actionColumn);
+    }
 
     // Create button
-    if (props.creatable !== false) {
+    else if (props.creatable !== false) {
       cols.push({
         name: (
           <ActionIcon
@@ -234,7 +290,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             <IconPlus size={19} />
           </ActionIcon>
         ),
-        grow: 0,
+        width: '4rem',
         right: true,
       });
     }
@@ -249,6 +305,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
     props.statuses,
     props.tags,
     props.creatable,
+    props.columns,
+    props.columnOverrides,
   ]);
 
   // Task menu action
@@ -269,19 +327,27 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         onAction: onMenuAction,
       } as TaskMenuContext}
       disabled={(!hovered && !selected.length) || (!canManageAny && hovered?.assignee?.id !== session.profile_id)}
-      style={{ marginBottom: '2.5rem' }}
+      {...props.wrapperProps}
     >
       <DataTable
         customStyles={{
           table: {
             style: {
+              maxWidth: '100%',
               borderRadius: '6px',
               backgroundColor: theme.colors.dark[8],
               color: theme.colors.dark[0],
             }
           },
+          tableWrapper: {
+            style: {
+              display: 'block',
+              maxWidth: '100%',
+            },
+          },
           headRow: {
             style: {
+              minHeight: props.headerHeight || '3.25rem',
               fontSize: `${theme.fontSizes.sm}px`,
               fontWeight: 600,
               backgroundColor: 'transparent',
@@ -291,6 +357,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           },
           rows: {
             style: {
+              minHeight: props.rowHeight || '3rem',
               padding: '0.5rem 0rem',
               fontSize: `${theme.fontSizes.sm}px`,
               color: theme.colors.dark[0],
@@ -384,7 +451,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
 
         noDataComponent='There are no tasks to display'
 
-        selectableRows
+        selectableRows={props.multiselectable !== false}
         // @ts-ignore
         selectableRowsComponent={CustomCheckbox}
         selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }}

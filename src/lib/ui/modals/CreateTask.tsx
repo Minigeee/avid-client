@@ -1,7 +1,8 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
+  ActionIconProps,
   Box,
   Button,
   Center,
@@ -10,6 +11,7 @@ import {
   ColorSwatch,
   DEFAULT_THEME,
   Divider,
+  Flex,
   Grid,
   Group,
   MantineTheme,
@@ -19,6 +21,7 @@ import {
   NumberInput,
   Popover,
   Select,
+  SelectProps,
   Stack,
   Text,
   TextInput,
@@ -35,13 +38,22 @@ import {
   IconDotsVertical,
   IconFileDatabase,
   IconHash,
+  IconPlus,
+  IconSearch,
+  IconSubtask,
   IconTrash
 } from '@tabler/icons-react';
 
+import { SubmenuProvider, Submenu } from '@/lib/ui/components/ContextMenu';
+import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import MemberInput from '@/lib/ui/components/MemberInput';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
 import { useConfirmModal } from './ConfirmModal';
+
+import TaskTable from '@/lib/ui/views/projects/components/TaskTable';
+import { TaskSelect, TaskSelector } from '@/lib/ui/views/projects/components/TaskSelector';
+import { TaskContextMenu } from '@/lib/ui/views/projects/components/TaskMenu';
 
 import config from '@/config';
 import {
@@ -58,6 +70,7 @@ import {
   useTasks,
 } from '@/lib/hooks';
 import {
+  ExpandedMember,
   ExpandedTask,
   Label,
   Member,
@@ -258,10 +271,13 @@ const CollectionSelectItem = forwardRef<HTMLDivElement, CollectionSelectItemProp
 CollectionSelectItem.displayName = 'CollectionSelectItem';
 
 
+
 ////////////////////////////////////////////////////////////
 type FormValues = {
   summary: string;
   description: string;
+  type: string;
+  extra_task: string | null;
   status: string;
   priority: TaskPriority | null;
   due_date: Date | null;
@@ -300,19 +316,34 @@ function useTaskHooks(board: BoardWrapper<false>) {
     return existing.concat(created).sort((a, b) => a.label.localeCompare(b.label));
   }, []);
   
-  // Status map
-  const statusMap = useMemo<Record<string, Label>>(() => {
-    const map: Record<string, Label> = {};
-    for (const status of (board.statuses || []))
-      map[status.id] = status;
+  // Map of status
+  const statusMap = useMemo(() => {
+    if (!board._exists) return {};
+
+    const map: Record<string, Label & { index: number }> = {};
+    for (let i = 0; i < board.statuses.length; ++i)
+      map[board.statuses[i].id] = { ...board.statuses[i], index: i };
+
     return map;
   }, [board.statuses]);
+
+  // Map of tags
+  const tagMap = useMemo(() => {
+    if (!board._exists) return {};
+
+    const map: Record<string, Label> = {};
+    for (const tag of board.tags)
+      map[tag.id] = tag;
+
+    return map;
+  }, [board.tags]);
 
   return {
     createdTags, setCreatedTags,
     tagColorOverrides, setTagColorOverrides,
     tags, setTags,
     statusMap,
+    tagMap,
   };
 }
 
@@ -373,13 +404,17 @@ export type CreateTaskProps = {
   due_date?: string;
   /** Starting collection */
   collection?: string;
+  /** Task type */
+  type?: 'task' | 'subtask' | 'dependency',
+  /** Subtask or depenency */
+  extra_task?: string;
 }
 
 ////////////////////////////////////////////////////////////
 export function CreateTask({ context, id, innerProps: props }: ContextModalProps<CreateTaskProps>) {
   const session = useSession();
   const board = useBoard(props.board_id);
-  const tasks = useTasks(props.board_id);
+  const tasks = useTasks(props.board_id, props.domain.id);
 
   // Check if user can manage any task
   const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
@@ -389,6 +424,8 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     initialValues: {
       summary: '',
       description: '',
+      type: props.type || 'task',
+      extra_task: props.extra_task || null,
       status: props.status || config.app.board.default_status_id,
       priority: props.priority || null,
       due_date: props.due_date ? new Date(props.due_date) : null,
@@ -431,8 +468,22 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       ...values,
       due_date: values.due_date?.toISOString(),
       tags: updatedTagIds,
+      type: undefined,
+      extra_task: undefined,
     };
-    await tasks._mutators.addTask(task);
+    const newTasks = await tasks._mutators.addTask(task);
+
+    // Find new task
+    const newTask = newTasks?.findLast(t => t.summary === values.summary);
+    const extraTask = values.extra_task && newTasks ? newTasks.find(t => t.id === values.extra_task) : undefined;
+
+    // Update other tasks with subtask/dependency
+    if (newTask && extraTask) {
+      if (values.type === 'subtask')
+        await tasks._mutators.updateTask(extraTask.id, { subtasks: [...(extraTask.subtasks || []), newTask.id] });
+      else if (values.type === 'dependency')
+        await tasks._mutators.updateTask(extraTask.id, { dependencies: [...(extraTask.dependencies || []), newTask.id] });
+    }
 
     setLoading(false);
 
@@ -447,6 +498,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
   return (
     <form onSubmit={form.onSubmit(submit)}>
       <Stack>
+
         <TextInput
           label='Summary'
           placeholder='Short task summary'
@@ -462,6 +514,30 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
             {...form.getInputProps('description')}
           />
         </Box>
+
+        <Select
+          label='Type'
+          description='Choose whether this should be a regular task, a subtask, or a dependency task'
+          data={[
+            { value: 'task', label: 'Task' },
+            { value: 'subtask', label: 'Subtask' },
+            { value: 'dependency', label: 'Dependency' },
+          ]}
+          {...form.getInputProps('type')}
+          sx={{ maxWidth: config.app.ui.med_input_width }}
+        />
+
+        {tasks._exists && form.values.type !== 'task' && (
+          <TaskSelect
+            label={form.values.type === 'subtask' ? 'Parent Task' : 'Child Task'}
+            description={`Select the task that this task will become a ${form.values.type === 'subtask' ? 'subtask' : 'dependency'} of. More tasks can be assigned later`}
+            placeholder='Select a task'
+            board={board}
+            tasks={tasks}
+            {...form.getInputProps('extra_task')}
+            sx={{ maxWidth: config.app.ui.med_input_width }}
+          />
+        )}
 
         <Divider />
 
@@ -606,6 +682,27 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
 
 
 ////////////////////////////////////////////////////////////
+const TASK_COLUMNS = ['id', 'summary', 'status', 'assignee'] as (keyof ExpandedTask)[];
+
+////////////////////////////////////////////////////////////
+const TASK_COLUMN_OVERRIDES = {
+  priority: {
+    cell: (task: ExpandedTask) => (
+      <TaskPriorityIcon priority={task.priority} outerSize={22} innerSize={18} sx={{}} />
+    ),
+  },
+  id: {
+    style: { fontSize: 14 },
+  },
+  summary: {
+    style: { fontSize: 14 },
+  },
+  status: {
+    style: { fontSize: 13 },
+  },
+};
+
+////////////////////////////////////////////////////////////
 export type EditTaskProps = {
   board_id: string;
   board_prefix: string;
@@ -617,10 +714,14 @@ export type EditTaskProps = {
 export function EditTask({ context, id, innerProps: props }: ContextModalProps<EditTaskProps>) {
   const session = useSession();
   const board = useBoard(props.board_id);
-  const tasks = useTasks(props.board_id);
+  const tasks = useTasks(props.board_id, props.domain.id);
   const task = useTask(props.task.id, props.task);
 
   const { open: openConfirmModal } = useConfirmModal();
+
+  // Used to close menu
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const subtaskAddBtnRef = useRef<HTMLButtonElement>(null);
   
   // Check if task is editable
   const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
@@ -658,13 +759,24 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     tagColorOverrides, setTagColorOverrides,
     tags, setTags,
     statusMap,
+    tagMap,
   } = useTaskHooks(board);
 
+
+  // Subtasks
+  const subtasks = useMemo(() => {
+    if (!tasks._exists) return [];
+    const set = new Set<string>(task.subtasks);
+    if (!set.size) return [];
+
+    return tasks.data.filter(x => set.has(x.id));
+  }, [task.subtasks]);
 
   // Set description
   useEffect(() => {
     form.setFieldValue('description', task.description || '');
   }, [task.description]);
+
 
   // Handle task field change
   async function onFieldChange(updates: Partial<ExpandedTask>) {
@@ -680,6 +792,51 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     await task._mutators.updateLocal(localUpdates);
   }
 
+  // Subtask table action column
+  const subtaskActionCol = useMemo(() => {
+    if (!board._exists || !tasks._exists) return;
+    return {
+      name: (
+        <Popover withArrow shadow='lg'>
+          <Popover.Target>
+            <ActionIcon ref={subtaskAddBtnRef}>
+              <IconPlus size={19} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+            <TaskSelector
+              type='subtask'
+              domain={props.domain}
+              board={board}
+              tasks={tasks}
+              task={task as ExpandedTask}
+              onSelect={() => subtaskAddBtnRef.current?.click()}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      ),
+      cell: (subtask: ExpandedTask) => (
+        <CloseButton
+          size='md'
+          onClick={() => openConfirmModal({
+            title: 'Remove Subtask',
+            content: (
+              <Text>Are you sure you want to remove <b>{props.board_prefix}-{subtask.sid}</b> as a subtask of <b>{props.board_prefix}-{task.sid}</b>?</Text>
+            ),
+            confirmLabel: 'Remove',
+            onConfirm: () => {
+              tasks._mutators.updateTask(props.task.id, {
+                subtasks: task.subtasks?.filter(id => id !== subtask.id),
+              }, true);
+            },
+          })}
+        />
+      ),
+      width: '4rem',
+      right: true,
+    };
+  }, [board, tasks, task.subtasks]);
+
 
   if (!board._exists) return null;
 
@@ -687,7 +844,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     <Stack>
       <Grid gutter='xl'>
         <Grid.Col span={8}>
-          <Stack spacing='xl'>
+          <Stack spacing='1.75rem'>
             {!inEditMode.summary && (
               <Group spacing='xs' noWrap>
                 <Box sx={(sx) => ({ ...textEditStyle(sx), flexGrow: 1 })}>
@@ -709,14 +866,41 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                 </Box>
 
                 {editable && (
-                  <Menu shadow='lg' width={200} position='bottom-end'>
+                  <SubmenuProvider shadow='lg' width='15rem' position='bottom-end' withinPortal>
                     <Menu.Target>
                       <ActionIcon size='lg' radius={3} sx={(theme) => ({ color: theme.colors.dark[1] })}>
                         <IconDotsVertical size={20} />
                       </ActionIcon>
                     </Menu.Target>
 
-                    <Menu.Dropdown>
+                    <Menu.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+                      {tasks._exists && (
+                        <Submenu
+                          id='add-subtask'
+                          label='Add Subtask'
+                          icon={<IconSubtask size={16} />}
+                          dropdownProps={{
+                            p: '1.0rem',
+                            sx: (theme) => ({
+                              borderColor: theme.colors.dark[4],
+                              boxShadow: '0px 0px 16px #00000030',
+                            }),
+                          }}
+                        >
+                          <TaskSelector
+                            type='subtask'
+                            domain={props.domain}
+                            board={board}
+                            tasks={tasks}
+                            task={task as ExpandedTask}
+                            onSelect={() => closeBtnRef.current?.click()}
+                          />
+                          <Menu.Item ref={closeBtnRef} sx={{ display: 'none' }} />
+                        </Submenu>
+                      )}
+
+                      <Menu.Divider />
+
                       <Menu.Item
                         color='red'
                         icon={<IconTrash size={16} />}
@@ -740,7 +924,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                         Delete task
                       </Menu.Item>
                     </Menu.Dropdown>
-                  </Menu>
+                  </SubmenuProvider>
                 )}
               </Group>
             )}
@@ -815,6 +999,40 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                 </>
               )}
             </Stack>
+
+            {tasks._exists && (
+              <>
+                {task.subtasks && task.subtasks.length > 0 && (
+                  <TaskContextMenu
+                    board={board}
+                    tasks={tasks}
+                    domain={props.domain}
+                    statuses={statusMap}
+                    relation={task._exists ? { type: 'subtask', task: task } : undefined}
+                  >
+                    <Box>
+                      <Text size='sm' weight={600} mb={6}>Subtasks</Text>
+                      <TaskTable
+                        board={board}
+                        domain={props.domain}
+                        statuses={statusMap}
+                        tags={tagMap}
+                        tasks={subtasks}
+                        tasksWrapper={tasks}
+
+                        columns={TASK_COLUMNS}
+                        columnOverrides={TASK_COLUMN_OVERRIDES}
+                        actionColumn={subtaskActionCol}
+                        multiselectable={false}
+
+                        headerHeight='3rem'
+                        rowHeight='2.75rem'
+                      />
+                    </Box>
+                  </TaskContextMenu>
+                )}
+              </>
+            )}
 
             {editable && (
               <MultiSelect

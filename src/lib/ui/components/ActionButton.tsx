@@ -37,7 +37,7 @@ export default function ActionButton(props: ActionButtonProps) {
 
         return {
           '&:hover': {
-            backgroundColor: props.hoverBg?.(theme) || theme.colors.dark[4],
+            backgroundColor: props.hoverBg?.(theme) || theme.colors.dark[5],
           },
           ...sx
         };

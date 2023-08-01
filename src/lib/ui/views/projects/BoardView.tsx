@@ -597,7 +597,7 @@ type BoardViewProps = {
 export default function BoardView(props: BoardViewProps) {
   const app = useApp();
   const board = useBoard(props.channel.data?.board);
-  const tasks = useTasks(board.id);
+  const tasks = useTasks(board.id, props.domain.id);
   
   const { classes } = useChatStyles();
   
