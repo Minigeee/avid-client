@@ -1,5 +1,6 @@
 import { Attachment } from './attachment';
 import { Member } from './member';
+import { Thread } from './thread';
 import { Date } from './util';
 
 
@@ -52,11 +53,13 @@ export type Message = {
 };
 
 /** Message with expanded fields */
-export type ExpandedMessage = Omit<Message, 'sender' | 'reply_to'> & {
+export type ExpandedMessage = Omit<Message, 'sender' | 'reply_to' | 'thread'> & {
 	/** The sender of the message */
 	sender: Member | null;
 	/** The message this message is replying to */
 	reply_to?: ExpandedMessage;
+	/** The thread the message belongs to, if it exists */
+	thread?: Thread;
 	/** A list of reactions attached to this message */
 	reactions?: AggregatedReaction[];
 };

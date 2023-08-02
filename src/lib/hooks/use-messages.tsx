@@ -14,6 +14,7 @@ import { DomainWrapper } from './use-domain';
 import { MemberWrapper, getMemberSync, setMembers, useMemberCache } from './use-members';
 import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
+import { getThreadSync, setThreads, useThreadCache } from './use-threads';
 
 import { Emoji, emojiSearch } from '@/lib/ui/components/Emoji';
 import { errorWrapper, swrErrorWrapper } from '@/lib/utility/error-handler';
@@ -279,6 +280,9 @@ function fetcher(session: SessionState, domain_id: string) {
 
 		// Set members
 		setMembers(domain_id, Object.values(results.members), false);
+
+		// Set threads
+		setThreads(Object.values(results.threads));
 
 		// Messages are an array ordered newest first. To make appending messages easy, reverse page order
 		// so that new messages are appended
@@ -1026,6 +1030,7 @@ function groupAllMessages(messages: RawMessage[], reader: MemberWrapper, env: Ma
 			...msg,
 			message: cached.rendered,
 			sender: msg.sender ? getMemberSync(env.domain.id, msg.sender) : null,
+			thread: msg.thread ? getThreadSync(msg.thread) || { id: msg.thread } : null,
 			pinged: cached.has_ping,
 		} as ExpandedMessageWithPing;
 		rendered.push(renderedMsg);
@@ -1068,6 +1073,7 @@ function groupAllMessages(messages: RawMessage[], reader: MemberWrapper, env: Ma
  */
 export function useGroupedMessages(messages: RawMessage[], domain: DomainWrapper<false>, reader: MemberWrapper<false>) {
 	const members = useMemberCache();
+	const threads = useThreadCache();
 
 	// Create md render env
 	const env = useMemo<MarkdownEnv | undefined>(() => {
@@ -1079,5 +1085,5 @@ export function useGroupedMessages(messages: RawMessage[], domain: DomainWrapper
 		// console.log(messages, members, reader._exists, env)
 		if (!reader._exists || !env) return;
 		return groupAllMessages(messages, reader, env);
-	}, [messages, members, reader._exists, env]);
+	}, [messages, members, threads, reader._exists, env]);
 }

@@ -99,9 +99,21 @@ function ThreadsTab(props: SidePanelViewProps) {
   useEffect(() => {
     if (props.context.state.view_thread) {
       setThread(props.context.state.view_thread);
-      props.context.state._set('view_thread', null);
+
+      props.context.state._setAll({
+        ...props.context.state,
+        view_thread: null,
+        viewing_thread: props.context.state.view_thread,
+      });
     }
   }, [props.context.state.view_thread]);
+
+  // Set viewing thread
+  useEffect(() => {
+    if (!props.context.state.view_thread && thread !== props.context.state.viewing_thread) {
+      props.context.state._set('viewing_thread', thread);
+    }
+  }, [thread]);
 
   // Thread select values
   const threadSelect = useMemo(() => {
@@ -283,7 +295,7 @@ type PinnedMessageProps = {
   domain: DomainWrapper;
   style: string;
   badges: BadgeMap;
-  msg: ExpandedMessage;
+  msg: Omit<ExpandedMessage, 'thread'>;
   
   mutators: MutableRefObject<MessageMutators | null>;
   editing: string | null;
@@ -295,8 +307,6 @@ type PinnedMessageProps = {
 
 ////////////////////////////////////////////////////////////
 function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
-  console.log('rerender')
-
   const { open: openConfirmModal } = useConfirmModal();
 
   const { ref, width } = useElementSize();
@@ -580,6 +590,12 @@ export default function SidePanelView(props: SidePanelViewProps) {
     if (props.context.state.view_thread)
       setTab('threads');
   }, [props.context.state.view_thread]);
+
+  // Turn off message highlighting when switch off threads tab
+  useEffect(() => {
+    if (tab !== 'threads' && props.context.state.viewing_thread)
+      props.context.state._set('viewing_thread', null);
+  }, [tab]);
 
 
   return (

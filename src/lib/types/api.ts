@@ -252,6 +252,7 @@ export type ApiSchema = {
 		return: {
 			messages: (Message & { reactions?: AggregatedReaction[] })[];
 			members: Record<string, ExpandedMember>;
+			threads: Record<string, Thread>;
 		},
 	},
 
@@ -419,6 +420,7 @@ export type ApiSchema = {
 	'GET /threads': {
 		query: {
 			channel: string;
+			ids?: string[];
 			page?: number;
 			limit?: number;
 		},

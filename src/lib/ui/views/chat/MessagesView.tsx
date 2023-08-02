@@ -120,6 +120,8 @@ type MessageViewState = {
   scroll_to: string | null;
   /** The thread that should be viewed */
   view_thread: string | null;
+  /** The thread that is currently being viewed */
+  viewing_thread: string | null;
 };
 
 /** Message view context state, used to pass current state within message view */
@@ -211,6 +213,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     replying_to: null,
     scroll_to: null,
     view_thread: null,
+    viewing_thread: null,
 	});
 
   const [typingIds, setTypingIds] = useState<string[]>([]);
@@ -427,6 +430,7 @@ type MessageGroupProps = {
 
   sender: MemberWrapper;
   thread_id: string | undefined;
+  viewing_thread: string | null;
   editing: string | null;
   p: string;
   avatarGap: 'sm' | 'md' | 'lg';
@@ -481,16 +485,22 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
         display: 'flex',
         gap: 0,
 
-        padding: `0.25rem 0rem 0.25rem calc(${props.p} - 3px)`,
-        backgroundColor: props.hasPing ? '#2B293A' : undefined,
+        padding: `0.25rem 0rem 0.25rem calc(${props.p} - 4px)`,
+        backgroundColor: props.hasPing ? '#2B293A' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}10` : undefined,
         transition: 'background-color 0.08s',
 
         '&:hover': {
-          backgroundColor: props.hasPing ? '#312D46' : theme.colors.dark[6],
+          backgroundColor: props.hasPing ? '#312D46' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}1A` : theme.colors.dark[6],
         },
 
-        '&:first-child': { borderTopRightRadius: 3 },
-        '&:last-child': { borderBottomRightRadius: 3 },
+        '&:first-child': {
+          borderTopLeftRadius: 3,
+          borderTopRightRadius: 3,
+        },
+        '&:last-child': {
+          borderBottomLeftRadius: 3,
+          borderBottomRightRadius: 3,
+        },
       })}
     >
       {props.idx === 0 && (
@@ -531,7 +541,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
               </div>
             )}
 
-            {msg.reply_to && (
+            {(msg.reply_to || (msg.thread && props.thread_id !== '_')) && (
               <Group
                 spacing={6}
                 p='0.15rem 0.5rem 0.15rem 0.25rem'
@@ -547,36 +557,64 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                   },
                 })}
                 onClick={() => {
-                  props.setState.current?.('scroll_to', msg.reply_to?.id || null);
+                  if (msg.reply_to)
+                    props.setState.current?.('scroll_to', msg.reply_to.id || null);
+                  else if (msg.thread)
+                    props.setState.current?.('view_thread', msg.thread.id || null)
                 }}
               >
                 <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
                   <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
                 </Box>
-                <MemberAvatar
-                  member={msg.reply_to.sender}
-                  size={20}
-                />
-                <Text
-                  size={12}
-                  weight={600}
-                  sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
-                >
-                  {msg.reply_to.sender?.alias}
-                </Text>
-                <Text
-                  size={11}
-                  mt={1}
-                  mah='1.25rem'
-                  sx={(theme) => ({
-                    maxWidth: '80ch',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    color: `${theme.colors.dark[0]}C0`,
-                  })}
-                >
-                  {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
-                </Text>
+
+                {msg.reply_to && (
+                  <>
+                    <MemberAvatar
+                      member={msg.reply_to.sender}
+                      size={20}
+                    />
+                    <Text
+                      size={12}
+                      weight={600}
+                      sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
+                    >
+                      {msg.reply_to.sender?.alias}
+                    </Text>
+                    <Text
+                      size={11}
+                      mt={1}
+                      mah='1.25rem'
+                      sx={(theme) => ({
+                        maxWidth: '80ch',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        color: `${theme.colors.dark[0]}C0`,
+                      })}
+                    >
+                      {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                    </Text>
+                  </>
+                )}
+                {msg.thread && !msg.reply_to && (
+                  <>
+                    <Box sx={(theme) => ({ color: theme.colors.dark[2] })}>
+                      <IconMessages size={16} />
+                    </Box>
+                    <Text
+                      size={11}
+                      mt={1}
+                      mah='1.25rem'
+                      sx={(theme) => ({
+                        maxWidth: '80ch',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        color: `${theme.colors.dark[0]}C0`,
+                      })}
+                    >
+                      {msg.thread.name}
+                    </Text>
+                  </>
+                )}
               </Group>
             )}
             <div
@@ -714,7 +752,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
         )}
       </Stack>
 
-      {!props.thread_id && msg.thread && (
+      {/* !props.thread_id && msg.thread && (
         <ActionButton
           tooltip='View Thread'
           tooltipProps={{ position: 'left' }}
@@ -730,7 +768,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
         >
           <IconMessages size={16} />
         </ActionButton>
-      )}
+      ) */}
       
       {msg.pinned && (
         <Box mr={8} mt={3} sx={(theme) => ({ color: theme.colors.green[7] })}>
@@ -759,23 +797,13 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
 
   return (
     <Flex wrap='nowrap' sx={(theme) => ({
+      position: 'relative',
       '&:hover': hasPing ? undefined : {
         '.msg-border': {
           background: theme.colors.indigo[5],
         },
       }
     })}>
-      <Box className='msg-border' sx={(theme) => ({
-        flexShrink: 0,
-        width: 4,
-        background:
-          hasPing ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) :
-            fromUser ? theme.colors.dark[5] : undefined,
-        transition: 'background 0.08s',
-        borderTopLeftRadius: 4,
-        borderBottomLeftRadius: 4,
-      })} />
-
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
           <SingleMessage
@@ -787,6 +815,19 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
           />
         ))}
       </Stack>
+
+      <Box className='msg-border' sx={(theme) => ({
+        position: 'absolute',
+        flexShrink: 0,
+        width: 4,
+        height: '100%',
+        background:
+          hasPing ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) :
+            fromUser ? theme.colors.dark[5] : undefined,
+        transition: 'background 0.08s',
+        borderTopLeftRadius: 4,
+        borderBottomLeftRadius: 4,
+      })} />
     </Flex>
   );
 }
@@ -796,6 +837,7 @@ const MemoMessageGroup = memo(MessageGroup, (a, b) => {
   return a.style === b.style &&
     a.rolesMap === b.rolesMap &&
     a.sender === b.sender &&
+    a.viewing_thread === b.viewing_thread &&
     a.editing === b.editing &&
     a.p === b.p &&
     a.scrollTo === b.scrollTo &&
@@ -931,6 +973,7 @@ function MessagesViewport(props: MessagesViewportProps) {
 
                       sender={context.sender as MemberWrapper}
                       thread_id={context.style.withSidePanel ? context.thread_id : '_'}
+                      viewing_thread={context.state.viewing_thread}
                       editing={cachedProps[`${day}.${j}`].editing}
                       p={context.style.p}
                       avatarGap={context.style.avatarGap}
