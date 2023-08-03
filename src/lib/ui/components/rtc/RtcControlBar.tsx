@@ -27,7 +27,7 @@ import {
   IconVideoOff
 } from '@tabler/icons-react';
 
-import { hasPermission, useApp, useDomain } from '@/lib/hooks';
+import { hasPermission, useApp, useDomain, useRtc } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -83,16 +83,17 @@ function ControlButton({ active, disabled, tooltip, color, ...props }: ControlBu
 ////////////////////////////////////////////////////////////
 export default function RtcControlBar() {
   const app = useApp();
+  const rtc = useRtc();
   
   const [webcamLoading, setWebcamLoading] = useState<boolean>(false);
 
   // Check if viewing room
-  const domain_id = app.navigation.domain;
-  const room_id = app.rtc?.room_id;
-  const inRoom = domain_id === app.rtc?.domain_id && app.navigation.channels?.[domain_id || ''] === room_id;
+  const domain_id = app.domain;
+  const room_id = rtc.room_id;
+  const inRoom = domain_id === rtc.domain_id && app.channels?.[domain_id || ''] === room_id;
 
   // Get domain for permissions
-  const domain = useDomain(domain_id);
+  const domain = useDomain(domain_id || undefined);
   
   // Rtc permissions
   const canSpeak = domain._exists && room_id ? hasPermission(domain, room_id, 'can_broadcast_audio') : false;
@@ -113,11 +114,11 @@ export default function RtcControlBar() {
           <ControlButton
             tooltip={'Return To Room'}
             onClick={() => {
-              assert(app.rtc);
+              assert(rtc._exists);
 
               // Return to room
-              app._mutators.navigation.setDomain(app.rtc.domain_id);
-              app._mutators.navigation.setChannel(app.rtc.room_id, app.rtc.domain_id);
+              app._mutators.setDomain(rtc.domain_id);
+              app._mutators.setChannel(rtc.room_id, rtc.domain_id);
             }}
           >
             <IconArrowBackUp size={20} />
@@ -128,67 +129,67 @@ export default function RtcControlBar() {
       )}
       
       <ControlButton
-        tooltip={app.rtc?.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
-        active={app.rtc?.is_screen_shared}
+        tooltip={rtc.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
+        active={rtc.is_screen_shared}
         disabled={!canVideo}
         onClick={() => {
-          if (app.rtc?.is_screen_shared)
-            app._mutators.rtc.screenshare.disable();
+          if (rtc.is_screen_shared)
+            rtc._mutators.screenshare.disable();
           else
-            app._mutators.rtc.screenshare.enable();
+            rtc._mutators.screenshare.enable();
         }}
       >
-        {!app.rtc?.is_screen_shared && <IconScreenShare size={19} />}
-        {app.rtc?.is_screen_shared && <IconScreenShareOff size={19} />}
+        {!rtc.is_screen_shared && <IconScreenShare size={19} />}
+        {rtc.is_screen_shared && <IconScreenShareOff size={19} />}
       </ControlButton>
 
       <ControlButton
-        tooltip={app.rtc?.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
+        tooltip={rtc.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
         buttonProps={{ loading: webcamLoading }}
         disabled={!canVideo}
         onClick={async () => {
-          if (app.rtc?.is_webcam_on)
-            app._mutators.rtc.webcam.disable();
+          if (rtc.is_webcam_on)
+            rtc._mutators.webcam.disable();
           else {
             setWebcamLoading(true);
-            await app._mutators.rtc.webcam.enable();
+            await rtc._mutators.webcam.enable();
             setWebcamLoading(false);
           }
         }}
       >
-        {app.rtc?.is_webcam_on && <IconVideo size={20} />}
-        {!app.rtc?.is_webcam_on && <IconVideoOff size={20} />}
+        {rtc.is_webcam_on && <IconVideo size={20} />}
+        {!rtc.is_webcam_on && <IconVideoOff size={20} />}
       </ControlButton>
 
       <ControlButton
-        tooltip={app.rtc?.is_mic_muted ? 'Unmute' : 'Mute'}
+        tooltip={rtc.is_mic_muted ? 'Unmute' : 'Mute'}
         disabled={!canSpeak}
         onClick={() => {
           // Enable if not enabled first
-          if (!app.rtc?.is_mic_enabled)
-            app._mutators.rtc.microphone.enable();
+          if (!rtc.is_mic_enabled)
+            rtc._mutators.microphone.enable();
             
-          else if (app.rtc?.is_mic_muted)
-            app._mutators.rtc.microphone.unmute();
+          else if (rtc.is_mic_muted)
+            rtc._mutators.microphone.unmute();
           else
-            app._mutators.rtc.microphone.mute();
+            rtc._mutators.microphone.mute();
         }}
       >
-        {!app.rtc?.is_mic_muted && <IconMicrophone size={20} />}
-        {app.rtc?.is_mic_muted && <IconMicrophoneOff size={20} />}
+        {!rtc.is_mic_muted && <IconMicrophone size={20} />}
+        {rtc.is_mic_muted && <IconMicrophoneOff size={20} />}
       </ControlButton>
 
       <ControlButton
-        tooltip={app.rtc?.is_deafened ? 'Undeafen' : 'Deafen'}
+        tooltip={rtc.is_deafened ? 'Undeafen' : 'Deafen'}
         onClick={() => {
-          if (app.rtc?.is_deafened)
-            app._mutators.rtc.audio.undeafen();
+          if (rtc.is_deafened)
+            rtc._mutators.audio.undeafen();
           else
-            app._mutators.rtc.audio.deafen();
+            rtc._mutators.audio.deafen();
         }}
       >
-        {!app.rtc?.is_deafened && <IconHeadphones size={20} />}
-        {app.rtc?.is_deafened && <IconHeadphonesOff size={20} />}
+        {!rtc.is_deafened && <IconHeadphones size={20} />}
+        {rtc.is_deafened && <IconHeadphonesOff size={20} />}
       </ControlButton>
 
       <ControlButton
@@ -203,7 +204,7 @@ export default function RtcControlBar() {
       <ControlButton
         tooltip='Leave'
         color={['red', 5]}
-        onClick={() => app._mutators.rtc.disconnect()}
+        onClick={() => rtc._mutators.disconnect()}
       >
         <IconPhoneX size={20} />
       </ControlButton>

@@ -33,7 +33,7 @@ type DomainHeaderProps = {
 function DomainHeader({ app, domain }: DomainHeaderProps) {
   const session = useSession();
 
-  const expansion_id = app.navigation.expansions?.[domain.id] || 'home';
+  const expansion_id = app.expansions[domain.id] || 'home';
   const expansions = [
     { value: 'home', label: 'Home' },
     { value: 'calendar', label: 'Calendar' },
@@ -110,7 +110,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
           const active = expansion_id === expansion.value;
           return (
             <UnstyledButton key={expansion.value} onClick={() => {
-              app._mutators.navigation.setExpansion(expansion.value);
+              app._mutators.setExpansion(expansion.value);
             }}>
               <div>
                 <Group spacing='xs' align='start' sx={(theme) => ({
@@ -158,7 +158,7 @@ export default function DomainView({ domain_id }: DomainViewProps) {
     return null;
 
   // Use nav state expansion as default, home as back up
-  const expansion_id = app.navigation.expansions?.[domain.id] || 'home';
+  const expansion_id = app.expansions[domain.id] || 'home';
 
 
   return (

@@ -135,8 +135,8 @@ export default function DomainBar() {
                 name: tab.name,
               }}
               icon={tab.icon}
-              active={app.navigation.domain === tab.id}
-              onClick={() => app._mutators.navigation.setDomain(tab.id)}
+              active={app.domain === tab.id}
+              onClick={() => app._mutators.setDomain(tab.id)}
             />
           ))}
           <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
@@ -144,8 +144,8 @@ export default function DomainBar() {
             <DomainAvatar
               key={domain.id}
               domain={domain}
-              active={app.navigation.domain === domain.id}
-              onClick={() => app._mutators.navigation.setDomain(domain.id)}
+              active={app.domain === domain.id}
+              onClick={() => app._mutators.setDomain(domain.id)}
             />
           ))}
         </Stack>
@@ -181,7 +181,7 @@ export default function DomainBar() {
                 profile,
                 onCreate: (domain_id) => {
                   // Switch to new domain
-                  app._mutators.navigation.setDomain(domain_id);
+                  app._mutators.setDomain(domain_id);
                 },
               });
             }

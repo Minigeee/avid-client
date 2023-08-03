@@ -23,11 +23,11 @@ const HEADER_HEIGHT = '2.8rem';
 ////////////////////////////////////////////////////////////
 export default function MainView() {
   const app = useApp();
-  assert(app.navigation.domain && app.navigation.domain?.startsWith('domains'));
+  assert(app.domain && app.domain.startsWith('domains'));
 
-  const domain = useDomain(app.navigation.domain);
+  const domain = useDomain(app.domain);
   // Get channel, using nav state as first choice and first channel as back up
-  const channel_id = app.navigation.channels?.[app.navigation.domain] ||
+  const channel_id = app.channels[app.domain] ||
     (Object.keys(domain?.channels || {}).length ? Object.keys(domain?.channels || {})[0] : undefined);
 
   const [headerData, setHeaderData] = useState<Record<string, any>>({});
@@ -106,7 +106,7 @@ export default function MainView() {
           })} />
         )}
 
-        {app.general.right_panel_opened && (
+        {app.right_panel_opened && (
           <Flex direction='column' sx={(theme) => ({
             flexShrink: 0,
             width: '16rem',

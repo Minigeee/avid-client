@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
-import {
-  RtcParticipant,
-  useApp,
-} from '@/lib/hooks';
+import { useRtc } from '@/lib/hooks';
+import { RtcParticipant } from '@/lib/contexts';
 
 
 ////////////////////////////////////////////////////////////
@@ -47,12 +45,12 @@ function RtcVoice({ participant }: RtcVoiceProps) {
 
 ////////////////////////////////////////////////////////////
 export default function RtcVoices() {
-  const app = useApp();
+  const rtc = useRtc();
 
   // Get a list of participants with a voice element
   const participants = useMemo<RtcParticipant[]>(() => {
-    return Object.values(app.rtc?.participants || {}).filter(x => x.audio !== undefined);
-  }, [app.rtc?.participants]);
+    return Object.values(rtc.participants || {}).filter(x => x.audio !== undefined);
+  }, [rtc.participants]);
 
   return (
     <>

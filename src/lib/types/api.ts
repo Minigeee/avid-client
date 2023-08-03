@@ -1,3 +1,4 @@
+import { RemoteAppState } from './app_state';
 import { Attachment } from './attachment';
 import { Board, TaskCollection } from './board';
 import { Channel, ChannelData, ChannelGroup, ChannelOptions, ChannelTypes } from './channel';
@@ -43,11 +44,11 @@ export type ApiSchema = {
 
 	/** App state */
 	'GET /app': {
-		return: any;
+		return: Partial<RemoteAppState> | null;
 	},
 
 	'POST /app': {
-		body: any & { _merge: boolean };
+		body: Partial<RemoteAppState> & { _merge?: boolean };
 	},
 
 

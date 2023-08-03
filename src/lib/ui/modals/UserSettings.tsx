@@ -27,7 +27,7 @@ import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
 
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
-import { ProfileWrapper, useApp, useMemoState, useProfile, useSession } from '@/lib/hooks';
+import { ProfileWrapper, useApp, useMemoState, useProfile, useRtc, useSession } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -143,6 +143,8 @@ function AccountTab({ session, profile, ...props }: TabProps) {
 
 ////////////////////////////////////////////////////////////
 function RtcTab({ app, ...props }: TabProps) {
+  const rtc = useRtc();
+
   const [rescan, setRescan] = useState<boolean>(false);
   const [audioInputDevices, setAudioInputDevices] = useState<{ value: string; label: string }[]>([]);
   const [videoInputDevices, setVideoInputDevices] = useState<{ value: string; label: string }[]>([]);
@@ -214,8 +216,8 @@ function RtcTab({ app, ...props }: TabProps) {
         label='Microphone'
         placeholder='None'
         data={audioInputDevices}
-        value={app.rtc?.audio_input_device || 'default'}
-        onChange={(value) => app._mutators.rtc.microphone.setDevice(value || undefined)}
+        value={rtc.audio_input_device || 'default'}
+        onChange={(value) => rtc._mutators.microphone.setDevice(value || undefined)}
         sx={{ width: config.app.ui.med_input_width }}
       />
 
@@ -226,8 +228,8 @@ function RtcTab({ app, ...props }: TabProps) {
         label='Camera'
         placeholder='None'
         data={videoInputDevices}
-        value={app.rtc?.video_options?.device_id || videoInputDevices.at(0)?.value}
-        onChange={(value) => app._mutators.rtc.webcam.setOptions({ ...app.rtc?.video_options, device_id: value || undefined })}
+        value={rtc.video_options?.device_id || videoInputDevices.at(0)?.value}
+        onChange={(value) => rtc._mutators.webcam.setOptions({ ...rtc.video_options, device_id: value || undefined })}
         sx={{ width: config.app.ui.med_input_width }}
       />
     </Stack>

@@ -50,7 +50,6 @@ import {
   DomainWrapper,
   TasksWrapper,
   hasPermission,
-  useApp,
   useBoard,
   useCachedState,
   useChatStyles,
@@ -595,7 +594,6 @@ type BoardViewProps = {
 
 ////////////////////////////////////////////////////////////
 export default function BoardView(props: BoardViewProps) {
-  const app = useApp();
   const board = useBoard(props.channel.data?.board);
   const tasks = useTasks(board.id, props.domain.id);
   

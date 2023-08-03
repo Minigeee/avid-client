@@ -57,7 +57,7 @@ import { SettingsModal, popUnsaved, pushUnsaved } from '@/lib/ui/components/sett
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
 import config from '@/config';
-import { AppState, SessionState } from '@/lib/contexts';
+import { SessionState } from '@/lib/contexts';
 import {
   AclEntriesWrapper,
   DomainWrapper,

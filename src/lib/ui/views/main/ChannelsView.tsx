@@ -403,12 +403,12 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                       selected={props.selected === channel_id}
                       onClick={() => {
                         if (props.domain._exists)
-                          app._mutators.navigation.setChannel(channel_id);
+                          app._mutators.setChannel(channel_id);
                       }}
                       onDelete={() => {
                         const channels = Object.values(props.domain.channels);
                         if (channels.length > 0)
-                          app._mutators.navigation.setChannel(channels[0].id);
+                          app._mutators.setChannel(channels[0].id);
                       }}
 
                       index={i}

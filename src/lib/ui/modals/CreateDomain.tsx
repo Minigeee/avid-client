@@ -20,7 +20,7 @@ import { IconPhoto, IconUpload, IconX } from '@tabler/icons-react';
 import AvatarEditor from 'react-avatar-editor';
 
 import config from '@/config';
-import { ProfileWrapper, useApp } from '@/lib/hooks';
+import { ProfileWrapper } from '@/lib/hooks';
 import { useElementSize } from '@mantine/hooks';
 
 

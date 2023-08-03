@@ -75,7 +75,7 @@ export default function JoinDomain(props: Props) {
     socket().disconnect().connect();
 
     // Switch to it
-    app._mutators.navigation.setDomain(domain_id);
+    app._mutators.setDomain(domain_id);
 
     // Callback
     props.onSubmit();

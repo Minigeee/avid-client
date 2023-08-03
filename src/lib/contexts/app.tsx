@@ -1,168 +1,28 @@
-import { createContext, PropsWithChildren, useEffect, useState } from 'react';
+import { createContext, PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import assert from 'assert';
 
 import { useTimeout } from '@mantine/hooks';
 
 import config from '@/config';
-import { RtcMutators, RtcState, useRtc, useSession } from '@/lib/hooks';
-import { DeepPartial } from '@/lib/types';
+import { useSession } from '@/lib/hooks';
+import { DeepPartial, LocalAppState, RemoteAppState, RightPanelTab } from '@/lib/types';
 
 import { SessionState } from './session';
 
-import { merge } from 'lodash';
+import { merge, throttle } from 'lodash';
 import { api } from '../api';
 import { socket } from '../utility/realtime';
 
 
-/** Get app state id from session */
-function _id(session: SessionState) {
-	return `app_states:${session.profile_id.split(':').at(-1)}`;
-}
-
-/** Recursively remove record parts of ids */
-function _rmPrefix(x: any): any {
-	if (typeof x === 'string') {
-		return x.split(':').at(-1) || x;
-	}
-
-	else if (typeof x === 'object') {
-		if (Array.isArray(x)) {
-			return x.map(x => _rmPrefix(x));
-		}
-		else {
-			const remapped: Record<string, string> = {};
-			for (const [k, v] of Object.entries<any>(x))
-				remapped[k.split(':').at(-1) || k] = _rmPrefix(v);
-	
-			return remapped;
-		}
-	}
-
-	else {
-		return x;
-	}
-}
-
-////////////////////////////////////////////////////////////
-function _addPrefix(x: Record<string, string>, kpre?: string, vpre?: string) {
-	const remapped: Record<string, string> = {};
-	for (const [k, v] of Object.entries(x))
-		remapped[kpre ? `${kpre}:${k}` : k] = vpre ? `${vpre}:${v}` : v;
-	return remapped;
-}
-
-
-/** Right panel tab values */
-export type RightPanelTab = 'members' | 'activity' | 'upcoming';
-
-/** State used for saving app state */
-type _SaveState = {
-	/** Indicates if app state fetch is still loading */
-	_loading: boolean;
-	/** Indicates if remote app state exists */
-	_exists: boolean;
-
-	/** Changes since last save */
-	_diff: any;
-};
-
-/** General (miscellaneous) states */
-type _GeneralState = {
-	/** A map of channels to stale status */
-	stale: Record<string, boolean>;
-
-	/** Indicates if the right side panel is opened */
-	right_panel_opened?: boolean;
-};
-
-/** Holds navigation context state */
-type _NavState = {
-	/** The current domain the user is viewing (saved) */
-	domain?: string;
-	/** The ids of the current channel the user is viewing per domain (saved) */
-	channels?: Record<string, string>;
-	/** The ids of the expansion the user is viewing per domain (saved) */
-	expansions?: Record<string, string>;
-
-	/** The right panel tab the user is viewing for each domain */
-	right_panel_tab?: Record<string, RightPanelTab>;
-};
-
 /** All subparts put together */
-type _AppState = {
-	general: _GeneralState,
-	navigation: _NavState,
-	rtc?: RtcState,
-};
+type _AppState = RemoteAppState & LocalAppState;
 
-
-/** Save function used to save app state */
-type SaveFunc = <K extends keyof _AppState>(section: K, diff: DeepPartial<_AppState[K]>) => void;
+/** Remote state save func */
+type SaveFunc = (state: Partial<RemoteAppState>) => void;
 
 
 ////////////////////////////////////////////////////////////
-async function _saveAll(general: _GeneralState, nav: _NavState, session: SessionState) {
-	// Can't save without a profile
-	if (!session.profile_id) return;
-
-	await api('POST /app', {
-		body: {
-			// General state
-			general: {
-				right_panel_opened: general.right_panel_opened,
-			},
-			// Nav state
-			navigation: {
-				domain: nav.domain?.split(':').at(-1),
-				channels: _rmPrefix(nav.channels || {}),
-				expansions: _rmPrefix(nav.expansions || {}),
-			},
-
-			_merge: false,
-		},
-	}, { session });
-}
-
-////////////////////////////////////////////////////////////
-function generalMutatorFactory(general: _GeneralState, setGeneral: (state: _GeneralState) => unknown, save: SaveFunc) {
-	return {
-		/**
-		 * Mark or unmark a channel as containing stale data.
-		 * 
-		 * @param channel_id The channel to mark as (un)stale
-		 */
-		setStale: (channel_id: string, stale: boolean) => {
-			// Don't set if already the same
-			if (general.stale[channel_id] === stale) return;
-
-			setGeneral({
-				...general,
-				stale: { ...general.stale, [channel_id]: stale },
-			});
-		},
-
-		/**
-		 * Set whether the right side panel should be opened or not
-		 * 
-		 * @param opened Whether the panel should be opened
-		 */
-		setRightPanelOpened: (opened: boolean) => {
-			// Don't set if already the same
-			if (general.right_panel_opened === opened) return;
-
-			const diff = { right_panel_opened: opened };
-			setGeneral({
-				...general,
-				right_panel_opened: opened,
-			});
-			
-			save('general', diff);
-		}
-	};
-}
-
-////////////////////////////////////////////////////////////
-function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown, save: SaveFunc) {
+function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState) => void, save: SaveFunc) {
 	return {
 		/**
 		 * Switch to viewing the given domain.
@@ -172,15 +32,15 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 		 */
 		setDomain: (domain_id: string) => {
 			// Don't set if already the same
-			if (nav.domain === domain_id) return;
+			if (state.domain === domain_id) return;
 
 			const diff = { domain: domain_id };
-			setNav(merge({}, nav, diff));
+			setState(merge({}, state, diff));
 			
-			save('navigation', diff);
+			save(diff);
 
-			// Notify change domain
-			socket().emit('general:switch-room', domain_id, nav.channels?.[domain_id] || '');
+			// TODO : Notify change domain
+			// socket().emit('general:switch-room', domain_id, nav.channels?.[domain_id] || '');
 		},
 
 		/**
@@ -193,21 +53,21 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 		 * @param domain_id The id of the domain to switch to
 		 */
 		setChannel: (channel_id: string, domain_id?: string) => {
-			domain_id = domain_id || nav.domain
+			domain_id = domain_id || state.domain || undefined;
 			if (!domain_id) return;
 
 			// Don't set if already the same
-			if (nav.channels?.[domain_id] === channel_id) return;
+			if (state.channels?.[domain_id] === channel_id) return;
 
-			const diff: DeepPartial<_NavState> = {
+			const diff = {
 				channels: { [domain_id]: channel_id },
-			};
-			setNav(merge({}, nav, diff));
+			} as Partial<RemoteAppState>;
+			setState(merge({}, state, diff));
 
-			save('navigation', diff);
+			save(diff);
 
-			// Notify change channel
-			socket().emit('general:switch-room', domain_id, channel_id);
+			// TODO : Notify change channel
+			// socket().emit('general:switch-room', domain_id, channel_id);
 		},
 
 		/**
@@ -220,20 +80,58 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 		 * @param domain_id The id of the domain to switch to
 		 */
 		setExpansion: (expansion_id: string, domain_id?: string) => {
-			domain_id = domain_id || nav.domain
+			domain_id = domain_id || state.domain || undefined;
 			if (!domain_id) return;
 
 			// Don't set if already the same
-			if (nav.expansions?.[domain_id] === expansion_id) return;
+			if (state.expansions?.[domain_id] === expansion_id) return;
 
-			const diff: DeepPartial<_NavState> = {
+			const diff = {
 				expansions: { [domain_id]: expansion_id },
-			};
-			setNav(merge({}, nav, diff));
+			} as Partial<RemoteAppState>;
+			setState(merge({}, state, diff));
 
-			save('navigation', diff);
+			save(diff);
 		},
+		
+		/**
+		 * Set whether the right side panel should be opened or not
+		 * 
+		 * @param opened Whether the panel should be opened
+		 */
+		setRightPanelOpened: (opened: boolean) => {
+			// Don't set if already the same
+			if (state.right_panel_opened === opened) return;
 
+			const diff = { right_panel_opened: opened };
+			setState({
+				...state,
+				right_panel_opened: opened,
+			});
+			
+			save(diff);
+		}
+	};
+}
+
+////////////////////////////////////////////////////////////
+function localMutators(state: LocalAppState, setState: (value: LocalAppState) => void, remote: RemoteAppState) {
+	return {
+		/**
+		 * Mark or unmark a channel as containing stale data.
+		 * 
+		 * @param channel_id The channel to mark as (un)stale
+		 */
+		setStale: (channel_id: string, stale: boolean) => {
+			// Don't set if already the same
+			if (state.stale[channel_id] === stale) return;
+
+			setState({
+				...state,
+				stale: { ...state.stale, [channel_id]: stale },
+			});
+		},
+		
 		/**
 		 * Switch to viewing the given expansion. If a domain id is provided,
 		 * then it is used, otherwise the current domain is used. If neither
@@ -243,28 +141,29 @@ function navMutatorFactory(nav: _NavState, setNav: (state: _NavState) => unknown
 		 * @param domain_id The id of the domain to switch to
 		 */
 		setRightPanelTab: (tab: RightPanelTab, domain_id?: string) => {
-			domain_id = domain_id || nav.domain
+			domain_id = domain_id || remote.domain || undefined;
 			if (!domain_id) return;
 
 			// Don't set if already the same
-			if (nav.right_panel_tab?.[domain_id] === tab) return;
+			if (state.right_panel_tab?.[domain_id] === tab) return;
 
-			const diff: DeepPartial<_NavState> = {
-				right_panel_tab: { [domain_id]: tab },
-			};
-			setNav(merge({}, nav, diff));
+			setState({
+				...state,
+				right_panel_tab: { ...state.right_panel_tab, [domain_id]: tab },
+			});
 		},
 	};
 }
 
 
+/** App state mutators */
+export type AppStateMutators = ReturnType<typeof remoteMutators> & ReturnType<typeof localMutators>;
 /** Session context state */
-export type AppState = _SaveState & _AppState & {
-	_mutators: {
-		general: ReturnType<typeof generalMutatorFactory>,
-		navigation: ReturnType<typeof navMutatorFactory>,
-		rtc: RtcMutators,
-	}
+export type AppState = _AppState & {
+	/** Indicates if remote state has been loaded or not */
+	_loaded: boolean;
+	/** App state mutators */
+	_mutators: AppStateMutators;
 };
 
 /** Session context */
@@ -276,115 +175,60 @@ export const AppContext = createContext<AppState>();
 export default function AppProvider({ children }: PropsWithChildren) {
 	const session = useSession();
 
-	const [save, setSave] = useState<_SaveState>({
-		_loading: true,
-		_exists: false,
-		_diff: {},
+	// Remote state
+	const [remote, setRemote] = useState<RemoteAppState>({
+		domain: null,
+		channels: {},
+		expansions: {},
+		seen: {},
+		right_panel_opened: true,
 	});
 
-	const [general, setGeneral] = useState<_GeneralState>({
+	// Local state
+	const [local, setLocal] = useState<LocalAppState>({
 		stale: {},
+		right_panel_tab: {},
 	});
-	const [nav, setNav] = useState<_NavState>({});
-	const rtc = useRtc(session);
 
-	// Use separate saved state to merge with latest values
-	const [savedState, setSavedState] = useState<DeepPartial<_AppState> | null>(null);
-
+	// Inidicate if app loaded
+	const [loaded, setLoaded] = useState<boolean>(false);
 	
-	// Timeout used to save nav state
-	const timeout = useTimeout(async () => {
-		// Check if there is stuff to save
-		if (Object.keys(save._diff).length === 0) return;
 
-		// Update everything in diff object
-		await api('POST /app', {
-			body: _rmPrefix(save._diff),
-		}, { session });
+	// Context state
+	const contextState = useMemo(() => ({
+		...remote,
+		...local,
+		_loaded: loaded,
+		_mutators: {
+			...remoteMutators(remote, setRemote, (state: Partial<RemoteAppState>) => {
+				// Save diff
+				api('POST /app', {
+					body: { ...state, _merge: true },
+				}, { session });
+			}),
+			...localMutators(local, setLocal, remote),
+		},
+	}), [remote, local, loaded]);
 
-		// Reset diff
-		setSave({ ...save, _diff: {} });
-	}, config.app.nav_update_timeout);
-	
-	// Save function
-	const saveFunc: SaveFunc = (section, diff) => {
-		// Set diff
-		const netDiff = { [section]: diff };
-		setSave({ ...save, _diff: merge(save._diff, netDiff) });
-
-		// Start save timer
-		timeout.clear();
-		timeout.start();
-	};
-
-	// Set initial nav state
+	// Load initial app state
 	useEffect(() => {
-		if (!session._exists) return;
+		if (loaded) return;
 
-		// Initial save state for fallback
-		const initialSave: DeepPartial<_AppState> = {
-			general: {
-				right_panel_opened: true,
-			},
-		};
-
+		// Get app
 		api('GET /app', {}, { session })
-			.then((results: (_AppState & { id: string }) | null) => {
-				const _exists = results != null;
-				if (_exists) {
-					const data = results;
+			.then((results) => {
+				// Set remote
+				if (results)
+					setRemote(merge({}, remote, results));
 
-					const remoteNav = data.navigation || {};
-
-					// Set saved state (this is async function so the initial state values may be stale)
-					setSavedState({
-						general: {
-							right_panel_opened: data.general?.right_panel_opened === undefined ? true : data.general.right_panel_opened,
-						},
-						navigation: {
-							domain: remoteNav.domain ? `domains:${remoteNav.domain}` : undefined,
-							channels: _addPrefix(remoteNav.channels || {}, 'domains', 'channels'),
-							expansions: _addPrefix(remoteNav.expansions || {}, 'domains'),
-						},
-					});
-				}
-				else {
-					// Save doesn't exist on db, save to push initial state
-					_saveAll({ ...general, ...initialSave?.general } as _GeneralState, nav, session);
-				}
-
-				// Set save state
-				setSave(merge({}, initialSave, save, { _exists, _loading: false }));
-			})
-			.catch((error) => {
-				// Indicate that db version does not exist
-				setSave(merge({}, save, initialSave, { _exists: false, _loading: false }));
+				// Set loaded no matter if a result exists
+				setLoaded(true);
 			});
-	}, [session.profile_id]);
-
-	// Merge save state with initial values
-	useEffect(() => {
-		if (!savedState) return;
-
-		setGeneral(merge({}, general, savedState.general || {}));
-		setNav(merge({}, nav, savedState.navigation || {}));
-
-		setSavedState(null);
-	}, [savedState]);
+	}, []);
 
 
 	return (
-		<AppContext.Provider value={{
-			...save,
-			general,
-			navigation: nav,
-			rtc: rtc.rtc,
-			_mutators: {
-				general: generalMutatorFactory(general, setGeneral, saveFunc),
-				navigation: navMutatorFactory(nav, setNav, saveFunc),
-				rtc: rtc.mutators,
-			},
-		}}>
+		<AppContext.Provider value={contextState}>
 			{children}
 		</AppContext.Provider>
 	);

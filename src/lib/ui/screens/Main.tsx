@@ -23,10 +23,10 @@ export default function Main(props: { visible: boolean }) {
 
   // Set initial domain if remote nav state does not exist
   useEffect(() => {
-    if (app._loading || app._exists) return;
+    if (!app._loaded) return;
     if (profile.domains?.length)
-      app._mutators.navigation.setDomain(profile.domains[0].id);
-  }, [app._loading]);
+      app._mutators.setDomain(profile.domains[0].id);
+  }, [app._loaded]);
 
 
   return (
@@ -45,8 +45,8 @@ export default function Main(props: { visible: boolean }) {
         height: '100%',
       }}>
         {/* Actual domains */}
-        {app.navigation.domain?.startsWith('domains') && (<DomainView domain_id={app.navigation.domain} />)}
-        {app.navigation.domain && !app.navigation.domain.startsWith('domains') && (
+        {app.domain?.startsWith('domains') && (<DomainView domain_id={app.domain} />)}
+        {app.domain && !app.domain.startsWith('domains') && (
           <Center w='100%' h='100%'>
             <Text>Coming soon :&#41;</Text>
           </Center>

@@ -42,7 +42,6 @@ import {
   hasPermission,
   setAclEntries,
   useAclEntries,
-  useApp,
   useCachedState,
   useDomain,
   useMemoState,

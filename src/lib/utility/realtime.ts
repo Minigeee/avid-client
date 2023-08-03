@@ -128,18 +128,18 @@ export function useRealtimeHandlers() {
 		function onChatMessage(domain_id: string, message: Message) {
 			// If the channel of the message is not the same as the one the user is currently on,
 			// mark the message channel as stale
-			if (app.navigation.channels?.[domain_id] === message.channel) return;
+			if (app.channels?.[domain_id] === message.channel) return;
 
 			// Mark stale
-			app._mutators.general.setStale(message.channel, true);
+			app._mutators.setStale(message.channel, true);
 		}
 
 		// Handles marking channels stale
 		function onReactionChange(channel_id: string) {
-			if (app.navigation.channels?.[app.navigation.domain || ''] === channel_id) return;
+			if (app.channels[app.domain || ''] === channel_id) return;
 
 			// Mark stale
-			app._mutators.general.setStale(channel_id, true);
+			app._mutators.setStale(channel_id, true);
 		}
 
 		_socket.on('chat:message', onChatMessage);

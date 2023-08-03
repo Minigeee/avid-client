@@ -18,13 +18,14 @@ import ConfirmModal from '@/lib/ui/modals/ConfirmModal';
 
 import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
-import { useApp, useProfile, useSession } from '@/lib/hooks';
+import { RtcProvider } from '@/lib/contexts';
+import { useProfile, useRtc, useSession } from '@/lib/hooks';
 import { connect, useRealtimeHandlers } from '@/lib/utility/realtime';
 
 
 ////////////////////////////////////////////////////////////
 function ScreenState({ router }: { router: NextRouter }) {
-  const app = useApp();
+  const rtc = useRtc();
 
   // Attach realtime event handlers
   useRealtimeHandlers();
@@ -43,7 +44,7 @@ function ScreenState({ router }: { router: NextRouter }) {
     <>
       <Main visible />
 
-      {app.rtc?.joined && (
+      {rtc.joined && (
         <>
           <RtcVoices />
         </>
@@ -103,11 +104,13 @@ export default function App() {
   return (
     <ErrorBoundary height='90vh'>
       <AppProvider>
-        <ConfirmModal>
-          <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
-            <ScreenState router={router} />
-          </ModalsProvider>
-        </ConfirmModal>
+        <RtcProvider>
+          <ConfirmModal>
+            <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
+              <ScreenState router={router} />
+            </ModalsProvider>
+          </ConfirmModal>
+        </RtcProvider>
       </AppProvider>
     </ErrorBoundary>
   );

@@ -42,13 +42,13 @@ import SidePanelView from './SidePanelView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
-import { AppState } from '@/lib/contexts';
+import { AppState, RtcContextState, rtcIo } from '@/lib/contexts';
 import {
   DomainWrapper,
   hasPermission,
-  rtcIo,
   useApp,
   useMembers,
+  useRtc,
   useSession,
 } from '@/lib/hooks';
 import { Channel, Member } from '@/lib/types';
@@ -63,7 +63,7 @@ type Participant = Member & {
 ////////////////////////////////////////////////////////////
 type ParticipantViewProps = {
   member: Participant;
-  app: AppState;
+  rtc: RtcContextState;
 
   cellWidth: number;
   avatarSize: number;
@@ -71,13 +71,13 @@ type ParticipantViewProps = {
 }
 
 ////////////////////////////////////////////////////////////
-function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
+function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   
   const [showMenu, setShowMenu] = useState<boolean>(false);
 
   // Get rtc info
-  const rtcInfo = app.rtc?.participants[member.id];
+  const rtcInfo = rtc.participants[member.id];
   const display = rtcInfo?.share || rtcInfo?.video;
   const volume = rtcInfo?.volume || 0;
 
@@ -86,9 +86,9 @@ function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
 
     // TEMP : Pause webcam while screen sharing
     if (rtcInfo.share && rtcInfo.video && !rtcInfo.video.paused.local)
-      app._mutators.rtc.pause(rtcInfo.id, 'video');
+      rtc._mutators.pause(rtcInfo.id, 'video');
     else if (!rtcInfo.share && rtcInfo.video && rtcInfo.video.paused.local)
-      app._mutators.rtc.resume(rtcInfo.id, 'video');
+      rtc._mutators.resume(rtcInfo.id, 'video');
 
     // Set video element source
     const mstream = new MediaStream([display.track]);
@@ -169,8 +169,8 @@ function ParticipantView({ member, app, ...props }: ParticipantViewProps) {
                 label={(value) => `${value}%`}
                 value={volume}
                 onChange={(value) => {
-                  if (app.rtc?.joined)
-                    app._mutators.rtc.audio.setVolume(member.id, value);
+                  if (rtc.joined)
+                    rtc._mutators.audio.setVolume(member.id, value);
                 }}
                 sx={{ flexGrow: 1 }}
               />
@@ -191,12 +191,12 @@ type RoomViewProps = {
 
 ////////////////////////////////////////////////////////////
 type SubviewProps = RoomViewProps & {
-  app: AppState;
+  rtc: RtcContextState;
 };
 
 
 ////////////////////////////////////////////////////////////
-function JoinScreen({ app, ...props }: SubviewProps) {
+function JoinScreen({ rtc, ...props }: RoomViewProps & { rtc: RtcContextState<false> }) {
   const session = useSession();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -221,20 +221,20 @@ function JoinScreen({ app, ...props }: SubviewProps) {
   const canSpeak = hasPermission(props.domain, props.channel.id, 'can_broadcast_audio');
   const canVideo = hasPermission(props.domain, props.channel.id, 'can_broadcast_video');
   
-  const webcamOn = canVideo && app.rtc?.is_webcam_on;
-  const micOn = canSpeak && !app.rtc?.is_mic_muted;
+  const webcamOn = canVideo && rtc.is_webcam_on;
+  const micOn = canSpeak && !rtc.is_mic_muted;
 
   // Turn off mic if no permission
   useEffect(() => {
-    if (!app.rtc?.is_mic_muted && !canSpeak)
-      app._mutators.rtc.microphone.mute();
-  }, [app.rtc?.is_mic_muted, canSpeak]);
+    if (!rtc.is_mic_muted && !canSpeak)
+      rtc._mutators.microphone.mute();
+  }, [rtc.is_mic_muted, canSpeak]);
 
   // Turn off webcam if no permission
   useEffect(() => {
-    if (app.rtc?.is_webcam_on && !canVideo)
-      app._mutators.rtc.webcam.disable();
-  }, [app.rtc?.is_webcam_on, canVideo]);
+    if (rtc.is_webcam_on && !canVideo)
+      rtc._mutators.webcam.disable();
+  }, [rtc.is_webcam_on, canVideo]);
 
 
   return (
@@ -301,9 +301,9 @@ function JoinScreen({ app, ...props }: SubviewProps) {
               disabled={!canVideo}
               onChange={() => {
                 if (!webcamOn)
-                  app._mutators.rtc.webcam.enable();
+                  rtc._mutators.webcam.enable();
                 else
-                  app._mutators.rtc.webcam.disable();
+                  rtc._mutators.webcam.disable();
               }}
             />
           </Group>
@@ -314,23 +314,23 @@ function JoinScreen({ app, ...props }: SubviewProps) {
               checked={micOn}
               disabled={!canSpeak}
               onChange={() => {
-                if (app.rtc?.is_mic_muted)
-                  app._mutators.rtc.microphone.unmute();
+                if (rtc.is_mic_muted)
+                  rtc._mutators.microphone.unmute();
                 else
-                  app._mutators.rtc.microphone.mute();
+                  rtc._mutators.microphone.mute();
               }}
             />
           </Group>
           <Group spacing={6} mr={4}>
-            {!app.rtc?.is_deafened && <IconHeadphones size={20} />}
-            {app.rtc?.is_deafened && <IconHeadphonesOff size={20} />}
+            {!rtc.is_deafened && <IconHeadphones size={20} />}
+            {rtc.is_deafened && <IconHeadphonesOff size={20} />}
             <Switch
-              checked={!app.rtc?.is_deafened}
+              checked={!rtc.is_deafened}
               onChange={() => {
-                if (app.rtc?.is_deafened)
-                  app._mutators.rtc.audio.undeafen();
+                if (rtc.is_deafened)
+                  rtc._mutators.audio.undeafen();
                 else
-                  app._mutators.rtc.audio.deafen();
+                  rtc._mutators.audio.deafen();
               }}
             />
           </Group>
@@ -349,7 +349,7 @@ function JoinScreen({ app, ...props }: SubviewProps) {
           w='8rem'
           onClick={() => {
             setLoading(true)
-            app._mutators.rtc.connect(props.channel.id, props.domain.id).finally(() => setLoading(false));
+            rtc._mutators.connect(props.channel.id, props.domain.id).finally(() => setLoading(false));
           }}
         >
           Join
@@ -360,11 +360,11 @@ function JoinScreen({ app, ...props }: SubviewProps) {
 }
 
 ////////////////////////////////////////////////////////////
-function RoomScreen({ app, ...props }: SubviewProps) {
+function RoomScreen({ rtc, ...props }: SubviewProps) {
   const session = useSession();
 
   // Get list of participants
-  const memberIds = useMemo(() => app.rtc ? Object.keys(app.rtc.participants) : [], [app.rtc?.participants]);
+  const memberIds = useMemo(() => Object.keys(rtc.participants), [rtc.participants]);
   const members = useMembers(props.domain.id, memberIds);
 
   // Map of which participants are talking
@@ -442,7 +442,7 @@ function RoomScreen({ app, ...props }: SubviewProps) {
               <ParticipantView
                 key={member.id}
                 member={member}
-                app={app}
+                rtc={rtc}
 
                 cellWidth={cellWidth}
                 avatarSize={avatarSize}
@@ -472,21 +472,25 @@ function RoomScreen({ app, ...props }: SubviewProps) {
 ////////////////////////////////////////////////////////////
 export default function RoomView(props: RoomViewProps) {
   const app = useApp();
+  const rtc = useRtc();
 
-  if (!app.rtc?.joined || app.rtc?.room_id !== props.channel.id) {
+  if (!rtc._exists || !rtc.joined || rtc.room_id !== props.channel.id) {
     return (
       <JoinScreen
         {...props}
-        app={app}
+        rtc={rtc}
+      />
+    );
+  }
+  else if (rtc._exists) {
+    return (
+      <RoomScreen
+        {...props}
+        rtc={rtc}
       />
     );
   }
   else {
-    return (
-      <RoomScreen
-        {...props}
-        app={app}
-      />
-    );
+    return (null);
   }
 }

@@ -19,7 +19,7 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RoleBadges, { BadgeMap, useRoleBadges } from '@/lib/ui/components/RoleBadges';
 
 import config from '@/config';
-import { DomainWrapper, listMembers, listMembersLocal, useApp, useMemberQuery, useSession } from '@/lib/hooks';
+import { DomainWrapper, listMembers, listMembersLocal, useMemberQuery, useSession } from '@/lib/hooks';
 import { ExpandedMember, Role } from '@/lib/types';
 
 import { range, throttle } from 'lodash';
@@ -96,8 +96,6 @@ function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
 
 ////////////////////////////////////////////////////////////
 function MembersTab(props: RightPanelViewProps) {
-  const app = useApp();
-
   // Used for infinite scroll
   const containerRef = useRef<HTMLDivElement>(null);
 
