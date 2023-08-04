@@ -49,6 +49,7 @@ type SingleChannelProps = {
 
 ////////////////////////////////////////////////////////////
 function SingleChannel(props: SingleChannelProps) {
+  const app = useApp();
   const { open: openConfirmModal } = useConfirmModal();
 
   const form = useForm({
@@ -71,8 +72,9 @@ function SingleChannel(props: SingleChannelProps) {
             padding: `0.2rem 0.3rem 0.2rem 0.5rem`,
             borderRadius: theme.radius.sm,
             backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
+            color: theme.colors.dark[app.seen[props.domain.id]?.[props.channel.id] && !props.selected ? 2 : 0],
             boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
-            transition: 'background-color 0.1s',
+            transition: 'background-color 0.1s, color 0.1s',
             '&:hover': {
               backgroundColor: theme.colors.dark[5],
               '.dropdown': { visibility: 'visible' },

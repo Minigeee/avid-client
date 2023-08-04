@@ -37,7 +37,19 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			// Don't set if already the same
 			if (state.domain === domain_id) return;
 
-			const diff = { domain: domain_id };
+			const diff: Partial<RemoteAppState> = {
+				domain: domain_id
+			};
+
+			// Mark as seen
+			if (state.channels[domain_id]) {
+				diff.seen = {
+					[domain_id]: {
+						[state.channels[domain_id]]: true,
+					}
+				};
+			}
+
 			setState(merge({}, state, diff));
 			
 			// Don't save using standard method, switch room will handle that for use
@@ -64,6 +76,11 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 
 			const diff = {
 				channels: { [domain_id]: channel_id },
+				seen: {
+					[domain_id]: {
+						[state.channels[domain_id]]: true,
+					}
+				},
 			} as Partial<RemoteAppState>;
 			setState(merge({}, state, diff));
 
