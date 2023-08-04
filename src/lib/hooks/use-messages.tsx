@@ -260,7 +260,7 @@ function makeKeyFn(channel_id: string, thread_id: string | undefined, pinned: bo
 }
 
 /** Message fetcher */
-function fetcher(session: SessionState, domain_id: string) {
+function fetcher(session: SessionState, domain: DomainWrapper) {
 	return async (key: string) => {
 		const parts = key.split('.');
 		const channel_id = parts[0];
@@ -279,7 +279,12 @@ function fetcher(session: SessionState, domain_id: string) {
 		}, { session });
 
 		// Set members
-		setMembers(domain_id, Object.values(results.members), false);
+		setMembers(domain.id, Object.values(results.members), false);
+
+		// Render thread names
+		const env = makeMarkdownEnv(domain);
+		for (const thread of Object.values(results.threads))
+			thread.name = renderMessage(thread.name, env);
 
 		// Set threads
 		setThreads(Object.values(results.threads));
@@ -569,25 +574,6 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		},
 
 		/**
-		 * Add a message locally. This message will not be posted to the database.
-		 * This should be used to display messages received through websockets.
-		 * 
-		 * @param message The message to add
-		 * @param reader The member that is viewing the messages (used to highlight member pings)
-		 * @returns The new grouped messages
-		 */
-		addMessageLocal: (message: Message) => mutate(
-			swrErrorWrapper(
-				async (messages: RawMessage[][]) => {
-					updateSwrMessages((messages) => addMessageLocal(messages, message), message, channel_id, thread_id, pinned, session);
-					return addMessageLocal(messages, message);
-				},
-				{ message: 'An error occurred while displaying a message' }
-			),
-			{ revalidate: false }
-		),
-
-		/**
 		 * Edit a message (only the text parts)
 		 * 
 		 * @param message_id The id of the message to edit
@@ -654,6 +640,70 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 				},
 				revalidate: false,
 			}
+		),
+
+		/**
+		 * Add a message locally. This message will not be posted to the database.
+		 * This should be used to display messages received through websockets.
+		 * 
+		 * @param message The message to add
+		 * @param reader The member that is viewing the messages (used to highlight member pings)
+		 * @returns The new grouped messages
+		 */
+		addMessageLocal: (message: Message) => mutate(
+			swrErrorWrapper(
+				async (messages: RawMessage[][]) => {
+					updateSwrMessages((messages) => addMessageLocal(messages, message), message, channel_id, thread_id, pinned, session);
+					return addMessageLocal(messages, message);
+				},
+				{ message: 'An error occurred while displaying a message' }
+			),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Edit a message locally. These changes will not be sent to database.
+		 * This should be used to display messages received through websockets.
+		 * 
+		 * @param message_id The id of the message to edit
+		 * @param message The new message values to set
+		 * @returns The new grouped messages
+		 */
+		editMessageLocal: (message_id: string, message: Partial<Message>) => mutate(
+			swrErrorWrapper(
+				async (messages: RawMessage[][]) => {
+					// Find message to check if it needs to be updated in thread view
+					const { page, idx } = findMessage(messages, message_id);
+					const messageObj = idx >= 0 ? messages[page][idx] : {};
+
+					updateSwrMessages((messages) => _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, ...message })), messageObj, channel_id, thread_id, pinned, session);
+					return _editMessageTemplate(messages, message_id, (msg) => ({ ...msg, ...message }));
+				},
+				{ message: 'An error occurred while displaying an edited message' }
+			),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Delete a message locally. These changes will not be sent to database.
+		 * This should be used to display messages received through websockets.
+		 * 
+		 * @param message_id The id of the message to delete
+		 * @returns The new grouped messages
+		 */
+		deleteMessageLocal: (message_id: string) => mutate(
+			swrErrorWrapper(
+				async (messages: RawMessage[][]) => {
+					// Find message to check if it needs to be updated in thread view
+					const { page, idx } = findMessage(messages, message_id);
+					const messageObj = idx >= 0 ? messages[page][idx] : {};
+
+					updateSwrMessages((messages) => deleteMessageLocal(messages, message_id), messageObj, channel_id, thread_id, pinned, session);
+					return deleteMessageLocal(messages, message_id);
+				},
+				{ message: 'An error occurred while displaying an edited message' }
+			),
+			{ revalidate: false }
 		),
 
 		/**
@@ -890,7 +940,7 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<RawMessa
  * @param options.pinned If only pinned messages should be fetched
  * @returns A list of messages sorted oldest first
  */
-export function useMessages(channel_id: string, domain_id: string, options?: { thread_id?: string; pinned?: boolean; }) {
+export function useMessages(channel_id: string, domain: DomainWrapper, options?: { thread_id?: string; pinned?: boolean; }) {
 	const session = useSession();
 
 	// Key function
@@ -899,7 +949,7 @@ export function useMessages(channel_id: string, domain_id: string, options?: { t
 	// Infinite loader
 	const swr = useSWRInfinite<RawMessage[]>(
 		keyFn,
-		fetcher(session, domain_id),
+		fetcher(session, domain),
 		{ revalidateFirstPage: false }
 	);
 
@@ -915,7 +965,7 @@ export function useMessages(channel_id: string, domain_id: string, options?: { t
 		},
 		pageSize: config.app.message.query_limit,
 		mutators,
-		mutatorParams: [channel_id, domain_id, options?.thread_id, options?.pinned],
+		mutatorParams: [channel_id, domain.id, options?.thread_id, options?.pinned],
 		separate: true,
 		session,
 	});
@@ -1030,7 +1080,7 @@ function groupAllMessages(messages: RawMessage[], reader: MemberWrapper, env: Ma
 			...msg,
 			message: cached.rendered,
 			sender: msg.sender ? getMemberSync(env.domain.id, msg.sender) : null,
-			thread: msg.thread ? getThreadSync(msg.thread) || { id: msg.thread } : null,
+			thread: msg.thread ? getThreadSync(msg.thread) : null,
 			pinged: cached.has_ping,
 		} as ExpandedMessageWithPing;
 		rendered.push(renderedMsg);

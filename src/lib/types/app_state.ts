@@ -12,8 +12,8 @@ export type RemoteAppState = {
 	/** The ids of the expansion the user is viewing per domain (saved) */
 	expansions: Record<string, string>;
 
-	/** A map of channels to "seen" state */
-	seen: Record<string, boolean>;
+	/** A map of domains to channels to "seen" state */
+	seen: Record<string, Record<string, boolean>>;
 	/** Indicates if the right side panel is opened */
 	right_panel_opened?: boolean;
 };

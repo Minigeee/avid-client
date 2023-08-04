@@ -512,7 +512,7 @@ function PinnedTab(props: SidePanelViewProps) {
   const [editing, setEditing] = useState<string | null>(null);
 
   // Raw messages
-  const messages = useMessages(props.channel_id, props.domain.id, { pinned: true });
+  const messages = useMessages(props.channel_id, props.domain, { pinned: true });
   // Badges
   const badges = useRoleBadges(props.domain);
 

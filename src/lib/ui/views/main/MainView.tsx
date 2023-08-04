@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import assert from 'assert';
 
 import {
@@ -34,6 +34,15 @@ export default function MainView() {
 
   // Retrieve channel object
   const channel = channel_id ? domain?.channels?.[channel_id] || undefined : undefined;
+
+
+  // Set channel remote
+  useEffect(() => {
+    assert(app.domain);
+
+    if (!app.channels[app.domain] && channel_id)
+      app._mutators.setChannel(channel_id);
+  }, [channel_id, app.channels[app.domain]])
 
 
   if (!domain._exists)

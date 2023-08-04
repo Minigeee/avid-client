@@ -89,7 +89,7 @@ export function useRealtimeHandlers() {
 				(count, domain, opts) => {
 					if (opts.online)
 						return count + 1;
-					else if (opts.online)
+					else if (!opts.online)
 						return count - 1;
 
 					return count;
@@ -104,7 +104,7 @@ export function useRealtimeHandlers() {
 				(count, domain, opts) => {
 					if (opts.online)
 						return count - 1;
-					else if (opts.online)
+					else if (!opts.online)
 						return count + 1;
 
 					return count;
@@ -121,33 +121,19 @@ export function useRealtimeHandlers() {
 		};
 	}, [_socket.connected, app]);
 
-	// Chat message handler
+	// Channel activity handler
 	useEffect(() => {
-		if (!_socket.connected) return;
-
-		function onChatMessage(domain_id: string, message: Message) {
-			// If the channel of the message is not the same as the one the user is currently on,
-			// mark the message channel as stale
-			if (app.channels?.[domain_id] === message.channel) return;
-
-			// Mark stale
-			app._mutators.setStale(message.channel, true);
-		}
-
-		// Handles marking channels stale
-		function onReactionChange(channel_id: string) {
-			if (app.channels[app.domain || ''] === channel_id) return;
-
-			// Mark stale
+		function onActivity(domain_id: string, channel_id: string, mark_unseen: boolean) {
+			// Set stale, and mark as unseen
 			app._mutators.setStale(channel_id, true);
+			if (mark_unseen)
+				app._mutators.setSeen(domain_id, channel_id, false);
 		}
 
-		_socket.on('chat:message', onChatMessage);
-		_socket.on('chat:reactions', onReactionChange);
+		_socket.on('general:activity', onActivity);
 
 		return () => {
-			_socket.off('chat:message', onChatMessage);
-			_socket.off('chat:reactions', onReactionChange);
+			_socket.off('general:activity', onActivity);
 		};
-	}, [_socket.connected, app]);
+	}, [app]);
 }

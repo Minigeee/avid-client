@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import assert from 'assert';
 
 import { useTimeout } from '@mantine/hooks';
@@ -24,6 +24,9 @@ type SaveFunc = (state: Partial<RemoteAppState>) => void;
 ////////////////////////////////////////////////////////////
 function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState) => void, save: SaveFunc) {
 	return {
+		/** For updating entire state */
+		setRemote: setState,
+
 		/**
 		 * Switch to viewing the given domain.
 		 * This function saves the new navigation state to the database.
@@ -37,10 +40,10 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			const diff = { domain: domain_id };
 			setState(merge({}, state, diff));
 			
-			save(diff);
+			// Don't save using standard method, switch room will handle that for use
 
-			// TODO : Notify change domain
-			// socket().emit('general:switch-room', domain_id, nav.channels?.[domain_id] || '');
+			if (state.channels[domain_id])
+				socket().emit('general:switch-room', domain_id, state.channels[domain_id]);
 		},
 
 		/**
@@ -64,10 +67,9 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			} as Partial<RemoteAppState>;
 			setState(merge({}, state, diff));
 
-			save(diff);
+			// Don't save using standard method, switch room will handle that for use
 
-			// TODO : Notify change channel
-			// socket().emit('general:switch-room', domain_id, channel_id);
+			socket().emit('general:switch-room', domain_id, channel_id);
 		},
 
 		/**
@@ -93,6 +95,29 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 
 			save(diff);
 		},
+
+		/**
+		 * Marks a channel as (un)seen locally. Does not update the
+		 * database state.
+		 * 
+		 * @param domain_id The domain of the channel
+		 * @param channel_id The channel to set seen status for
+		 * @param seen The new seen status
+		 */
+		setSeen: (domain_id: string, channel_id: string, seen: boolean) => {
+			if (!state.seen[domain_id]?.[channel_id] == !seen) return;
+
+			setState({
+				...state,
+				seen: {
+					...state.seen,
+					[domain_id]: {
+						...state.seen[domain_id],
+						[channel_id]: seen,
+					},
+				},
+			});
+		},
 		
 		/**
 		 * Set whether the right side panel should be opened or not
@@ -117,6 +142,9 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 ////////////////////////////////////////////////////////////
 function localMutators(state: LocalAppState, setState: (value: LocalAppState) => void, remote: RemoteAppState) {
 	return {
+		/** For updating entire state */
+		setLocal: setState,
+
 		/**
 		 * Mark or unmark a channel as containing stale data.
 		 * 
@@ -192,7 +220,22 @@ export default function AppProvider({ children }: PropsWithChildren) {
 
 	// Inidicate if app loaded
 	const [loaded, setLoaded] = useState<boolean>(false);
-	
+
+
+	// Save function
+	const diffRef = useRef<Partial<RemoteAppState>>({});
+	const _api = useCallback(throttle(() => {
+		api('POST /app', {
+			body: { ...diffRef.current, _merge: true },
+		}, { session });
+
+		// Reset
+		diffRef.current = {};
+	}, 1000), []);
+	const save = useCallback((state: Partial<RemoteAppState>) => {
+		merge(diffRef.current, state);
+		_api();
+	}, []);
 
 	// Context state
 	const contextState = useMemo(() => ({
@@ -200,12 +243,7 @@ export default function AppProvider({ children }: PropsWithChildren) {
 		...local,
 		_loaded: loaded,
 		_mutators: {
-			...remoteMutators(remote, setRemote, (state: Partial<RemoteAppState>) => {
-				// Save diff
-				api('POST /app', {
-					body: { ...state, _merge: true },
-				}, { session });
-			}),
+			...remoteMutators(remote, setRemote, save),
 			...localMutators(local, setLocal, remote),
 		},
 	}), [remote, local, loaded]);

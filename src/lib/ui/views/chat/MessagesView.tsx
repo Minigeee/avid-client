@@ -197,7 +197,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   const app = useApp();
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(channel_id, domain.id, { thread_id: props.thread_id });
+  const messages = useMessages(channel_id, domain, { thread_id: props.thread_id });
   const groupedMessages = useGroupedMessages(messages.data || [], domain, sender);
 
   // Editor ref
@@ -247,7 +247,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     // Skip if thread view
     if (props.thread_id) return;
 
-    function onNewMessage(domain_id: string, message: Message) {
+    function onNewMessage(message: Message) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || message.channel !== channel_id) return;
   
@@ -271,10 +271,26 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     }
   }, [channel_id, messages, typingIds]);
 
-  // Reaction handler
+  // Edit message, delete message, reaction handler
   useEffect(() => {
     // Skip if thread view
     if (props.thread_id) return;
+
+    function onEditMessage(edit_channel_id: string, message_id: string, message: Partial<Message>) {
+      // Ignore if message isn't in this channel, it is handled by another handler
+      if (!messages._exists || edit_channel_id !== channel_id) return;
+
+      // Edit message locally
+      messages._mutators.editMessageLocal(message_id, message);
+    }
+
+    function onDeleteMessage(edit_channel_id: string, message_id: string) {
+      // Ignore if message isn't in this channel, it is handled by another handler
+      if (!messages._exists || edit_channel_id !== channel_id) return;
+
+      // Edit message locally
+      messages._mutators.deleteMessageLocal(message_id);
+    }
 
     function onReactionChanges(p_channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) {
       // Ignore if message isn't in this channel, it is handled by another handler
@@ -284,9 +300,13 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       messages._mutators.applyReactionChanges(message_id, changes, removeAll);
     }
 
+    socket().on('chat:edit-message', onEditMessage);
+    socket().on('chat:delete-message', onDeleteMessage);
     socket().on('chat:reactions', onReactionChanges);
 
     return () => {
+      socket().off('chat:edit-message', onEditMessage);
+      socket().off('chat:delete-message', onDeleteMessage);
       socket().off('chat:reactions', onReactionChanges);
     }
   }, [channel_id, messages]);
@@ -611,7 +631,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                         color: `${theme.colors.dark[0]}C0`,
                       })}
                     >
-                      {msg.thread.name}
+                      {msg.thread.name?.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
                     </Text>
                   </>
                 )}
