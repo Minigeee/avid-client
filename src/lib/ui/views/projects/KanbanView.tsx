@@ -70,9 +70,6 @@ type TaskCardProps = {
 
 ////////////////////////////////////////////////////////////
 function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
-  const today = new Date();
-  const diff = moment(task.due_date || 0).diff([today.getFullYear(), today.getMonth(), today.getDate()], 'days');
-
   return (
     <ContextMenu.Trigger context={{ task } as TaskMenuContext} disabled={props.editable === false}>
       <Draggable draggableId={task.id.toString()} index={props.index}>
@@ -167,7 +164,14 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                     borderRadius: 15,
                     cursor: 'default',
                   })}>
-                    {Math.max(diff, 0)}
+                    {moment(task.due_date).calendar({
+                      sameDay: '[Today]',
+                      nextDay: '[Tomorrow]',
+                      nextWeek: 'dddd',
+                      lastDay: '[Yesterday]',
+                      lastWeek: 'D/M/YYYY',
+                      sameElse: 'D/M/YYYY'
+                    })}
                   </Text>
                 </Tooltip>
               )}

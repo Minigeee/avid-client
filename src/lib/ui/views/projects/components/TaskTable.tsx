@@ -224,11 +224,31 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
       due_date: {
         name: 'Due Date',
         grow: 2,
+        style: { fontWeight: 500, fontSize: 13 },
         cell: (task: ExpandedTask) =>
           task.due_date ? (
-            <Text data-tag='allowRowEvents' size='sm' weight={600}>
-              {moment(task.due_date).format('l')}
-            </Text>
+            <Tooltip
+              label={moment(task.due_date).format('ll')}
+              position='right'
+              withArrow
+              sx={(theme) => ({ backgroundColor: theme.colors.dark[8], fontWeight: 400 })}
+            >
+              <Text sx={(theme) => ({
+                padding: '1px 11px 2px 11px',
+                backgroundColor: theme.colors.dark[4],
+                borderRadius: 15,
+                cursor: 'default',
+              })}>
+                {moment(task.due_date).calendar({
+                  sameDay: '[Today]',
+                  nextDay: '[Tomorrow]',
+                  nextWeek: 'dddd',
+                  lastDay: '[Yesterday]',
+                  lastWeek: 'D/M/YYYY',
+                  sameElse: 'D/M/YYYY'
+                })}
+              </Text>
+            </Tooltip>
           ) : undefined,
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
