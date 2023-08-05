@@ -1,3 +1,4 @@
+import { TaskCollection } from './board';
 import { Member } from './member';
 import { Message } from './message';
 
@@ -18,6 +19,8 @@ export interface ServerToClientEvents {
 	'chat:reactions': (channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) => void;
 
 	'board:activity': (channel_id: string) => void;
+	'board:add-collection': (board_id: string, collection: TaskCollection) => void;
+	'board:delete-collection': (board_id: string, collection_id: string) => void;
 }
 
 

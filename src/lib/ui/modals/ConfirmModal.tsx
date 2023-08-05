@@ -3,6 +3,7 @@ import { createContext, PropsWithChildren, useContext, useRef, useState } from '
 import {
   Box,
   Button,
+  ButtonProps,
   Center,
   Group,
   MantineNumberSize,
@@ -35,6 +36,8 @@ export type ConfirmModalProps = {
   confirmLabel?: string;
   /** The label shown on the cancel button */
   cancelLabel?: string;
+  /** Props for the confirm button */
+  confirmProps?: ButtonProps;
   /** The label above the type to confirm input */
   confirmText?: JSX.Element | string;
   /** Text the user must type to confirm action */
@@ -79,12 +82,16 @@ function ConfirmModalImpl(props: ConfirmModalProps & { setProps: (props: Confirm
         <Group spacing='xs' position='right' mt={16}>
           <Button
             variant='default'
-            onClick={(e) => props.setProps(null)}
+            onClick={(e) => {
+              props.onCancel?.();
+              props.setProps(null);
+            }}
           >
             {props.cancelLabel || 'Cancel'}
           </Button>
           <Button
             color='red'
+            {...props.confirmProps}
             disabled={props.typeToConfirm !== undefined && text !== props.typeToConfirm}
             loading={loading}
             onClick={async (e) => {

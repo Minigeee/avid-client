@@ -134,6 +134,41 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 		),
 
 		/**
+		 * Add new task collection locally. This will not add collection in database.
+		 * It should only be used to reflect changes from sockets.
+		 * 
+		 * @param collection The collection that should be added
+		 * @returns The new board object
+		 */
+		addCollectionLocal: (collection: TaskCollection) => mutate(
+			swrErrorWrapper(async (board: Board) => {
+				return {
+					...board,
+					_id_counter: parseInt(collection.id) + 1,
+					collections: [...board.collections, _sanitizeCollection(collection)],
+				};
+			}, { message: 'An error occurred while displaying added task collection' }),
+			{ revalidate: false }
+		),
+
+		/**
+		 * Delete collection locally. This will not add collection in database.
+		 * It should only be used to reflect changes from sockets.
+		 * 
+		 * @param collection_id The id of the collection that should be removed
+		 * @returns The new board object
+		 */
+		removeCollectionLocal: (collection_id: string) => mutate(
+			swrErrorWrapper(async (board: Board) => {
+				return {
+					...board,
+					collections: board.collections.filter(x => x.id !== collection_id),
+				};
+			}, { message: 'An error occurred while displaying updated task collection' }),
+			{ revalidate: false }
+		),
+
+		/**
 		 * Add new tags, or modify existing tags. A list of tags should be
 		 * provided in `options.add` for every new tag to be added, and a list of
 		 * tag updates should be provided in `options.update` for every

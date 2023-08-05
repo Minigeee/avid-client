@@ -40,6 +40,7 @@ import {
   IconTag
 } from '@tabler/icons-react';
 
+import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import KanbanView from './KanbanView';
 import ListView from './ListView';
 import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
@@ -87,10 +88,12 @@ type TabViewProps = {
   type: 'list' | 'kanban';
 
   collection: string;
+  refreshEnabled: boolean;
+  setRefreshEnabled: (value: boolean) => void;
 };
 
 ////////////////////////////////////////////////////////////
-function TabView({ board, type, ...props }: TabViewProps) {
+function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: TabViewProps) {
   const session = useSession();
 
   // Filter tags
@@ -107,8 +110,6 @@ function TabView({ board, type, ...props }: TabViewProps) {
   const [selectedAssignee, setSelectedAssignee] = useCachedState<string | null>(`${board.id}.${props.collection}.${type}.assignee`, null);
   // Extra assignee if it was chosen from dropdown
   const [extraAssignee, setExtraAssignee] = useState<ExpandedMember | null>(null);
-  // Refresh enabled
-  const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
 
   // Available grouping options
   const groupingOptions = useMemo(() => {
@@ -624,8 +625,11 @@ export default function BoardView(props: BoardViewProps) {
   const tasks = useTasks(board.id, props.domain.id);
   
   const { classes } = useChatStyles();
+  const { open: openConfirmModal } = useConfirmModal();
   
   const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
+  // Refresh enabled
+  const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
 
 
   // Collection selections
@@ -660,7 +664,7 @@ export default function BoardView(props: BoardViewProps) {
     if (!board._exists) return;
 
     // If collection id exists, it is using cached value and should be left as is
-    if (collectionId)
+    if (collectionId && collection)
       return;
 
     // Choose a current objective (choose the one with largest start date before today)
@@ -686,7 +690,7 @@ export default function BoardView(props: BoardViewProps) {
     else
       // Use backlog as default
       setCollectionId(config.app.board.default_backlog.id);
-  }, [board._exists]);
+  }, [board._exists, collection]);
 
   // Render time text
   const timeText = useMemo(() => {
@@ -744,6 +748,53 @@ export default function BoardView(props: BoardViewProps) {
     // Reset stale flag
     app._mutators.setStale(props.channel.id, false);
   }, []);
+
+
+  // Handle add/remove collection
+  useEffect(() => {
+    function onAddCollection(board_id: string, collection: TaskCollection) {
+      if (!board._exists || board_id !== board.id) return;
+      // Add collection locally
+      board._mutators.addCollectionLocal(collection);
+    }
+    
+    function onDeleteCollection(board_id: string, collection_id: string) {
+      if (!board._exists || board_id !== board.id) return;
+
+      // Delete locally
+      if (collectionId !== collection_id)
+        board._mutators.removeCollectionLocal(collection_id);
+      else {
+        openConfirmModal({
+          title: 'Collection Removed',
+          content: (
+            <>
+              <Text>
+                The collection you are viewing has been deleted by another user. Would you like
+                to display these changes now or later?
+              </Text>
+              <Text size='sm' color='dimmed'>
+                {'(You can use the refresh button to display these changes later)'}
+              </Text>
+            </>
+          ),
+          cancelLabel: 'Later',
+          confirmLabel: 'Now',
+          confirmProps: { variant: 'gradient' },
+          onCancel: () => setRefreshEnabled(true),
+          onConfirm: () => { board._mutators.removeCollectionLocal(collection_id) },
+        });
+      }
+    }
+
+    socket().on('board:add-collection', onAddCollection);
+    socket().on('board:delete-collection', onDeleteCollection);
+
+    return () => {
+      socket().off('board:add-collection', onAddCollection);
+      socket().off('board:delete-collection', onDeleteCollection);
+    };
+  }, [board._exists, collectionId]);
 
 
   if (!board._exists || !tasks._exists) return null;
@@ -858,6 +909,8 @@ export default function BoardView(props: BoardViewProps) {
               tasks={tasks}
               domain={props.domain}
               collection={collectionId}
+              refreshEnabled={refreshEnabled}
+              setRefreshEnabled={setRefreshEnabled}
             />
           </>
         )}
