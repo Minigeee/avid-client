@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { mutate as _mutate } from 'swr';
 
 import {
   ActionIcon,
@@ -21,6 +22,7 @@ import {
   Tooltip,
   Transition,
 } from '@mantine/core';
+import { useDebouncedValue, useTimeout } from '@mantine/hooks';
 import {
   IconArrowIteration,
   IconChevronDown,
@@ -49,7 +51,9 @@ import {
   BoardWrapper,
   DomainWrapper,
   TasksWrapper,
+  getLoadedSingleTasks,
   hasPermission,
+  useApp,
   useBoard,
   useCachedState,
   useChatStyles,
@@ -60,10 +64,10 @@ import {
 import { Channel, ExpandedMember, ExpandedTask, TaskCollection, TaskPriority } from '@/lib/types';
 import { openCreateTask, openCreateTaskCollection, openEditTaskCollection } from '@/lib/ui/modals';
 import { remap, sortObject } from '@/lib/utility';
+import { socket } from '@/lib/utility/realtime';
 
 import moment from 'moment-business-days';
 import { groupBy } from 'lodash';
-import { useDebouncedValue, useTimeout } from '@mantine/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -76,6 +80,7 @@ export type GroupableFields = 'assignee' | 'tags' | 'priority' | 'due_date' | 's
 
 ////////////////////////////////////////////////////////////
 type TabViewProps = {
+  channel_id: string;
   board: BoardWrapper;
   tasks: TasksWrapper;
   domain: DomainWrapper;
@@ -103,9 +108,7 @@ function TabView({ board, type, ...props }: TabViewProps) {
   // Extra assignee if it was chosen from dropdown
   const [extraAssignee, setExtraAssignee] = useState<ExpandedMember | null>(null);
   // Refresh enabled
-  const [refreshEnabled, setRefreshEnabled] = useState<boolean>(true);
-  // Refresh cooldown
-  const refreshTimeout = useTimeout(() => setRefreshEnabled(true), 5000);
+  const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
 
   // Available grouping options
   const groupingOptions = useMemo(() => {
@@ -132,6 +135,20 @@ function TabView({ board, type, ...props }: TabViewProps) {
 
     return Object.values(map).sort((a, b) => a.id === session.profile_id ? -1 : b.id === session.profile_id ? 1 : a.alias.localeCompare(b.alias));
   }, [props.tasks.data]);
+
+  // Enable refresh on board activity
+  useEffect(() => {
+    function onActivity(channel_id: string) {
+      if (channel_id !== props.channel_id) return;
+      setRefreshEnabled(true);
+    }
+
+    socket().on('board:activity', onActivity);
+
+    return () => {
+      socket().off('board:activity', onActivity);
+    };
+  }, []);
 
 
   // Filter tasks
@@ -353,23 +370,31 @@ function TabView({ board, type, ...props }: TabViewProps) {
           </Button>
         )}
 
-        <ActionButton
-          tooltip='Refresh'
-          mb={4}
-          onClick={() => {
-            // Rate limit
-            if (!refreshEnabled) return;
+        {refreshEnabled && (
+          <ActionButton
+            tooltip='Refresh'
+            mb={4}
+            onClick={() => {
+              // Refresh data
+              if (board._exists)
+                board._refresh();
 
-            // Refresh tasks
-            props.tasks._refresh();
+              if (props.tasks._exists) {
+                props.tasks._refresh();
 
-            // Reset enabled
-            setRefreshEnabled(false);
-            refreshTimeout.start();
-          }}
-        >
-          <IconRefresh size={22} />
-        </ActionButton>
+                // Refresh individual tasks
+                const indivTasks = getLoadedSingleTasks(board.id);
+                for (const task of Array.from(indivTasks || []))
+                  _mutate(task);
+              }
+
+              // Reset flag
+              setRefreshEnabled(false);
+            }}
+          >
+            <IconRefresh size={22} />
+          </ActionButton>
+        )}
       </Group>
       
       <Group align='end' mb={28}>
@@ -594,12 +619,14 @@ type BoardViewProps = {
 
 ////////////////////////////////////////////////////////////
 export default function BoardView(props: BoardViewProps) {
+  const app = useApp();
   const board = useBoard(props.channel.data?.board);
   const tasks = useTasks(board.id, props.domain.id);
   
   const { classes } = useChatStyles();
   
   const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
+
 
   // Collection selections
   const collectionSelections = useMemo(() => {
@@ -696,6 +723,27 @@ export default function BoardView(props: BoardViewProps) {
       </>
     );
   }, [collection?.start_date, collection?.end_date]);
+  
+  // Refresh on stale data
+  useEffect(() => {
+    if (!app.stale[props.channel.id]) return;
+
+    // Refresh data
+    if (board._exists)
+      board._refresh();
+
+    if (tasks._exists) {
+      tasks._refresh();
+
+      // Refresh individual tasks
+      const indivTasks = getLoadedSingleTasks(props.channel.data?.board || '');
+      for (const task of Array.from(indivTasks || []))
+        _mutate(task);
+    }
+
+    // Reset stale flag
+    app._mutators.setStale(props.channel.id, false);
+  }, []);
 
 
   if (!board._exists || !tasks._exists) return null;
@@ -805,6 +853,7 @@ export default function BoardView(props: BoardViewProps) {
 
             <BoardTabs
               key={collectionId}
+              channel_id={props.channel.id}
               board={board}
               tasks={tasks}
               domain={props.domain}

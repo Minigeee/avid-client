@@ -297,6 +297,9 @@ export type TaskMutators = ReturnType<typeof taskMutators>;
 export type TaskWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedTask, Loaded, TaskMutators>;
 
 
+/** Map of individual tasks that were loaded (board id to task list) */
+const _singleTasks: Record<string, Set<string>> = {};
+
 /**
  * A swr hook that performs a db to retrieve a task.
  * 
@@ -308,7 +311,20 @@ export function useTask(task_id: string, fallback?: ExpandedTask) {
 	return useApiQuery(task_id, 'GET /tasks/:task_id', {
 		params: { task_id },
 	}, {
+		then: (results) => {
+			if (!_singleTasks[results.board])
+				_singleTasks[results.board] = new Set<string>();
+			_singleTasks[results.board].add(results.id);
+
+			return results;
+		},
 		mutators: taskMutators,
 		fallback,
 	})
+}
+
+
+/** Get the set of tasks that have been loaded indivudually for a certain board */
+export function getLoadedSingleTasks(board_id: string): Set<string> | null {
+	return _singleTasks[board_id] || null;
 }

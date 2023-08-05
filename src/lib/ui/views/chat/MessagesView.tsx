@@ -231,15 +231,12 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   useEffect(() => {
     if (!app.stale[channel_id]) return;
 
-    if (!messages._exists)
-      // If a channel is stale, but data not even loaded, reset stale flag
-      app._mutators.setStale(channel_id, false);
-
-    else if (messages._exists) {
-      // Refresh data and unset stale flag
+    // Refresh data
+    if (messages._exists)
       messages._refresh();
-      app._mutators.setStale(channel_id, false);
-    }
+
+    // Reset stale flag
+    app._mutators.setStale(channel_id, false);
   }, []);
 
   // New message event

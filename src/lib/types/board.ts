@@ -24,6 +24,8 @@ export type TaskCollection = {
 
 /** A type representing a project board */
 export type Board = Resource<false> & {
+	/** The channel this board was created in */
+	channel: string;
 	/** The prefix given to all tasks in this board */
 	prefix: string;
 	/** Map of all tags belonging to this board */

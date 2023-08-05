@@ -16,6 +16,8 @@ export interface ServerToClientEvents {
 	'chat:delete-message': (channel_id: string, message_id: string) => void;
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
 	'chat:reactions': (channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) => void;
+
+	'board:activity': (channel_id: string) => void;
 }
 
 

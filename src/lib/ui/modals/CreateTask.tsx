@@ -82,6 +82,7 @@ import {
 
 import moment from 'moment';
 import { v4 as uuid } from 'uuid';
+import deepEqual from 'fast-deep-equal';
 import assert from 'assert';
 
 
