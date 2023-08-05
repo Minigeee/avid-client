@@ -909,7 +909,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
 
   // Subtask table action column
   const subtaskActionCol = useMemo(() => {
-    if (!board._exists || !tasks._exists) return;
+    if (!board._exists || !tasks._exists || !editable) return;
     return {
       name: (
         <Popover withArrow shadow='lg'>
@@ -954,7 +954,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
 
   // Dependency table action column
   const depActionCol = useMemo(() => {
-    if (!board._exists || !tasks._exists) return;
+    if (!board._exists || !tasks._exists || !editable) return;
     return {
       name: (
         <Popover withArrow shadow='lg'>
@@ -1231,6 +1231,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                         columns={TASK_COLUMNS}
                         columnOverrides={TASK_COLUMN_OVERRIDES}
                         actionColumn={subtaskActionCol}
+                        creatable={false}
                         multiselectable={false}
 
                         headerHeight='3rem'
@@ -1261,6 +1262,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                         columns={TASK_COLUMNS}
                         columnOverrides={TASK_COLUMN_OVERRIDES}
                         actionColumn={depActionCol}
+                        creatable={false}
                         multiselectable={false}
 
                         headerHeight='3rem'
