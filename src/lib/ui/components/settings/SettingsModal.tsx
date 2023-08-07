@@ -7,6 +7,8 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import SettingsMenu from './SettingsMenu';
 import { cache, useCachedState } from '@/lib/hooks';
 
+import { merge } from 'lodash';
+
 
 /** Unsaved changes context */
 // @ts-ignore
@@ -77,12 +79,12 @@ export function SettingsModal(props: SettingsModalProps) {
       if (e.key === 'Escape') close();
     }
 
-    window.addEventListener('click', close);
+    window.addEventListener('mousedown', close);
     // @ts-ignore
     window.addEventListener('keydown', onKeyEvent);
 
     return () => {
-      window.removeEventListener('click', close);
+      window.removeEventListener('mousedown', close);
       // @ts-ignore
       window.removeEventListener('keydown', onKeyEvent);
     }
@@ -97,7 +99,7 @@ export function SettingsModal(props: SettingsModalProps) {
       highlightUnsaved,
       tab: tab.value,
     }}>
-      <Flex ref={bodyRef} w='100%' h='100%' onClick={(e) => e.stopPropagation()}>
+      <Flex ref={bodyRef} w='100%' h='100%' onMouseDown={(e) => e.stopPropagation()}>
         <SettingsMenu
           values={props.tabs}
           value={tab?.value || ''}
@@ -166,6 +168,8 @@ type UnsavedChangesProps<T> = {
   form: UseFormReturnType<T>;
   /** Need initial values bc form reset func doesn't used updated intial values */
   initialValues: T;
+  /** Cache key to recover changes when navigating away from settings */
+  cacheKey?: string;
   /** Called when user resets changes */
   onReset?: (initialValues: T) => void;
   /** Called when user saves changes */
@@ -176,6 +180,26 @@ type UnsavedChangesProps<T> = {
 export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
   const context = useContext(SettingsModalContext);
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // Reset form values on change
+  useEffect(() => {
+    const cached = props.cacheKey ? popUnsaved(props.cacheKey) : null;
+
+    if (cached) {
+      // If cached unsaved values, then just set form values
+      form.setValues(cached);
+    }
+    else if (!form.isDirty()) {
+      // If no unsaved changes, apply initial values
+      form.setValues(props.initialValues);
+      form.resetDirty(props.initialValues);
+    }
+    else {
+      // If have unsaved values, reset dirty initial state then set form value to a merged version
+      form.setValues(merge({}, props.initialValues, form.values));
+      form.resetDirty(props.initialValues);
+    }
+  }, [props.initialValues]);
 
   // Set context, notify when unsaved status change
   useEffect(() => {

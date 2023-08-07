@@ -346,14 +346,6 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
       ) : null,
     },
   ]), [domain, form.values.permissions, selectedRoleId]);
-
-  // Reset form values on change
-  useEffect(() => {
-    if (!form.isDirty()) {
-      form.setValues(initialValues);
-      form.resetDirty(initialValues);
-    }
-  }, [initialValues]);
   
   // Map of which permissions able to set
   const _perms = useMemo(() => {

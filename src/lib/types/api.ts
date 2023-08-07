@@ -57,6 +57,14 @@ export type ApiSchema = {
 		params: ['board_id'],
 		return: Board,
 	},
+	
+	'PATCH /boards/:board_id': {
+		params: ['board_id'],
+		body: {
+			prefix: string;
+		},
+		return: { prefix: string },
+	},
 
 	'POST /boards/:board_id/collections': {
 		params: ['board_id'],

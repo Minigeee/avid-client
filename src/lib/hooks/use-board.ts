@@ -36,6 +36,28 @@ function mutators(mutate: KeyedMutator<Board>, session?: SessionState) {
 
 	return {
 		/**
+		 * Set board prefix
+		 * 
+		 * @param prefix The new prefox
+		 * @returns The new board object
+		 */
+		setPrefix: (prefix: string) => mutate(
+			swrErrorWrapper(async (board: Board) => {
+				// Set new prefix
+				const results = await api('PATCH /boards/:board_id', {
+					params: { board_id: board.id },
+					body: { prefix },
+				}, { session });
+
+				return {
+					...board,
+					prefix: results.prefix,
+				};
+			}, { message: 'An error occurred while changing board prefix' }),
+			{ revalidate: false }
+		),
+
+		/**
 		 * Add new task collection.
 		 * 
 		 * @param collection The collection that should be added omitting the `id`

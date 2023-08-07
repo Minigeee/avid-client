@@ -10,6 +10,7 @@ import {
 } from './CreateTaskCollection';
 
 import DomainSettings, { DomainSettingsProps } from './DomainSettings';
+import ChannelSettings, { ChannelSettingsProps } from './ChannelSettings';
 import ChannelGroupSettings, { ChannelGroupSettingsProps } from './ChannelGroupSettings';
 import UserSettings, { UserSettingsProps } from './UserSettings';
 
@@ -27,6 +28,7 @@ export const modals = {
 	'edit-task-collection': EditTaskCollection,
 
 	'domain-settings': DomainSettings,
+	'channel-settings': ChannelSettings,
 	'channel-group-settings': ChannelGroupSettings,
 	'user-settings': UserSettings,
 
@@ -102,11 +104,28 @@ export const openDomainSettings = (props: DomainSettingsProps) => openContextMod
 	modal: 'domain-settings',
 	withCloseButton: false,
 	innerProps: props,
-	size: '160ch',
+	size: '90rem',
 	styles: {
 		body: {
 			padding: 0,
-			height: '120ch',
+			height: '65rem',
+			maxHeight: '90vh',
+		},
+	},
+	closeOnClickOutside: false,
+	closeOnEscape: false,
+});
+
+/** Open domain settings modal */
+export const openChannelSettings = (props: ChannelSettingsProps) => openContextModal({
+	modal: 'channel-settings',
+	withCloseButton: false,
+	innerProps: props,
+	size: '90rem',
+	styles: {
+		body: {
+			padding: 0,
+			height: '65rem',
 			maxHeight: '90vh',
 		},
 	},
@@ -119,11 +138,11 @@ export const openChannelGroupSettings = (props: ChannelGroupSettingsProps) => op
 	modal: 'channel-group-settings',
 	withCloseButton: false,
 	innerProps: props,
-	size: '160ch',
+	size: '90rem',
 	styles: {
 		body: {
 			padding: 0,
-			height: '120ch',
+			height: '65rem',
 			maxHeight: '90vh',
 		},
 	},
@@ -136,11 +155,11 @@ export const openUserSettings = (props: UserSettingsProps) => openContextModal({
 	modal: 'user-settings',
 	withCloseButton: false,
 	innerProps: props,
-	size: '160ch',
+	size: '90rem',
 	styles: {
 		body: {
 			padding: 0,
-			height: '120ch',
+			height: '65rem',
 			maxHeight: '90vh',
 		},
 	},

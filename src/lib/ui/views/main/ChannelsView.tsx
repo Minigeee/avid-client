@@ -24,7 +24,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 
-import { openChannelGroupSettings, openCreateChannel } from '@/lib/ui/modals';
+import { openChannelGroupSettings, openChannelSettings, openCreateChannel } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
@@ -158,7 +158,19 @@ function SingleChannel(props: SingleChannelProps) {
                   setShowMenu(false);
                 }}>
                 <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
-                <Menu.Item icon={<IconSettings size={16} />} disabled>Settings</Menu.Item>
+                {canEdit && (
+                  <Menu.Item
+                    icon={<IconSettings size={16} />}
+                    disabled={props.channel.type !== 'board'}
+                    onClick={() => openChannelSettings({
+                      domain_id: props.domain.id,
+                      channel: props.channel,
+                    })}
+                  >
+                    Settings
+                  </Menu.Item>
+                )}
+
                 <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
 
                 {canEdit && (

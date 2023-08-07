@@ -1345,26 +1345,6 @@ export function RolesTab({ ...props }: TabProps) {
   // Chosen role
   const [selectedRoleId, setSelectedRoleId] = useCachedState<string | null>(`settings.${domain.id}.roles.selected`, null);
 
-  // Reset form values on change
-  useEffect(() => {
-    const cached = popUnsaved(domain.id);
-
-    if (cached) {
-      // If cached unsaved values, then just set form values
-      form.setValues(cached);
-    }
-    else if (!form.isDirty()) {
-      // If no unsaved changes, apply initial values
-      form.setValues(initialValues);
-      form.resetDirty(initialValues);
-    }
-    else {
-      // If have unsaved values, reset dirty initial state then set form value to a merged version
-      form.setValues(merge({}, initialValues, form.values));
-      form.resetDirty(initialValues);
-    }
-  }, [initialValues]);
-
   // Filtered roles
   const filteredRoles = useMemo(() => {
     if (search.length === 0)
@@ -1547,6 +1527,7 @@ export function RolesTab({ ...props }: TabProps) {
       )}
 
       <SettingsModal.Unsaved
+        cacheKey={domain.id}
         form={form}
         initialValues={initialValues}
         onReset={(init) => {

@@ -589,22 +589,22 @@ function BoardTabs(props: Omit<TabViewProps, 'type'>) {
         },
       })}>
       <Tabs.List>
-        <Tabs.Tab value='list' icon={<IconListDetails size={18} />}>List</Tabs.Tab>
         <Tabs.Tab value='kanban' icon={<IconLayoutKanban size={19} />}>Kanban</Tabs.Tab>
+        <Tabs.Tab value='list' icon={<IconListDetails size={18} />}>List</Tabs.Tab>
       </Tabs.List>
 
-      <Tabs.Panel value='list' mt={16}>
-        <TabView
-          key={props.collection}
-          {...props}
-          type={'list'}
-        />
-      </Tabs.Panel>
       <Tabs.Panel value='kanban' mt={16}>
         <TabView
           key={props.collection}
           {...props}
           type={'kanban'}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel value='list' mt={16}>
+        <TabView
+          key={props.collection}
+          {...props}
+          type={'list'}
         />
       </Tabs.Panel>
     </Tabs>
