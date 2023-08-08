@@ -755,7 +755,7 @@ function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
 
       <Menu.Dropdown maw='20rem'>
         {tasks.map((t) => (
-          <Menu.Item onClick={() => {
+          <Menu.Item key={t.id} onClick={() => {
             openEditTask({
               board_id: props.board_id,
               board_prefix: props.board_prefix,

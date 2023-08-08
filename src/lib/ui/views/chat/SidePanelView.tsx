@@ -546,6 +546,8 @@ function PinnedTab(props: SidePanelViewProps) {
         <Stack p='0.5rem' spacing='sm'>
           {rendered.map((msg) => (
             <MemoPinnedMessage
+              key={msg.id}
+              
               domain={props.domain}
               style={classes.typography}
               badges={badges}
