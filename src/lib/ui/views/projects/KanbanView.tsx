@@ -169,8 +169,8 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                       nextDay: '[Tomorrow]',
                       nextWeek: 'dddd',
                       lastDay: '[Yesterday]',
-                      lastWeek: 'D/M/YYYY',
-                      sameElse: 'D/M/YYYY'
+                      lastWeek: 'l',
+                      sameElse: 'l'
                     })}
                   </Text>
                 </Tooltip>

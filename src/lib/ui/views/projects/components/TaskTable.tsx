@@ -244,8 +244,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                   nextDay: '[Tomorrow]',
                   nextWeek: 'dddd',
                   lastDay: '[Yesterday]',
-                  lastWeek: 'D/M/YYYY',
-                  sameElse: 'D/M/YYYY'
+                  lastWeek: 'l',
+                  sameElse: 'l'
                 })}
               </Text>
             </Tooltip>
