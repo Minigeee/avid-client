@@ -563,7 +563,7 @@ function PinnedTab(props: SidePanelViewProps) {
       </MessageContextMenu>
 
       {messages._exists && messages.data.length === 0 && (
-        <Center h='10rem'>
+        <Center h='8rem'>
           <Text color='dimmed'>
             This channel has no pinned messages
           </Text>

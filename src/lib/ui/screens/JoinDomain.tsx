@@ -17,7 +17,7 @@ import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 import { useApp, useDomain, useProfile, useSession } from '@/lib/hooks';
 import { socket } from '@/lib/utility/realtime';
 import { Domain, ExpandedDomain, Member } from '@/lib/types';
-import { withAccessToken } from '@/lib/api/utility';
+import { api, withAccessToken } from '@/lib/api/utility';
 
 import axios from 'axios';
 
@@ -40,18 +40,20 @@ export default function JoinDomain(props: Props) {
   // Check if user is already a member
   // TODO : Upgrade join system
   useEffect(() => {
-    if (!session.profile_id) return;
-    axios.get(`/api/domains/join/${props.domain_id}`, withAccessToken(session))
+    if (!profile._exists) return;
+    api('GET /domains/join/:join_id', {
+      params: { join_id: props.domain_id }
+    }, { session })
       .then((results) => {
         // Skip if already member
-        if (results.data.is_member)
+        if (results.is_member)
           props.onSubmit();
 
         else {
-          setDomain({ name: results.data.name, icon: results.data.icon });
+          setDomain({ name: results.name, icon: results.icon || '' });
         }
       });
-  }, [session.profile_id]);
+  }, [profile._exists]);
 
 
   ////////////////////////////////////////////////////////////

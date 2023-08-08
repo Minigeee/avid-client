@@ -2,18 +2,16 @@ import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
 import { deleteProfile, uploadDomainImage, uploadProfile } from '@/lib/api';
-import { id, query, sql } from '@/lib/db';
-import { Channel, Domain, ExpandedMember, ExpandedProfile, Member, Role } from '@/lib/types';
+import { ExpandedProfile } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
-import { withAccessToken } from '@/lib/api/utility';
+import { api } from '@/lib/api/utility';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { SwrWrapper } from './use-swr-wrapper';
-import { useDbQuery } from './use-db-query';
 import { updateMemberLocal } from './use-members';
 
-import axios from 'axios';
+import { useApiQuery } from './use-api-query';
 
 
 ////////////////////////////////////////////////////////////
@@ -30,12 +28,9 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState |
 		addDomain: (name: string, icon?: { file: Blob, name: string }) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
 				// Domain create api
-				const results = await axios.post<{ domain: Domain }>(
-					'/api/domains',
-					{ name },
-					withAccessToken(session)
-				);
-				const domain = results.data.domain;
+				const domain = await api('POST /domains', {
+					body: { name },
+				}, { session });
 
 				// Upload icon image if given
 				if (icon) {
@@ -62,11 +57,13 @@ function mutators(mutate: KeyedMutator<ExpandedProfile>, session: SessionState |
 		joinDomain: (domain_id: string, alias: string) => mutate(
 			swrErrorWrapper(async (profile: ExpandedProfile) => {
 				// Use api to join
-				const results = await axios.post(`/api/domains/join/${id(domain_id)}`, {}, withAccessToken(session));
+				const results = await api('POST /domains/join/:join_id', {
+					params: { join_id: domain_id },
+				}, { session });
 
 				return {
 					...profile,
-					domains: [...profile.domains, results.data],
+					domains: [...profile.domains, results],
 				};
 			}, { message: 'An error occurred while joining the domain' }),
 			{ revalidate: false }
@@ -142,26 +139,9 @@ export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedP
  * @returns A swr wrapper object containing the requested profile
  */
 export function useProfile(profile_id: string | undefined) {
-	assert(!profile_id || profile_id.startsWith('profiles:'));
-
-	return useDbQuery<ExpandedProfile, ProfileMutators>(profile_id, {
-		builder: (key) => {
-			assert(profile_id);
-
-			return sql.select([
-				'*',
-				sql.wrap(sql.select<Domain>(
-					['id', 'name', 'icon', 'time_created'],
-					{ from: '->member_of->domains' }
-				), { alias: 'domains' }),
-			], { from: profile_id });
-		},
-		then: (results) => results?.length ? {
-			...results[0],
-			// TODO : Make domains draggable
-			domains: results[0].domains.sort((a: Domain, b: Domain) => new Date(a.time_created).getTime() - new Date(b.time_created).getTime()),
-		} : null,
-		
+	return useApiQuery(profile_id, 'GET /profiles/:profile_id', {
+		params: { profile_id: profile_id || '' },
+	}, {
 		mutators,
 	});
 }

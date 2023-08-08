@@ -3,10 +3,11 @@ import { Attachment } from './attachment';
 import { Board, TaskCollection } from './board';
 import { Channel, ChannelData, ChannelGroup, ChannelOptions, ChannelTypes } from './channel';
 import { Label } from './common';
-import { ExpandedDomain } from './domain';
+import { Domain, ExpandedDomain } from './domain';
 import { ExpandedMember, Member } from './member';
 import { AggregatedReaction, ExpandedMessage, Message } from './message';
 import { AclEntry } from './permissions';
+import { ExpandedProfile, Profile } from './profile';
 import { Role } from './role';
 import { ExpandedTask, Task, TaskPriority } from './task';
 import { Thread } from './thread';
@@ -173,6 +174,12 @@ export type ApiSchema = {
 	/** Domains */
 
 	// TODO : Move domain creation to api
+	'POST /domains': {
+		body: {
+			name: string;
+		},
+		return: Domain;
+	},
 
 	'GET /domains/:domain_id': {
 		params: ['domain_id'],
@@ -193,6 +200,16 @@ export type ApiSchema = {
 			roles: string[];
 		},
 		return: { roles: string[] };
+	},
+
+	'GET /domains/join/:join_id': {
+		params: ['join_id'],
+		return: { name: string; icon?: string | null; is_member: boolean };
+	},
+
+	'POST /domains/join/:join_id': {
+		params: ['join_id'],
+		return: Domain;
 	},
 
 
@@ -310,6 +327,13 @@ export type ApiSchema = {
 			updated: AclEntry[];
 			deleted: AclEntry[];
 		};
+	},
+
+
+	/** Profiles */
+	'GET /profiles/:profile_id': {
+		params: ['profile_id'],
+		return: ExpandedProfile;
 	},
 
 
@@ -443,4 +467,8 @@ export type ApiSchema = {
 		},
 		return: Thread,
 	},
+
+
+	/** Users */
+
 };

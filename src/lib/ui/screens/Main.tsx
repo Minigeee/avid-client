@@ -24,7 +24,7 @@ export default function Main(props: { visible: boolean }) {
   // Set initial domain if remote nav state does not exist
   useEffect(() => {
     if (!app._loaded) return;
-    if (profile.domains?.length)
+    if (!app.domain && profile.domains?.length)
       app._mutators.setDomain(profile.domains[0].id);
   }, [app._loaded]);
 
