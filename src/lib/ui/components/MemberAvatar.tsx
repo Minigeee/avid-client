@@ -16,6 +16,7 @@ type MemberAvatarProps = Omit<AvatarProps, 'size'> & HTMLProps<HTMLDivElement> &
 
   size: number;
   color?: string;
+  cursor?: 'default' | 'pointer';
 }
 
 ////////////////////////////////////////////////////////////
@@ -51,6 +52,7 @@ const MemberAvatar = forwardRef<HTMLDivElement, MemberAvatarProps>((props: Membe
       return {
         backgroundColor: props.color || '#333333',
         borderWidth: 0,
+        cursor: props.cursor,
         ...sx
       };
     }}>

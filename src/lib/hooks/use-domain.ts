@@ -5,7 +5,7 @@ import assert from 'assert';
 
 import { api, deleteDomainImage, uploadDomainImage } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { AllPermissions, ChannelData, ChannelOptions, ChannelTypes, ExpandedDomain, ExpandedMember, Role } from '@/lib/types';
+import { AllPermissions, ChannelData, ChannelOptions, ChannelTypes, ExpandedDomain, ExpandedMember, Member, Role } from '@/lib/types';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { useApiQuery } from './use-api-query';
@@ -568,6 +568,16 @@ export function hasPermission(domain: DomainWrapper, resource: string, permissio
 	let resource_id = resource.startsWith('channels') ? (domain.channels[resource].inherit || resource) : (cache.get(resource)?.data?.inherit || resource);
 	// console.log(resource, resource_id, permission, domain._permissions.permissions)
 	return domain._permissions.is_admin || domain._permissions.permissions[resource_id]?.has(permission);
+}
+
+/** Check if user has a certain permission for member */
+export function hasMemberPermission(domain: DomainWrapper, member: Member, permission: AllPermissions) {
+	let hasAllPerms = member.roles && member.roles.length > 0;
+	for (const role_id of member.roles || [])
+		hasAllPerms = hasAllPerms && domain._permissions.permissions[role_id]?.has(permission);
+
+	// console.log(resource, resource_id, permission, domain._permissions.permissions)
+	return domain._permissions.is_owner || (!member.is_admin && (domain._permissions.is_admin || hasAllPerms));
 }
 
 /** Check if user has a certain acl entry */

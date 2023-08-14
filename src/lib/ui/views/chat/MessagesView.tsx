@@ -46,6 +46,7 @@ import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
 import { MessageContextMenu } from './components/MessageMenu';
+import MemberPopover from '../../components/MemberPopover';
 import SidePanelView from './SidePanelView';
 
 
@@ -441,6 +442,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
 
 ////////////////////////////////////////////////////////////
 type MessageGroupProps = {
+  domain: DomainWrapper;
   msgs: ExpandedMessageWithPing[];
   style: string;
   rolesMap: Record<string, Role & { index: number }>;
@@ -520,16 +522,19 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
         },
       })}
     >
-      {props.idx === 0 && (
-        <MemberAvatar
-          member={msg.sender}
-          size={AVATAR_SIZE}
-          sx={(theme) => ({
-            marginTop: '0.25rem',
-            marginRight: theme.spacing[props.avatarGap],
-            backgroundColor: theme.colors.dark[5],
-          })}
-        />
+      {msg.sender && props.idx === 0 && (
+        <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
+          <MemberAvatar
+            member={msg.sender}
+            size={AVATAR_SIZE}
+            cursor='pointer'
+            sx={(theme) => ({
+              marginTop: '0.25rem',
+              marginRight: theme.spacing[props.avatarGap],
+              backgroundColor: theme.colors.dark[5],
+            })}
+          />
+        </MemberPopover>
       )}
 
       <Stack spacing={6} sx={(theme) => ({
@@ -541,9 +546,14 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             {props.idx === 0 && (
               <div>
                 <Group align='baseline' spacing={6}>
-                  <Title order={6} color='gray'>
-                    {msg.sender && typeof msg.sender !== 'string' ? msg.sender.alias : ''}
-                  </Title>
+
+                  {msg.sender && typeof msg.sender !== 'string' && (
+                    <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
+                      <Title order={6} color='gray' sx={{ cursor: 'pointer' }}>
+                        {msg.sender.alias}
+                      </Title>
+                    </MemberPopover>
+                  )}
 
                   {badges.length > 0 && (
                     <Group spacing={2} mb={2}>
@@ -984,6 +994,7 @@ function MessagesViewport(props: MessagesViewportProps) {
                   <>
                     <MemoMessageGroup
                       key={j}
+                      domain={context.domain}
                       msgs={consec}
                       style={classes.typography}
                       rolesMap={rolesMap}

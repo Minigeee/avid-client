@@ -16,13 +16,13 @@ import { useDebouncedValue, useIntersection } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
-import RoleBadges, { BadgeMap, useRoleBadges } from '@/lib/ui/components/RoleBadges';
 
 import config from '@/config';
 import { DomainWrapper, listMembers, listMembersLocal, useMemberQuery, useSession } from '@/lib/hooks';
 import { ExpandedMember, Role } from '@/lib/types';
 
 import { range, throttle } from 'lodash';
+import MemberPopover from '../../components/MemberPopover';
 
 
 ////////////////////////////////////////////////////////////
@@ -120,9 +120,6 @@ function MembersTab(props: RightPanelViewProps) {
   
   const offline = { count: counts.total - counts.online };
 
-  // Role badges
-  const badges = useRoleBadges(props.domain, { cursor: 'pointer' });
-
 
   // Member item
   const MemberListItem = useMemo(() => {
@@ -136,53 +133,51 @@ function MembersTab(props: RightPanelViewProps) {
         }
 
         return (
-          <UnstyledButton
-            sx={(theme) => ({
-              padding: '0rem 0.5rem',
-              borderRadius: theme.radius.sm,
-              '&:hover': {
-                backgroundColor: theme.colors.dark[5],
-              },
-            })}
-          >
-            <Group ref={ref} {...others} spacing={6} noWrap sx={{
-              height: '2.6rem',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              opacity: online ? undefined : 0.6,
-            }}>
-              <Indicator
-                inline
-                position='bottom-end'
-                offset={4}
-                size={12}
-                color='teal'
-                withBorder
-                disabled={!online}
-              >
-                <MemberAvatar size={32} member={member} />
-              </Indicator>
-              <Text
-                ml={6}
-                size='sm'
-                weight={search.length > 0 ? 400 : 600}
-                sx={(theme) => ({ color: theme.colors.gray[4] })}
-                dangerouslySetInnerHTML={{ __html: alias }}
-              />
-
-              {badges && (
-                <RoleBadges role_ids={member.roles || []} badges={badges} />
-              )}
-            </Group>
-          </UnstyledButton>
+          <MemberPopover domain={props.domain} member={member} popoverProps={{ position: 'left-start' }} withinPortal>
+            <UnstyledButton
+              sx={(theme) => ({
+                padding: '0rem 0.5rem',
+                borderRadius: theme.radius.sm,
+                '&:hover': {
+                  backgroundColor: theme.colors.dark[5],
+                },
+              })}
+            >
+              <Group ref={ref} {...others} spacing={6} noWrap sx={{
+                height: '2.6rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                opacity: online ? undefined : 0.6,
+              }}>
+                <Indicator
+                  inline
+                  position='bottom-end'
+                  offset={4}
+                  size={12}
+                  color='teal'
+                  withBorder
+                  disabled={!online}
+                >
+                  <MemberAvatar size={32} member={member} />
+                </Indicator>
+                <Text
+                  ml={6}
+                  size='sm'
+                  weight={search.length > 0 ? 400 : 600}
+                  sx={(theme) => ({ color: theme.colors.gray[4] })}
+                  dangerouslySetInnerHTML={{ __html: alias }}
+                />
+              </Group>
+            </UnstyledButton>
+          </MemberPopover>
         );
       }
     ));
     component.displayName = 'MemberListItem';
 
     return component;
-  }, [search, badges]);
+  }, [search]);
 
 
   // Calculations
