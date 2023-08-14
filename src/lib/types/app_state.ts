@@ -14,6 +14,8 @@ export type RemoteAppState = {
 
 	/** A map of domains to channels to "seen" state */
 	seen: Record<string, Record<string, boolean>>;
+	/** A map of channels to number of pings */
+	pings?: Record<string, number>;
 	/** Indicates if the right side panel is opened */
 	right_panel_opened?: boolean;
 };

@@ -3,7 +3,9 @@ import { MouseEventHandler, useContext, useState } from 'react';
 import {
   ActionIcon,
   Box,
+  Flex,
   Group,
+  Indicator,
   Menu,
   ScrollArea,
   Stack,
@@ -78,9 +80,11 @@ function SingleChannel(props: SingleChannelProps) {
             '&:hover': {
               backgroundColor: theme.colors.dark[5],
               '.dropdown': { visibility: 'visible' },
+              '.ping-indicator': { display: 'none' },
             },
             '&:focus-within': {
               '.dropdown': { visibility: 'visible' },
+              '.ping-indicator': { display: 'none' },
             },
           })}
           onClick={props.onClick}
@@ -88,17 +92,17 @@ function SingleChannel(props: SingleChannelProps) {
           {...provided.dragHandleProps}
           style={{ ...provided.draggableProps.style, cursor: 'pointer' }}
         >
-          <Group spacing='xs' align='center'>
+          <Flex gap={8} align='center'>
             <ChannelIcon type={props.channel.type} size={17} />
 
             {!renaming && (
-              <Text
-                size='sm'
-                weight={600}
-                sx={{ flexGrow: 1 }}
-              >
-                {props.channel.name}
-              </Text>
+                <Text
+                  size='sm'
+                  weight={600}
+                  sx={{ flexGrow: 1 }}
+                >
+                  {props.channel.name}
+                </Text>
             )}
             {renaming && (
               <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
@@ -204,7 +208,25 @@ function SingleChannel(props: SingleChannelProps) {
                 )}
               </Menu.Dropdown>
             </Menu>
-          </Group>
+
+            {app.pings?.[props.channel.id] !== undefined && app.pings[props.channel.id] > 0 && (
+              <Text
+                className='ping-indicator'
+                size='xs'
+                weight={600}
+                inline
+                sx={(theme) => ({
+                  display: showMenu ? 'none' : undefined,
+                  padding: '0.15rem 0.3rem 0.25rem 0.3rem',
+                  marginRight: '0.4rem',
+                  backgroundColor: theme.colors.red[5],
+                  color: theme.colors.dark[0],
+                  borderRadius: '1.0rem',
+                })}>
+                {app.pings?.[props.channel.id]}
+              </Text>
+            )}
+          </Flex>
         </Box>
       )}
     </Draggable>

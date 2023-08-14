@@ -130,10 +130,16 @@ export function useRealtimeHandlers() {
 				app._mutators.setSeen(domain_id, channel_id, false);
 		}
 
+		function onPing(domain_id: string, channel_id: string) {
+			app._mutators.setPings(channel_id, (app.pings?.[channel_id] || 0) + 1);
+		}
+
 		_socket.on('general:activity', onActivity);
+		_socket.on('general:ping', onPing);
 
 		return () => {
 			_socket.off('general:activity', onActivity);
+			_socket.off('general:ping', onPing);
 		};
 	}, [app]);
 }

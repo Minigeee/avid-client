@@ -11,6 +11,7 @@ export interface ServerToClientEvents {
 	'general:user-joined': (profile_id: string) => void,
 	'general:user-left': (profile_id: string) => void,
 	'general:activity': (domain_id: string, channel_id: string, mark_unseen: boolean) => void,
+	'general:ping': (domain_id: string, channel_id: string) => void,
 
 	'chat:message': (message: Message) => void;
 	'chat:edit-message': (channel_id: string, message_id: string, message: Partial<Message>) => void;

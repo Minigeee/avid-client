@@ -42,20 +42,25 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			};
 
 			// Mark as seen
-			if (state.channels[domain_id]) {
+			const channel_id = state.channels[domain_id];
+			if (channel_id) {
 				diff.seen = {
 					[domain_id]: {
 						[state.channels[domain_id]]: true,
 					}
 				};
+
+				// Reset pings
+				if (state.pings?.[channel_id])
+					diff.pings = { [channel_id]: 0 };
 			}
 
 			setState(merge({}, state, diff));
 			
 			// Don't save using standard method, switch room will handle that for use
 
-			if (state.channels[domain_id])
-				socket().emit('general:switch-room', domain_id, state.channels[domain_id]);
+			if (channel_id)
+				socket().emit('general:switch-room', domain_id, channel_id);
 		},
 
 		/**
@@ -77,10 +82,9 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			const diff = {
 				channels: { [domain_id]: channel_id },
 				seen: {
-					[domain_id]: {
-						[state.channels[domain_id]]: true,
-					}
+					[domain_id]: { [channel_id]: true },
 				},
+				pings: { [channel_id]: 0 },
 			} as Partial<RemoteAppState>;
 			setState(merge({}, state, diff));
 
@@ -132,6 +136,26 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 						...state.seen[domain_id],
 						[channel_id]: seen,
 					},
+				},
+			});
+		},
+
+		/**
+		 * Updates the ping counter for a channel locally. Does not update the
+		 * database state.
+		 * 
+		 * @param domain_id The domain of the channel
+		 * @param channel_id The channel to set the ping counter for
+		 * @param count The new ping counter value
+		 */
+		setPings: (channel_id: string, count: number) => {
+			if (state.pings?.[channel_id] === count) return;
+
+			setState({
+				...state,
+				pings: {
+					...state.pings,
+					[channel_id]: count,
 				},
 			});
 		},
