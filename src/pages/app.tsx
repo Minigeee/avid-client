@@ -92,10 +92,17 @@ export default function App(props: AppProps) {
       }
     }
 
-    // No need to refresh session, taken care of server side, just apply the token
-    if (!props.token)
-      // Redirect while keeping all query parameters
-      router.replace(`/login?redirect=${encodeURIComponent(router.asPath)}`);
+    // Check if token exists, if not try refreshing
+    if (!props.token) {
+      // Refresh session (refresh won't occur if session is already valid)
+      session._mutators.refresh().then((success) => {
+        // Redirect to log in if refresh failed
+        if (!success)
+          // Redirect while keeping all query parameters
+          router.replace(`/login?redirect=${encodeURIComponent(router.asPath)}`);
+      });
+    }
+
     else
       session._mutators.applyToken(props.token);
   }, []);
@@ -274,7 +281,6 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
     online: Object.keys(online || []).length + 1,
     offline: Object.keys(offline || []).length - 1,
   };
-  
 
   return {
     props: {
