@@ -112,9 +112,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
         </Box>
       </Group>
 
-      <Stack p='1.0rem 1.25rem' spacing='sm' sx={(theme) => ({
-        borderBottom: `1px solid ${theme.colors.dark[5]}`,
-      })}>
+      <Stack p='1.0rem 1.25rem' spacing='md'>
         <Box>
           <Group mb={2} spacing={8}>
             <IconUser size={16} />
@@ -132,75 +130,78 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
             <Text size='sm'>{moment(profile.time_created).format('LL')}</Text>
           </Box>
         )}
-      </Stack>
 
-      <Box p='1.0rem 1.25rem' mb={4}>
-        <Title order={6} mb={2}>Roles</Title>
-        <Group spacing={6}>
-          {member.roles?.map((id) => {
-            const role = roleMap[id];
-            const canManageRole = canManageMember || hasPermission(props.domain, id, 'can_assign_role');
+        <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
 
-            return (
-              <Box
-                h={24}
-                sx={(theme) => ({
-                  padding: `0px ${canManageRole ? '0.3rem' : '0.6rem'} 0 0.5rem`,
-                  backgroundColor: theme.colors.dark[4],
-                  borderRadius: 15,
-                })}
-              >
-                <Group
-                  spacing={4}
-                  align='center'
-                  h='100%'
-                  mt={-1}
+        <Box mb={4}>
+          <Title order={6} mb={2}>Roles</Title>
+          <Group spacing={6}>
+            {member.roles?.map((id) => {
+              const role = roleMap[id];
+              const canManageRole = canManageMember || hasPermission(props.domain, id, 'can_assign_role');
+
+              return (
+                <Box
+                  h={24}
+                  sx={(theme) => ({
+                    padding: `0px ${canManageRole ? '0.3rem' : '0.6rem'} 0 0.5rem`,
+                    backgroundColor: theme.colors.dark[4],
+                    borderRadius: 15,
+                  })}
                 >
-                  {role.badge && <Emoji id={role.badge} size={12} />}
-                  <Text size='xs' weight={500}>{role.label}</Text>
-                  {canManageRole && (
-                    <CloseButton
-                      size={16}
-                      iconSize={14}
-                      variant='transparent'
-                      tabIndex={-1}
-                      mt={2}
-                      onClick={() => openConfirmModal({
-                        title: 'Remove Role',
-                        content: (
-                          <Text>Are you sure you want to remove the <b>{role.label}</b> role from <b>{member.alias}</b>?</Text>
-                        ),
-                        confirmLabel: 'Remove',
-                        onConfirm: () => memberMutators.removeRole(props.domain.id, member.id, id),
-                      })}
-                    />
-                  )}
-                </Group>
-              </Box>
-            );
-          })}
+                  <Group
+                    spacing={4}
+                    align='center'
+                    h='100%'
+                    mt={-1}
+                  >
+                    {role.badge && <Emoji id={role.badge} size={12} />}
+                    <Text size='xs' weight={500}>{role.label}</Text>
+                    {canManageRole && (
+                      <CloseButton
+                        size={16}
+                        iconSize={14}
+                        variant='transparent'
+                        tabIndex={-1}
+                        mt={2}
+                        onClick={() => openConfirmModal({
+                          title: 'Remove Role',
+                          content: (
+                            <Text>Are you sure you want to remove the <b>{role.label}</b> role from <b>{member.alias}</b>?</Text>
+                          ),
+                          confirmLabel: 'Remove',
+                          onConfirm: () => memberMutators.removeRole(props.domain.id, member.id, id),
+                        })}
+                      />
+                    )}
+                  </Group>
+                </Box>
+              );
+            })}
 
-          {addableRoles.length > 0 && (
-            <PopoverSelect
-              data={addableRoles}
-              itemComponent={RoleSelectItem}
-              searchProps={{ placeholder: 'Search roles' }}
-              onSelect={async (item) => {
-                // Add single role
-                await memberMutators.addRoles(props.domain.id, [member.id], item.id);
-              }}
-            >
-              {(setOpened, opened) => (
-                <ActionIcon size='sm' radius='lg' sx={(theme) => ({
-                  backgroundColor: theme.colors.dark[5],
-                })} onClick={() => setOpened(!opened)}>
-                  <IconPlus size={14} />
-                </ActionIcon>
-              )}
-            </PopoverSelect>
-          )}
-        </Group>
-      </Box>
+            {addableRoles.length > 0 && (
+              <PopoverSelect
+                data={addableRoles}
+                itemComponent={RoleSelectItem}
+                searchProps={{ placeholder: 'Search roles' }}
+                onSelect={async (item) => {
+                  // Add single role
+                  await memberMutators.addRoles(props.domain.id, [member.id], item.id);
+                }}
+              >
+                {(setOpened, opened) => (
+                  <ActionIcon size='sm' radius='lg' sx={(theme) => ({
+                    backgroundColor: theme.colors.dark[5],
+                  })} onClick={() => setOpened(!opened)}>
+                    <IconPlus size={14} />
+                  </ActionIcon>
+                )}
+              </PopoverSelect>
+            )}
+          </Group>
+        </Box>
+
+      </Stack>
     </>
   );
 }
@@ -229,11 +230,10 @@ export default function MemberPopover(props: MemberPopoverProps) {
         {props.children}
       </Popover.Target>
 
-      <Popover.Dropdown sx={{
+      <Popover.Dropdown sx={(theme) => ({
         padding: 0,
-        border: 'none',
-        boxShadow: '0px 2px 16px #00000030',
-      }}>
+        border: `solid 1px ${theme.colors.dark[5]}`,
+      })}>
         <Dropdown {...props} />
       </Popover.Dropdown>
     </Popover>
