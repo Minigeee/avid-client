@@ -16,7 +16,7 @@ import axios, { AxiosRequestConfig } from 'axios';
  * @param options Extra axios request configurations
  * @returns An axio request config object with auth headers
  */
-export function withAccessToken(session: SessionState, options: AxiosRequestConfig = {}): AxiosRequestConfig {
+export function withAccessToken(session: { _exists: boolean; token: string }, options: AxiosRequestConfig = {}): AxiosRequestConfig {
 	assert(session._exists);
 
 	return {
@@ -69,7 +69,7 @@ function _queryEncode(x: any): string {
  * @param axiosOpts Extra axios and session related options
  * @returns The results of the api call
  */
-export async function api<P extends ApiPath>(path: P, params: ApiReqParams<P>, options: { session: SessionState; throw?: boolean } & AxiosRequestConfig): Promise<ApiReturn<P>> {
+export async function api<P extends ApiPath>(path: P, params: ApiReqParams<P>, options: { session: { _exists: boolean; token: string; _mutators?: SessionState['_mutators'] }; throw?: boolean } & AxiosRequestConfig): Promise<ApiReturn<P>> {
 	assert(options.session.token);
 
 	// Access token (for client request)
@@ -119,7 +119,7 @@ export async function api<P extends ApiPath>(path: P, params: ApiReqParams<P>, o
 			let retry = false;
 
 			// Not authenticated
-			if (i === 0 && error.response?.status === 403) {
+			if (i === 0 && error.response?.status === 403 && options.session._mutators) {
 				// Auto refresh if 403 error
 				const newToken = await options.session._mutators.refresh();
 

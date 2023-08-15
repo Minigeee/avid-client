@@ -543,6 +543,14 @@ export type DomainMutators = ReturnType<typeof mutators>;
 export type DomainWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedDomain, Loaded, DomainMutators>;
 
 
+/** Default value for domain */
+let _defaults: Record<string, ExpandedDomain> = {};
+
+/** Get domain swr key */
+export function setDomainDefault(domain: ExpandedDomain) {
+	_defaults[domain.id] = domain;
+}
+
 /**
  * A swr hook that performs an api query to retrieve a domain.
  * 
@@ -554,11 +562,16 @@ export function useDomain(domain_id: string | undefined) {
 		params: { domain_id: domain_id || '' }
 	}, {
 		then: (results) => {
+			// Reset default
+			if (_defaults[domain_id || ''])
+				delete _defaults[domain_id || ''];
+
 			for (const [resource, perms] of Object.entries(results._permissions.permissions))
 				results._permissions.permissions[resource] = new Set(perms);
 			return results;
 		},
 		mutators,
+		initial: domain_id ? _defaults[domain_id] : undefined,
 	});
 }
 

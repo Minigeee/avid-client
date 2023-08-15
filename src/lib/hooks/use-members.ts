@@ -98,6 +98,12 @@ export function setMembers(domain_id: string, members: ExpandedMember[], emit: b
 		_emitChange();
 }
 
+/** Set member query data */
+export function setMemberQuery(domain_id: string, options: MemberQueryOptions, count: number) {
+	const queryKey = _getQueryKey(domain_id, options);
+	_.queries[queryKey] = { time: Date.now(), total: count };
+}
+
 
 /** Get member mutators */
 export function useMemberMutators() {
@@ -376,7 +382,6 @@ export function useMemberQuery(domain_id: string | undefined, options?: MemberQu
 		if (needFetch) {
 			_.loading.add(queryKey);
 
-			console.log('fetch', members)
 			api('GET /members', {
 				query: {
 					domain: domain_id,

@@ -241,17 +241,17 @@ export const AppContext = createContext<AppState>();
 
 
 ////////////////////////////////////////////////////////////
-export default function AppProvider({ children }: PropsWithChildren) {
+export default function AppProvider({ children, ...props }: PropsWithChildren & { initial?: RemoteAppState }) {
 	const session = useSession();
 
 	// Remote state
-	const [remote, setRemote] = useState<RemoteAppState>({
+	const [remote, setRemote] = useState<RemoteAppState>(merge({}, {
 		domain: null,
 		channels: {},
 		expansions: {},
 		seen: {},
 		right_panel_opened: true,
-	});
+	}, props.initial || {}));
 
 	// Local state
 	const [local, setLocal] = useState<LocalAppState>({
@@ -260,7 +260,7 @@ export default function AppProvider({ children }: PropsWithChildren) {
 	});
 
 	// Inidicate if app loaded
-	const [loaded, setLoaded] = useState<boolean>(false);
+	const [loaded, setLoaded] = useState<boolean>(props.initial !== undefined);
 
 
 	// Save function

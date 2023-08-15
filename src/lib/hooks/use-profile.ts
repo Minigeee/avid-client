@@ -132,6 +132,14 @@ export type ProfileMutators = ReturnType<typeof mutators>;
 export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<ExpandedProfile, Loaded, ProfileMutators>;
 
 
+/** Default value for domain */
+let _defaults: Record<string, ExpandedProfile> = {};
+
+/** Get domain swr key */
+export function setProfileDefault(profile: ExpandedProfile) {
+	_defaults[profile.id] = profile;
+}
+
 /**
  * A swr hook that retrieves the current profile.
  * 
@@ -142,6 +150,14 @@ export function useProfile(profile_id: string | undefined) {
 	return useApiQuery(profile_id, 'GET /profiles/:profile_id', {
 		params: { profile_id: profile_id || '' },
 	}, {
+		then: (result) => {
+			// Reset default
+			if (_defaults[profile_id || ''])
+				delete _defaults[profile_id || ''];
+
+			return result;
+		},
 		mutators,
+		initial: profile_id ? _defaults[profile_id] : undefined,
 	});
 }

@@ -14,6 +14,8 @@ type SwrApiQueryOptions<Path extends ApiPath, In, Out, Mutators extends SwrMutat
 	Omit<SwrWrapperOptions<In, Out, Mutators>, 'session'> & {
 		/** Optional function that gets called on the result of the api fetcher, before being passed to swr */
 		then?: (results: ApiReturn<Path>) => In,
+		/** Optional initial data. If this is provided, the api fetch function will not be invoked initially */
+		initial?: ApiReturn<Path>;
 		/** Optional fallback data. This should be data that a fetcher would return (pre-transform function) */
 		fallback?: In;
 	};
@@ -35,7 +37,7 @@ export function useApiQuery<Path extends ApiPath, In = ApiReturn<Path>, Mutators
 	const swr = useSWR<In | null>(
 		session.token ? key : null,
 		() => {
-			const promise = api(path, params, { session });
+			const promise = options.initial ? new Promise<ApiReturn<Path>>((resolve) => { resolve(options.initial as ApiReturn<Path>); }) : api(path, params, { session });
 			return options.then ? promise.then(options.then) : promise;
 		}
 	);

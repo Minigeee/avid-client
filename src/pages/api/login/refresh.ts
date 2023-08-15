@@ -11,9 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	}
 
 	// Create new access token
-	const token = await refresh(req, res);
+	const result = await refresh(req, res);
 
 	// Send the access token
-	if (token)
-		res.status(200).json({ token });
+	if (result)
+		res.status(200).json({ token: result[0] });
 }

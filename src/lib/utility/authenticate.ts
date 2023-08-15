@@ -137,8 +137,9 @@ export async function signin(user: JwtPayload, res: NextApiResponse, redirect: s
  * 
  * @param req The request object
  * @param res The response object
+ * @param end Set to true for function to end the response stream, otherwise, undefined is returned
  */
-export async function refresh(req: NextApiRequest, res: NextApiResponse) {
+export async function refresh(req: { cookies: Partial<{ [k: string]: string }> }, res: any, end?: boolean) {
 	try {
 		const privkey = getJwtPrivate();
 		assert(privkey);
@@ -159,7 +160,7 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		_setIdCookie(user.id, new_key, res);
 
 		// Create access token
-		const access_token = sign({
+		const access_payload = {
 			NS: config.db.namespace,
 			DB: config.db.database,
 			SC: config.db.scope,
@@ -167,7 +168,9 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 			user_id: user.id,
 			profile_id: user.current_profile,
 			email: user.email,
-		}, privkey, {
+		};
+
+		const access_token = sign(access_payload, privkey, {
 			algorithm: api_config.auth.jwt_algorithm,
 			expiresIn: api_config.auth.max_access_token_age,
 		});
@@ -175,11 +178,15 @@ export async function refresh(req: NextApiRequest, res: NextApiResponse) {
 		// Save new id key
 		await users.update(user.id, { _id_key: new_key });
 
-		return access_token;
+		return [access_token, access_payload];
 
 	} catch (err) {
-		// By default, make user relog if error occurs
-		res.status(401).end();
+		if (end !== false && typeof res.status === 'function') {
+			// By default, make user relog if error occurs
+			res.status(401).end();
+		}
+
+		return;
 	}
 }
 
