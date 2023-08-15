@@ -112,7 +112,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
         </Box>
       </Group>
 
-      <Stack p='1.0rem 1.25rem' spacing='md'>
+      <Stack p='1.0rem 1.25rem' spacing='sm'>
         <Box>
           <Group mb={2} spacing={8}>
             <IconUser size={16} />

@@ -205,7 +205,7 @@ function MembersTab(props: RightPanelViewProps) {
 
       <Divider sx={(theme) => ({ color: theme.colors.dark[5], borderColor: theme.colors.dark[5] })} />
 
-      <ScrollArea m={8} ref={containerRef} sx={{ flexGrow: 1 }}>
+      <ScrollArea p={8} ref={containerRef} sx={{ flexGrow: 1 }}>
         <Accordion
           multiple
           defaultValue={['online']}
