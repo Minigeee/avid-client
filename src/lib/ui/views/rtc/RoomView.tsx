@@ -74,11 +74,13 @@ type ParticipantViewProps = {
 function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   
+  // Determines if webcam or screen share should be shown
+  const [webcamPriority, setWebcamPriority] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
 
   // Get rtc info
   const rtcInfo = rtc.participants[member.id];
-  const display = rtcInfo?.share || rtcInfo?.video;
+  const display = webcamPriority ? rtcInfo?.video || rtcInfo?.share : rtcInfo?.share || rtcInfo?.video;
   const volume = rtcInfo?.volume || 0;
 
   useEffect(() => {
@@ -145,38 +147,50 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
           </>
         )}
 
-        <Popover width='30ch' position='bottom-end' withArrow withinPortal>
-          <Popover.Target>
-            <ActionIcon
-              sx={(theme) => ({
-                visibility: showMenu ? 'visible' : 'hidden',
-                position: 'absolute',
-                right: 10,
-                top: 10,
-              })}
-              onClick={(e) => { e.stopPropagation(); }}
-            >
-              <IconDotsVertical size={20} />
-            </ActionIcon>
-          </Popover.Target>
+        <Group
+          spacing={8}
+          sx={(theme) => ({
+            visibility: showMenu ? 'visible' : 'hidden',
+            position: 'absolute',
+            right: 10,
+            top: 10,
+          })}
+          onClick={(e) => { e.stopPropagation(); }}
+        >
+          {rtcInfo?.share && rtcInfo?.video && (
+            <Tooltip label={webcamPriority ? 'View Screen Share' : 'View Webcam'}>
+              <ActionIcon onClick={() => setWebcamPriority(!webcamPriority)}>
+                {!webcamPriority && <IconVideo size={20} />}
+                {webcamPriority && <IconScreenShare size={19} />}
+              </ActionIcon>
+            </Tooltip>
+          )}
 
-          <Popover.Dropdown onClick={(e) => { e.stopPropagation(); }}>
-            <Group noWrap>
-              {volume >= 50 && <IconVolume size={24} />}
-              {volume > 0 && volume < 50 && <IconVolume2 size={24} />}
-              {volume === 0 && <IconVolume3 size={24} />}
-              <Slider
-                label={(value) => `${value}%`}
-                value={volume}
-                onChange={(value) => {
-                  if (rtc.joined)
-                    rtc._mutators.audio.setVolume(member.id, value);
-                }}
-                sx={{ flexGrow: 1 }}
-              />
-            </Group>
-          </Popover.Dropdown>
-        </Popover>
+          <Popover width='30ch' position='bottom-end' withArrow withinPortal>
+            <Popover.Target>
+              <ActionIcon>
+                <IconDotsVertical size={20} />
+              </ActionIcon>
+            </Popover.Target>
+
+            <Popover.Dropdown onClick={(e) => { e.stopPropagation(); }}>
+              <Group noWrap>
+                {volume >= 50 && <IconVolume size={24} />}
+                {volume > 0 && volume < 50 && <IconVolume2 size={24} />}
+                {volume === 0 && <IconVolume3 size={24} />}
+                <Slider
+                  label={(value) => `${value}%`}
+                  value={volume}
+                  onChange={(value) => {
+                    if (rtc.joined)
+                      rtc._mutators.audio.setVolume(member.id, value);
+                  }}
+                  sx={{ flexGrow: 1 }}
+                />
+              </Group>
+            </Popover.Dropdown>
+          </Popover>
+        </Group>
       </Box>
     </AspectRatio>
   );

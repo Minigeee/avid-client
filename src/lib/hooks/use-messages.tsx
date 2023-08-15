@@ -279,7 +279,7 @@ function fetcher(session: SessionState, domain: DomainWrapper) {
 		}, { session });
 
 		// Set members
-		setMembers(domain.id, Object.values(results.members), false);
+		setMembers(domain.id, Object.values(results.members), { emit: false, override_online: false });
 
 		// Render thread names
 		const env = makeMarkdownEnv(domain);

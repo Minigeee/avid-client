@@ -245,7 +245,7 @@ export default function AppProvider({ children, ...props }: PropsWithChildren & 
 	const session = useSession();
 
 	// Remote state
-	const [remote, setRemote] = useState<RemoteAppState>(merge({}, {
+	const [remote, setRemote] = useState<RemoteAppState>(merge({
 		domain: null,
 		channels: {},
 		expansions: {},

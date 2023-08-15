@@ -76,8 +76,16 @@ function _getMemberEntry(domain_id: string, profile_id: string, cache: Record<st
 }
 
 
+/** Set members options */
+type SetMembersOptions = {
+	/** If this change should be emitted (default true) */
+	emit?: boolean;
+	/** Should the `online` property be overridden (default true) */
+	override_online?: boolean;
+};
+
 /** Set members to store */
-export function setMembers(domain_id: string, members: ExpandedMember[], emit: boolean = true) {
+export function setMembers(domain_id: string, members: ExpandedMember[], options?: SetMembersOptions) {
 	const now = Date.now();
 
 	// Get domain cache
@@ -88,13 +96,15 @@ export function setMembers(domain_id: string, members: ExpandedMember[], emit: b
 		domain = { ...domain };
 
 	// Set all members
-	for (const member of members)
-		domain[member.id] = { data: member, time: now };
+	for (const member of members) {
+		const newMember = options?.override_online === false && domain[member.id] ? { ...member, online: domain[member.id].data.online } : member;
+		domain[member.id] = { data: newMember, time: now };
+	}
 
 	_.members = { ..._.members, [domain_id]: domain };
 
 	// Emit changes
-	if (emit)
+	if (options?.emit !== false)
 		_emitChange();
 }
 

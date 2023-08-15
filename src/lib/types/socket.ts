@@ -7,7 +7,7 @@ import { Message } from './message';
 export interface ServerToClientEvents {
 	'error': (message: string, status?: number) => void,
 
-	// WIP : Continue broadcast system
+	'general:joined': () => void,
 	'general:user-joined': (profile_id: string) => void,
 	'general:user-left': (profile_id: string) => void,
 	'general:activity': (domain_id: string, channel_id: string, mark_unseen: boolean) => void,

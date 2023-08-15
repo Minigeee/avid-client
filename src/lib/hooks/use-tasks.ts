@@ -256,7 +256,7 @@ export function useTasks(board_id: string | undefined, domain_id: string) {
 	}, {
 		then: (results) => {
 			// Cache members
-			setMembers(domain_id, Object.values(results.members));
+			setMembers(domain_id, Object.values(results.members), { override_online: false });
 
 			return results.tasks.map((task) => ({ ...task, assignee: task.assignee ? results.members[task.assignee] : null })) as ExpandedTask[];
 		},

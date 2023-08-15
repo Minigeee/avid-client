@@ -26,7 +26,6 @@ import { Domain, ExpandedDomain, ExpandedMember, ExpandedProfile, Member, Profil
 import { GetServerSideProps } from 'next';
 import { refresh } from '@/lib/utility/authenticate';
 import { api } from '@/lib/api';
-import { SWRConfig } from 'swr';
 
 
 ////////////////////////////////////////////////////////////
@@ -66,7 +65,6 @@ export default function App(props: AppProps) {
 
   const session = useSession();
   const profile = useProfile(session.profile_id);
-
   
   // Initialization logic (auth, emotes)
   useEffect(() => {
@@ -83,7 +81,7 @@ export default function App(props: AppProps) {
 
     // Set initial members and domain
     if (props.app?.domain) {
-      setMembers(props.app.domain, props.members || [], false);
+      setMembers(props.app.domain, props.members || [], { emit: false });
 
       if (props.counts) {
         setMemberQuery(props.app.domain, { page: 0 }, props.counts.total);
@@ -159,6 +157,33 @@ const MEMBER_SELECT_FIELDS = [
 	'in.profile_picture AS profile_picture',
 	'in.online AS online',
 ];
+
+////////////////////////////////////////////////////////////
+function removeUndefined(obj: any): any {
+  if (obj === null)
+    return null;
+  else if (typeof obj === 'object')
+    if (Array.isArray(obj))
+      return obj;
+    
+    else {
+        return Object.entries(obj)
+          .filter(([k, v]: [string, any]) => v !== undefined)
+          .reduce((r, [key, value]) => ({ ...r, [key]: removeUndefined(value) }), {});
+      }
+  else
+      return obj
+    }
+
+////////////////////////////////////////////////////////////
+function recordKeys(map: Record<string, any> | undefined, table: string, transform?: (v: any) => any) {
+	if (!map) return undefined;
+
+	const newMap: Record<string, any> = {};
+	for (const [k, v] of Object.entries(map))
+		newMap[`${table}:${k}`] = transform ? transform(v) : v;
+	return newMap;
+}
 
 ////////////////////////////////////////////////////////////
 type AppProps = {
@@ -283,13 +308,23 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   };
 
   return {
-    props: {
-      profile: profiles.length > 0 ? profiles[0] : undefined,
+    props: removeUndefined({
+      profile: profiles.length > 0 ? {
+				...profiles[0],
+				// TODO : Make domains draggable
+				domains: profiles[0].domains.sort((a: Domain, b: Domain) => new Date(a.time_created).getTime() - new Date(b.time_created).getTime()),
+			} : undefined,
       domain: domain || undefined,
       members: Object.values(memberMap),
       counts,
-      app,
+      app: app ? {
+				...app,
+				channels: recordKeys(app.channels, 'domains'),
+				expansions: recordKeys(app.expansions, 'domains'),
+				seen: recordKeys(app.seen, 'domains', (v) => recordKeys(v, 'channels')),
+				pings: recordKeys(app.pings, 'channels'),
+			} : undefined,
       token,
-    },
+    }),
   };
 }
