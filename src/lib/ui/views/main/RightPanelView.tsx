@@ -125,7 +125,7 @@ function MembersTab(props: RightPanelViewProps) {
   const MemberListItem = useMemo(() => {
     const component = memo(forwardRef<HTMLDivElement, { member: ExpandedMember; online?: boolean }>(
       ({ member, online, ...others }, ref) => {
-        let alias = member.alias.replace(/<[^>]*>/g, '');
+        let alias = member.alias?.replace(/<[^>]*>/g, '') || '';
         if (search.length > 0) {
           const idx = alias.toLocaleLowerCase().indexOf(search.toLocaleLowerCase());
           if (idx >= 0)

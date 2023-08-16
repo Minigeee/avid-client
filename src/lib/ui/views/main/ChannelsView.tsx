@@ -1,4 +1,4 @@
-import { MouseEventHandler, useContext, useState } from 'react';
+import { MouseEventHandler, useContext, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
@@ -61,6 +61,12 @@ function SingleChannel(props: SingleChannelProps) {
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [renaming, setRenaming] = useState<boolean>(false);
 
+  // Is channel seen
+  const seen = useMemo(() => {
+    const lastAccessedStr = app.last_accessed[props.domain.id]?.[props.channel.id];
+    return lastAccessedStr !== undefined && new Date(lastAccessedStr) >= new Date(props.channel._last_event);
+  }, [app.last_accessed, props.channel._last_event]);
+
   const canEdit = hasPermission(props.domain, props.channel.id, 'can_manage_resources') || hasPermission(props.domain, props.channel.id, 'can_manage');
 
   return (
@@ -74,7 +80,7 @@ function SingleChannel(props: SingleChannelProps) {
             padding: `0.2rem 0.3rem 0.2rem 0.5rem`,
             borderRadius: theme.radius.sm,
             backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
-            color: theme.colors.dark[app.seen[props.domain.id]?.[props.channel.id] && !props.selected ? 2 : 0],
+            color: theme.colors.dark[seen && !props.selected ? 2 : 0],
             boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
             transition: 'background-color 0.1s, color 0.1s',
             '&:hover': {

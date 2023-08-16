@@ -18,6 +18,8 @@ type SwrApiQueryOptions<Path extends ApiPath, In, Out, Mutators extends SwrMutat
 		initial?: ApiReturn<Path>;
 		/** Optional fallback data. This should be data that a fetcher would return (pre-transform function) */
 		fallback?: In;
+		/** Swr config */
+		config?: Parameters<typeof useSWR<In | null>>[2];
 	};
 
 /**
@@ -39,7 +41,8 @@ export function useApiQuery<Path extends ApiPath, In = ApiReturn<Path>, Mutators
 		() => {
 			const promise = options.initial ? new Promise<ApiReturn<Path>>((resolve) => { resolve(options.initial as ApiReturn<Path>); }) : api(path, params, { session });
 			return options.then ? promise.then(options.then) : promise;
-		}
+		},
+		options.config
 	);
 
 	// Swr wrapper

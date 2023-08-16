@@ -1,3 +1,4 @@
+import { Date } from './util';
 
 
 /** Right panel tab values */
@@ -12,8 +13,8 @@ export type RemoteAppState = {
 	/** The ids of the expansion the user is viewing per domain (saved) */
 	expansions: Record<string, string>;
 
-	/** A map of domains to channels to "seen" state */
-	seen: Record<string, Record<string, boolean>>;
+	/** A map of channels to the time they were last accessed */
+	last_accessed: Record<string, Record<string, Date>>;
 	/** A map of channels to number of pings */
 	pings?: Record<string, number>;
 	/** Indicates if the right side panel is opened */

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { mutate } from 'swr';
 import assert from 'assert';
 
 import { io, Socket } from 'socket.io-client';
@@ -6,7 +7,7 @@ import { io, Socket } from 'socket.io-client';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { getMemberSync, updateMemberLocal, updateMemberQueryLocal, useApp, useSession } from '@/lib/hooks';
-import { ClientToServerEvents, Message, ServerToClientEvents } from '@/lib/types';
+import { ClientToServerEvents, ExpandedDomain, Message, ServerToClientEvents } from '@/lib/types';
 
 import { notifyError, errorWrapper } from '@/lib/utility/error-handler';
 import notification from '@/lib/utility/notification';
@@ -80,9 +81,8 @@ export function useRealtimeHandlers() {
 	
 	// Join/leave handler
 	useEffect(() => {
-		if (!_socket.connected) return;
-
 		function onUserJoin(profile_id: string) {
+			console.log('trigger')
 			updateMemberLocal(profile_id, (member) => ({ ...member, online: true }), false);
 			updateMemberQueryLocal(
 				(domain, opts) => getMemberSync(domain, profile_id) !== null && opts.online !== undefined,
@@ -119,15 +119,31 @@ export function useRealtimeHandlers() {
 			_socket.off('general:user-joined', onUserJoin);
 			_socket.off('general:user-left', onUserLeft);
 		};
-	}, [_socket.connected, app]);
+	}, [app]);
 
 	// Channel activity handler
 	useEffect(() => {
-		function onActivity(domain_id: string, channel_id: string, mark_unseen: boolean) {
+		function onActivity(domain_id: string, channel_id: string, is_event: boolean) {
 			// Set stale, and mark as unseen
 			app._mutators.setStale(channel_id, true);
-			if (mark_unseen)
-				app._mutators.setSeen(domain_id, channel_id, false);
+
+			if (is_event) {
+				// UPdate the channel's last event time locally
+				mutate(domain_id, (domain: ExpandedDomain | undefined) => {
+					if (!domain) return;
+
+					return {
+						...domain,
+						channels: {
+							...domain.channels,
+							[channel_id]: {
+								...domain.channels[channel_id],
+								_last_event: new Date().toISOString(),
+							},
+						},
+					};
+				}, { revalidate: false });
+			}
 		}
 
 		function onPing(domain_id: string, channel_id: string) {

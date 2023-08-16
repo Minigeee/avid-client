@@ -39,6 +39,8 @@ export type Channel<Type extends ChannelTypes = ChannelTypes> = Resource & {
 	type: Type;
 	/** Extra data for each channel type */
 	data?: ChannelData<Type>;
+	/** Time the latest event occurred */
+	_last_event: Date;
 }
 
 

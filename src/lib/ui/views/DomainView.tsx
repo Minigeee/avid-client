@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import {
   ActionIcon,
@@ -154,6 +154,13 @@ export default function DomainView({ domain_id }: DomainViewProps) {
   const app = useApp();
 
   const domain = useDomain(domain_id || '');
+
+  // Refresh domain whenever it changes
+  useEffect(() => {
+    if (domain._exists)
+      domain._refresh();
+  }, [domain_id]);
+
   if (!domain._exists)
     return null;
 

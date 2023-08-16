@@ -10,7 +10,7 @@ export interface ServerToClientEvents {
 	'general:joined': () => void,
 	'general:user-joined': (profile_id: string) => void,
 	'general:user-left': (profile_id: string) => void,
-	'general:activity': (domain_id: string, channel_id: string, mark_unseen: boolean) => void,
+	'general:activity': (domain_id: string, channel_id: string, is_event: boolean) => void,
 	'general:ping': (domain_id: string, channel_id: string) => void,
 
 	'chat:message': (message: Message) => void;
@@ -22,6 +22,9 @@ export interface ServerToClientEvents {
 	'board:activity': (channel_id: string) => void;
 	'board:add-collection': (board_id: string, collection: TaskCollection) => void;
 	'board:delete-collection': (board_id: string, collection_id: string) => void;
+
+	'rtc:user-joined': (channel_id: string, profile_id: string) => void;
+	'rtc:user-left': (channel_id: string, profile_id: string) => void;
 }
 
 

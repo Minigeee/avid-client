@@ -300,11 +300,14 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   for (const member of selfs || [])
     memberMap[member.id] = { ...member, online: true };
 
+  // Check if the count has to be adjusted
+  const changeCount = selfs?.length ? selfs[0].online !== true : false;
+
   // Counts
   const counts = {
     total: Object.keys(members || []).length,
-    online: Object.keys(online || []).length + 1,
-    offline: Object.keys(offline || []).length - 1,
+    online: Object.keys(online || []).length + (changeCount ? 1 : 0),
+    offline: Object.keys(offline || []).length - (changeCount ? 1 : 0),
   };
 
   return {
@@ -321,7 +324,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
 				...app,
 				channels: recordKeys(app.channels, 'domains'),
 				expansions: recordKeys(app.expansions, 'domains'),
-				seen: recordKeys(app.seen, 'domains', (v) => recordKeys(v, 'channels')),
+				last_accessed: recordKeys(app.last_accessed, 'domains', (v) => recordKeys(v, 'channels')),
 				pings: recordKeys(app.pings, 'channels'),
 			} : undefined,
       token,

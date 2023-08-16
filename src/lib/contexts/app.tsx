@@ -44,9 +44,9 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			// Mark as seen
 			const channel_id = state.channels[domain_id];
 			if (channel_id) {
-				diff.seen = {
+				diff.last_accessed = {
 					[domain_id]: {
-						[state.channels[domain_id]]: true,
+						[channel_id]: new Date().toISOString(),
 					}
 				};
 
@@ -81,8 +81,8 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 
 			const diff = {
 				channels: { [domain_id]: channel_id },
-				seen: {
-					[domain_id]: { [channel_id]: true },
+				last_accessed: {
+					[domain_id]: { [channel_id]: new Date().toISOString() },
 				},
 				pings: { [channel_id]: 0 },
 			} as Partial<RemoteAppState>;
@@ -115,29 +115,6 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			setState(merge({}, state, diff));
 
 			save(diff);
-		},
-
-		/**
-		 * Marks a channel as (un)seen locally. Does not update the
-		 * database state.
-		 * 
-		 * @param domain_id The domain of the channel
-		 * @param channel_id The channel to set seen status for
-		 * @param seen The new seen status
-		 */
-		setSeen: (domain_id: string, channel_id: string, seen: boolean) => {
-			if (!state.seen[domain_id]?.[channel_id] == !seen) return;
-
-			setState({
-				...state,
-				seen: {
-					...state.seen,
-					[domain_id]: {
-						...state.seen[domain_id],
-						[channel_id]: seen,
-					},
-				},
-			});
 		},
 
 		/**
@@ -249,7 +226,7 @@ export default function AppProvider({ children, ...props }: PropsWithChildren & 
 		domain: null,
 		channels: {},
 		expansions: {},
-		seen: {},
+		last_accessed: {},
 		right_panel_opened: true,
 	}, props.initial || {}));
 
