@@ -1,3 +1,4 @@
+import { MediaType } from '../contexts';
 import { TaskCollection } from './board';
 import { Member } from './member';
 import { Message } from './message';
@@ -44,23 +45,29 @@ export interface Media_ServerToClientEvents {
 	'error': (message: string, status?: number) => void,
 
 	'config': (capabilities: any, producerConfig: any, consumerConfig: any) => void;
-	'joined': (participant_ids: string[], callback: () => void) => void;
+	'joined': (participants: { id: string; is_admin: boolean; is_manager: boolean; is_deafened: boolean }[], callback: () => void) => void;
 	'make-consumer': (options: any, callback: (success: boolean) => void) => void;
-	'participant-joined': (participant_id: string) => void;
+	'participant-joined': (participant_id: string, is_admin: boolean, is_manager: boolean, is_deafened: boolean) => void;
 	'participant-left': (participant_id: string) => void;
 	'participant-talk': (participant_id: string, status: 'start' | 'stop') => void;
+	'participant-deafened': (participant_id: string) => void;
+	'participant-undeafened': (participant_id: string) => void;
+
 	'consumer-closed': (consumer_id: string) => void;
 	'consumer-paused': (consumer_id: string) => void;
 	'consumer-resumed': (consumer_id: string) => void;
 	'consumer-score': (consumer_id: string, score: any) => void;
 	'consumer-layers-changed': (consumer_id: string, spatial: number | null, temporal: number | null) => void;
+
 	'producer-score': (producer_id: string, score: any) => void;
+	'producer-locked': (participant_id: string, type: MediaType) => void;
+	'producer-unlocked': (participant_id: string, type: MediaType) => void;
 }
 
 
 /** All events signatures that are sent from client to server for the media server */
 export interface Media_ClientToServerEvents {
-	'config': (device: any, rtpCapabilities: any, sctpCapabilities: any) => void;
+	'config': (device: any, rtpCapabilities: any, sctpCapabilities: any, deafened: boolean) => void;
 	'connect-transport': (transport_id: string, dtlsParameters: any) => void;
 	'produce': (transport_id: string, params: { kind: any; rtpParameters: any; appData: any; }, callback: (producer_id: string | null) => void) => void;
 	'consumers-paused': (consumer_ids: string[]) => void;
@@ -68,4 +75,9 @@ export interface Media_ClientToServerEvents {
 	'producer-closed': (producer_id: string) => void;
 	'producer-paused': (producer_id: string) => void;
 	'producer-resumed': (producer_id: string) => void;
+
+	'deafen': () => void;
+	'undeafen': () => void;
+	'lock-producer': (participant_id: string, type: MediaType) => void;
+	'unlock-producer': (participant_id: string, type: MediaType) => void;
 }

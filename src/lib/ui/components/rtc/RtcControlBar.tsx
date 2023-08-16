@@ -131,7 +131,7 @@ export default function RtcControlBar() {
       <ControlButton
         tooltip={rtc.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
         active={rtc.is_screen_shared}
-        disabled={!canVideo}
+        disabled={!canVideo || rtc.is_share_locked}
         onClick={() => {
           if (rtc.is_screen_shared)
             rtc._mutators.screenshare.disable();
@@ -146,7 +146,7 @@ export default function RtcControlBar() {
       <ControlButton
         tooltip={rtc.is_webcam_on ? 'Disable Webcam' : 'Enable Webcam'}
         buttonProps={{ loading: webcamLoading }}
-        disabled={!canVideo}
+        disabled={!canVideo || rtc.is_webcam_locked}
         onClick={async () => {
           if (rtc.is_webcam_on)
             rtc._mutators.webcam.disable();
@@ -163,7 +163,7 @@ export default function RtcControlBar() {
 
       <ControlButton
         tooltip={rtc.is_mic_muted ? 'Unmute' : 'Mute'}
-        disabled={!canSpeak}
+        disabled={!canSpeak || rtc.is_mic_locked}
         onClick={() => {
           // Enable if not enabled first
           if (!rtc.is_mic_enabled)

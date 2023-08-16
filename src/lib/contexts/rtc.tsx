@@ -46,7 +46,7 @@ type ConsumerScore = {
     producerScores: number[];
 };
 /** Consumer variants */
-type MediaType = 'audio' | 'video' | 'share';
+export type MediaType = 'audio' | 'video' | 'share';
 
 /** General video options */
 type VideoOptions = {
@@ -119,8 +119,23 @@ export type RtcConsumer = {
 export type RtcParticipant = {
 	/** The id of the participant */
 	id: string;
+	/** Indicates if this participant is an admin */
+	is_admin: boolean;
+	/** Indicates if this participant is a manager */
+	is_manager: boolean;
 	/** Volume of audio streams */
 	volume: number;
+	/** If the participant is deafened */
+	is_deafened?: boolean;
+	/** Locked producer types */
+	locked: {
+		/** Is audio locked */
+		audio?: boolean;
+		/** Is video locked */
+		video?: boolean;
+		/** Is share locked */
+		share?: boolean;
+	};
 	/** The mediasoup device of the participant */
 	device?: Device;
 	/** Consumer data for the producer audio corresponding consumer data */
@@ -152,14 +167,23 @@ export type RtcState = {
 	
 	/** Indicates if webcam is enabled */
 	is_webcam_enabled: boolean;
+	/** Indicates if webcam is locked */
+	is_webcam_locked: boolean;
 	/** Indicates if webcam should be enabled when joining room */
 	is_webcam_on: boolean;
+
 	/** Indicates if screen is being shared */
 	is_screen_shared: boolean;
+	/** Indicates if screen share is locked */
+	is_share_locked: boolean;
+
 	/** Indicates if mic is enabled (connected and available) */
 	is_mic_enabled: boolean;
+	/** Indicates if mic is locked */
+	is_mic_locked: boolean;
 	/** Indicates if mic is muted */
 	is_mic_muted: boolean;
+
 	/** Indicates if audio is deafened */
 	is_deafened: boolean;
 }
@@ -535,38 +559,44 @@ async function deafen(emit: RtcSetState) {
 	// A new map of participants that have their states changed
 	const newParticipantState: Record<string, RtcParticipant> = {};
 
-	// Keep track of consumers that get paused
-	const paused: string[] = [];
+	if (_state.joined) {
+		// Keep track of consumers that get paused
+		const paused: string[] = [];
 
-	// Pause all audio streams
-	for (const [pid, participant] of Object.entries(_state?.participants || {})) {
-		if (participant.audio) {
-			// Get consumer
-			const { consumer } = _.consumers[participant.audio.id];
+		// Pause all audio streams
+		for (const [pid, participant] of Object.entries(_state?.participants || {})) {
+			if (participant.audio) {
+				// Get consumer
+				const { consumer } = _.consumers[participant.audio.id];
 
-			// Pause consumer
-			consumer.pause();
+				// Pause consumer
+				consumer.pause();
 
-			// Add consumer to list
-			paused.push(consumer.id);
+				// Add consumer to list
+				paused.push(consumer.id);
 
-			// Update state
-			const oldState = newParticipantState[pid] || participant;
-			if (oldState.audio) {
-				newParticipantState[pid] = {
-					...oldState,
-					audio: {
-						...oldState.audio,
-						paused: { ...(oldState.audio.paused), local: true },
-					},
-				};
+				// Update state
+				const oldState = newParticipantState[pid] || participant;
+				if (oldState.audio) {
+					newParticipantState[pid] = {
+						...oldState,
+						audio: {
+							...oldState.audio,
+							paused: { ...(oldState.audio.paused), local: true },
+						},
+					};
+				}
 			}
 		}
-	}
 
-	// Send event
-	if (_.socket && paused.length > 0)
-		_.socket.emit('consumers-paused', paused);
+		// Send event
+		if (_.socket) {
+			if (paused.length > 0)
+				_.socket.emit('consumers-paused', paused);
+
+			_.socket.emit('deafen');
+		}
+	}
 
 	// Set state
 	emit({
@@ -581,38 +611,44 @@ async function undeafen(emit: RtcSetState) {
 	// A new map of participants that have their states changed
 	const newParticipantState: Record<string, RtcParticipant> = {};
 
-	// Keep track of consumers that get resumed
-	const resumed: string[] = [];
+	if (_state.joined) {
+		// Keep track of consumers that get resumed
+		const resumed: string[] = [];
 
-	// Resume all audio streams
-	for (const [pid, participant] of Object.entries(_state?.participants || {})) {
-		if (participant.audio) {
-			// Get consumer
-			const { consumer } = _.consumers[participant.audio.id];
+		// Resume all audio streams
+		for (const [pid, participant] of Object.entries(_state?.participants || {})) {
+			if (participant.audio) {
+				// Get consumer
+				const { consumer } = _.consumers[participant.audio.id];
 
-			// Resume consumer
-			consumer.resume();
+				// Resume consumer
+				consumer.resume();
 
-			// Add consumer to list
-			resumed.push(consumer.id);
+				// Add consumer to list
+				resumed.push(consumer.id);
 
-			// Update state
-			const oldState = newParticipantState[pid] || participant;
-			if (oldState.audio) {
-				newParticipantState[pid] = {
-					...(oldState),
-					audio: {
-						...oldState.audio,
-						paused: { ...(oldState.audio.paused), local: false },
-					},
-				};
+				// Update state
+				const oldState = newParticipantState[pid] || participant;
+				if (oldState.audio) {
+					newParticipantState[pid] = {
+						...(oldState),
+						audio: {
+							...oldState.audio,
+							paused: { ...(oldState.audio.paused), local: false },
+						},
+					};
+				}
 			}
 		}
-	}
 
-	// Send event
-	if (_.socket && resumed.length > 0)
-		_.socket.emit('consumers-resumed', resumed);
+		// Send event
+		if (_.socket) {
+			if (resumed.length > 0)
+				_.socket.emit('consumers-resumed', resumed);
+
+			_.socket.emit('undeafen');
+		}
+	}
 
 	// Set state
 	emit({
@@ -969,7 +1005,7 @@ async function enableShare(emit: RtcSetState, options?: VideoOptions) {
 			
 			notification.info(
 				'Stopped Sharing',
-				'Screen share has been stopped due to an external reason.'
+				'Screen share has been stopped.'
 			);
 		});
 
@@ -1163,22 +1199,27 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 		if (!_.device) return;
 
 		// Send client config
-		_.socket.emit('config', _.device, _.device.rtpCapabilities, _.device.sctpCapabilities);
+		_.socket.emit('config', _.device, _.device.rtpCapabilities, _.device.sctpCapabilities, _state.is_deafened);
 	}, { message: 'An error occurred while setting up RTC device' }));
 
 	// Called after server has received client's capabilities and the client has been flagged as joined
 	// The client is now able to enable microphone, webcam, and screen share
-	_.socket.on('joined', errorWrapper(async (participant_ids: string[], callback: () => void) => {
+	_.socket.on('joined', errorWrapper(async (participants: { id: string; is_admin: boolean; is_manager: boolean }[], callback: () => void) => {
 		// Create map of participants
-		const participants: Record<string, { id: string; volume: number }> = {};
-		for (const id of participant_ids)
-			participants[id] = { id, volume: 100 };
+		const participantMap: Record<string, RtcParticipant> = {};
+		for (const p of participants) {
+			participantMap[p.id] = {
+				...p,
+				volume: 100,
+				locked: {},
+			};
+		}
 
 		// Mark as joined, and add initial participants
 		emit({
 			..._state,
 			joined: true,
-			participants,
+			participants: participantMap,
 		});
 
 		// Acknowledge that client is ready to create consumers
@@ -1265,7 +1306,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 					},
 				},
 				paused: {
-					local: false,
+					local: appData.is_deafened || false,
 					remote: producerPaused,
 				},
 				track: consumer.track,
@@ -1303,7 +1344,7 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 	}, { message: 'An error occurred while creating RTC consumer' }));
 
 	// Called when a new participant joins the room
-	_.socket.on('participant-joined', errorWrapper((participant_id: string) => {
+	_.socket.on('participant-joined', errorWrapper((participant_id: string, is_admin: boolean, is_manager: boolean, is_deafened: boolean) => {
 		// Create a new entry in rtc state
 		emit({
 			..._state,
@@ -1312,7 +1353,11 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 				[participant_id]: {
 					..._state.participants[participant_id],
 					id: participant_id,
+					is_admin,
+					is_manager,
+					is_deafened,
 					volume: 100,
+					locked: {},
 				}
 			},
 		});
@@ -1331,6 +1376,37 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 			participants,
 		});
 	}, { message: 'An error occurred while updating RTC state' }));
+
+	// Called when a participants deafens (themselves)
+	_.socket.on('participant-deafened', errorWrapper((participant_id: string) => {
+		// Update state
+		emit({
+			..._state,
+			participants: {
+				..._state.participants,
+				[participant_id]: {
+					..._state.participants[participant_id],
+					is_deafened: true,
+				}
+			},
+		});
+	}, { message: 'An error occurred while updating RTC state' }));
+
+	// Called when a participants deafens (themselves)
+	_.socket.on('participant-undeafened', errorWrapper((participant_id: string) => {
+		// Update state
+		emit({
+			..._state,
+			participants: {
+				..._state.participants,
+				[participant_id]: {
+					..._state.participants[participant_id],
+					is_deafened: false,
+				}
+			},
+		});
+	}, { message: 'An error occurred while updating RTC state' }));
+
 
 	// Called when a consumer closes for any reason
 	_.socket.on('consumer-closed', errorWrapper((consumer_id: string) => {
@@ -1457,6 +1533,86 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 	_.socket.on('producer-score', errorWrapper((producer_id: string, score: ProducerScore) => {
 		// TODO : Use producer score
 	}, { message: 'An error occurred while updating RTC state' }));
+
+
+	// Lock producer
+	_.socket.on('producer-locked', errorWrapper((participant_id: string, type: MediaType) => {
+		// If the participant being locked is self, lock on client side
+		if (participant_id === session.profile_id) {
+			const newState = { ..._state };
+			if (type === 'audio') {
+				newState.is_mic_locked = true;
+				newState.is_mic_muted = true;
+			}
+			else if (type === 'video') {
+				newState.is_webcam_locked = true;
+				newState.is_webcam_enabled = false;
+			}
+			else {
+				newState.is_share_locked = true;
+				newState.is_screen_shared = false;
+			}
+
+			emit(newState);
+
+			// Stop video producers
+			if (type === 'video' && _.producers.webcam) {
+				_.producers.webcam.track?.stop();
+				_.producers.webcam = null;
+			}
+			else if (type === 'share' && _.producers.screenshare) {
+				console.log('stop screen share', _.producers)
+				_.producers.screenshare.track?.stop();
+				_.producers.screenshare = null;
+			}
+		}
+
+		// Otherwise, apply lock status to reflect in participant map
+		else {
+			const participant = _state.participants[participant_id];
+			emit({
+				..._state,
+				participants: {
+					..._state.participants,
+					[participant_id]: {
+						...participant,
+						locked: { ...participant.locked, [type]: true },
+					}
+				},
+			});
+		}
+	}, { message: 'An error occurred while updating RTC state' }));
+	
+	// Unlock producer
+	_.socket.on('producer-unlocked', errorWrapper((participant_id: string, type: MediaType) => {
+		// If the participant being locked is self, lock on client side
+		if (participant_id === session.profile_id) {
+			const newState = { ..._state };
+			if (type === 'audio')
+				newState.is_mic_locked = false;
+			else if (type === 'video')
+				newState.is_webcam_locked = false;
+			else
+				newState.is_share_locked = false;
+
+			emit(newState);
+		}
+
+		// Otherwise, apply lock status to reflect in participant map
+		else {
+			const participant = _state.participants[participant_id];
+			emit({
+				..._state,
+				participants: {
+					..._state.participants,
+					[participant_id]: {
+						...participant,
+						locked: { ...participant.locked, [type]: false },
+					}
+				},
+			});
+		}
+	}, { message: 'An error occurred while updating RTC state' }));
 }
 
 
@@ -1537,6 +1693,11 @@ function mutators(setState: (value: RtcState | undefined) => void, session: Sess
 				server: url,
 				joined: false,
 				participants: {},
+
+				// Unlock all on join
+				is_webcam_locked: false,
+				is_share_locked: false,
+				is_mic_locked: false,
 			};
 
 			// Connect to server
@@ -1718,6 +1879,62 @@ function mutators(setState: (value: RtcState | undefined) => void, session: Sess
 		 * @param type The media type to resume
 		 */
 		resume: (participant_id: string, type: MediaType) => resumeConsumer((state) => { _state = state; setState(state); }, participant_id, type),
+
+		/**
+		 * Lock and disable a producer for a participant.
+		 * Nothing happens if the participant id is self.
+		 * 
+		 * @param participant_id The id of the participant to lock
+		 * @param type The type of producer to lock
+		 */
+		lock: (participant_id: string, type: MediaType) => {
+			if (participant_id === session.profile_id) return;
+
+			// Send event
+			_.socket?.emit('lock-producer', participant_id, type);
+
+			// Update locally
+			const emit = (state: RtcState) => { _state = state; setState(state); };
+			const participant = _state.participants[participant_id];
+			emit({
+				..._state,
+				participants: {
+					..._state.participants,
+					[participant_id]: {
+						...participant,
+						locked: { ...participant.locked, [type]: true },
+					}
+				},
+			});
+		},
+
+		/**
+		 * Unlock a producer for a participant.
+		 * Nothing happens if the participant id is self.
+		 * 
+		 * @param participant_id The id of the participant to lock
+		 * @param type The type of producer to lock
+		 */
+		unlock: (participant_id: string, type: MediaType) => {
+			if (participant_id === session.profile_id) return;
+
+			// Send event
+			_.socket?.emit('unlock-producer', participant_id, type);
+
+			// Update locally
+			const emit = (state: RtcState) => { _state = state; setState(state); };
+			const participant = _state.participants[participant_id];
+			emit({
+				..._state,
+				participants: {
+					..._state.participants,
+					[participant_id]: {
+						...participant,
+						locked: { ...participant.locked, [type]: false },
+					}
+				},
+			});
+		},
 	};
 }
 

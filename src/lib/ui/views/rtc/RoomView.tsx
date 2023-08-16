@@ -35,6 +35,7 @@ import {
   IconVolume2,
   IconVolume3,
   IconVideoOff,
+  IconRepeat,
 } from '@tabler/icons-react';
 
 import { openUserSettings } from '@/lib/ui/modals';
@@ -53,6 +54,7 @@ import {
 } from '@/lib/hooks';
 import { Channel, Member } from '@/lib/types';
 import { api } from '@/lib/api';
+import ProducerIcon from './components/ProducerIcon';
 
 
 ////////////////////////////////////////////////////////////
@@ -62,8 +64,9 @@ type Participant = Member & {
 
 ////////////////////////////////////////////////////////////
 type ParticipantViewProps = {
-  member: Participant;
+  domain: DomainWrapper;
   rtc: RtcContextState;
+  member: Participant;
 
   cellWidth: number;
   avatarSize: number;
@@ -76,13 +79,16 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
   
   // Determines if webcam or screen share should be shown
   const [webcamPriority, setWebcamPriority] = useState<boolean>(false);
-  const [showMenu, setShowMenu] = useState<boolean>(false);
 
   // Get rtc info
   const rtcInfo = rtc.participants[member.id];
   const display = webcamPriority ? rtcInfo?.video || rtcInfo?.share : rtcInfo?.share || rtcInfo?.video;
   const volume = rtcInfo?.volume || 0;
 
+  // Permissions
+  const canManage = !rtcInfo.is_admin && (props.domain._permissions.is_admin || hasPermission(props.domain, rtc.room_id, 'can_manage_participants') && !rtcInfo.is_manager);
+
+  // Handle playing video
   useEffect(() => {
     if (!display || !videoRef.current) return;
 
@@ -111,8 +117,6 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
         boxShadow: 'rgba(0, 0, 0, 0.1) 0px 4px 12px',
         overflow: 'hidden',
       })}
-      onMouseEnter={() => setShowMenu(true)}
-      onMouseLeave={() => setShowMenu(false)}
     >
       <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
         {!display && (
@@ -148,20 +152,30 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
         )}
 
         <Group
-          spacing={8}
+          spacing={2}
           sx={(theme) => ({
-            visibility: showMenu ? 'visible' : 'hidden',
             position: 'absolute',
-            right: 10,
-            top: 10,
+            right: '0.5rem',
+            top: '0.5rem',
+            padding: 2,
+            backgroundColor: display ? theme.colors.dark[9] + '80' : undefined,
           })}
           onClick={(e) => { e.stopPropagation(); }}
         >
+          {(rtcInfo.share && !rtcInfo.share.paused.remote || rtcInfo.locked.share) && (<ProducerIcon participant={rtcInfo} type='share' rtc={rtc} canManage={canManage} />)}
+          {(rtcInfo.video && !rtcInfo.video.paused.remote || rtcInfo.locked.video) && (<ProducerIcon participant={rtcInfo} type='video' rtc={rtc} canManage={canManage} />)}
+          {(rtcInfo.audio && !rtcInfo.audio.paused.remote || rtcInfo.locked.audio) && (<ProducerIcon participant={rtcInfo} type='audio' rtc={rtc} canManage={canManage} />)}
+
+          {rtcInfo.is_deafened && (
+            <Center w={28} h={28}>
+              <IconHeadphonesOff size={19} />
+            </Center>
+          )}
+
           {rtcInfo?.share && rtcInfo?.video && (
             <Tooltip label={webcamPriority ? 'View Screen Share' : 'View Webcam'}>
               <ActionIcon onClick={() => setWebcamPriority(!webcamPriority)}>
-                {!webcamPriority && <IconVideo size={20} />}
-                {webcamPriority && <IconScreenShare size={19} />}
+                <IconRepeat size={19} />
               </ActionIcon>
             </Tooltip>
           )}
@@ -441,8 +455,9 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
             {participants.map((member, i) => (
               <ParticipantView
                 key={member.id}
-                member={member}
+                domain={props.domain}
                 rtc={rtc}
+                member={member}
 
                 cellWidth={cellWidth}
                 avatarSize={avatarSize}
