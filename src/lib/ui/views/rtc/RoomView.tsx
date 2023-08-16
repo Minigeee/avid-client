@@ -199,7 +199,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
 
 ////////////////////////////////////////////////////////////
 type RoomViewProps = {
-  channel: Channel;
+  channel: Channel<'rtc'>;
   domain: DomainWrapper;
 }
 
@@ -215,21 +215,7 @@ function JoinScreen({ rtc, ...props }: RoomViewProps & { rtc: RtcContextState<fa
 
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Load channel data directly (need latest data always)
-  const [participantIds, setParticipantIds] = useState<string[]>([]);
-  useEffect(() => {
-    // TODO : Use websockets to sync room participants
-    api('GET /channels/:channel_id', {
-      params: { channel_id: props.channel.id },
-    }, { session })
-      .then((results) => {
-        const channel = results as Channel<'rtc'>;
-        const filtered = channel.data?.participants.filter(x => x !== session.profile_id);
-        setParticipantIds(filtered || []);
-      });
-  }, []);
-
-  const participants = useMembers(props.domain.id, participantIds);
+  const participants = useMembers(props.domain.id, props.channel.data?.participants || []);
 
   // Rtc permissions
   const canSpeak = hasPermission(props.domain, props.channel.id, 'can_broadcast_audio');

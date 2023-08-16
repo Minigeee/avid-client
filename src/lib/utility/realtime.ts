@@ -7,10 +7,12 @@ import { io, Socket } from 'socket.io-client';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { getMemberSync, updateMemberLocal, updateMemberQueryLocal, useApp, useSession } from '@/lib/hooks';
-import { ClientToServerEvents, ExpandedDomain, Message, ServerToClientEvents } from '@/lib/types';
+import { ChannelData, ChannelTypes, ClientToServerEvents, ExpandedDomain, Message, ServerToClientEvents } from '@/lib/types';
 
 import { notifyError, errorWrapper } from '@/lib/utility/error-handler';
 import notification from '@/lib/utility/notification';
+
+import { merge } from 'lodash';
 
 
 /** Realtime server socket */
@@ -158,4 +160,55 @@ export function useRealtimeHandlers() {
 			_socket.off('general:ping', onPing);
 		};
 	}, [app]);
+
+	// Rtc handlers
+	useEffect(() => {
+		// rtc:user-joined
+		function onRtcUserJoin(domain_id: string, channel_id: string, profile_id: string) {
+			mutate(domain_id, (domain: ExpandedDomain | undefined) => {
+				if (!domain) return domain;
+				return {
+					...domain,
+					channels: {
+						...domain.channels,
+						[channel_id]: {
+							...domain.channels[channel_id],
+							data: {
+								...domain.channels[channel_id].data,
+								participants: Array.from(new Set([...(domain.channels[channel_id].data as ChannelData<'rtc'>)?.participants, profile_id])),
+							} as ChannelData<'rtc'>,
+						},
+					},
+				};
+			}, { revalidate: false });
+		}
+
+		// rtc:user-joined
+		function onRtcUserLeft(domain_id: string, channel_id: string, profile_id: string) {
+			mutate(domain_id, (domain: ExpandedDomain | undefined) => {
+				if (!domain) return domain;
+				return {
+					...domain,
+					channels: {
+						...domain.channels,
+						[channel_id]: {
+							...domain.channels[channel_id],
+							data: {
+								...domain.channels[channel_id].data,
+								participants: (domain.channels[channel_id].data as ChannelData<'rtc'>)?.participants.filter(id => id !== profile_id),
+							} as ChannelData<'rtc'>,
+						},
+					},
+				};
+			}, { revalidate: false });
+		}
+
+		_socket.on('rtc:user-joined', onRtcUserJoin);
+		_socket.on('rtc:user-left', onRtcUserLeft);
+
+		return () => {
+			_socket.off('rtc:user-joined', onRtcUserJoin);
+			_socket.off('rtc:user-left', onRtcUserLeft);
+		};
+	}, []);
 }

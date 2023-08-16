@@ -91,7 +91,7 @@ export default function MainView() {
               {channel.type === 'rtc' && (
                 <RoomView
                   key={channel.id}
-                  channel={channel}
+                  channel={channel as Channel<'rtc'>}
                   domain={domain}
                 />
               )}

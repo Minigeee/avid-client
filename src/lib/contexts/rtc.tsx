@@ -20,6 +20,7 @@ import { Media_ClientToServerEvents, Media_ServerToClientEvents } from '@/lib/ty
 
 import { notifyError, errorWrapper } from '@/lib/utility/error-handler';
 import notification from '@/lib/utility/notification';
+import { socket as apiSocket } from '@/lib/utility/realtime';
 
 import { merge } from 'lodash';
 
@@ -1183,6 +1184,9 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 		// Acknowledge that client is ready to create consumers
 		callback();
 
+		// Notify api server that joined
+		apiSocket().emit('rtc:joined', room_id);
+
 		// Enable microphone
 		if (!_state.is_mic_muted)
 			enableMic(_state.audio_input_device, emit);
@@ -1459,8 +1463,12 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 /** Disconnect from current server */
 function disconnect(emit: RtcSetState) {
 	// Close socket
-	if (_.socket?.connected)
+	if (_.socket?.connected) {
 		_.socket.disconnect();
+
+		// Notify api server of dc
+		apiSocket().emit('rtc:left', _state.room_id);
+	}
 
 	// Close send transport
 	if (_.sendTransport && !_.sendTransport.closed)

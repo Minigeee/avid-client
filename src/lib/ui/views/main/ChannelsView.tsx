@@ -2,6 +2,7 @@ import { MouseEventHandler, useContext, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
+  Avatar,
   Box,
   Flex,
   Group,
@@ -11,6 +12,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -19,6 +21,7 @@ import {
   IconBell,
   IconChevronDown,
   IconChevronRight,
+  IconCornerDownRight,
   IconDotsVertical,
   IconPencil,
   IconPlus,
@@ -31,10 +34,11 @@ import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
-import { DomainWrapper, hasPermission, useApp } from '@/lib/hooks';
+import { DomainWrapper, hasPermission, useApp, useMembers } from '@/lib/hooks';
 import { Channel, ChannelGroup } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
+import MemberAvatar from '../../components/MemberAvatar';
 
 
 ////////////////////////////////////////////////////////////
@@ -66,6 +70,9 @@ function SingleChannel(props: SingleChannelProps) {
     const lastAccessedStr = app.last_accessed[props.domain.id]?.[props.channel.id];
     return lastAccessedStr !== undefined && new Date(lastAccessedStr) >= new Date(props.channel._last_event);
   }, [app.last_accessed, props.channel._last_event]);
+
+  // RTC participants
+  const participants = useMembers(props.domain.id, props.channel.type === 'rtc' ? (props.channel as Channel<'rtc'>).data?.participants || [] : []);
 
   const canEdit = hasPermission(props.domain, props.channel.id, 'can_manage_resources') || hasPermission(props.domain, props.channel.id, 'can_manage');
 
@@ -233,6 +240,34 @@ function SingleChannel(props: SingleChannelProps) {
               </Text>
             )}
           </Flex>
+
+          {participants._exists && participants.data.length > 0 && (
+            <Group spacing={4} mb={4} pl={3}>
+              <Box sx={(theme) => ({ color: theme.colors.dark[3] })}>
+                <IconCornerDownRight size={20} />
+              </Box>
+
+              <Avatar.Group spacing={6}>
+                {participants.data.slice(0, 5).map((member, i) => (
+                  <Tooltip label={member.alias} withArrow>
+                    <MemberAvatar
+                      key={member.id}
+                      size={28}
+                      member={member}
+                    />
+                  </Tooltip>
+                ))}
+                {participants.data.length > 5 && (
+                  <Avatar
+                    size={28}
+                    radius={28}
+                  >
+                    +{participants.data.length - 5}
+                  </Avatar>
+                )}
+              </Avatar.Group>
+            </Group>
+          )}
         </Box>
       )}
     </Draggable>

@@ -23,8 +23,8 @@ export interface ServerToClientEvents {
 	'board:add-collection': (board_id: string, collection: TaskCollection) => void;
 	'board:delete-collection': (board_id: string, collection_id: string) => void;
 
-	'rtc:user-joined': (channel_id: string, profile_id: string) => void;
-	'rtc:user-left': (channel_id: string, profile_id: string) => void;
+	'rtc:user-joined': (domain_id: string, channel_id: string, profile_id: string) => void;
+	'rtc:user-left': (domain_id: string, channel_id: string, profile_id: string) => void;
 }
 
 
@@ -33,6 +33,9 @@ export interface ClientToServerEvents {
 	'general:switch-room': (domain_id: string, channel_id: string) => void;
 
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
+
+	'rtc:joined': (channel_id: string) => void;
+	'rtc:left': (channel_id: string) => void;
 }
 
 
