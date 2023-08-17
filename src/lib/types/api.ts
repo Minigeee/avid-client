@@ -35,6 +35,9 @@ export type ApiRouteOptions<P extends ApiPath> =
 export type ApiReturn<Path extends ApiPath> = ApiSchema[Path] extends { return: any } ? ApiSchema[Path]['return'] : null;
 
 
+/** Message recieved from api */
+export type RawMessage = Omit<Message, 'reply_to'> & { reactions?: AggregatedReaction[]; reply_to?: Message | ExpandedMessage };
+
 /** Task object used for api body values */
 type Api_Task = Omit<Task, 'id' | 'sid' | 'board' | 'time_created' | 'time_updated' | 'time_status_updated' | 'status'> & { status?: string };
 
@@ -276,7 +279,7 @@ export type ApiSchema = {
 			limit?: number;
 		},
 		return: {
-			messages: (Message & { reactions?: AggregatedReaction[] })[];
+			messages: RawMessage[];
 			members: Record<string, ExpandedMember>;
 			threads: Record<string, Thread>;
 		},
@@ -290,7 +293,7 @@ export type ApiSchema = {
 			reply_to?: string;
 			thread?: string;
 		},
-		return: Message,
+		return: RawMessage,
 	},
 
 	'PATCH /messages/:message_id': {

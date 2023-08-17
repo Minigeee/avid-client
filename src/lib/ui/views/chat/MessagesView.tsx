@@ -1,5 +1,6 @@
 import { ForwardedRef, Fragment, MutableRefObject, PropsWithChildren, Ref, RefObject, createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import assert from 'assert';
 
 import {
   ActionIcon,
@@ -69,7 +70,7 @@ import {
   useSession,
   useTimeout,
 } from '@/lib/hooks';
-import { ExpandedMember, ExpandedMessage, FileAttachment, Member, Message, Role } from '@/lib/types';
+import { ExpandedMember, ExpandedMessage, FileAttachment, Member, Message, RawMessage, Role } from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
 import notification from '@/lib/utility/notification';
 
@@ -245,7 +246,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     // Skip if thread view
     if (props.thread_id) return;
 
-    function onNewMessage(message: Message) {
+    function onNewMessage(message: RawMessage) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || message.channel !== channel_id) return;
   
@@ -279,7 +280,8 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       if (!messages._exists || edit_channel_id !== channel_id) return;
 
       // Edit message locally
-      messages._mutators.editMessageLocal(message_id, message);
+      assert(message.reply_to === undefined);
+      messages._mutators.editMessageLocal(message_id, message as Partial<RawMessage>);
     }
 
     function onDeleteMessage(edit_channel_id: string, message_id: string) {
@@ -473,6 +475,12 @@ type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
 function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
   const addReactionBtnRef = useRef<HTMLButtonElement>(null);
 
+  // Replied to message's sender
+  const repliedToSender = useMember(props.domain.id, typeof msg.reply_to?.sender === 'string' ? msg.reply_to.sender : msg.reply_to?.sender?.id || undefined);
+
+  // Tracks if message should be animated
+  const [shouldAnimate, setShouldAnimate] = useState<boolean>(false);
+
   // User's badges
   const badges = useMemo(() => {
     // Create list of role ids, sort by role order
@@ -494,292 +502,312 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
     return badges;
   }, [msg.sender?.roles, props.rolesMap]);
 
+  // Animate
+  useEffect(() => {
+    if (props.scrollTo === msg.id) {
+      setShouldAnimate(true);
+      // Turn off animation after a bit
+      setTimeout(() => setShouldAnimate(false), 1200);
+    }
+  }, [props.scrollTo]);
+
 
   return (
-    <ContextMenu.Trigger
-      ref={props.scrollTo && props.scrollTo === msg.id ? props.scrollToRef : undefined}
-      className='msg-body'
-      context={{ msg }}
-      sx={(theme) => ({
-        display: 'flex',
-        gap: 0,
-
-        padding: `0.25rem 0rem 0.25rem calc(${props.p} - 4px)`,
-        backgroundColor: props.hasPing ? '#2B293A' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}10` : undefined,
-        transition: 'background-color 0.08s',
-
-        '&:hover': {
-          backgroundColor: props.hasPing ? '#312D46' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}1A` : theme.colors.dark[6],
-        },
-
-        '&:first-child': {
-          borderTopLeftRadius: 3,
-          borderTopRightRadius: 3,
-        },
-        '&:last-child': {
-          borderBottomLeftRadius: 3,
-          borderBottomRightRadius: 3,
-        },
-      })}
+    <motion.div
+      animate={shouldAnimate ? { x: 0 } : undefined}
+      transition={shouldAnimate ? {
+        type: 'spring',
+        mass: 5,
+        stiffness: 2000,
+        velocity: 350,
+        damping: 20,
+        delay: 0.3,
+      } : undefined}
     >
-      {msg.sender && props.idx === 0 && (
-        <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
-          <MemberAvatar
-            member={msg.sender}
-            size={AVATAR_SIZE}
-            cursor='pointer'
-            sx={(theme) => ({
-              marginTop: '0.25rem',
-              marginRight: theme.spacing[props.avatarGap],
-              backgroundColor: theme.colors.dark[5],
-            })}
-          />
-        </MemberPopover>
-      )}
+      <ContextMenu.Trigger
+        ref={props.scrollTo && props.scrollTo === msg.id ? props.scrollToRef : undefined}
+        className='msg-body'
+        context={{ msg }}
+        sx={(theme) => ({
+          display: 'flex',
+          gap: 0,
 
-      <Stack spacing={6} sx={(theme) => ({
-        flexGrow: 1,
-        marginLeft: props.idx !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined,
-      })}>
-        {props.editing !== msg.id && (
-          <>
-            {props.idx === 0 && (
-              <div>
-                <Group align='baseline' spacing={6}>
+          padding: `0.25rem 0rem 0.25rem calc(${props.p} - 4px)`,
+          backgroundColor: props.hasPing ? '#2B293A' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}10` : undefined,
+          transition: 'background-color 0.08s',
 
-                  {msg.sender && typeof msg.sender !== 'string' && (
-                    <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
-                      <Title order={6} color='gray' sx={{ cursor: 'pointer' }}>
-                        {msg.sender.alias}
-                      </Title>
-                    </MemberPopover>
-                  )}
+          '&:hover': {
+            backgroundColor: props.hasPing ? '#312D46' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}1A` : theme.colors.dark[6],
+          },
 
-                  {badges.length > 0 && (
-                    <Group spacing={2} mb={2}>
-                      {badges}
-                    </Group>
-                  )}
-
-                  <Text size={11} color='dimmed' ml={2}>
-                    {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
-                  </Text>
-                </Group>
-              </div>
-            )}
-
-            {(msg.reply_to || (msg.thread && props.thread_id !== '_')) && (
-              <Group
-                spacing={6}
-                p='0.15rem 0.5rem 0.15rem 0.25rem'
-                h='1.5rem'
-                w='fit-content'
-                maw='80ch'
-                align='start'
-                sx={(theme) => ({
-                  borderRadius: 3,
-                  '&:hover': {
-                    backgroundColor: theme.colors.dark[5],
-                    cursor: 'pointer',
-                  },
-                })}
-                onClick={() => {
-                  if (msg.reply_to)
-                    props.setState.current?.('scroll_to', msg.reply_to.id || null);
-                  else if (msg.thread)
-                    props.setState.current?.('view_thread', msg.thread.id || null)
-                }}
-              >
-                <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
-                  <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
-                </Box>
-
-                {msg.reply_to && (
-                  <>
-                    <MemberAvatar
-                      member={msg.reply_to.sender}
-                      size={20}
-                    />
-                    <Text
-                      size={12}
-                      weight={600}
-                      sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
-                    >
-                      {msg.reply_to.sender?.alias}
-                    </Text>
-                    <Text
-                      size={11}
-                      mt={1}
-                      mah='1.25rem'
-                      sx={(theme) => ({
-                        maxWidth: '80ch',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        color: `${theme.colors.dark[0]}C0`,
-                      })}
-                    >
-                      {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
-                    </Text>
-                  </>
-                )}
-                {msg.thread && !msg.reply_to && (
-                  <>
-                    <Box sx={(theme) => ({ color: theme.colors.dark[2] })}>
-                      <IconMessages size={16} />
-                    </Box>
-                    <Text
-                      size={11}
-                      mt={1}
-                      mah='1.25rem'
-                      sx={(theme) => ({
-                        maxWidth: '80ch',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        color: `${theme.colors.dark[0]}C0`,
-                      })}
-                    >
-                      {msg.thread.name?.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
-                    </Text>
-                  </>
-                )}
-              </Group>
-            )}
-            <div
-              className={style}
-              style={{ maxWidth: '80ch' }}
-              dangerouslySetInnerHTML={{ __html: msg.message }}
-            />
-            {msg.edited && (
-              <Text size={10} color='dimmed' mt={-6}>{'(edited)'}</Text>
-            )}
-          </>
-        )}
-        {props.editing === msg.id && (
-          <MessageEditor msg={msg} />
-        )}
-
-        {msg.attachments?.map((attachment, attachment_idx) => {
-          if (attachment.type === 'image') {
-            if (!attachment.width || !attachment.height) return null;
-
-            // Determine if width or height should be filled
-            let w = 0, h = 0;
-            if (attachment.width > attachment.height) {
-              // Wide image, fill height
-              h = MIN_IMAGE_HEIGHT;
-              w = h * attachment.width / attachment.height;
-            }
-            else {
-              // Tall image, fill width
-              w = MIN_IMAGE_WIDTH;
-              h = w * attachment.height / attachment.width;
-            }
-
-            // Scale image down if too large
-            const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
-            if (scale < 1) {
-              w *= scale;
-              h *= scale;
-            }
-
-            return (
-              <ContextMenu.Trigger
-                key={attachment.filename}
-                context={{ msg, img: attachment.url }}
-                sx={{ width: 'fit-content', cursor: 'pointer' }}
-                onClick={() => openAttachmentPreview({ attachment })}
-              >
-                <Image
-                  key={attachment.filename}
-                  src={attachment.url}
-                  alt={attachment.filename}
-                  width={w}
-                  height={h}
-                  style={{ borderRadius: 6 }}
-                  title={attachment.filename}
-                />
-              </ContextMenu.Trigger>
-            );
-          }
+          '&:first-child': {
+            borderTopLeftRadius: 3,
+            borderTopRightRadius: 3,
+          },
+          '&:last-child': {
+            borderBottomLeftRadius: 3,
+            borderBottomRightRadius: 3,
+          },
         })}
-
-        {msg.reactions && msg.reactions.length > 0 && (
-          <Group spacing={6} maw='80ch'>
-            {msg.reactions.map((reaction) => (
-              <Button
-                key={reaction.emoji}
-                variant='default'
-                disabled={!props.canSendReactions && !reaction.self}
-                p='0rem 0.4rem'
-                h='1.5625rem'
-                styles={reaction.self ? (theme) => ({
-                  root: {
-                    background: theme.fn.linearGradient(0, `${theme.colors.violet[9]}50`, `${theme.colors.violet[6]}50`),
-                    border: `1px solid ${theme.colors.grape[8]}`,
-                  }
-                }) : undefined}
-                onClick={() => {
-                  if (reaction.self)
-                    // Remove reaction
-                    props.mutators.current?.removeReactions(msg.id, { emoji: reaction.emoji, self: true });
-                  else
-                    // Add reaction
-                    props.mutators.current?.addReaction(msg.id, reaction.emoji);
-                }}
-              >
-                <Group spacing={6} noWrap>
-                  <Emoji id={reaction.emoji} size={14} />
-                  <motion.div key={reaction.count} initial={{ y: -10 }} animate={{ y: 0 }}>
-                    <Text span size='xs' weight={600} sx={(theme) => ({ color: theme.colors.dark[0] })}>{reaction.count}</Text>
-                  </motion.div>
-                </Group>
-              </Button>
-            ))}
-            {props.canSendReactions && (
-              <Popover position='right' withArrow>
-                <Tooltip
-                  label='Add reaction'
-                  withArrow
-                >
-                  <Popover.Target>
-                    <ActionIcon ref={addReactionBtnRef} variant='filled' size='1.5625rem' sx={(theme) => ({
-                      backgroundColor: theme.colors.dark[5],
-                      '&:hover': {
-                        backgroundColor: theme.colors.dark[5],
-                      },
-                    })}>
-                      <IconMoodPlus size='1rem' />
-                    </ActionIcon>
-                  </Popover.Target>
-                </Tooltip>
-
-                <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
-                  backgroundColor: theme.colors.dark[7],
-                  borderColor: theme.colors.dark[5],
-                  boxShadow: '0px 4px 16px #00000030',
-                })}>
-                  <EmojiPicker
-                    emojiSize={32}
-                    onSelect={(emoji) => {
-                      // Check if this emoji has already been used
-                      const reaction = msg.reactions?.find(x => x.self && (x.emoji === emoji.id || x.emoji === emoji.skins[0].native))
-
-                      // Add reaction
-                      if (!reaction && emoji.skins.length > 0)
-                        props.mutators.current?.addReaction(msg.id, emoji.id);
-
-                      // Close menu
-                      addReactionBtnRef.current?.click();
-                    }}
-                  />
-                </Popover.Dropdown>
-              </Popover>
-            )}
-          </Group>
+      >
+        {msg.sender && props.idx === 0 && (
+          <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
+            <MemberAvatar
+              member={msg.sender}
+              size={AVATAR_SIZE}
+              cursor='pointer'
+              sx={(theme) => ({
+                marginTop: '0.25rem',
+                marginRight: theme.spacing[props.avatarGap],
+                backgroundColor: theme.colors.dark[5],
+              })}
+            />
+          </MemberPopover>
         )}
-      </Stack>
 
-      {/* !props.thread_id && msg.thread && (
+        <Stack spacing={6} sx={(theme) => ({
+          flexGrow: 1,
+          marginLeft: props.idx !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined,
+        })}>
+          {props.editing !== msg.id && (
+            <>
+              {props.idx === 0 && (
+                <div>
+                  <Group align='baseline' spacing={6}>
+
+                    {msg.sender && typeof msg.sender !== 'string' && (
+                      <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
+                        <Title order={6} color='gray' sx={{ cursor: 'pointer' }}>
+                          {msg.sender.alias}
+                        </Title>
+                      </MemberPopover>
+                    )}
+
+                    {badges.length > 0 && (
+                      <Group spacing={2} mb={2}>
+                        {badges}
+                      </Group>
+                    )}
+
+                    <Text size={11} color='dimmed' ml={2}>
+                      {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
+                    </Text>
+                  </Group>
+                </div>
+              )}
+
+              {(msg.reply_to || (msg.thread && props.thread_id !== '_')) && (
+                <Group
+                  spacing={6}
+                  p='0.15rem 0.5rem 0.15rem 0.25rem'
+                  h='1.5rem'
+                  w='fit-content'
+                  maw='80ch'
+                  align='start'
+                  sx={(theme) => ({
+                    borderRadius: 3,
+                    '&:hover': {
+                      backgroundColor: theme.colors.dark[5],
+                      cursor: 'pointer',
+                    },
+                  })}
+                  onClick={() => {
+                    if (msg.reply_to)
+                      props.setState.current?.('scroll_to', msg.reply_to.id || null);
+                    else if (msg.thread)
+                      props.setState.current?.('view_thread', msg.thread.id || null)
+                  }}
+                >
+                  <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
+                    <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
+                  </Box>
+
+                  {msg.reply_to && repliedToSender._exists && (
+                    <>
+                      <MemberAvatar
+                        member={repliedToSender}
+                        size={20}
+                      />
+                      <Text
+                        size={12}
+                        weight={600}
+                        sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
+                      >
+                        {repliedToSender.alias}
+                      </Text>
+                      <Text
+                        size={11}
+                        mt={1}
+                        mah='1.25rem'
+                        sx={(theme) => ({
+                          maxWidth: '80ch',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          color: `${theme.colors.dark[0]}C0`,
+                        })}
+                      >
+                        {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                      </Text>
+                    </>
+                  )}
+                  {msg.thread && !msg.reply_to && (
+                    <>
+                      <Box sx={(theme) => ({ color: theme.colors.dark[2] })}>
+                        <IconMessages size={16} />
+                      </Box>
+                      <Text
+                        size={11}
+                        mt={1}
+                        mah='1.25rem'
+                        sx={(theme) => ({
+                          maxWidth: '80ch',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          color: `${theme.colors.dark[0]}C0`,
+                        })}
+                      >
+                        {msg.thread.name?.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                      </Text>
+                    </>
+                  )}
+                </Group>
+              )}
+              <div
+                className={style}
+                style={{ maxWidth: '80ch' }}
+                dangerouslySetInnerHTML={{ __html: msg.message }}
+              />
+              {msg.edited && (
+                <Text size={10} color='dimmed' mt={-6}>{'(edited)'}</Text>
+              )}
+            </>
+          )}
+          {props.editing === msg.id && (
+            <MessageEditor msg={msg} />
+          )}
+
+          {msg.attachments?.map((attachment, attachment_idx) => {
+            if (attachment.type === 'image') {
+              if (!attachment.width || !attachment.height) return null;
+
+              // Determine if width or height should be filled
+              let w = 0, h = 0;
+              if (attachment.width > attachment.height) {
+                // Wide image, fill height
+                h = MIN_IMAGE_HEIGHT;
+                w = h * attachment.width / attachment.height;
+              }
+              else {
+                // Tall image, fill width
+                w = MIN_IMAGE_WIDTH;
+                h = w * attachment.height / attachment.width;
+              }
+
+              // Scale image down if too large
+              const scale = Math.min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h);
+              if (scale < 1) {
+                w *= scale;
+                h *= scale;
+              }
+
+              return (
+                <ContextMenu.Trigger
+                  key={attachment.filename}
+                  context={{ msg, img: attachment.url }}
+                  sx={{ width: 'fit-content', cursor: 'pointer' }}
+                  onClick={() => openAttachmentPreview({ attachment })}
+                >
+                  <Image
+                    key={attachment.filename}
+                    src={attachment.url}
+                    alt={attachment.filename}
+                    width={w}
+                    height={h}
+                    style={{ borderRadius: 6 }}
+                    title={attachment.filename}
+                  />
+                </ContextMenu.Trigger>
+              );
+            }
+          })}
+
+          {msg.reactions && msg.reactions.length > 0 && (
+            <Group spacing={6} maw='80ch'>
+              {msg.reactions.map((reaction) => (
+                <Button
+                  key={reaction.emoji}
+                  variant='default'
+                  disabled={!props.canSendReactions && !reaction.self}
+                  p='0rem 0.4rem'
+                  h='1.5625rem'
+                  styles={reaction.self ? (theme) => ({
+                    root: {
+                      background: theme.fn.linearGradient(0, `${theme.colors.violet[9]}50`, `${theme.colors.violet[6]}50`),
+                      border: `1px solid ${theme.colors.grape[8]}`,
+                    }
+                  }) : undefined}
+                  onClick={() => {
+                    if (reaction.self)
+                      // Remove reaction
+                      props.mutators.current?.removeReactions(msg.id, { emoji: reaction.emoji, self: true });
+                    else
+                      // Add reaction
+                      props.mutators.current?.addReaction(msg.id, reaction.emoji);
+                  }}
+                >
+                  <Group spacing={6} noWrap>
+                    <Emoji id={reaction.emoji} size={14} />
+                    <motion.div key={reaction.count} initial={{ y: -10 }} animate={{ y: 0 }}>
+                      <Text span size='xs' weight={600} sx={(theme) => ({ color: theme.colors.dark[0] })}>{reaction.count}</Text>
+                    </motion.div>
+                  </Group>
+                </Button>
+              ))}
+              {props.canSendReactions && (
+                <Popover position='right' withArrow>
+                  <Tooltip
+                    label='Add reaction'
+                    withArrow
+                  >
+                    <Popover.Target>
+                      <ActionIcon ref={addReactionBtnRef} variant='filled' size='1.5625rem' sx={(theme) => ({
+                        backgroundColor: theme.colors.dark[5],
+                        '&:hover': {
+                          backgroundColor: theme.colors.dark[5],
+                        },
+                      })}>
+                        <IconMoodPlus size='1rem' />
+                      </ActionIcon>
+                    </Popover.Target>
+                  </Tooltip>
+
+                  <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
+                    backgroundColor: theme.colors.dark[7],
+                    borderColor: theme.colors.dark[5],
+                    boxShadow: '0px 4px 16px #00000030',
+                  })}>
+                    <EmojiPicker
+                      emojiSize={32}
+                      onSelect={(emoji) => {
+                        // Check if this emoji has already been used
+                        const reaction = msg.reactions?.find(x => x.self && (x.emoji === emoji.id || x.emoji === emoji.skins[0].native))
+
+                        // Add reaction
+                        if (!reaction && emoji.skins.length > 0)
+                          props.mutators.current?.addReaction(msg.id, emoji.id);
+
+                        // Close menu
+                        addReactionBtnRef.current?.click();
+                      }}
+                    />
+                  </Popover.Dropdown>
+                </Popover>
+              )}
+            </Group>
+          )}
+        </Stack>
+
+        {/* !props.thread_id && msg.thread && (
         <ActionButton
           tooltip='View Thread'
           tooltipProps={{ position: 'left' }}
@@ -796,13 +824,14 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           <IconMessages size={16} />
         </ActionButton>
       ) */}
-      
-      {msg.pinned && (
-        <Box mr={8} mt={3} sx={(theme) => ({ color: theme.colors.green[7] })}>
-          <IconPin size={16} />
-        </Box>
-      )}
-    </ContextMenu.Trigger>
+
+        {msg.pinned && (
+          <Box mr={8} mt={3} sx={(theme) => ({ color: theme.colors.green[7] })}>
+            <IconPin size={16} />
+          </Box>
+        )}
+      </ContextMenu.Trigger>
+    </motion.div>
   );
 }
 

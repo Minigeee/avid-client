@@ -8,7 +8,7 @@ import useSWRInfinite, { unstable_serialize } from 'swr/infinite';
 import config from '@/config';
 import { api, uploadAttachments } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { AggregatedReaction, ExpandedMessage, FileAttachment, Member, Message, Role, Thread } from '@/lib/types';
+import { AggregatedReaction, ExpandedMessage, FileAttachment, Member, Message, RawMessage, Role, Thread } from '@/lib/types';
 
 import { DomainWrapper } from './use-domain';
 import { MemberWrapper, getMemberSync, setMembers, useMemberCache } from './use-members';
@@ -31,9 +31,6 @@ import StateCore from 'markdown-it/lib/rules_core/state_core';
 import Token from 'markdown-it/lib/token';
 import emojiRegex from 'emoji-regex';
 
-
-/** Message recieved from api */
-export type RawMessage = Message & { reactions?: AggregatedReaction[] };
 
 /** An expanded message with information on if a target member was pinged within message */
 export type ExpandedMessageWithPing = ExpandedMessage & {
@@ -353,10 +350,10 @@ function copyToOtherHooks(messages: RawMessage[][] | undefined, message_id: stri
 }
 
 ////////////////////////////////////////////////////////////
-function addMessageLocal(messages: RawMessage[][] | undefined, message: Message): RawMessage[][] | undefined {
+function addMessageLocal(messages: RawMessage[][] | undefined, message: RawMessage): RawMessage[][] | undefined {
 	// Return message list with appended message
-	const last = messages?.length ? messages[messages.length - 1] : [];
-	return [...(messages?.slice(0, -1) || []), [...last, message]];
+	const first = messages?.length ? messages[0] : [];
+	return [[...first, message], ...(messages?.slice(1) || [])];
 }
 
 ////////////////////////////////////////////////////////////
@@ -516,10 +513,11 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 						attachments: hasAttachments ? uploads : undefined,
 					},
 				}, { session });
+				const newMessage = { ...results, reply_to: options?.reply_to };
 
 				// For updating threads
 				updateSwrMessages((messages) => {
-					const copy = addMessageLocal(messages, results) || [];
+					const copy = addMessageLocal(messages, newMessage) || [];
 
 					// Remove temp id message
 					const { page, idx } = findMessage(copy, tempId);
@@ -544,14 +542,14 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 				}
 
 				// Update message with the correct id
-				return addMessageLocal(messages, results);
+				return addMessageLocal(messages, newMessage);
 			}, { message: 'An error occurred while posting message' }), {
 				optimisticData: (messages) => {
 					const msg = {
 						id: tempId,
 						channel: channel_id,
 						sender: sender.id,
-						reply_to: options?.reply_to?.id,
+						reply_to: options?.reply_to,
 						thread: thread_id,
 						message,
 						attachments: options?.attachments?.map(f => ({
@@ -650,7 +648,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		 * @param reader The member that is viewing the messages (used to highlight member pings)
 		 * @returns The new grouped messages
 		 */
-		addMessageLocal: (message: Message) => mutate(
+		addMessageLocal: (message: RawMessage) => mutate(
 			swrErrorWrapper(
 				async (messages: RawMessage[][]) => {
 					updateSwrMessages((messages) => addMessageLocal(messages, message), message, channel_id, thread_id, pinned, session);
@@ -669,7 +667,7 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 		 * @param message The new message values to set
 		 * @returns The new grouped messages
 		 */
-		editMessageLocal: (message_id: string, message: Partial<Message>) => mutate(
+		editMessageLocal: (message_id: string, message: Partial<RawMessage>) => mutate(
 			swrErrorWrapper(
 				async (messages: RawMessage[][]) => {
 					// Find message to check if it needs to be updated in thread view
@@ -1031,11 +1029,6 @@ function addMessageToDayGroup(group: ExpandedMessageWithPing[][], msg: ExpandedM
 function groupAllMessages(messages: RawMessage[], reader: MemberWrapper, env: MarkdownEnv): GroupedMessages {
 	const rendered: ExpandedMessageWithPing[] = [];
 
-	// Map of message to index, for reply to
-	const messageMap: Record<string, number> = {};
-	// List of messages with reply tos
-	const msgsWithReply: ExpandedMessageWithPing[] = [];
-
 	// Render message
 	for (let i = 0; i < messages.length; ++i) {
 		const msg = messages[i];
@@ -1072,8 +1065,26 @@ function groupAllMessages(messages: RawMessage[], reader: MemberWrapper, env: Ma
 			_cache.message[msg.id] = cached;
 		}
 
-		// Add to mapping
-		messageMap[msg.id] = i;
+		// Render replied to message
+		let renderedReplied = msg.reply_to;
+		if (renderedReplied) {
+			// Check if message changed
+			const hash = shash(renderedReplied.message);
+
+			let repliedCached = _cache.message[renderedReplied.id];
+			if (!repliedCached || repliedCached.hash !== hash) {
+				// Save to cache
+				repliedCached = {
+					hash,
+					rendered: renderMessage(renderedReplied.message, env),
+					has_ping: false,
+				};
+				_cache.message[renderedReplied.id] = repliedCached;
+			}
+
+			// Create rendered replied to message
+			renderedReplied = { ...renderedReplied, message: repliedCached.rendered };
+		}
 
 		// Add to rendered list
 		const renderedMsg = {
@@ -1082,17 +1093,10 @@ function groupAllMessages(messages: RawMessage[], reader: MemberWrapper, env: Ma
 			sender: msg.sender ? getMemberSync(env.domain.id, msg.sender) : null,
 			thread: msg.thread ? getThreadSync(msg.thread) : null,
 			pinged: cached.has_ping,
+			reply_to: renderedReplied,
 		} as ExpandedMessageWithPing;
 		rendered.push(renderedMsg);
-
-		// Add to reply tos
-		if (msg.reply_to)
-			msgsWithReply.push(renderedMsg);
 	}
-
-	// Link reply tos
-	for (const msg of msgsWithReply)
-		msg.reply_to = rendered[messageMap[msg.reply_to as unknown as string]];
 
 	// Group by day
 	const groupedByDay = groupBy(rendered, (msg) => moment(msg.created_at).startOf('day').format());

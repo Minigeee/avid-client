@@ -1,4 +1,5 @@
 import { MediaType } from '../contexts';
+import { RawMessage } from './api';
 import { TaskCollection } from './board';
 import { Member } from './member';
 import { Message } from './message';
@@ -14,7 +15,7 @@ export interface ServerToClientEvents {
 	'general:activity': (domain_id: string, channel_id: string, is_event: boolean) => void,
 	'general:ping': (domain_id: string, channel_id: string) => void,
 
-	'chat:message': (message: Message) => void;
+	'chat:message': (message: RawMessage) => void;
 	'chat:edit-message': (channel_id: string, message_id: string, message: Partial<Message>) => void;
 	'chat:delete-message': (channel_id: string, message_id: string) => void;
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
