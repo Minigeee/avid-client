@@ -10,6 +10,7 @@ import {
   Divider,
   Flex,
   Group,
+  Menu,
   Popover,
   ScrollArea,
   Slider,
@@ -36,12 +37,16 @@ import {
   IconVolume3,
   IconVideoOff,
   IconRepeat,
+  IconVolumeOff,
 } from '@tabler/icons-react';
 
 import { openUserSettings } from '@/lib/ui/modals';
 import SidePanelView from './SidePanelView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
+import { ContextMenu } from '@/lib/ui/components/ContextMenu';
+import ProducerIcon from './components/ProducerIcon';
+import { RtcContextMenu, RtcMenuContext, RtcMenuDropdown } from './components/RtcMenu';
 
 import { AppState, RtcContextState, rtcIo } from '@/lib/contexts';
 import {
@@ -54,7 +59,6 @@ import {
 } from '@/lib/hooks';
 import { Channel, Member } from '@/lib/types';
 import { api } from '@/lib/api';
-import ProducerIcon from './components/ProducerIcon';
 
 
 ////////////////////////////////////////////////////////////
@@ -118,7 +122,12 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
         overflow: 'hidden',
       })}
     >
-      <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+      <ContextMenu.Trigger
+        context={{
+          member: member,
+        } as RtcMenuContext}
+        sx={{ position: 'relative', width: '100%', height: '100%' }}
+      >
         {!display && (
           <Stack align='center' spacing={8}>
             <MemberAvatar size={props.avatarSize} member={member} />
@@ -180,32 +189,19 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
             </Tooltip>
           )}
 
-          <Popover width='30ch' position='bottom-end' withArrow withinPortal>
-            <Popover.Target>
+          <Menu width='16rem' position='bottom-end' withArrow>
+            <Menu.Target>
               <ActionIcon>
                 <IconDotsVertical size={20} />
               </ActionIcon>
-            </Popover.Target>
+            </Menu.Target>
 
-            <Popover.Dropdown onClick={(e) => { e.stopPropagation(); }}>
-              <Group noWrap>
-                {volume >= 50 && <IconVolume size={24} />}
-                {volume > 0 && volume < 50 && <IconVolume2 size={24} />}
-                {volume === 0 && <IconVolume3 size={24} />}
-                <Slider
-                  label={(value) => `${value}%`}
-                  value={volume}
-                  onChange={(value) => {
-                    if (rtc.joined)
-                      rtc._mutators.audio.setVolume(member.id, value);
-                  }}
-                  sx={{ flexGrow: 1 }}
-                />
-              </Group>
-            </Popover.Dropdown>
-          </Popover>
+            <Menu.Dropdown onClick={(e) => { e.stopPropagation(); }}>
+              <RtcMenuDropdown domain={props.domain} member={member} />
+            </Menu.Dropdown>
+          </Menu>
         </Group>
-      </Box>
+      </ContextMenu.Trigger>
     </AspectRatio>
   );
 }
@@ -441,31 +437,33 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
         </Center>
       )}
       {participants.length > 0 && (
-        <ScrollArea
-          h='100%'
-          sx={{ flexGrow: 1 }}
-        >
-          <Flex
-            wrap='wrap'
-            justify='center'
-            mih='calc(100vh - 2.8rem - 2.8rem)' // This is taken from hardcoded values of header heights
-            p={6}
-            sx={{ alignContent: 'center' }}
+        <RtcContextMenu domain={props.domain}>
+          <ScrollArea
+            h='100%'
+            sx={{ flexGrow: 1 }}
           >
-            {participants.map((member, i) => (
-              <ParticipantView
-                key={member.id}
-                domain={props.domain}
-                rtc={rtc}
-                member={member}
+            <Flex
+              wrap='wrap'
+              justify='center'
+              mih='calc(100vh - 2.8rem - 2.8rem)' // This is taken from hardcoded values of header heights
+              p={6}
+              sx={{ alignContent: 'center' }}
+            >
+              {participants.map((member, i) => (
+                <ParticipantView
+                  key={member.id}
+                  domain={props.domain}
+                  rtc={rtc}
+                  member={member}
 
-                cellWidth={cellWidth}
-                avatarSize={avatarSize}
-                textSize={textSize}
-              />
-            ))}
-          </Flex>
-        </ScrollArea>
+                  cellWidth={cellWidth}
+                  avatarSize={avatarSize}
+                  textSize={textSize}
+                />
+              ))}
+            </Flex>
+          </ScrollArea>
+        </RtcContextMenu>
       )}
 
       <Box sx={(theme) => ({
