@@ -62,6 +62,8 @@ export interface Media_ServerToClientEvents {
 	'producer-score': (producer_id: string, score: any) => void;
 	'producer-locked': (participant_id: string, type: MediaType) => void;
 	'producer-unlocked': (participant_id: string, type: MediaType) => void;
+
+	'kicked': () => void;
 }
 
 
@@ -76,6 +78,7 @@ export interface Media_ClientToServerEvents {
 	'producer-paused': (producer_id: string) => void;
 	'producer-resumed': (producer_id: string) => void;
 
+	'kick': (participant_id: string) => void;
 	'deafen': () => void;
 	'undeafen': () => void;
 	'lock-producer': (participant_id: string, type: MediaType) => void;

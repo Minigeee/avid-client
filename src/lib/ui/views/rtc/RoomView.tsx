@@ -246,6 +246,30 @@ function JoinScreen({ rtc, ...props }: RoomViewProps & { rtc: RtcContextState<fa
       rtc._mutators.webcam.disable();
   }, [rtc.is_webcam_on, canVideo]);
 
+  // Check if allowed to join
+  const canJoin = useMemo(() => {
+    // Check if kicked
+    const isKicked = rtc.kicked?.has(props.channel.id);
+
+    // If kicked, check if session is over
+    if (isKicked) {
+      const sessionOver = !props.channel.data?.participants.length;
+      if (sessionOver) {
+        // If session is over, user is not kicked any more
+        rtc._mutators.setState((state) => {
+          const newSet = new Set<string>(state.kicked);
+          newSet.delete(props.channel.id);
+          return { ...state, kicked: newSet };
+        });
+
+        // User can join now
+        return true;
+      }
+    }
+
+    return !isKicked;
+  }, [rtc.kicked, props.channel.data?.participants.length]);
+
 
   return (
     <Center w='100%' h='100%'>
@@ -302,68 +326,72 @@ function JoinScreen({ rtc, ...props }: RoomViewProps & { rtc: RtcContextState<fa
           )}
         </Stack>
 
-        <Group spacing='sm' mt={8}>
-          <Group spacing={6} mr={4}>
-            {webcamOn && <IconVideo size={20} />}
-            {!webcamOn && <IconVideoOff size={20} />}
-            <Switch
-              checked={webcamOn}
-              disabled={!canVideo}
-              onChange={() => {
-                if (!webcamOn)
-                  rtc._mutators.webcam.enable();
-                else
-                  rtc._mutators.webcam.disable();
-              }}
-            />
-          </Group>
-          <Group spacing={6} mr={4}>
-            {micOn && <IconMicrophone size={20} />}
-            {!micOn && <IconMicrophoneOff size={20} />}
-            <Switch
-              checked={micOn}
-              disabled={!canSpeak}
-              onChange={() => {
-                if (rtc.is_mic_muted)
-                  rtc._mutators.microphone.unmute();
-                else
-                  rtc._mutators.microphone.mute();
-              }}
-            />
-          </Group>
-          <Group spacing={6} mr={4}>
-            {!rtc.is_deafened && <IconHeadphones size={20} />}
-            {rtc.is_deafened && <IconHeadphonesOff size={20} />}
-            <Switch
-              checked={!rtc.is_deafened}
-              onChange={() => {
-                if (rtc.is_deafened)
-                  rtc._mutators.audio.undeafen();
-                else
-                  rtc._mutators.audio.deafen();
-              }}
-            />
-          </Group>
+        {canJoin && (
+          <>
+            <Group spacing='sm' mt={8}>
+              <Group spacing={6} mr={4}>
+                {webcamOn && <IconVideo size={20} />}
+                {!webcamOn && <IconVideoOff size={20} />}
+                <Switch
+                  checked={webcamOn}
+                  disabled={!canVideo}
+                  onChange={() => {
+                    if (!webcamOn)
+                      rtc._mutators.webcam.enable();
+                    else
+                      rtc._mutators.webcam.disable();
+                  }}
+                />
+              </Group>
+              <Group spacing={6} mr={4}>
+                {micOn && <IconMicrophone size={20} />}
+                {!micOn && <IconMicrophoneOff size={20} />}
+                <Switch
+                  checked={micOn}
+                  disabled={!canSpeak}
+                  onChange={() => {
+                    if (rtc.is_mic_muted)
+                      rtc._mutators.microphone.unmute();
+                    else
+                      rtc._mutators.microphone.mute();
+                  }}
+                />
+              </Group>
+              <Group spacing={6} mr={4}>
+                {!rtc.is_deafened && <IconHeadphones size={20} />}
+                {rtc.is_deafened && <IconHeadphonesOff size={20} />}
+                <Switch
+                  checked={!rtc.is_deafened}
+                  onChange={() => {
+                    if (rtc.is_deafened)
+                      rtc._mutators.audio.undeafen();
+                    else
+                      rtc._mutators.audio.deafen();
+                  }}
+                />
+              </Group>
 
-          <Divider orientation='vertical' />
-          <Tooltip label='Settings' position='right' withArrow>
-            <ActionIcon onClick={() => openUserSettings({ tab: 'rtc' })}>
-              <IconSettings size={24} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
+              <Divider orientation='vertical' />
+              <Tooltip label='Settings' position='right' withArrow>
+                <ActionIcon onClick={() => openUserSettings({ tab: 'rtc' })}>
+                  <IconSettings size={24} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
 
-        <Button
-          variant='gradient'
-          loading={loading}
-          w='8rem'
-          onClick={() => {
-            setLoading(true)
-            rtc._mutators.connect(props.channel.id, props.domain.id).finally(() => setLoading(false));
-          }}
-        >
-          Join
-        </Button>
+            <Button
+              variant='gradient'
+              loading={loading}
+              w='8rem'
+              onClick={() => {
+                setLoading(true)
+                rtc._mutators.connect(props.channel.id, props.domain.id).finally(() => setLoading(false));
+              }}
+            >
+              Join
+            </Button>
+          </>
+        )}
       </Stack>
     </Center>
   );

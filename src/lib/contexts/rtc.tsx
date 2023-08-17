@@ -156,6 +156,8 @@ export type RtcState = {
 	server: string;
 	/** Indicates if the client is fully joined to the server */
 	joined: boolean;
+	/** Set of rooms the user has been kicked from */
+	kicked: Set<string>;
 
 	/** A map of participants */
 	participants: Record<string, RtcParticipant>;
@@ -1148,6 +1150,12 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 		auth: { token: session.token },
 	});
 
+	// Handle disconnect
+	_.socket.on('disconnect', errorWrapper(() => {
+		// Run disconnect code
+		disconnect(emit);
+	}));
+
 	// Socket connection error handler
 	_.socket.on('connect_error', errorWrapper((error) => {
 		assert(_.socket);
@@ -1178,6 +1186,12 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 				message: 'You are not authorized to perform the requested action. Please make sure you have the correct permissions.',
 				notify: false,
 			});
+
+			// Add to kicked set so user can not click join button again
+			const newSet = new Set<string>(_state.kicked);
+			newSet.add(_state.room_id);
+
+			emit({ ..._state, kicked: newSet });
 		}
 		else {
 			notifyError(new Error(message), {
@@ -1613,18 +1627,24 @@ function makeRtcSocket(server: string, room_id: string, session: SessionState, e
 			});
 		}
 	}, { message: 'An error occurred while updating RTC state' }));
+
+
+	// Called when user gets kicked (self)
+	_.socket.on('kicked', errorWrapper(() => {
+		// Add room to set of kicked rooms
+		const newSet = new Set<string>(_state.kicked);
+		newSet.add(_state.room_id);
+
+		emit({ ..._state, kicked: newSet });
+	}, { message: 'An error occurred while updating RTC state' }))
 }
 
 
 /** Disconnect from current server */
 function disconnect(emit: RtcSetState) {
 	// Close socket
-	if (_.socket?.connected) {
+	if (_.socket?.connected)
 		_.socket.disconnect();
-
-		// Notify api server of dc
-		apiSocket().emit('rtc:left', _state.room_id);
-	}
 
 	// Close send transport
 	if (_.sendTransport && !_.sendTransport.closed)
@@ -1634,9 +1654,14 @@ function disconnect(emit: RtcSetState) {
 	if (_.recvTransport && !_.recvTransport.closed)
 		_.recvTransport.close();
 
-	// Set joined status
-	if (_state)
+	// If the user was joined
+	if (_state?.joined) {
+		// Notify api server of dc
+		apiSocket().emit('rtc:left', _state.room_id);
+
+		// Set joined status
 		emit({ ..._state, joined: false });
+	}
 
 	// Reset data structures
 	_.producers = {
@@ -1680,6 +1705,7 @@ function mutators(setState: (value: RtcState | undefined) => void, session: Sess
 			_state = {
 				// Keep certain options
 				...merge({
+					kicked: new Set<string>(),
 					is_webcam_enabled: false,
 					is_webcam_on: false,
 					is_screen_shared: false,
@@ -1934,6 +1960,40 @@ function mutators(setState: (value: RtcState | undefined) => void, session: Sess
 					}
 				},
 			});
+		},
+
+		/**
+		 * Kick a participant from the room
+		 * 
+		 * @param participant_id The participant to kick
+		 */
+		kick: (participant_id: string) => {
+			if (participant_id === session.profile_id) return;
+
+			// Send event
+			_.socket?.emit('kick', participant_id);
+
+			// Update locally
+			const emit = (state: RtcState) => { _state = state; setState(state); };
+
+			// Remove the entry in the participants map
+			const participants = { ..._state.participants };
+			if (participants[participant_id])
+				delete participants[participant_id];
+
+			// Update state
+			emit({
+				..._state,
+				participants,
+			});
+		},
+
+		/** Set rtc state directly */
+		setState: (setter: (state: RtcState) => RtcState) => {
+			const newState = setter(_state);
+
+			_state = newState;
+			setState(newState);
 		},
 	};
 }

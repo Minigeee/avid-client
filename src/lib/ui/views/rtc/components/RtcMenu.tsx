@@ -56,6 +56,8 @@ type RtcMenuDropdownProps = Omit<RtcMenuProps, 'children'> & RtcMenuContext;
 
 ////////////////////////////////////////////////////////////
 export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
+  const { open: openConfirmModal } = useConfirmModal();
+
 	const rtc = useRtc();
 
   const participant = rtc.participants?.[member.id];
@@ -137,6 +139,21 @@ export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
           <Menu.Item
             icon={<IconUserX size={17} />}
             color='red'
+            onClick={() => {
+              openConfirmModal({
+                title: 'Kick Participant',
+                content: (
+                  <Text>
+                    Are you sure you want to kick <b>{member.alias}</b> from this room?
+                    They will not be able to join again until this session is over.
+                  </Text>
+                ),
+                confirmLabel: 'Kick',
+                onConfirm: () => {
+                  rtc._mutators.kick(member.id);
+                },
+              });
+            }}
           >
             Kick <b>{member.alias}</b>
           </Menu.Item>
