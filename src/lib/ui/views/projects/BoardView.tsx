@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mutate as _mutate } from 'swr';
 
 import {
@@ -27,6 +27,7 @@ import {
   IconArrowIteration,
   IconChevronDown,
   IconChevronRight,
+  IconChevronsUp,
   IconClock,
   IconFolders,
   IconLayoutKanban,
@@ -68,7 +69,7 @@ import { remap, sortObject } from '@/lib/utility';
 import { socket } from '@/lib/utility/realtime';
 
 import moment from 'moment-business-days';
-import { groupBy } from 'lodash';
+import { groupBy, throttle } from 'lodash';
 
 
 ////////////////////////////////////////////////////////////
@@ -128,7 +129,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
 
   // All assignees in board
   const assignees = useMemo(() => {
-    const map: Record<string, ExpandedMember> ={};
+    const map: Record<string, ExpandedMember> = {};
     for (const task of props.tasks.data) {
       if (task.assignee)
         map[task.assignee.id] = task.assignee;
@@ -167,7 +168,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
       // Search filter
       if (debouncedSearch && !x.sid.toString().includes(debouncedSearch)) {
         const lcSummary = x.summary.toLocaleLowerCase();
-        
+
         for (const term of terms) {
           if (term.length > 0 && !lcSummary.includes(term))
             return false;
@@ -183,7 +184,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
       return filterTags.length === 0;
     });
 
-    
+
     // Group tasks
     let grouped: Record<string, ExpandedTask[]> = {};
 
@@ -250,7 +251,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
 
       grouped = sortObject(grouped, ([a], [b]) => statusMap[a] - statusMap[b]);
     }
-    
+
     // Apply status grouping for kanban
     if (type === 'kanban') {
       // Function to maintain kanban task order
@@ -397,7 +398,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
           </ActionButton>
         )}
       </Group>
-      
+
       <Group align='end' mb={28}>
         <TextInput
           label='Search'
@@ -608,8 +609,10 @@ function BoardTabs(props: Omit<TabViewProps, 'type'>) {
         />
       </Tabs.Panel>
     </Tabs>
-    );
+  );
 }
+
+const MemoBoardTabs = memo(BoardTabs);
 
 
 ////////////////////////////////////////////////////////////
@@ -623,13 +626,17 @@ export default function BoardView(props: BoardViewProps) {
   const app = useApp();
   const board = useBoard(props.channel.data?.board);
   const tasks = useTasks(board.id, props.domain.id);
-  
+
   const { classes } = useChatStyles();
   const { open: openConfirmModal } = useConfirmModal();
-  
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+
   const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
   // Refresh enabled
   const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
+  // Show scroll to top button
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
 
 
   // Collection selections
@@ -727,7 +734,7 @@ export default function BoardView(props: BoardViewProps) {
       </>
     );
   }, [collection?.start_date, collection?.end_date]);
-  
+
   // Refresh on stale data
   useEffect(() => {
     if (!app.stale[props.channel.id]) return;
@@ -757,7 +764,7 @@ export default function BoardView(props: BoardViewProps) {
       // Add collection locally
       board._mutators.addCollectionLocal(collection);
     }
-    
+
     function onDeleteCollection(board_id: string, collection_id: string) {
       if (!board._exists || board_id !== board.id) return;
 
@@ -796,125 +803,177 @@ export default function BoardView(props: BoardViewProps) {
     };
   }, [board._exists, collectionId]);
 
+  // Called when scroll position changes
+  const onScrollPosChange = useCallback(throttle((e: { x: number; y: number }) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    // Show scroll to bottom button if getting far from bottom
+    if (e.y > 200) {
+      if (!showScrollTop)
+        setShowScrollTop(true);
+    }
+    else if (showScrollTop)
+      setShowScrollTop(false);
+  }, 50, { leading: false }), [showScrollTop]);
+
 
   if (!board._exists || !tasks._exists) return null;
 
   return (
-    <ScrollArea sx={{
+    <Box sx={{
+      position: 'relative',
       width: '100%',
       height: '100%',
     }}>
-      <Stack spacing={6} sx={(theme) => ({
-        width: '100%',
-        padding: '1.0rem 1.5rem 1.0rem 1.5rem'
-      })}>
-        <Group noWrap spacing={3} align='center' mb={16}>
-          <Select
-            data={collectionSelections}
-            itemComponent={GroupSelectItem}
-            rightSection={<IconChevronDown size={24} />}
-            size='md'
-            styles={(theme) => ({
-              input: {
-                paddingTop: 0,
-                background: theme.colors.dark[6],
-                border: 'none',
-                fontFamily: theme.headings.fontFamily,
-                fontSize: theme.headings.sizes.h3.fontSize,
-                fontWeight: theme.headings.fontWeight as number, // "number" for typescript error
-              },
-              item: {
-                paddingTop: '0.4rem',
-                paddingBottom: '0.4rem',
-              },
-              rightSection: {pointerEvents: 'none' },
-            })}
-            value={collectionId}
-            onChange={setCollectionId}
-          />
-
-          {hasPermission(props.domain, board.id, 'can_manage') && (
-            <>
-              {collection && (
-                <ActionIcon size='lg' mt={4} ml={8} onClick={() => openEditTaskCollection({
-                  board,
-                  domain: props.domain,
-                  collection,
-                  onDelete: () => setCollectionId(config.app.board.default_backlog.id),
-                })}>
-                  <IconPencil />
-                </ActionIcon>
-              )}
-              <Menu width='20ch' position='bottom-start'>
-                <Menu.Target>
-                  <ActionIcon size='lg' mt={4}>
-                    <IconPlus />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    icon={<IconArrowIteration size={20} />}
-                    onClick={() => openCreateTaskCollection({
-                      board,
-                      domain: props.domain,
-                      mode: 'objective',
-                      onCreate: (id) => setCollectionId(id),
-                    })}
-                  >
-                    New Objective
-                  </Menu.Item>
-                  <Menu.Item
-                    icon={<IconFolders size={19} />}
-                    onClick={() => openCreateTaskCollection({
-                      board,
-                      domain: props.domain,
-                      mode: 'collection',
-                      onCreate: (id) => setCollectionId(id),
-                    })}
-                  >
-                    New Collection
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            </>
-          )}
-
-          <div style={{ flexGrow: 1 }} />
-          {collection && (collection.start_date || collection.end_date) && (
-            <>
-              <Text size='sm' color='dimmed' weight={600} align='right'>
-                {timeText}
-              </Text>
-              <Box mt={6} mr={8} ml={6} sx={(theme) => ({ color: theme.colors.dark[2] })}>
-                <IconClock size={32} />
-              </Box>
-            </>
-          )}
-        </Group>
-
-        {collectionId && collection && (
-          <>
-            <Text
-              className={classes.typography}
+      <ScrollArea
+        viewportRef={viewportRef}
+        onScrollPositionChange={onScrollPosChange}
+        sx={{
+          width: '100%',
+          height: '100%',
+        }}
+      >
+        <Stack spacing={6} sx={(theme) => ({
+          width: '100%',
+          padding: '1.0rem 1.5rem 1.0rem 1.5rem'
+        })}>
+          <Group noWrap spacing={3} align='center' mb={16}>
+            <Select
+              data={collectionSelections}
+              itemComponent={GroupSelectItem}
+              rightSection={<IconChevronDown size={24} />}
               size='md'
-              mt={8}
-              sx={{ maxWidth: '100ch' }}
-              dangerouslySetInnerHTML={{ __html: collection.description || '' }}
+              styles={(theme) => ({
+                input: {
+                  paddingTop: 0,
+                  background: theme.colors.dark[6],
+                  border: 'none',
+                  fontFamily: theme.headings.fontFamily,
+                  fontSize: theme.headings.sizes.h3.fontSize,
+                  fontWeight: theme.headings.fontWeight as number, // "number" for typescript error
+                },
+                item: {
+                  paddingTop: '0.4rem',
+                  paddingBottom: '0.4rem',
+                },
+                rightSection: { pointerEvents: 'none' },
+              })}
+              value={collectionId}
+              onChange={setCollectionId}
             />
 
-            <BoardTabs
-              key={collectionId}
-              channel_id={props.channel.id}
-              board={board}
-              tasks={tasks}
-              domain={props.domain}
-              collection={collectionId}
-              refreshEnabled={refreshEnabled}
-              setRefreshEnabled={setRefreshEnabled}
-            />
-          </>
-        )}
-      </Stack>
-    </ScrollArea>
+            {hasPermission(props.domain, board.id, 'can_manage') && (
+              <>
+                {collection && (
+                  <ActionIcon size='lg' mt={4} ml={8} onClick={() => openEditTaskCollection({
+                    board,
+                    domain: props.domain,
+                    collection,
+                    onDelete: () => setCollectionId(config.app.board.default_backlog.id),
+                  })}>
+                    <IconPencil />
+                  </ActionIcon>
+                )}
+                <Menu width='20ch' position='bottom-start'>
+                  <Menu.Target>
+                    <ActionIcon size='lg' mt={4}>
+                      <IconPlus />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      icon={<IconArrowIteration size={20} />}
+                      onClick={() => openCreateTaskCollection({
+                        board,
+                        domain: props.domain,
+                        mode: 'objective',
+                        onCreate: (id) => setCollectionId(id),
+                      })}
+                    >
+                      New Objective
+                    </Menu.Item>
+                    <Menu.Item
+                      icon={<IconFolders size={19} />}
+                      onClick={() => openCreateTaskCollection({
+                        board,
+                        domain: props.domain,
+                        mode: 'collection',
+                        onCreate: (id) => setCollectionId(id),
+                      })}
+                    >
+                      New Collection
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </>
+            )}
+
+            <div style={{ flexGrow: 1 }} />
+            {collection && (collection.start_date || collection.end_date) && (
+              <>
+                <Text size='sm' color='dimmed' weight={600} align='right'>
+                  {timeText}
+                </Text>
+                <Box mt={6} mr={8} ml={6} sx={(theme) => ({ color: theme.colors.dark[2] })}>
+                  <IconClock size={32} />
+                </Box>
+              </>
+            )}
+          </Group>
+
+          {collectionId && collection && (
+            <>
+              <Text
+                className={classes.typography}
+                size='md'
+                mt={8}
+                sx={{ maxWidth: '100ch' }}
+                dangerouslySetInnerHTML={{ __html: collection.description || '' }}
+              />
+
+              <MemoBoardTabs
+                key={collectionId}
+                channel_id={props.channel.id}
+                board={board}
+                tasks={tasks}
+                domain={props.domain}
+                collection={collectionId}
+                refreshEnabled={refreshEnabled}
+                setRefreshEnabled={setRefreshEnabled}
+              />
+            </>
+          )}
+        </Stack>
+      </ScrollArea>
+
+      {showScrollTop && (
+        <ActionButton
+          tooltip='Scroll To Top'
+          tooltipProps={{ position: 'left', openDelay: 500 }}
+          variant='filled'
+          size='xl'
+          radius='xl'
+          sx={(theme) => ({
+            position: 'absolute',
+            bottom: '2.0rem',
+            right: '2.5rem',
+            backgroundColor: theme.colors.dark[8],
+            '&:hover': {
+              backgroundColor: theme.colors.dark[6],
+            },
+          })}
+          onClick={() => {
+            if (viewportRef.current) {
+              viewportRef.current.scrollTo({
+                top: 0,
+              });
+            }
+          }}
+        >
+          <IconChevronsUp />
+        </ActionButton>
+      )}
+    </Box>
   );
 }
