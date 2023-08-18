@@ -36,7 +36,7 @@ export type ApiReturn<Path extends ApiPath> = ApiSchema[Path] extends { return: 
 
 
 /** Message recieved from api */
-export type RawMessage = Omit<Message, 'reply_to'> & { reactions?: AggregatedReaction[]; reply_to?: Message | ExpandedMessage };
+export type RawMessage = Omit<Message, 'reply_to'> & { reactions?: AggregatedReaction[]; reply_to?: Message };
 
 /** Task object used for api body values */
 type Api_Task = Omit<Task, 'id' | 'sid' | 'board' | 'time_created' | 'time_updated' | 'time_status_updated' | 'status'> & { status?: string };

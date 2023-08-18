@@ -63,6 +63,7 @@ import {
   MessagesWrapper,
   hasPermission,
   useApp,
+  useCachedState,
   useChatStyles,
   useGroupedMessages,
   useMember,
@@ -213,7 +214,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   });
 
   /** States */
-	const [state, setState] = useState<Omit<MessageViewState, 'typing' | 'last_typing'>>({
+	const [state, setState] = useCachedState<Omit<MessageViewState, 'typing' | 'last_typing'>>(`${channel_id}.state`, {
     editing: null,
     replying_to: null,
     scroll_to: null,
@@ -480,7 +481,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
   const addReactionBtnRef = useRef<HTMLButtonElement>(null);
 
   // Replied to message's sender
-  const repliedToSender = useMember(props.domain.id, typeof msg.reply_to?.sender === 'string' ? msg.reply_to.sender : msg.reply_to?.sender?.id || undefined);
+  const repliedToSender = useMember(props.domain.id, msg.reply_to?.sender || undefined);
 
   // Tracks if message should be animated
   const [shouldAnimate, setShouldAnimate] = useState<boolean>(false);

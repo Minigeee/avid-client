@@ -57,7 +57,7 @@ export type ExpandedMessage = Omit<Message, 'sender' | 'reply_to' | 'thread'> & 
 	/** The sender of the message */
 	sender: ExpandedMember | null;
 	/** The message this message is replying to */
-	reply_to?: ExpandedMessage | Message;
+	reply_to?: Message;
 	/** The thread the message belongs to, if it exists */
 	thread?: Thread;
 	/** A list of reactions attached to this message */

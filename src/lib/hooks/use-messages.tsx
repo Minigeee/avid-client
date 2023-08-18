@@ -513,7 +513,15 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 						attachments: hasAttachments ? uploads : undefined,
 					},
 				}, { session });
-				const newMessage = { ...results, reply_to: options?.reply_to };
+
+				// Find reply to raw message
+				let replyToRaw: RawMessage | undefined;
+				if (options?.reply_to?.id) {
+					const { page, idx } = findMessage(messages, options.reply_to.id);
+					replyToRaw = messages[page][idx];
+				}
+
+				const newMessage = { ...results, reply_to: replyToRaw as Message };
 
 				// For updating threads
 				updateSwrMessages((messages) => {
@@ -545,11 +553,19 @@ function mutators(mutate: KeyedMutator<RawMessage[][]>, session: SessionState, c
 				return addMessageLocal(messages, newMessage);
 			}, { message: 'An error occurred while posting message' }), {
 				optimisticData: (messages) => {
+					// Find reply to raw message
+					let replyToRaw: RawMessage | undefined;
+					if (messages && options?.reply_to?.id) {
+						const { page, idx } = findMessage(messages, options.reply_to.id);
+						replyToRaw = messages[page][idx];
+					}
+
+					// Create message
 					const msg = {
 						id: tempId,
 						channel: channel_id,
 						sender: sender.id,
-						reply_to: options?.reply_to,
+						reply_to: replyToRaw as Message,
 						thread: thread_id,
 						message,
 						attachments: options?.attachments?.map(f => ({
