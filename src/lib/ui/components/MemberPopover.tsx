@@ -142,6 +142,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
 
               return (
                 <Box
+                  key={id}
                   h={24}
                   sx={(theme) => ({
                     padding: `0px ${canManageRole ? '0.3rem' : '0.6rem'} 0 0.5rem`,

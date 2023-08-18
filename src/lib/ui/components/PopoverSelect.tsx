@@ -87,8 +87,9 @@ export default function PopoverSelect<T>(props: PopoverSelect<T>) {
 
         <ScrollArea.Autosize mah='30rem' p='0.5rem'>
           <Stack spacing={0}>
-            {filtered.map((item: any) => (
+            {filtered.map((item: any, i) => (
               <Box
+                key={i}
                 p='0.35rem 0.6rem'
                 sx={(theme) => ({
                   borderRadius: theme.radius.sm,

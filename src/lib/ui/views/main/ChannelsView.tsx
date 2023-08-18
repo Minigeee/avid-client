@@ -249,7 +249,7 @@ function SingleChannel(props: SingleChannelProps) {
 
               <Avatar.Group spacing={6}>
                 {participants.data.slice(0, 5).map((member, i) => (
-                  <Tooltip label={member.alias} withArrow>
+                  <Tooltip key={member.id} label={member.alias} withArrow>
                     <MemberAvatar
                       key={member.id}
                       size={28}
