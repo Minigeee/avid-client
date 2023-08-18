@@ -29,6 +29,7 @@ import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 
 import {
   IconArrowForwardUp,
+  IconChevronLeft,
   IconChevronsDown,
   IconMessages,
   IconMoodHappy,
@@ -124,6 +125,8 @@ type MessageViewState = {
   view_thread: string | null;
   /** The thread that is currently being viewed */
   viewing_thread: string | null;
+  /** If user manually closed side view */
+  show_side_panel: boolean;
 };
 
 /** Message view context state, used to pass current state within message view */
@@ -216,6 +219,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     scroll_to: null,
     view_thread: null,
     viewing_thread: null,
+    show_side_panel: true,
 	});
 
   const [typingIds, setTypingIds] = useState<string[]>([]);
@@ -1407,9 +1411,27 @@ export default function MessagesView(props: MessagesViewProps) {
               />
             )}
           </Box>
+
+          {!context.state.show_side_panel && (
+            <ActionIcon
+              sx={(theme) => ({
+                position: 'absolute',
+                top: '0.7rem',
+                right: 0,
+                height: '2.5rem',
+                borderRight: 'none',
+                borderTopRightRadius: 0,
+                borderBottomRightRadius: 0,
+                borderColor: theme.colors.dark[5],
+              })}
+              onClick={() => context.state._set('show_side_panel', true)}
+            >
+              <IconChevronLeft />
+            </ActionIcon>
+          )}
         </Box>
 
-        {props.withSidePanel !== false && (
+        {props.withSidePanel !== false && context.state.show_side_panel && (
           <Box sx={(theme) => ({
             flexBasis: '25rem',
             height: '100%',

@@ -14,7 +14,7 @@ import {
   TextInput,
   UnstyledButton,
 } from '@mantine/core';
-import { IconHeadphonesOff, IconSearch } from '@tabler/icons-react';
+import { IconHeadphonesOff, IconMessage, IconSearch, IconUsers } from '@tabler/icons-react';
 
 import MessagesView from '@/lib/ui/views/chat/MessagesView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
@@ -220,8 +220,8 @@ export default function SidePanelView(props: SidePanelViewProps) {
           })}
         >
           <Tabs.List>
-            <Tabs.Tab value='chat'>Chat</Tabs.Tab>
-            <Tabs.Tab value='participants'>Participants</Tabs.Tab>
+            <Tabs.Tab value='chat' icon={<IconMessage size={16} />}>Chat</Tabs.Tab>
+            <Tabs.Tab value='participants' icon={<IconUsers size={16} />}>Participants</Tabs.Tab>
           </Tabs.List>
         </Tabs>
       </Group>

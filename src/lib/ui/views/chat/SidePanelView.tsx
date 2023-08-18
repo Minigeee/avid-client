@@ -614,6 +614,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
           alignItems: 'center',
           paddingTop: '0.2rem',
           paddingLeft: '0.3rem',
+          paddingRight: '0.3rem',
           borderBottom: `1px solid ${theme.colors.dark[6]}`
         },
         tab: {
@@ -636,6 +637,9 @@ export default function SidePanelView(props: SidePanelViewProps) {
       <Tabs.List>
         <Tabs.Tab value='pinned' icon={<IconPin size={16} />}>Pinned</Tabs.Tab>
         <Tabs.Tab value='threads' icon={<IconMessages size={16} />}>Threads</Tabs.Tab>
+
+        <div style={{ flexGrow: 1 }} />
+        <CloseButton size='md' onClick={() => props.context.state._set('show_side_panel', false)} />
       </Tabs.List>
 
       <Tabs.Panel value='pinned' sx={{

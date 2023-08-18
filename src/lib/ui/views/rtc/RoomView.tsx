@@ -456,47 +456,46 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
 
   return (
     <Flex h='100%' align='stretch'>
-      {!participants.length && (
-        <Center sx={{ flexGrow: 1 }}>
-          <Stack align='center' spacing='xl'>
-            <Avatar size={avatarSize} radius={100} sx={{ backgroundColor: '#333333' }} />
-            <Text size={18}>Waiting for more members to join...</Text>
-          </Stack>
-        </Center>
-      )}
-      {participants.length > 0 && (
-        <RtcContextMenu domain={props.domain}>
-          <ScrollArea
-            h='100%'
-            sx={{ flexGrow: 1 }}
-          >
-            <Flex
-              wrap='wrap'
-              justify='center'
-              mih='calc(100vh - 2.8rem - 2.8rem)' // This is taken from hardcoded values of header heights
-              p={6}
-              sx={{ alignContent: 'center' }}
-            >
-              {participants.map((member, i) => (
-                <ParticipantView
-                  key={member.id}
-                  domain={props.domain}
-                  rtc={rtc}
-                  member={member}
+      <Box sx={{ flexGrow: 1 }}>
+        {!participants.length && (
+          <Center w='100%' h='100%'>
+            <Stack align='center' spacing='xl'>
+              <Avatar size={avatarSize} radius={100} sx={{ backgroundColor: '#333333' }} />
+              <Text size={18}>Waiting for more members to join...</Text>
+            </Stack>
+          </Center>
+        )}
+        {participants.length > 0 && (
+          <RtcContextMenu domain={props.domain}>
+            <ScrollArea w='100%' h='100%'>
+              <Flex
+                wrap='wrap'
+                justify='center'
+                mih='calc(100vh - 2.8rem - 2.8rem)' // This is taken from hardcoded values of header heights
+                p={6}
+                sx={{ alignContent: 'center' }}
+              >
+                {participants.map((member, i) => (
+                  <ParticipantView
+                    key={member.id}
+                    domain={props.domain}
+                    rtc={rtc}
+                    member={member}
 
-                  cellWidth={cellWidth}
-                  avatarSize={avatarSize}
-                  textSize={textSize}
-                />
-              ))}
-            </Flex>
-          </ScrollArea>
-        </RtcContextMenu>
-      )}
+                    cellWidth={cellWidth}
+                    avatarSize={avatarSize}
+                    textSize={textSize}
+                  />
+                ))}
+              </Flex>
+            </ScrollArea>
+          </RtcContextMenu>
+        )}
+      </Box>
 
       <Box sx={(theme) => ({
-        flexBasis: '45ch',
-        // boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`,
+        flexBasis: '25rem',
+        height: '100%',
         borderLeft: `1px solid ${theme.colors.dark[6]}`,
       })}>
         <SidePanelView

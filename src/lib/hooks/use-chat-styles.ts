@@ -221,13 +221,13 @@ export const useChatStyles = (options?: { scale?: number; tableMinWidth?: string
 			},
 
 			'.avid-mention-member': {
-				backgroundColor: theme.colors.gray[7],
+				backgroundColor: theme.colors.gray[8],
 				color: theme.colors.dark[0],
 				fontWeight: 600,
 			},
 
 			'.avid-mention-role': {
-				backgroundColor: theme.colors.dark[5],
+				backgroundColor: theme.colors.gray[7],
 				color: theme.colors.dark[0],
 				fontWeight: 600,
 			},
