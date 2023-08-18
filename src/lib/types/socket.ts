@@ -1,8 +1,10 @@
-import { MediaType } from '../contexts';
 import { RawMessage } from './api';
 import { TaskCollection } from './board';
 import { Member } from './member';
 import { Message } from './message';
+
+
+type MediaType = 'audio' | 'video' | 'share';
 
 
 /** All events signatures that are sent from server to client */
