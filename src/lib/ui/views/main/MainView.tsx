@@ -11,6 +11,7 @@ import ChannelsView from '@/lib/ui/views/main/ChannelsView';
 import HeaderView from '@/lib/ui/views/main/HeaderView';
 import MessagesView from '@/lib/ui/views/chat/MessagesView';
 import RoomView from '@/lib/ui/views/rtc/RoomView';
+import CalendarView from '@/lib/ui/views/calendar/CalendarView';
 import BoardView from '@/lib/ui/views/projects/BoardView';
 
 import { useApp, useDomain } from '@/lib/hooks';
@@ -92,6 +93,13 @@ export default function MainView() {
                 <RoomView
                   key={channel.id}
                   channel={channel as Channel<'rtc'>}
+                  domain={domain}
+                />
+              )}
+              {channel.type === 'calendar' && (
+                <CalendarView
+                  key={channel.id}
+                  channel={channel}
                   domain={domain}
                 />
               )}

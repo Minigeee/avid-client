@@ -1,4 +1,4 @@
-import { IconHash, IconListDetails, IconVideo, TablerIconsProps } from '@tabler/icons-react';
+import { IconCalendar, IconHash, IconListDetails, IconVideo, TablerIconsProps } from '@tabler/icons-react';
 
 import { ChannelTypes } from '@/lib/types';
 
@@ -16,6 +16,8 @@ export default function ChannelIcon({ type, ...props }: ChannelIconProps) {
     return (<IconVideo {...props} />);
   else if (type === 'board')
     return (<IconListDetails {...props} />);
+  else if (type === 'calendar')
+    return (<IconCalendar {...props} />);
   else
     return null;
 }

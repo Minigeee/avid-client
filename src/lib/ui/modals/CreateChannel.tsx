@@ -38,6 +38,13 @@ const CHANNEL_TYPES = [
     disabled: false,
   },
   {
+    value: 'calendar',
+    label: 'Calendar',
+    group: 'General',
+    description: 'Schedule and organize events with other members',
+    disabled: false,
+  },
+  {
     value: 'board',
     label: 'Board',
     group: 'Project',
@@ -135,12 +142,17 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
       options = { prefix: form.values.board_prefix };
     }
 
-    // Add channel
-    await props.domain._mutators.addChannel(name, type, form.values.group, data, options);
+    try {
+      // Add channel
+      // WIP : Make sure channel create works, implement react-big-calendar and get it to work
+      await props.domain._mutators.addChannel(name, type, form.values.group, data, options);
 
-    // Close
-    setLoading(false);
-    context.closeModal(id);
+      // Close
+      context.closeModal(id);
+    }
+    finally {
+      setLoading(false);
+    }
   }
 
 
