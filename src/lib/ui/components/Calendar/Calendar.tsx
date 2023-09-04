@@ -50,7 +50,8 @@ export default function Calendar(props: CalendarProps) {
       cellBorder: theme.colors.dark[5],
       timeIndicator: theme.colors.indigo[4],
     },
-    timeGutter: '3.75rem',
+    timeGutter: 60,
+    monthHeaderHeight: 32,
     slotHeight: '4rem',
   } as CalendarStyle), []);
 

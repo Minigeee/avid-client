@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { MouseEventHandler, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
@@ -18,9 +18,195 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { CalendarStyle } from './types';
+import { useDraggableGridEvents } from './hooks';
+import { CalendarStyle, MomentCalendarEvent } from './types';
+
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
+import assert from 'assert';
+
+
+
+////////////////////////////////////////////////////////////
+type UseDraggableMultidayWeekProps = {
+  /** The start of the week */
+  start: Moment;
+  /** Used to calculate grid */
+  containerRef: RefObject<HTMLDivElement>;
+  /** Size of header (px) */
+  headerSize: number;
+  /** Number of columns to include in grid (default 7) */
+  cols?: number;
+  /** Number of rows to include in grid */
+  rows: number;
+
+  /** Called when event is dropped */
+  onDrop?: (e: MomentCalendarEvent, gridPos: { x: number; y: number }) => void;
+};
+
+////////////////////////////////////////////////////////////
+function useDraggableMultidayMonth(props: UseDraggableMultidayWeekProps) {
+  // Event being dragged
+  const [draggedEvent, setDraggedEvent] = useState<MomentCalendarEvent | null>(null);
+  // Drag offset
+  const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  // Dragged position
+  const [eventRects, setEventRects] = useState<{ x: number; y: number; w: number; has_prev: boolean; has_next: boolean }[] | null>(null);
+
+  // Tracks current dragged event's grid position (based on mouse pos)
+	const gridPos = useRef<{ x: number; y: number } | null>(null);
+
+
+  // Called on event drag start
+  const onDragStart = useCallback((e: MomentCalendarEvent, position: { x: number; y: number }, offset: { x: number; y: number }) => {
+    const container = props.containerRef.current;
+    if (!container) return;
+
+    const cols = props.cols || 7;
+
+    // Set dragged event
+    setDraggedEvent(e);
+
+    // Get mouse grid pos
+    const rect = container.getBoundingClientRect();
+    const unitX = container.clientWidth / cols;
+    const unitY = (container.clientHeight - props.headerSize) / props.rows;
+    const gridY = Math.max(0, Math.min(Math.floor((position.y - rect.top - props.headerSize) / unitY), props.rows - 1));
+
+    // The day the mouse is in
+    const mouseTime = moment(props.start).add(gridY, 'weeks');
+
+    // Extra offset
+    const estart = moment(e.start).startOf('day');
+    const extraOffset = Math.max(mouseTime.diff(estart, 'days'), 0);
+    const newOffset = { x: offset.x + extraOffset * unitX - offset.x % unitX, y: offset.y };
+
+    setOffset(newOffset);
+    // console.log(newOffset);
+  }, [props.start]);
+
+  // Called on mouse move (only when event being dragged)
+  const onMouseMove = useMemo(() => {
+    const container = props.containerRef.current;
+    if (!draggedEvent || !container) return undefined;
+
+    const cols = props.cols || 7;
+
+    return ((e) => {
+      // Duration in days, grid unit sizes
+      const unitX = container.clientWidth / cols;
+      const unitY = (container.clientHeight - props.headerSize) / props.rows;
+
+      // Mouse x offset in days
+      const gridXOffset = offset.x / unitX;
+      
+      // Grid position of mouse
+      const rect = container.getBoundingClientRect();
+      const top = e.clientY - rect.top;
+      const left = e.clientX - rect.left;
+			const gridX = Math.max(0, Math.min(Math.floor(left / unitX), cols - 1));
+      const gridY = Math.max(0, Math.min(Math.floor((top - props.headerSize) / unitY), props.rows - 1));
+      
+      // Update only if changed
+      if (!eventRects || gridPos.current?.x !== gridX || gridPos.current?.y !== gridY) {
+        const duration = draggedEvent.end ? moment(draggedEvent.end).endOf('day').diff(moment(draggedEvent.start).startOf('day'), 'days') + 1 : 1;
+
+        // Get start of event
+        let unboundX = gridX - gridXOffset;
+        let startY = gridY + Math.floor(unboundX / cols);
+        let startX = unboundX - Math.floor(unboundX / cols) * cols;
+
+        // Get end of event
+        unboundX = startX + duration - 1;
+        let endY = startY + Math.floor(unboundX / cols);
+        let endX = unboundX - Math.floor(unboundX / cols) * cols;
+
+        // Clamp start and end y
+        let hasPrev = false, hasNext = false;
+        if (startY < 0) {
+          startY = 0;
+          startX = 0;
+          hasPrev = true;
+        }
+        else if (startY >= props.rows) {
+          startY = props.rows - 1;
+          startX = 6;
+        }
+        
+        if (endY < 0) {
+          endY = 0;
+          endX = 0;
+        }
+        else if (endY >= props.rows) {
+          endY = props.rows - 1;
+          endX = 6;
+          hasNext = true;
+        }
+
+        // List of event rects
+        const rects: { x: number; y: number; w: number; has_prev: boolean; has_next: boolean }[] = [];
+        for (let r = startY; r <= endY; ++r) {
+          rects.push({
+            x: r === startY ? startX : 0,
+            y: r,
+            w: (r === endY ? endX : 6) - (r === startY ? startX : 0) + 1,
+            has_prev: r !== startY || hasPrev,
+            has_next: r !== endY || hasNext,
+          });
+        }
+
+        // Convert rects to pixels
+        for (const r of rects) {
+          r.x = r.x * unitX;
+          r.y = r.y * unitY + props.headerSize;
+          r.w = r.w * unitX;
+        }
+        setEventRects(rects);
+
+				// Update grid pos
+        gridPos.current = { x: gridX, y: gridY };
+      }
+    }) as MouseEventHandler<HTMLDivElement>;
+  }, [draggedEvent, eventRects]);
+
+  // Called on mouse up event
+  useEffect(() => {
+    function onMouseUp() {
+      // Callback
+      if (props.containerRef.current && draggedEvent && gridPos.current) {
+        const cols = props.cols || 7;
+
+        // Get start of event
+        const unitX = props.containerRef.current.clientWidth / cols;
+        let unboundX = gridPos.current.x - offset.x / unitX;
+        let startY = gridPos.current.y + Math.floor(unboundX / cols);
+        let startX = unboundX - Math.floor(unboundX / cols) * cols;
+
+        props.onDrop?.(draggedEvent, { x: startX, y: startY });
+      }
+
+      setDraggedEvent(null);
+      setEventRects(null);
+      gridPos.current = null;
+    }
+
+    if (draggedEvent) {
+      window.addEventListener('mouseup', onMouseUp);
+
+      return () => {
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+    }
+  }, [draggedEvent]);
+
+
+  return {
+    onDragStart,
+    onMouseMove,
+    event: draggedEvent,
+    rects: eventRects,
+  };
+}
 
 
 ////////////////////////////////////////////////////////////
@@ -38,6 +224,11 @@ type WeekRowProps = {
   setDay: (day: Moment) => void;
   /** Indicates if this is the last row in the month */
   lastRow: boolean;
+  
+  /** The event that is currently being dragged */
+  draggedId?: string | null;
+  /** Called when an event is start drag */
+  onDragStart: (event: MomentCalendarEvent, position: { x: number; y: number }, offset: { x: number; y: number }, multiday: boolean) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -201,7 +392,7 @@ function WeekRow(props: WeekRowProps) {
               borderBottomRightRadius: props.lastRow ? theme.radius.md : undefined,
             },
           })}>
-            <Group position='right' p='0.125rem'>
+            <Group position='right' p='0.125rem' h='2rem'>
               <ActionIcon size='md' sx={(theme) => ({
                 color: inRange ? undefined : theme.colors.dark[3],
               })} onClick={() => props.setDay(date)}>
@@ -216,12 +407,23 @@ function WeekRow(props: WeekRowProps) {
                     padding: '0.0625rem 0.25rem',
                     borderRadius: theme.radius.sm,
                     transition: 'background-color 0.18s',
-                    opacity: inRange ? undefined : 0.8,
+                    opacity: props.draggedId === e.id ? 0.6 : inRange ? undefined : 0.8,
 
                     '&:hover': {
                       backgroundColor: theme.colors.dark[6],
                     },
                   })}
+
+                  draggable
+                  onDragStart={(ev) => {
+                    ev.preventDefault();
+        
+                    const rect = ev.currentTarget.getBoundingClientRect();
+                    const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
+        
+                    // console.log('drag', offset);
+                    props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, false);
+                  }}
                 >
                   <Group spacing={6} noWrap maw='100%'>
                     <ColorSwatch color={e.color || props.style.colors.event} size={14} sx={{ flexShrink: 0 }} />
@@ -251,6 +453,8 @@ function WeekRow(props: WeekRowProps) {
             height: '1.625rem',
             top: `${e.top * 1.75 + 2}rem`,
             left: `calc(${e.left} / 7 * 100% + 1px)`,
+            opacity: props.draggedId === e.id ? 0.6 : undefined,
+            cursor: 'pointer',
 
             padding: '0.125rem 0.4rem',
             paddingLeft: '0.75rem',
@@ -261,6 +465,17 @@ function WeekRow(props: WeekRowProps) {
             borderTopRightRadius: e.has_next ? 0 : theme.radius.sm,
             borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
           })}
+
+          draggable
+          onDragStart={(ev) => {
+            ev.preventDefault();
+
+            const rect = ev.currentTarget.getBoundingClientRect();
+            const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
+
+            // console.log('drag', offset);
+            props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, true);
+          }}
         >
           {e.title}
         </Box>
@@ -281,10 +496,15 @@ export type MonthViewProps = {
   style: CalendarStyle;
   /** For jumping to day view */
   setDay: (day: Moment) => void;
+
+  onChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
 export default function MonthView(props: MonthViewProps) {
+  // Container for month
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // The start/ of the month
   const monthRange = useMemo(() => {
     const start = moment(props.time).startOf('month');
@@ -295,30 +515,82 @@ export default function MonthView(props: MonthViewProps) {
 
   // Number of weeks that need to be displayed
   const numWeeks = useMemo(() => Math.ceil(monthRange[1].diff(start, 'days') / 7), [monthRange[1], start]);
+  
+
+  // Called when event is dropped
+  const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }) => {
+    // Get original event
+    const origEvent = props.events.find((x) => x.id === e.id) || e;
+
+    // Calculate new times
+    const estart = moment(origEvent.start);
+    const duration = origEvent.end ? moment(origEvent.end).diff(estart) : moment({ h: 1 }).unix();
+    const dayOffset = estart.diff(moment(estart).startOf('day'));
+    const newStart = moment(start).add(gridPos.y, 'weeks').add(gridPos.x, 'days').add(dayOffset);
+    const newEnd = moment(newStart).add(duration);
+
+    // User callback
+    props.onChange?.(e.id, {
+      start: newStart.toISOString(),
+      end: newEnd.toISOString(),
+    });
+  }, [start, props.onChange]);
+
+  // Drag drop for day events
+  const dragDropDay = useDraggableGridEvents({
+    scrollAreaRef: containerRef,
+    timeGutter: 0,
+    headerSize: props.style.monthHeaderHeight,
+    rows: numWeeks,
+    cols: 7,
+    useYOffset: false,
+    onDrop: onEventDrop,
+  });
+
+  // Drag drop for multiday events
+  const dragDropMulti = useDraggableMultidayMonth({
+    containerRef,
+    start,
+    headerSize: props.style.monthHeaderHeight,
+    rows: numWeeks,
+    cols: 7,
+    onDrop: onEventDrop,
+  });
+
 
   // Prefilter events that are in this month
   const events = useMemo(() => {
     // End of week
-    const end = moment(start).add(5, 'week');
+    const end = moment(start).add(numWeeks, 'week');
 
     return props.events.filter((e) => {
       const estart = moment(e.start);
       return estart.isBefore(end) && (e.end && moment(e.end).isAfter(start) || e.all_day && estart.isAfter(start));
     });
-  }, [start, props.events]);
+  }, [start, numWeeks, props.events]);
 
 
   return (
-    <Flex direction='column' h={0} w='100%' sx={{ flexGrow: 1 }}>
-      <Flex w='100%'>
+    <Flex
+      ref={containerRef}
+      direction='column'
+      h={0}
+      w='100%'
+      sx={{ flexGrow: 1, position: 'relative' }}
+      onMouseMove={(ev) => {
+        dragDropDay.onMouseMove?.(ev);
+        dragDropMulti.onMouseMove?.(ev);
+      }}
+    >
+      <Flex w='100%' sx={{ height: props.style.monthHeaderHeight }}>
         {range(7).map((day_i) => (
           <Text
             align='center'
             weight={600}
+            pt={3}
             sx={(theme) => ({
               flex: '1 1 0px',
               backgroundColor: theme.colors.dark[8],
-              paddingTop: '0.125rem',
               paddingBottom: '0.125rem',
               borderLeft: `1px solid ${props.style.colors.cellBorder}`,
               borderTop: `1px solid ${props.style.colors.cellBorder}`,
@@ -344,8 +616,80 @@ export default function MonthView(props: MonthViewProps) {
           style={props.style}
           setDay={props.setDay}
           lastRow={week_i === 4}
+
+          draggedId={dragDropDay.event?.id || dragDropMulti.event?.id}
+          onDragStart={(ev, position, offset, multiday) => {
+            if (!multiday)
+              dragDropDay.onDragStart(ev, offset);
+            else
+              dragDropMulti.onDragStart(ev, position, offset);
+          }}
         />
       ))}
+
+
+      {dragDropMulti.event && dragDropMulti.rects?.map((rect) => (
+        <Box
+          sx={(theme) => ({
+            position: 'absolute',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            width: rect.w,
+            height: '1.625rem',
+            top: `calc(${rect.y}px + 2rem)`,
+            left: rect.x,
+            boxShadow: `0px 0px 16px #00000030`,
+            cursor: 'grab',
+
+            padding: '0.125rem 0.4rem',
+            paddingLeft: '0.75rem',
+            background: rect.has_prev ?
+              `color-mix(in srgb, ${dragDropMulti.event?.color || props.style.colors.event} 20%, ${theme.colors.dark[7]})` :
+              `linear-gradient(to right, ${dragDropMulti.event?.color || props.style.colors.event} 0.25rem, color-mix(in srgb, ${dragDropMulti.event?.color || props.style.colors.event} 20%, ${theme.colors.dark[7]}) 0)`,
+            fontSize: theme.fontSizes.sm,
+            borderTopLeftRadius: rect.has_prev ? 0 : theme.radius.sm,
+            borderBottomLeftRadius: rect.has_prev ? 0 : theme.radius.sm,
+            borderTopRightRadius: rect.has_next ? 0 : theme.radius.sm,
+            borderBottomRightRadius: rect.has_next ? 0 : theme.radius.sm,
+          })}
+        >
+          {dragDropMulti.event?.title}
+        </Box>
+      ))}
+
+      {dragDropDay.event && dragDropDay.rect && (
+        <Box
+          sx={(theme) => {
+            assert(dragDropDay.rect);
+
+            return {
+              position: 'absolute',
+              overflow: 'hidden',
+              width: dragDropDay.rect.w,
+              top: `calc(${dragDropDay.rect.y}px + 2rem)`,
+              left: dragDropDay.rect.x,
+              boxShadow: `0px 0px 16px #00000030`,
+              cursor: 'grab',
+
+              padding: '0.0625rem 0.25rem',
+              background: theme.colors.dark[6],
+              borderRadius: theme.radius.sm,
+            };
+          }}
+        >
+          <Group spacing={6} noWrap maw='100%'>
+            <ColorSwatch color={dragDropDay.event.color || props.style.colors.event} size={14} sx={{ flexShrink: 0 }} />
+            <Text weight={600} size='sm'>{moment(dragDropDay.event.start).format('LT')}</Text>
+            <Text size='sm' weight={400} sx={{
+              flexGrow: 1,
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>{dragDropDay.event.title}</Text>
+          </Group>
+        </Box>
+      )}
     </Flex>
   );
 }

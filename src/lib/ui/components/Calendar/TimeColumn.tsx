@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import { Box, Text } from '@mantine/core';
 
-import { CalendarStyle } from './types';
+import { CalendarStyle, MomentCalendarEvent } from './types';
 import { range } from 'lodash';
 import { CalendarEvent } from '@/lib/types/calendar';
 import moment, { Moment } from 'moment';
@@ -17,10 +17,15 @@ export type TimeColumnProps = {
 
   /** Calendar styles */
   style: CalendarStyle;
+
+  /** The event that is currently being dragged */
+  draggedId?: string | null;
+  /** Called when an event is start drag */
+  onDragStart?: (event: MomentCalendarEvent, offset: { x: number; y: number }) => void;
 };
 
 ////////////////////////////////////////////////////////////
-export default function TimeColumn(props: TimeColumnProps) {
+function TimeColumnImpl(props: TimeColumnProps) {
   // Defaults
   const slotHeight = props.style.slotHeight;
 
@@ -46,7 +51,7 @@ export default function TimeColumn(props: TimeColumnProps) {
       // Event range
       const estart = moment(event.start);
       const eend = moment(event.end);
-  
+
       // Check if this event should be dsiplayed, if event starts or ends in this day
       return event.end && !event.all_day && (estart.isAfter(start) && estart.isBefore(end) || eend.isAfter(start) && eend.isBefore(end)) && eend.subtract(1, 'day').isBefore(estart);
     }).map((e) => ({
@@ -67,7 +72,7 @@ export default function TimeColumn(props: TimeColumnProps) {
     var columns: (typeof filtered)[] = [];
     // Tracks the last event ending
     let lastEventEnding: Moment | null = null;
-    
+
     // Checks if date ranges collide
     function collides(a: { start: Moment; end: Moment }, b: { start: Moment; end: Moment }) {
       return a.start.isBefore(b.end) && a.end.isAfter(b.start);
@@ -133,7 +138,7 @@ export default function TimeColumn(props: TimeColumnProps) {
 
     if (columns.length > 0)
       packEvents(columns);
-    
+
     // Calculate height and top
     for (const e of filtered) {
       e.has_prev = e.start.date() !== props.day.date();
@@ -167,40 +172,53 @@ export default function TimeColumn(props: TimeColumnProps) {
       ))}
 
       {events.map((e, i) => (
-          <Box
-            sx={(theme) => ({
-              position: 'absolute',
-              overflow: 'hidden',
-              width: (e.width * 95) + '%',
-              height: `calc(${e.height} * ${slotHeight} - ${e.has_next ? '1px' : '0.25rem'})`,
-              top: `calc(${e.top} * ${slotHeight})`,
-              left: (e.left * 95) + '%',
-              boxShadow: `0px 0px 8px #00000030`,
-              
-              padding: '0.1rem 0.4rem',
-              paddingLeft: '0.75rem',
-              marginBottom: '0.25rem',
-              marginLeft: '0.25rem',
-              background: `linear-gradient(to right, ${e.color || theme.colors.gray[6]} 0.25rem, color-mix(in srgb, ${e.color || theme.colors.gray[6]} 20%, ${theme.colors.dark[7]}) 0)`,
-              fontSize: theme.fontSizes.sm,
-              borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
-              borderTopRightRadius: e.has_prev ? 0 : theme.radius.sm,
-              borderBottomLeftRadius: e.has_next ? 0 : theme.radius.sm,
-              borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
-            })}
-          >
-            <Text color='dimmed' weight={600} size={11}>
-              {e.start.format('LT')} - {e.end.format('LT')}
-            </Text>
-            <Text weight={600} maw='100%' sx={{
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
-              {e.title}
-            </Text>
-          </Box>
-        ))}
+        <Box
+          sx={(theme) => ({
+            position: 'absolute',
+            overflow: 'hidden',
+            width: (e.width * 95) + '%',
+            height: `calc(${e.height} * ${slotHeight} - ${e.has_next ? '1px' : '0.25rem'})`,
+            top: `calc(${e.top} * ${slotHeight})`,
+            left: (e.left * 95) + '%',
+            boxShadow: `0px 0px 8px #00000030`,
+            opacity: props.draggedId === e.id ? 0.6 : undefined,
+            cursor: 'pointer',
+
+            padding: '0.1rem 0.4rem',
+            paddingLeft: '0.75rem',
+            marginBottom: '0.25rem',
+            marginLeft: '0.25rem',
+            background: `linear-gradient(to right, ${e.color || theme.colors.gray[6]} 0.25rem, color-mix(in srgb, ${e.color || theme.colors.gray[6]} 20%, ${theme.colors.dark[7]}) 0)`,
+            fontSize: theme.fontSizes.sm,
+            borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
+            borderTopRightRadius: e.has_prev ? 0 : theme.radius.sm,
+            borderBottomLeftRadius: e.has_next ? 0 : theme.radius.sm,
+            borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
+          })}
+
+          draggable
+          onDragStart={(ev) => {
+            ev.preventDefault();
+
+            const rect = ev.currentTarget.getBoundingClientRect();
+            const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
+
+            // console.log('drag', offset);
+            props.onDragStart?.(e, offset);
+          }}
+        >
+          <Text color='dimmed' weight={600} size={11}>
+            {e.start.format('LT')} - {e.end.format('LT')}
+          </Text>
+          <Text weight={600} maw='100%' sx={{
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {e.title}
+          </Text>
+        </Box>
+      ))}
 
       {showIndicator && (
         <Box
@@ -216,3 +234,6 @@ export default function TimeColumn(props: TimeColumnProps) {
     </Box>
   );
 }
+
+const TimeColumn = memo(TimeColumnImpl);
+export default TimeColumn;

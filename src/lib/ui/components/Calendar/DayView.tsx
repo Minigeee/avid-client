@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
   Box,
@@ -15,9 +15,12 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { CalendarStyle } from './types';
+import { useDraggableGridEvents } from './hooks';
+import { CalendarStyle, MomentCalendarEvent } from './types';
+
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
+import assert from 'assert';
 
 
 ////////////////////////////////////////////////////////////
@@ -29,6 +32,8 @@ export type DayViewProps = {
 
   /** Calendar styles */
   style: CalendarStyle;
+  
+  onChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -38,6 +43,45 @@ export default function DayView(props: DayViewProps) {
 
   // The start of the day
   const start = useMemo(() => moment(props.time).startOf('day'), [props.time]);
+  
+
+  // Called when event is dropped
+  const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }) => {
+    // Calculate new times
+    const duration = e.end ? moment(e.end).diff(e.start) : moment({ h: 1 }).unix();
+    const start = moment(props.time).startOf('week').add(gridPos.x, 'days').add(gridPos.y, 'hours');
+    const end = moment(start).add(duration);
+
+    // User callback
+    props.onChange?.(e.id, {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    });
+  }, [props.time, props.onChange]);
+
+  // Drag drop for day events
+  const dragDropDay = useDraggableGridEvents({
+    scrollAreaRef,
+    timeGutter: props.style.timeGutter,
+    rows: 24 * 4,
+    cols: 1,
+    subdivisions: 4,
+    onDrop: onEventDrop,
+  });
+
+  // Update dragged event times
+  const draggedEventTimes = useMemo(() => {
+    const { event, gridPos } = dragDropDay;
+    if (!event || !gridPos)
+      return { start: moment(), end: moment() };
+
+    const duration = event.end ? event.end.diff(event.start) : moment({ h: 1 }).unix();
+    const start = moment({ h: gridPos.y / 4, m: 60 * (gridPos.y % 4) / 4 });
+    const end = moment(start).add(duration);
+
+    return { start, end };
+  }, [dragDropDay.gridPos?.x, dragDropDay.gridPos?.y]);
+
 
   // Prefilter events that are in this day
   const events = useMemo(() => {
@@ -115,7 +159,7 @@ export default function DayView(props: DayViewProps) {
               display: 'block',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              width: `calc((100% - ${props.style.timeGutter})${e.has_next ? '' : ' * 0.95'})`,
+              width: `calc((100% - ${props.style.timeGutter}px)${e.has_next ? '' : ' * 0.95'})`,
               height: '1.625rem',
               top: `${i * 1.75}rem`,
               left: props.style.timeGutter,
@@ -136,7 +180,11 @@ export default function DayView(props: DayViewProps) {
       </Flex>
 
       <ScrollArea viewportRef={scrollAreaRef} sx={{ flexGrow: 1 }}>
-        <Flex w='100%'>
+        <Flex
+          w='100%'
+          sx={{ position: 'relative' }}
+          onMouseMove={dragDropDay.onMouseMove}
+        >
           <Stack align='flex-end' sx={(theme) => ({
             width: props.style.timeGutter,
             paddingTop: `calc(${props.style.slotHeight} - ${theme.fontSizes.xs} / 2 - 0.0625rem)`,
@@ -154,7 +202,48 @@ export default function DayView(props: DayViewProps) {
             day={start}
             events={events}
             style={props.style}
+
+            draggedId={dragDropDay.event?.id}
+            onDragStart={dragDropDay.onDragStart}
           />
+
+          {dragDropDay.event && dragDropDay.rect && (
+            <Box
+              sx={(theme) => {
+                assert(dragDropDay.rect);
+
+                return {
+                  position: 'absolute',
+                  overflow: 'hidden',
+                  width: dragDropDay.rect.w * 0.95,
+                  height: dragDropDay.rect.h - 4,
+                  top: dragDropDay.rect.y,
+                  left: dragDropDay.rect.x,
+                  boxShadow: `0px 0px 16px #00000030`,
+                  cursor: 'grab',
+
+                  padding: '0.1rem 0.4rem',
+                  paddingLeft: '0.75rem',
+                  marginBottom: '0.25rem',
+                  marginLeft: '0.25rem',
+                  background: `linear-gradient(to right, ${dragDropDay.event?.color || theme.colors.gray[6]} 0.25rem, color-mix(in srgb, ${dragDropDay.event?.color || theme.colors.gray[6]} 20%, ${theme.colors.dark[7]}) 0)`,
+                  fontSize: theme.fontSizes.sm,
+                  borderRadius: theme.radius.sm,
+                };
+              }}
+            >
+              <Text color='dimmed' weight={600} size={11}>
+                {draggedEventTimes.start.format('LT')} - {draggedEventTimes.end.format('LT')}
+              </Text>
+              <Text weight={600} maw='100%' sx={{
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {dragDropDay.event.title}
+              </Text>
+            </Box>
+          )}
         </Flex>
       </ScrollArea>
     </Flex>
