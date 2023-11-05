@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef } from 'react';
 
 import { Box, Text } from '@mantine/core';
 
@@ -22,6 +22,10 @@ export type TimeColumnProps = {
   draggedId?: string | null;
   /** Called when an event is start drag */
   onDragStart?: (event: MomentCalendarEvent, offset: { x: number; y: number }) => void;
+  /** Called when a column drag start */
+  onDragCreateStart?: (offsetY: number) => void;
+  /** Called on click create */
+  onClickCreate?: (gridY: number) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -32,6 +36,9 @@ function TimeColumnImpl(props: TimeColumnProps) {
   // Time indicator position
   const now = moment();
   const hours = now.hours() + now.minutes() / 60;
+
+  // Used to track if column is being clicked
+  const clickedRef = useRef<boolean>(false);
 
   // Determines if indicator should be seen
   const showIndicator = useMemo(() => {
@@ -156,10 +163,37 @@ function TimeColumnImpl(props: TimeColumnProps) {
 
 
   return (
-    <Box sx={{
-      position: 'relative',
-      flexGrow: 1,
-    }}>
+    <Box
+      sx={{
+        position: 'relative',
+        flexGrow: 1,
+      }}
+
+      draggable
+      onDragStart={(ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const rect = ev.currentTarget.getBoundingClientRect();
+        props.onDragCreateStart?.(ev.pageY - rect.y);
+
+        // Reset
+        clickedRef.current = false;
+      }}
+
+      onMouseDown={() => { clickedRef.current = true; }}
+      onMouseUp={(ev) => {
+        if (!clickedRef.current) return;
+
+        const rect = ev.currentTarget.getBoundingClientRect();
+        const unitY = rect.height / 24;
+
+        props.onClickCreate?.(Math.round((ev.pageY - rect.y) / unitY * 4) / 4);
+
+        // Reset
+        clickedRef.current = false;
+      }}
+    >
       {range(24).map((i) => (
         <Box
           w='100%'
@@ -199,6 +233,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
           draggable
           onDragStart={(ev) => {
             ev.preventDefault();
+            ev.stopPropagation();
 
             const rect = ev.currentTarget.getBoundingClientRect();
             const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };

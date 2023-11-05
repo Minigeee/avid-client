@@ -210,6 +210,152 @@ function useDraggableMultidayMonth(props: UseDraggableMultidayWeekProps) {
 
 
 ////////////////////////////////////////////////////////////
+export type UseDragCreateProps = {
+	/** Used to calculate grid */
+	containerRef: RefObject<HTMLDivElement>;
+	/** Size of header (px) */
+	headerSize: number;
+	/** Number of rows in grid */
+	rows: number;
+	/** Number of cols in grid */
+	cols: number;
+
+	/** Called when mouse let go */
+	onCreate?: (start: { x: number; y: number }, duration: number) => void;
+};
+
+////////////////////////////////////////////////////////////
+export function useDragCreate(props: UseDragCreateProps) {
+	const [rowIdx, setRowIdx] = useState<number | null>(null);
+	// Starting x pos in grid coords
+	const [startX, setStartX] = useState<number | null>(null);
+	const [newEvent, setNewEvent] = useState<MomentCalendarEvent | null>(null);
+  // Dragged position
+  const [eventRects, setEventRects] = useState<{ x: number; y: number; w: number; has_prev: boolean; has_next: boolean }[] | null>(null);
+	
+	// Tracks current dragged event's grid position
+	const gridPos = useRef<{ x: number; y: number; duration: number } | null>(null);
+
+
+	// Called when drag starts in column
+	const onDragStart = useCallback((rowIdx: number, offsetX: number) => {
+		// Snap start x to grid
+		let gridX = 0;
+
+		const container = props.containerRef.current;
+		if (container) {
+			const unitX = container.clientWidth / props.cols;
+			gridX = Math.max(0, Math.min(Math.floor(offsetX / unitX), props.cols - 1));
+		}
+
+		setRowIdx(rowIdx);
+		setStartX(gridX);
+	}, []);
+
+	// Called on mouse move (only when col being dragged)
+	const onMouseMove = useMemo(() => {
+		const container = props.containerRef.current;
+		if (!container || startX === null || rowIdx === null) return undefined;
+
+		const rows = props.rows;
+		const cols = props.cols || 7;
+
+		return ((e) => {
+			// Calculate position relative to scroll area
+			const rect = container.getBoundingClientRect();
+			const left = e.clientX - rect.x;
+			const top = e.clientY - rect.y - props.headerSize;
+
+			// Snap to grid
+			const unitX = rect.width / cols;
+			const unitY = (rect.height - props.headerSize) / rows;
+      const gridX = Math.max(0, Math.min(Math.floor(left / unitX), cols - 1))
+			const gridY = Math.max(0, Math.min(Math.floor(top / unitY), rows - 1));
+
+      // Start end days
+      const day1 = rowIdx * cols + startX;
+      const day2 = gridY * cols + gridX;
+
+			const start = Math.min(day1, day2);
+			const end = Math.max(day1, day2);
+			const duration = end - start + 1;
+
+			if (!eventRects || gridPos.current?.duration !== duration) {
+        const startR = Math.floor(start / cols);
+        const startC = start % cols;
+        const endR = Math.floor(end / cols);
+        const endC = end % cols;
+
+        // List of event rects
+        const rects: { x: number; y: number; w: number; has_prev: boolean; has_next: boolean }[] = [];
+        for (let r = startR; r <= endR; ++r) {
+          rects.push({
+            x: r === startR ? startC : 0,
+            y: r,
+            w: (r === endR ? endC : 6) - (r === startR ? startC : 0) + 1,
+            has_prev: r !== startR,
+            has_next: r !== endR,
+          });
+        }
+
+        // Convert rects to pixels
+        for (const r of rects) {
+          r.x = r.x * unitX;
+          r.y = r.y * unitY + props.headerSize;
+          r.w = r.w * unitX;
+        }
+        setEventRects(rects);
+
+				// Set temp event
+				setNewEvent({
+					id: '__temp__',
+					title: 'New Event',
+					start: moment(),
+					end: moment(),
+					time_created: '',
+				});
+
+				// Update grid pos
+        gridPos.current = { x: startC, y: startR, duration };
+			}
+		}) as MouseEventHandler<HTMLDivElement>;
+	}, [rowIdx, eventRects]);
+
+	// Called on mouse up event
+	useEffect(() => {
+		function onMouseUp() {
+			// Callback
+			if (rowIdx !== null && gridPos.current) {
+				props.onCreate?.({ x: gridPos.current.x, y: gridPos.current.y }, gridPos.current.duration);
+			}
+
+			setNewEvent(null);
+			setEventRects(null);
+			setRowIdx(null);
+			setStartX(null);
+			gridPos.current = null;
+		}
+
+		if (rowIdx !== null) {
+			window.addEventListener('mouseup', onMouseUp);
+
+			return () => {
+				window.removeEventListener('mouseup', onMouseUp);
+			};
+		}
+	}, [rowIdx]);
+
+
+	return {
+		onDragStart,
+		onMouseMove,
+		event: newEvent,
+		rects: eventRects,
+	};
+}
+
+
+////////////////////////////////////////////////////////////
 type WeekRowProps = {
   /** A date within the month that should be displayed */
   time: Moment;
@@ -229,10 +375,18 @@ type WeekRowProps = {
   draggedId?: string | null;
   /** Called when an event is start drag */
   onDragStart: (event: MomentCalendarEvent, position: { x: number; y: number }, offset: { x: number; y: number }, multiday: boolean) => void;
+  /** Called when a column drag start */
+  onDragCreateStart?: (offsetX: number) => void;
+  /** Called on click create */
+  onClickCreate?: (gridX: number) => void;
 };
 
 ////////////////////////////////////////////////////////////
 function WeekRow(props: WeekRowProps) {
+  // Used to track if row is being clicked
+  const clickedRef = useRef<boolean>(false);
+
+
   // Prefilter events that are in this week
   const events = useMemo(() => {
     // End of week
@@ -371,10 +525,37 @@ function WeekRow(props: WeekRowProps) {
 
 
   return (
-    <Flex w='100%' sx={{
-      flex: '1 1 0px',
-      position: 'relative',
-    }}>
+    <Flex
+      w='100%'
+      sx={{
+        flex: '1 1 0px',
+        position: 'relative',
+      }}
+
+      draggable
+      onDragStart={(ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const rect = ev.currentTarget.getBoundingClientRect();
+        props.onDragCreateStart?.(ev.pageX - rect.x);
+
+        // Reset
+        clickedRef.current = false;
+      }}
+      onMouseDown={() => { clickedRef.current = true; }}
+      onMouseUp={(ev) => {
+        if (!clickedRef.current) return;
+
+        const rect = ev.currentTarget.getBoundingClientRect();
+        const unitX = rect.width / 7;
+
+        props.onClickCreate?.(Math.floor((ev.pageX - rect.x) / unitX));
+
+        // Reset
+        clickedRef.current = false;
+      }}
+    >
       {range(7).map((day_i) => {
         const date = moment(props.time).add(day_i, 'day');
         const inRange = date.isBetween(...props.monthRange) || date.isSame(props.monthRange[0]);
@@ -497,7 +678,10 @@ export type MonthViewProps = {
   /** For jumping to day view */
   setDay: (day: Moment) => void;
 
-  onChange?: (id: string, event: Partial<CalendarEvent>) => void;
+  /** Called when a new event should be created */
+  onNewEventRequest?: (start: Moment, initial?: { duration?: Moment, all_day?: boolean }) => void;
+  /** Called when an event changes */
+  onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -530,11 +714,11 @@ export default function MonthView(props: MonthViewProps) {
     const newEnd = moment(newStart).add(duration);
 
     // User callback
-    props.onChange?.(e.id, {
+    props.onEventChange?.(e.id, {
       start: newStart.toISOString(),
       end: newEnd.toISOString(),
     });
-  }, [start, props.onChange]);
+  }, [start, props.onEventChange]);
 
   // Drag drop for day events
   const dragDropDay = useDraggableGridEvents({
@@ -556,6 +740,23 @@ export default function MonthView(props: MonthViewProps) {
     cols: 7,
     onDrop: onEventDrop,
   });
+
+  // Drag create events
+  const dragCreate = useDragCreate({
+    containerRef,
+    headerSize: props.style.monthHeaderHeight,
+    rows: numWeeks,
+    cols: 7,
+    onCreate: (startIdx, duration) => {
+      props.onNewEventRequest?.(
+        moment(start).add(startIdx.y, 'weeks').add(startIdx.x, 'days'),
+        { duration: moment({ days: duration }) }
+      );
+    },
+  });
+
+  const newEventObj = dragCreate.event || dragDropMulti.event;
+  const newEventRects = dragCreate.rects || dragDropMulti.rects;
 
 
   // Prefilter events that are in this month
@@ -580,6 +781,7 @@ export default function MonthView(props: MonthViewProps) {
       onMouseMove={(ev) => {
         dragDropDay.onMouseMove?.(ev);
         dragDropMulti.onMouseMove?.(ev);
+        dragCreate.onMouseMove?.(ev);
       }}
     >
       <Flex w='100%' sx={{ height: props.style.monthHeaderHeight }}>
@@ -610,6 +812,7 @@ export default function MonthView(props: MonthViewProps) {
 
       {range(numWeeks).map((week_i) => (
         <WeekRow
+          key={week_i}
           time={moment(start).add(week_i, 'week')}
           monthRange={monthRange}
           events={events}
@@ -624,11 +827,20 @@ export default function MonthView(props: MonthViewProps) {
             else
               dragDropMulti.onDragStart(ev, position, offset);
           }}
+          onDragCreateStart={(offsetX) => {
+            dragCreate.onDragStart(week_i, offsetX)
+          }}
+          onClickCreate={(gridX) => {
+            props.onNewEventRequest?.(
+              moment(start).add(week_i, 'weeks').add(gridX, 'days'),
+              { all_day: true }
+            );
+          }}
         />
       ))}
 
 
-      {dragDropMulti.event && dragDropMulti.rects?.map((rect) => (
+      {newEventObj && newEventRects?.map((rect) => (
         <Box
           sx={(theme) => ({
             position: 'absolute',
@@ -645,8 +857,8 @@ export default function MonthView(props: MonthViewProps) {
             padding: '0.125rem 0.4rem',
             paddingLeft: '0.75rem',
             background: rect.has_prev ?
-              `color-mix(in srgb, ${dragDropMulti.event?.color || props.style.colors.event} 20%, ${theme.colors.dark[7]})` :
-              `linear-gradient(to right, ${dragDropMulti.event?.color || props.style.colors.event} 0.25rem, color-mix(in srgb, ${dragDropMulti.event?.color || props.style.colors.event} 20%, ${theme.colors.dark[7]}) 0)`,
+              `color-mix(in srgb, ${newEventObj.color || props.style.colors.event} 20%, ${theme.colors.dark[7]})` :
+              `linear-gradient(to right, ${newEventObj.color || props.style.colors.event} 0.25rem, color-mix(in srgb, ${newEventObj.color || props.style.colors.event} 20%, ${theme.colors.dark[7]}) 0)`,
             fontSize: theme.fontSizes.sm,
             borderTopLeftRadius: rect.has_prev ? 0 : theme.radius.sm,
             borderBottomLeftRadius: rect.has_prev ? 0 : theme.radius.sm,
@@ -654,7 +866,7 @@ export default function MonthView(props: MonthViewProps) {
             borderBottomRightRadius: rect.has_next ? 0 : theme.radius.sm,
           })}
         >
-          {dragDropMulti.event?.title}
+          {newEventObj.title}
         </Box>
       ))}
 

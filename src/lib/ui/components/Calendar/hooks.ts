@@ -1,4 +1,4 @@
-import { MouseEventHandler, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DragEventHandler, MouseEventHandler, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
@@ -12,7 +12,7 @@ export type UseDraggableEventsProps = {
 	timeGutter: number;
 	/** Header size (px) */
 	headerSize?: number;
-	/** Number of rows in grid (default 4) */
+	/** Number of rows in grid */
 	rows: number;
 	/** Number of columns to include in grid (default 7) */
 	cols?: number;
@@ -128,5 +128,136 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
 		event: draggedEvent,
 		rect: eventRect,
 		gridPos: gridPos.current,
+	};
+}
+
+
+////////////////////////////////////////////////////////////
+export type UseDragCreateProps = {
+	/** Used to calculate grid */
+	containerRef: RefObject<HTMLDivElement>;
+	/** Size of time gutter (px) */
+	timeGutter: number;
+	/** Number of rows in grid (including subdivisions) */
+	rows: number;
+	/** Number of cols in grid */
+	cols: number;
+	/** Number of hour cell subdivisions. Assigning a value to this will force event height to be event duration */
+	subdivisions?: number;
+
+	/** Called when mouse let go */
+	onCreate?: (start: { x: number; y: number }, duration: number) => void;
+};
+
+////////////////////////////////////////////////////////////
+export function useDragCreate(props: UseDragCreateProps) {
+	const [colIdx, setColIdx] = useState<number | null>(null);
+	// Starting y pos in grid coords
+	const [startY, setStartY] = useState<number | null>(null);
+	const [newEvent, setNewEvent] = useState<MomentCalendarEvent | null>(null);
+	// Dragged position
+	const [eventRect, setEventRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+	
+	// Tracks current dragged event's grid position
+	const gridPos = useRef<{ x: number; y: number; duration: number } | null>(null);
+
+
+	// Called when drag starts in column
+	const onDragStart = useCallback((colIdx: number, offsetY: number) => {
+		// Snap start y to grid
+		let gridY = 0;
+
+		const container = props.containerRef.current;
+		if (container) {
+			const unitY = container.scrollHeight / props.rows;
+			gridY = Math.max(0, Math.min(Math.round(offsetY / unitY), props.rows - 1));
+		}
+
+		setColIdx(colIdx);
+		setStartY(gridY);
+	}, []);
+
+	// Called on mouse move (only when col being dragged)
+	const onMouseMove = useMemo(() => {
+		const container = props.containerRef.current;
+		if (colIdx === null || !container || startY === null || colIdx === null) return undefined;
+
+		const rows = props.rows || 24 * 4;
+		const cols = props.cols || 7;
+		const subdivs = props.subdivisions || 1;
+
+		return ((e) => {
+			// Calculate position relative to scroll area
+			const rect = container.getBoundingClientRect();
+			const top = e.clientY - rect.y + container.scrollTop;
+
+			// Snap to grid
+			const unitY = container.scrollHeight / rows;
+			const gridY = Math.max(0, Math.min(Math.round(top / unitY), rows - 1));
+
+			const start = Math.min(startY, gridY);
+			const end = Math.max(startY, gridY, start + 1);
+			const duration = (end - start) / subdivs;
+
+			if (!eventRect || gridPos.current?.duration !== duration) {
+				const newStart = moment({ h: start / subdivs, m: 60 * (start % subdivs) / subdivs });
+				const newEnd = moment(newStart).add(duration, 'hours');
+
+				const colWidth = (rect.width - props.timeGutter) / cols;
+
+				// Set event rect
+				setEventRect({
+					x: colIdx * colWidth + props.timeGutter,
+					y: start * unitY,
+					w: colWidth,
+					h: duration * subdivs * unitY,
+				});
+
+				// Set temp event
+				setNewEvent({
+					id: '__temp__',
+					title: 'New Event',
+					start: newStart,
+					end: newEnd,
+					time_created: '',
+				});
+
+				// Update grid pos
+				gridPos.current = { x: colIdx, y: start, duration };
+			}
+		}) as MouseEventHandler<HTMLDivElement>;
+	}, [colIdx, eventRect]);
+
+	// Called on mouse up event
+	useEffect(() => {
+		function onMouseUp() {
+			// Callback
+			if (colIdx !== null && gridPos.current) {
+				const subdivs = props.subdivisions || 1;
+				props.onCreate?.({ x: gridPos.current.x, y: gridPos.current.y / subdivs }, gridPos.current.duration);
+			}
+
+			setNewEvent(null);
+			setEventRect(null);
+			setColIdx(null);
+			setStartY(null);
+			gridPos.current = null;
+		}
+
+		if (colIdx !== null) {
+			window.addEventListener('mouseup', onMouseUp);
+
+			return () => {
+				window.removeEventListener('mouseup', onMouseUp);
+			};
+		}
+	}, [colIdx]);
+
+
+	return {
+		onDragStart,
+		onMouseMove,
+		event: newEvent,
+		rect: eventRect,
 	};
 }

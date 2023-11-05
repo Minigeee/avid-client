@@ -16,7 +16,7 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { useDraggableGridEvents } from './hooks';
+import { useDragCreate, useDraggableGridEvents } from './hooks';
 import { CalendarStyle, MomentCalendarEvent } from './types';
 
 import moment, { Moment } from 'moment';
@@ -147,7 +147,10 @@ export type WeekViewProps = {
   /** For jumping to day view */
   setDay: (day: Moment) => void;
 
-  onChange?: (id: string, event: Partial<CalendarEvent>) => void;
+  /** Called when a new event should be created */
+  onNewEventRequest?: (start: Moment, initial?: { duration?: Moment, all_day?: boolean }) => void;
+  /** Called when an event changes */
+  onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -175,11 +178,11 @@ export default function WeekView(props: WeekViewProps) {
     const end = moment(start).add(duration);
 
     // User callback
-    props.onChange?.(e.id, {
+    props.onEventChange?.(e.id, {
       start: start.toISOString(),
       end: end.toISOString(),
     });
-  }, [props.time, props.onChange]);
+  }, [props.time, props.onEventChange]);
 
   // Drag drop for day events
   const dragDropDay = useDraggableGridEvents({
@@ -190,8 +193,33 @@ export default function WeekView(props: WeekViewProps) {
     onDrop: onEventDrop,
   });
 
+  // Drag drop for multiday events
+  const dragDropMultiday = useDraggableMultidayWeek({
+    start,
+    containerRef: multidayViewRef,
+    timeGutter: props.style.timeGutter,
+    onDrop: onEventDrop,
+  });
+
+  // Drag create events
+  const dragCreate = useDragCreate({
+    containerRef: scrollAreaRef,
+    timeGutter: props.style.timeGutter,
+    rows: 24 * 4,
+    cols: 7,
+    subdivisions: 4,
+    onCreate: (startIdx, duration) => {
+      props.onNewEventRequest?.(
+        moment(start).add(startIdx.x, 'days').add(startIdx.y, 'hours'),
+        { duration: moment({ hours: duration }) }
+      );
+    },
+  });
+
   // Update dragged event times
   const draggedEventTimes = useMemo(() => {
+    if (dragCreate.event) return dragCreate.event;
+
     const { event, gridPos } = dragDropDay;
     if (!event || !gridPos)
       return { start: moment(), end: moment() };
@@ -201,15 +229,10 @@ export default function WeekView(props: WeekViewProps) {
     const end = moment(start).add(duration);
 
     return { start, end };
-  }, [dragDropDay.gridPos?.x, dragDropDay.gridPos?.y]);
+  }, [dragDropDay.gridPos?.x, dragDropDay.gridPos?.y, dragCreate.event?.start, dragCreate.event?.end]);
 
-  // Drag drop for multiday events
-  const dragDropMultiday = useDraggableMultidayWeek({
-    start,
-    containerRef: multidayViewRef,
-    timeGutter: props.style.timeGutter,
-    onDrop: onEventDrop,
-  });
+  const newEventObj = dragCreate.event || dragDropDay.event;
+  const newEventRect = dragCreate.rect || dragDropDay.rect;
 
 
   // Prefilter events that are in this week
@@ -316,6 +339,8 @@ export default function WeekView(props: WeekViewProps) {
       top: scrollAreaRef.current.scrollHeight / 24 * moment().hours() - scrollAreaRef.current.clientHeight / 2,
     });
   }, [scrollAreaRef]);
+
+  // WIP : Add click creatable events -> UI rearrange -> event pop up
 
 
   return (
@@ -448,6 +473,7 @@ export default function WeekView(props: WeekViewProps) {
             dragDropDay.onMouseMove?.(ev);
             // Allows mouse move events to be handled in this view too
             dragDropMultiday.onMouseMove?.(ev);
+            dragCreate.onMouseMove?.(ev);
           }}
         >
           <Stack align='flex-end' sx={(theme) => ({
@@ -471,21 +497,25 @@ export default function WeekView(props: WeekViewProps) {
 
               draggedId={dragDropDay.event?.id}
               onDragStart={dragDropDay.onDragStart}
+              onDragCreateStart={(offsetY) => dragCreate.onDragStart(i, offsetY)}
+              onClickCreate={(gridY) => {
+                props.onNewEventRequest?.(
+                  moment(start).add(i, 'days').add(gridY, 'hours')
+                );
+              }}
             />
           ))}
 
-          {dragDropDay.event && dragDropDay.rect && (
+          {newEventObj && newEventRect && (
             <Box
               sx={(theme) => {
-                assert(dragDropDay.rect);
-                
                 return {
                   position: 'absolute',
                   overflow: 'hidden',
-                  width: dragDropDay.rect.w * 0.95,
-                  height: dragDropDay.rect.h - 4,
-                  top: dragDropDay.rect.y,
-                  left: dragDropDay.rect.x,
+                  width: newEventRect.w * 0.95,
+                  height: newEventRect.h,
+                  top: newEventRect.y,
+                  left: newEventRect.x,
                   boxShadow: `0px 0px 16px #00000030`,
                   cursor: 'grab',
 
@@ -493,21 +523,21 @@ export default function WeekView(props: WeekViewProps) {
                   paddingLeft: '0.75rem',
                   marginBottom: '0.25rem',
                   marginLeft: '0.25rem',
-                  background: `linear-gradient(to right, ${dragDropDay.event?.color || theme.colors.gray[6]} 0.25rem, color-mix(in srgb, ${dragDropDay.event?.color || theme.colors.gray[6]} 20%, ${theme.colors.dark[7]}) 0)`,
+                  background: `linear-gradient(to right, ${newEventObj.color || theme.colors.gray[6]} 0.25rem, color-mix(in srgb, ${newEventObj.color || theme.colors.gray[6]} 20%, ${theme.colors.dark[7]}) 0)`,
                   fontSize: theme.fontSizes.sm,
                   borderRadius: theme.radius.sm,
                 };
               }}
             >
               <Text color='dimmed' weight={600} size={11}>
-                {draggedEventTimes.start.format('LT')} - {draggedEventTimes.end.format('LT')}
+                {draggedEventTimes.start.format('LT')} - {draggedEventTimes.end?.format('LT')}
               </Text>
               <Text weight={600} maw='100%' sx={{
                 display: 'block',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}>
-                {dragDropDay.event.title}
+                {newEventObj.title}
               </Text>
             </Box>
           )}
