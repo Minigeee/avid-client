@@ -34,6 +34,8 @@ export type Domain = {
 	icon?: string | null;
 	/** The url of the domain banner picture */
 	banner?: string | null;
+	/** A short message that is shown in the app drawer domains list */
+	quote?: string | null;
 	/** Time the domain was created */
 	time_created: Date;
 

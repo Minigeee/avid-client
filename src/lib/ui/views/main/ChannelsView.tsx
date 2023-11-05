@@ -541,6 +541,7 @@ export default function ChannelsView(props: ChannelsViewProps) {
               ref={provided.innerRef}
               spacing={0}
               pt={8}
+              pl={4}
               {...provided.droppableProps}
             >
               {props.domain.groups.map((group, group_idx) => (
