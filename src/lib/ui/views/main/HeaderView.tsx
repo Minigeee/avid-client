@@ -87,9 +87,9 @@ export default function HeaderView(props: HeaderViewProps) {
       zIndex: 3,
     })}>
       <Group sx={(theme) => ({
-        width: '16rem',
+        width: '18rem',
         height: '100%',
-        paddingLeft: '0.8rem',
+        paddingLeft: '1.0rem',
         paddingRight: '0.3rem',
       })}>
         <Title order={5} sx={{ flexGrow: 1 }}>

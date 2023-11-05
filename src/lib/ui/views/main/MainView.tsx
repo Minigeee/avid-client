@@ -63,7 +63,7 @@ export default function MainView() {
       <Flex w='100%' h={`calc(100% - ${HEADER_HEIGHT})`}>
         <Box sx={(theme) => ({
           flexShrink: 0,
-          width: '16rem',
+          width: '18rem',
           height: '100%',
           backgroundColor: theme.colors.dark[6],
         })}>

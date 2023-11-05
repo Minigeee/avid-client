@@ -10,7 +10,7 @@ import { ProfileWrapper } from '@/lib/hooks';
 
 ////////////////////////////////////////////////////////////
 type ProfileAvatarProps = {
-  profile: ProfileWrapper;
+  profile: ProfileWrapper<false>;
 
   size: number;
   color?: string;
@@ -21,6 +21,8 @@ type ProfileAvatarProps = {
 export default function ProfileAvatar({ profile, ...props }: ProfileAvatarProps) {
   // Avatar content
   const content = useMemo<string | JSX.Element>(() => {
+    if (!profile._exists) return '';
+
     if (profile.profile_picture)
       return (
         <Image
@@ -34,7 +36,7 @@ export default function ProfileAvatar({ profile, ...props }: ProfileAvatarProps)
       return profile.username.split(/[\s_]+/).map(x => x.charAt(0)).join('').toUpperCase();
 
     return '';
-  }, [profile.profile_picture, profile.username]);
+  }, [profile._exists, profile.profile_picture, profile.username]);
 
   return (
     <Avatar
