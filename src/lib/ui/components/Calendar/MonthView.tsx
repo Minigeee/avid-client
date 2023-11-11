@@ -679,7 +679,7 @@ export type MonthViewProps = {
   setDay: (day: Moment) => void;
 
   /** Called when a new event should be created */
-  onNewEventRequest?: (start: Moment, initial?: { duration?: Moment, all_day?: boolean }) => void;
+  onNewEventRequest?: (start: Moment, initial?: { duration?: number, all_day?: boolean }) => void;
   /** Called when an event changes */
   onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
@@ -750,7 +750,7 @@ export default function MonthView(props: MonthViewProps) {
     onCreate: (startIdx, duration) => {
       props.onNewEventRequest?.(
         moment(start).add(startIdx.y, 'weeks').add(startIdx.x, 'days'),
-        { duration: moment({ days: duration }) }
+        { duration: 24 * duration - 1, all_day: true }
       );
     },
   });

@@ -34,7 +34,7 @@ export type DayViewProps = {
   style: CalendarStyle;
   
   /** Called when a new event should be created */
-  onNewEventRequest?: (start: Moment, initial?: { duration?: Moment, all_day?: boolean }) => void;
+  onNewEventRequest?: (start: Moment, initial?: { duration?: number, all_day?: boolean }) => void;
   /** Called when an event changes */
   onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
@@ -82,7 +82,7 @@ export default function DayView(props: DayViewProps) {
     onCreate: (startIdx, duration) => {
       props.onNewEventRequest?.(
         moment(start).add(startIdx.y, 'hours'),
-        { duration: moment({ hours: duration }) }
+        { duration }
       );
     },
   });

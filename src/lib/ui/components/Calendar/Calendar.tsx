@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
@@ -16,6 +16,7 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 
+import { openCreateCalendarEvent } from '@/lib/ui/modals';
 import DayView from './DayView';
 import MonthView from './MonthView';
 import WeekView from './WeekView';
@@ -26,6 +27,7 @@ import { CalendarStyle } from './types';
 import moment, { Moment } from 'moment';
 import { merge, range } from 'lodash';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { DomainWrapper } from '@/lib/hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -36,6 +38,8 @@ export type CalendarProps = {
   /** List of events */
   events: CalendarEvent[];
 
+  /** Domain the calendar is part of, used for context */
+  domain?: DomainWrapper;
   /** Optional calendar style */
   styles?: DeepPartial<CalendarStyle>;
 };
@@ -80,6 +84,21 @@ export default function Calendar(props: CalendarProps) {
 
     return '';
   }, [time, view]);
+
+
+  // Create event callback
+  const onNewEventRequest = useCallback((start: Moment, initial?: { duration?: number, all_day?: boolean }) => {
+    openCreateCalendarEvent({
+      domain: props.domain,
+      start: start.toDate(),
+      end: moment(start).add(initial?.duration || 1, 'hours').toDate(),
+      all_day: initial?.all_day,
+
+      onCreate: async (event) => {
+        console.log(event)
+      },
+    });
+  }, []);
 
 
   return (
@@ -170,6 +189,7 @@ export default function Calendar(props: CalendarProps) {
             setTime(day);
             setView('day');
           }}
+          onNewEventRequest={onNewEventRequest}
         />
       )}
 
@@ -183,6 +203,7 @@ export default function Calendar(props: CalendarProps) {
             setTime(day);
             setView('day');
           }}
+          onNewEventRequest={onNewEventRequest}
         />
       )}
 
@@ -191,6 +212,8 @@ export default function Calendar(props: CalendarProps) {
           time={time}
           events={props.events}
           style={styles}
+          
+          onNewEventRequest={onNewEventRequest}
         />
       )}
     </Flex>

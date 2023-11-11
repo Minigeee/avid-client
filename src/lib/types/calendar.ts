@@ -1,10 +1,11 @@
-import { Calendar } from 'react-big-calendar';
 
 export type CalendarEvent = {
 	/** The id of the event */
 	id: string;
 	/** The title of the event */
     title: string;
+	/** Optional event description */
+	description?: string;
 	/** The color of the event */
 	color?: string;
 	/** The start time of the event */

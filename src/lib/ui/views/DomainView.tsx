@@ -47,6 +47,7 @@ function DomainButton(props: DomainButtonProps) {
         padding: '0.5rem 0.75rem',
         backgroundColor: theme.colors.dark[props.active ? 6 : 7],
         borderRadius: theme.radius.md,
+        transition: 'background-color 0.08s',
         '&:hover': {
           backgroundColor: theme.colors.dark[6],
         },
@@ -56,7 +57,7 @@ function DomainButton(props: DomainButtonProps) {
       <Group>
         <DomainAvatar domain={props.domain} size={42} />
         <Box>
-          <Text size='md'>{props.domain.name}</Text>
+          <Text size='md' weight={props.active ? 500 : 400}>{props.domain.name}</Text>
           {props.domain.quote && <Text size='xs' color='dimmed'>{props.domain.quote}</Text>}
         </Box>
       </Group>
@@ -80,6 +81,7 @@ function PersonalButton(props: PersonalButtonProps) {
       sx={(theme) => ({
         padding: '0.75rem',
         borderRadius: theme.radius.md,
+        transition: 'background-color 0.08s',
         '&:hover': {
           backgroundColor: theme.colors.dark[6],
         },
@@ -144,7 +146,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           <div style={{ flexGrow: 1 }} />
           <Menu position='bottom-end'>
             <Menu.Target>
-              <ActionIcon>
+              <ActionIcon size='lg'>
                 <IconChevronDown />
               </ActionIcon>
             </Menu.Target>
@@ -282,7 +284,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
         <ActionIcon
           size='lg'
           sx={(theme) => ({
-            marginRight: '0.75rem',
+            marginRight: '1.0rem',
             color: theme.colors.dark[1],
             '&:hover': {
               backgroundColor: theme.colors.dark[6],
@@ -310,6 +312,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
           <Menu.Target>
             <ActionIcon size='lg' sx={(theme) => ({
               marginLeft: '0.25rem',
+              marginTop: 1,
               color: theme.colors.dark[1],
               '&:hover': {
                 backgroundColor: theme.colors.dark[6],

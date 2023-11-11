@@ -148,7 +148,7 @@ export type WeekViewProps = {
   setDay: (day: Moment) => void;
 
   /** Called when a new event should be created */
-  onNewEventRequest?: (start: Moment, initial?: { duration?: Moment, all_day?: boolean }) => void;
+  onNewEventRequest?: (start: Moment, initial?: { duration?: number, all_day?: boolean }) => void;
   /** Called when an event changes */
   onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
@@ -211,7 +211,7 @@ export default function WeekView(props: WeekViewProps) {
     onCreate: (startIdx, duration) => {
       props.onNewEventRequest?.(
         moment(start).add(startIdx.x, 'days').add(startIdx.y, 'hours'),
-        { duration: moment({ hours: duration }) }
+        { duration }
       );
     },
   });
@@ -484,7 +484,7 @@ export default function WeekView(props: WeekViewProps) {
           })}>
             {range(23).map((i) => (
               <Text size='xs' weight={600} color='dimmed' sx={{ lineHeight: 1 }}>
-                {moment(start).add(i + 1, 'hour').format('LT')}
+                {moment({ hours: i + 1 }).format('LT')}
               </Text>
             ))}
           </Stack>
