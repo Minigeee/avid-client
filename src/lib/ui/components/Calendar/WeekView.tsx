@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { useElementSize } from '@mantine/hooks';
 
+import EventButton from './EventButton';
 import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
@@ -161,7 +162,7 @@ export default function WeekView(props: WeekViewProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   // Multiday view
   const multidayViewRef = useRef<HTMLDivElement>(null);
-  
+
   // The start of the week
   const start = useMemo(() => moment(props.time).startOf('week'), [props.time]);
 
@@ -271,7 +272,7 @@ export default function WeekView(props: WeekViewProps) {
     let lastEventEnding: Moment | null = null;
     // Max number of columns
     let maxNumColumns = 0;
-    
+
     // Checks if date ranges collide
     function collides(a: { start: Moment; end: Moment }, b: { start: Moment; end: Moment }) {
       return a.start.isBefore(b.end) && a.end.isAfter(b.start);
@@ -340,8 +341,6 @@ export default function WeekView(props: WeekViewProps) {
     });
   }, [scrollAreaRef]);
 
-  // WIP : Add click creatable events -> UI rearrange -> event pop up
-
 
   return (
     <Flex direction='column' h={0} w='100%' mt={8} sx={{ flexGrow: 1 }}>
@@ -381,10 +380,10 @@ export default function WeekView(props: WeekViewProps) {
         onMouseMove={dragDropMultiday.onMouseMove}
       >
         <Box sx={{
-            width: props.style.timeGutter,
-            borderBottom: `1px solid ${props.style.colors.cellBorder}`,
-            minHeight: '1.25rem',
-          }} />
+          width: props.style.timeGutter,
+          borderBottom: `1px solid ${props.style.colors.cellBorder}`,
+          minHeight: '1.25rem',
+        }} />
 
         {range(7).map((i) => (
           <Box sx={{
@@ -397,7 +396,10 @@ export default function WeekView(props: WeekViewProps) {
         ))}
 
         {allDayEvents.map((e) => (
-          <Box
+          <EventButton
+            event={e}
+            popoverPosition='bottom-start'
+
             sx={(theme) => ({
               position: 'absolute',
               display: 'block',
@@ -422,16 +424,16 @@ export default function WeekView(props: WeekViewProps) {
             draggable
             onDragStart={(ev) => {
               ev.preventDefault();
-  
+
               const rect = ev.currentTarget.getBoundingClientRect();
               const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
-  
+
               // console.log('drag', offset);
               dragDropMultiday.onDragStart(e, offset);
             }}
           >
             {e.title}
-          </Box>
+          </EventButton>
         ))}
 
         {dragDropMultiday.event && dragDropMultiday.rect && (

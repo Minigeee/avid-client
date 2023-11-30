@@ -35,27 +35,29 @@ export type CreateCalendarEventProps = {
   /** Domain used for context / description box */
   domain?: DomainWrapper;
 
-  /** Initial start date time */
-  start?: Date;
-  /** Initial end date time */
-  end?: Date;
-  /** Initial all day value */
-  all_day?: boolean;
+  /** The mode the modal should be opened with */
+  mode?: 'create' | 'edit';
+  /** Initial event details */
+  event?: Partial<CalendarEvent>;
 
   /** Called when event is created */
-  onCreate: (event: Omit<CalendarEvent, 'id' | 'time_created'>) => Promise<void>;
+  onSubmit: (event: Omit<CalendarEvent, 'id' | 'time_created' | 'channel'>, mode: 'create' | 'edit') => Promise<void>;
 }
 
 ////////////////////////////////////////////////////////////
 export default function CreateCalendarEvent({ context, id, innerProps: props }: ContextModalProps<CreateCalendarEventProps>) {
+  const mode = props.mode || 'create';
   const form = useForm({
     initialValues: {
-      title: '',
-      description: '',
-      start: props.start || new Date(),
-      end: props.end || (props.start || new Date()),
-      all_day: props.all_day || false,
-      color: PRESET_COLORS.at(-1),
+      title: props.event?.title || '',
+      description: props.event?.description || '',
+      start: props.event?.start ? new Date(props.event.start) : new Date(),
+      end: props.event?.end ? new Date(props.event.end) : (props.event?.start ? new Date(props.event.start) : new Date()),
+      all_day: props.event?.all_day || false,
+      color: props.event?.color || PRESET_COLORS.at(-1),
+    },
+    validate: {
+      end: (value, values) => value.getTime() > values.start.getTime() ? null : 'End date must be after start date',
     },
   });
 
@@ -102,14 +104,14 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
     try {
       // Callback
-      await props.onCreate({
+      await props.onSubmit({
         title: values.title,
         start: values.start.toISOString(),
         end: values.end.toISOString(),
         all_day: values.all_day,
         color: values.color,
         description: values.description || undefined,
-      });
+      }, mode);
 
       // Close modal
       context.closeModal(id);
@@ -120,7 +122,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
     finally {
       setLoading(false);
     }
-  }, [props.onCreate]);
+  }, [props.onSubmit]);
 
   return (
     <form onSubmit={form.onSubmit(onSubmit)}>
@@ -142,9 +144,8 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
               {`(${durationText})`}
             </Text>
           </Text>
-          <Group align='end' spacing='sm'>
+          <Group align='start' spacing='sm'>
             <DatePickerInput
-              popoverProps={{ withinPortal: true }}
               sx={{ minWidth: '12rem' }}
               value={form.values.start}
               onChange={(value) => {
@@ -155,7 +156,13 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
                 newValue.setMonth(value.getMonth());
                 newValue.setFullYear(value.getFullYear());
 
+                // Get duration to maintain
+                const s = moment(form.values.start);
+                const e = moment(form.values.end);
+                const dm = e.diff(s, 'minutes');
+
                 form.setFieldValue('start', newValue);
+                form.setFieldValue('end', moment(newValue).add(dm, 'minutes').toDate());
               }}
             />
 
@@ -181,7 +188,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
                     form.setFieldValue('end', moment(newValue).add(dm, 'minutes').toDate());
                   }}
                 />
-                <div style={{ marginBottom: '0.5rem', flexGrow: 0 }}>&ndash;</div>
+                <div style={{ marginTop: '0.5rem', flexGrow: 0 }}>&ndash;</div>
                 <TimeInput
                   ref={endTimeRef}
                   rightSection={pickerControls[1]}
@@ -201,11 +208,10 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
             {form.values.all_day && (
               <>
-                <div style={{ marginBottom: '0.5rem', flexGrow: 0 }}>&ndash;</div>
+                <div style={{ marginTop: '0.5rem', flexGrow: 0 }}>&ndash;</div>
                 <DatePickerInput
-                  popoverProps={{ withinPortal: true }}
                   sx={{ minWidth: '12rem' }}
-                  value={form.values.end}
+                  {...form.getInputProps('end')}
                   onChange={(value) => {
                     if (!value) return;
 
@@ -247,6 +253,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
           label='Color'
           swatches={PRESET_COLORS}
           swatchesPerRow={7}
+          dropdownZIndex={303}
           {...form.getInputProps('color')}
           sx={{ maxWidth: config.app.ui.med_input_width }}
         />
@@ -274,7 +281,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
             type='submit'
             loading={loading}
           >
-            Create
+            {mode === 'create' ? 'Create' : 'Save'}
           </Button>
         </Group>
       </Stack>

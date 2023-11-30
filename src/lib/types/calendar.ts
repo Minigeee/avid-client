@@ -1,7 +1,10 @@
 
+/** Type for a calendar event */
 export type CalendarEvent = {
 	/** The id of the event */
 	id: string;
+	/** The id of the channel this event belongs to */
+	channel: string;
 	/** The title of the event */
     title: string;
 	/** Optional event description */
@@ -16,4 +19,16 @@ export type CalendarEvent = {
     all_day?: boolean | undefined;
 	/** THe time the event was created */
 	time_created: string;
+};
+
+
+/** Calendar object */
+export type Calendar = {
+	/** Id of the calendar */
+	id: string;
+	/** THe time the calendar was created */
+	time_created: string;
+
+	/** A list of calendar event ids */
+	events: string[];
 };

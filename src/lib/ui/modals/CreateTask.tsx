@@ -838,6 +838,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
   });
 
   const [inEditMode, setInEditMode] = useState<Record<'description' | 'summary', boolean>>({ description: false, summary: false });
+  const [prevTitle, setPrevTitle] = useState<string>('');
   const [prevDesc, setPrevDesc] = useState<string>('');
 
   const {
@@ -1019,7 +1020,10 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                     >
                       <Title
                         order={3}
-                        onClick={editable ? (() => setInEditMode({ ...inEditMode, summary: true })) : undefined}
+                        onClick={editable ? (() => {
+                          setPrevTitle(form.values.summary.slice());
+                          setInEditMode({ ...inEditMode, summary: true });
+                        }) : undefined}
                       >
                         {form.values.summary}
                       </Title>
@@ -1127,6 +1131,11 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
                     if (e.key === 'Enter') {
                       onFieldChange({ summary: form.values.summary });
                       setInEditMode({ ...inEditMode, summary: false });
+                    }
+                    else if (e.key === 'Escape') {
+                      form.setFieldValue('summary', prevTitle);
+                      setInEditMode({ ...inEditMode, summary: false });
+                      e.stopPropagation();
                     }
                   }}
                 />

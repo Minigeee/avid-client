@@ -1,7 +1,18 @@
-import { DragEventHandler, MouseEventHandler, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DragEventHandler, MouseEventHandler, RefObject, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-import { MomentCalendarEvent } from './types';
+import { CalendarState, MomentCalendarEvent } from './types';
+
 import moment, { Moment } from 'moment';
+
+
+/** Calendar context */
+// @ts-ignore
+export const CalendarContext = createContext<CalendarState>();
+
+/** Get calendar context */
+export function useCalendarContext() {
+	return useContext(CalendarContext);
+}
 
 
 ////////////////////////////////////////////////////////////
@@ -216,6 +227,7 @@ export function useDragCreate(props: UseDragCreateProps) {
 				// Set temp event
 				setNewEvent({
 					id: '__temp__',
+					channel: '',
 					title: 'New Event',
 					start: newStart,
 					end: newEnd,

@@ -1,10 +1,12 @@
 import { memo, useMemo, useRef } from 'react';
 
-import { Box, Text } from '@mantine/core';
+import { Box, Text, UnstyledButton } from '@mantine/core';
 
 import { CalendarStyle, MomentCalendarEvent } from './types';
-import { range } from 'lodash';
+import EventButton from './EventButton';
 import { CalendarEvent } from '@/lib/types/calendar';
+
+import { range } from 'lodash';
 import moment, { Moment } from 'moment';
 
 
@@ -37,8 +39,8 @@ function TimeColumnImpl(props: TimeColumnProps) {
   const now = moment();
   const hours = now.hours() + now.minutes() / 60;
 
-  // Used to track if column is being clicked
-  const clickedRef = useRef<boolean>(false);
+  // Used to track if column drag state
+  const dragStateRef = useRef<'up' | 'down' | 'dragging'>('up');
 
   // Determines if indicator should be seen
   const showIndicator = useMemo(() => {
@@ -169,29 +171,34 @@ function TimeColumnImpl(props: TimeColumnProps) {
         flexGrow: 1,
       }}
 
-      draggable
-      onDragStart={(ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
+      onMouseDown={(ev) => {
+        // Only LMB
+        if (ev.button !== 0) return;
 
-        const rect = ev.currentTarget.getBoundingClientRect();
-        props.onDragCreateStart?.(ev.pageY - rect.y);
-
-        // Reset
-        clickedRef.current = false;
+        // Down
+        dragStateRef.current = 'down';
       }}
-
-      onMouseDown={() => { clickedRef.current = true; }}
       onMouseUp={(ev) => {
-        if (!clickedRef.current) return;
+        // Quit if not mouse down
+        if (dragStateRef.current !== 'down') return;
+
+        // Reset to up
+        dragStateRef.current = 'up';
 
         const rect = ev.currentTarget.getBoundingClientRect();
         const unitY = rect.height / 24;
 
         props.onClickCreate?.(Math.round((ev.pageY - rect.y) / unitY * 4) / 4);
+      }}
+      onMouseMove={(ev) => {
+        // Quit if not mouse down
+        if (dragStateRef.current !== 'down') return;
 
-        // Reset
-        clickedRef.current = false;
+        // Dragging
+        dragStateRef.current = 'dragging';
+
+        const rect = ev.currentTarget.getBoundingClientRect();
+        props.onDragCreateStart?.(ev.pageY - rect.y);
       }}
     >
       {range(24).map((i) => (
@@ -206,8 +213,12 @@ function TimeColumnImpl(props: TimeColumnProps) {
       ))}
 
       {events.map((e, i) => (
-        <Box
+        <EventButton
+          event={e}
+
           sx={(theme) => ({
+            display: 'flex',
+            flexDirection: 'column',
             position: 'absolute',
             overflow: 'hidden',
             width: (e.width * 95) + '%',
@@ -241,6 +252,8 @@ function TimeColumnImpl(props: TimeColumnProps) {
             // console.log('drag', offset);
             props.onDragStart?.(e, offset);
           }}
+
+          onMouseDown={(ev) => ev.stopPropagation()}
         >
           <Text color='dimmed' weight={600} size={11}>
             {e.start.format('LT')} - {e.end.format('LT')}
@@ -252,7 +265,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
           }}>
             {e.title}
           </Text>
-        </Box>
+        </EventButton>
       ))}
 
       {showIndicator && (

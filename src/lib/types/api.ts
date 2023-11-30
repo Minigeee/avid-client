@@ -1,6 +1,7 @@
 import { RemoteAppState } from './app_state';
 import { Attachment } from './attachment';
 import { Board, TaskCollection } from './board';
+import { CalendarEvent } from './calendar';
 import { Channel, ChannelData, ChannelGroup, ChannelOptions, ChannelTypes } from './channel';
 import { Label } from './common';
 import { Domain, ExpandedDomain } from './domain';
@@ -97,6 +98,37 @@ export type ApiSchema = {
 			update?: WithId<Partial<Label>>[];
 		},
 		return: { tags: WithId<Label>[]; _id_counter: number },
+	},
+
+
+	/** Calendar events */
+	'GET /calendar_events': {
+		query: {
+			channel: string;
+			from?: Date;
+			to?: Date;
+		},
+		return: CalendarEvent[];
+	},
+	
+	'POST /calendar_events': {
+		body: Omit<CalendarEvent, 'time_created' | 'id'>,
+		return: CalendarEvent;
+	},
+
+	'GET /calendar_events/:event_id': {
+		params: ['event_id'],
+		return: CalendarEvent | null;
+	},
+
+	'PATCH /calendar_events/:event_id': {
+		params: ['event_id'],
+		body: Partial<Omit<CalendarEvent, 'time_created' | 'channel' | 'id'>>,
+		return: CalendarEvent;
+	},
+
+	'DELETE /calendar_events/:event_id': {
+		params: ['event_id'],
 	},
 
 

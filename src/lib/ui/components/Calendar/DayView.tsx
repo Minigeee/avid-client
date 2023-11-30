@@ -11,6 +11,7 @@ import {
 } from '@mantine/core';
 import { useElementSize } from '@mantine/hooks';
 
+import EventButton from './EventButton';
 import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
@@ -52,7 +53,7 @@ export default function DayView(props: DayViewProps) {
   const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }) => {
     // Calculate new times
     const duration = e.end ? moment(e.end).diff(e.start) : moment({ h: 1 }).unix();
-    const start = moment(props.time).startOf('week').add(gridPos.x, 'days').add(gridPos.y, 'hours');
+    const start = moment(props.time).startOf('day').add(gridPos.y, 'hours');
     const end = moment(start).add(duration);
 
     // User callback
@@ -176,7 +177,10 @@ export default function DayView(props: DayViewProps) {
         }} />
 
         {allDayEvents.map((e, i) => (
-          <Box
+          <EventButton
+            event={e}
+            popoverPosition='bottom-start'
+
             sx={(theme) => ({
               position: 'absolute',
               display: 'block',
@@ -198,13 +202,14 @@ export default function DayView(props: DayViewProps) {
             })}
           >
             {e.title}
-          </Box>
+          </EventButton>
         ))}
       </Flex>
 
-      <ScrollArea viewportRef={scrollAreaRef} sx={{ flexGrow: 1 }}>
+      <ScrollArea viewportRef={scrollAreaRef} sx={{ flexGrow: 1 }} viewportProps={{ style: { maxWidth: '100%' } }}>
         <Flex
           w='100%'
+          maw='100%'
           sx={{ position: 'relative' }}
           onMouseMove={(ev)=> {
             dragDropDay.onMouseMove?.(ev);

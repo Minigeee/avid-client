@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { useElementSize } from '@mantine/hooks';
 
-import TimeColumn from './TimeColumn';
+import EventButton from './EventButton';
 
 import { CalendarEvent } from '@/lib/types';
 
@@ -309,6 +309,7 @@ export function useDragCreate(props: UseDragCreateProps) {
 				// Set temp event
 				setNewEvent({
 					id: '__temp__',
+          channel: '',
 					title: 'New Event',
 					start: moment(),
 					end: moment(),
@@ -383,8 +384,8 @@ type WeekRowProps = {
 
 ////////////////////////////////////////////////////////////
 function WeekRow(props: WeekRowProps) {
-  // Used to track if row is being clicked
-  const clickedRef = useRef<boolean>(false);
+  // Used to track if drag state
+  const dragStateRef = useRef<'up' | 'down' | 'dragging'>('up');
 
 
   // Prefilter events that are in this week
@@ -531,29 +532,35 @@ function WeekRow(props: WeekRowProps) {
         flex: '1 1 0px',
         position: 'relative',
       }}
-
-      draggable
-      onDragStart={(ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-
-        const rect = ev.currentTarget.getBoundingClientRect();
-        props.onDragCreateStart?.(ev.pageX - rect.x);
-
-        // Reset
-        clickedRef.current = false;
+      
+      onMouseDown={(ev) => {
+        // Only LMB
+        if (ev.button !== 0) return;
+        
+        // Down
+        dragStateRef.current = 'down';
       }}
-      onMouseDown={() => { clickedRef.current = true; }}
       onMouseUp={(ev) => {
-        if (!clickedRef.current) return;
+        // Quit if not mouse down
+        if (dragStateRef.current !== 'down') return;
 
+        // Reset to up
+        dragStateRef.current = 'up';
+        
         const rect = ev.currentTarget.getBoundingClientRect();
         const unitX = rect.width / 7;
 
         props.onClickCreate?.(Math.floor((ev.pageX - rect.x) / unitX));
+      }}
+      onMouseMove={(ev) => {
+        // Quit if not mouse down
+        if (dragStateRef.current !== 'down') return;
 
-        // Reset
-        clickedRef.current = false;
+        // Dragging
+        dragStateRef.current = 'dragging';
+
+        const rect = ev.currentTarget.getBoundingClientRect();
+        props.onDragCreateStart?.(ev.pageX - rect.x);
       }}
     >
       {range(7).map((day_i) => {
@@ -583,7 +590,9 @@ function WeekRow(props: WeekRowProps) {
 
             <Stack spacing={0} p='0 0.25rem' sx={{ position: 'relative', top: `${dayOffsets[date.day()] * 1.75}rem` }}>
               {dayEvents[date.day()].map((e) => (
-                <UnstyledButton
+                <EventButton
+                  event={e}
+
                   sx={(theme) => ({
                     padding: '0.0625rem 0.25rem',
                     borderRadius: theme.radius.sm,
@@ -605,6 +614,7 @@ function WeekRow(props: WeekRowProps) {
                     // console.log('drag', offset);
                     props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, false);
                   }}
+                  onMouseDown={(ev) => ev.stopPropagation()}
                 >
                   <Group spacing={6} noWrap maw='100%'>
                     <ColorSwatch color={e.color || props.style.colors.event} size={14} sx={{ flexShrink: 0 }} />
@@ -616,7 +626,7 @@ function WeekRow(props: WeekRowProps) {
                       textOverflow: 'ellipsis',
                     }}>{e.title}</Text>
                   </Group>
-                </UnstyledButton>
+                </EventButton>
               ))}
             </Stack>
           </Box>
@@ -624,7 +634,9 @@ function WeekRow(props: WeekRowProps) {
       })}
 
       {allDayEvents.map((e) => (
-        <Box
+        <EventButton
+          event={e}
+
           sx={(theme) => ({
             position: 'absolute',
             display: 'block',
@@ -657,9 +669,10 @@ function WeekRow(props: WeekRowProps) {
             // console.log('drag', offset);
             props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, true);
           }}
+          onMouseDown={(ev) => ev.stopPropagation()}
         >
           {e.title}
-        </Box>
+        </EventButton>
       ))}
     </Flex>
   );

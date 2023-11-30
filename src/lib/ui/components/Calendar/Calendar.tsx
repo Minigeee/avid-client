@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActionIcon,
@@ -23,11 +23,12 @@ import WeekView from './WeekView';
 
 import { CalendarEvent, DeepPartial } from '@/lib/types';
 
-import { CalendarStyle } from './types';
+import { CalendarStyle, OnDeleteEvent, OnEditEvent, OnNewEvent } from './types';
 import moment, { Moment } from 'moment';
 import { merge, range } from 'lodash';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { DomainWrapper } from '@/lib/hooks';
+import { CalendarContext } from './hooks';
 
 
 ////////////////////////////////////////////////////////////
@@ -42,6 +43,15 @@ export type CalendarProps = {
   domain?: DomainWrapper;
   /** Optional calendar style */
   styles?: DeepPartial<CalendarStyle>;
+
+  /** Called when a new event is created */
+  onNewEvent?: OnNewEvent;
+  /** Called when an event is edited */
+  onEditEvent?: OnEditEvent;
+  /** Called when an event is edited */
+  onDeleteEvent?: OnDeleteEvent;
+  /** Called when viewing date changes */
+  onDateChange?: (date: Moment) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -59,10 +69,31 @@ export default function Calendar(props: CalendarProps) {
     slotHeight: '4rem',
   } as CalendarStyle), []);
 
+  // Callback refs
+  const onNewEventRef = useRef(props.onNewEvent);
+  const onEditEventRef = useRef(props.onEditEvent);
+  const onDeleteEventRef = useRef(props.onDeleteEvent);
+
   // Time the calendar should display
-  const [time, setTime] = useState<Moment>(moment());
+  const [time, setTimeImpl] = useState<Moment>(moment());
   // Calendar view
   const [view, setView] = useState<CalendarView>('week');
+  // The id of the currently opened popup
+  const [popupId, setPopupId] = useState<string | null>(null);
+
+
+  // Update refs on function change
+  useEffect(() => {
+    onNewEventRef.current = props.onNewEvent;
+    onEditEventRef.current = props.onEditEvent;
+    onDeleteEventRef.current = props.onDeleteEvent;
+  }, [props.onNewEvent, props.onEditEvent, props.onDeleteEvent]);
+
+  // Set time wrapper func
+  const setTime = useCallback((value: Moment) => {
+    setTimeImpl(value);
+    props.onDateChange?.(value);
+  }, [setTimeImpl]);
 
   // Calendar title
   const title = useMemo(() => {
@@ -90,132 +121,152 @@ export default function Calendar(props: CalendarProps) {
   const onNewEventRequest = useCallback((start: Moment, initial?: { duration?: number, all_day?: boolean }) => {
     openCreateCalendarEvent({
       domain: props.domain,
-      start: start.toDate(),
-      end: moment(start).add(initial?.duration || 1, 'hours').toDate(),
-      all_day: initial?.all_day,
+      event: {
+        start: start.toISOString(),
+        end: moment(start).add(initial?.duration || 1, 'hours').toISOString(),
+        all_day: initial?.all_day,
+      },
 
-      onCreate: async (event) => {
-        console.log(event)
+      onSubmit: async (event) => {
+        await props.onNewEvent?.(event);
       },
     });
-  }, []);
+  }, [props.domain, props.onNewEvent]);
 
 
   return (
-    <Flex direction='column' w='100%' h='100%'>
-      <SimpleGrid pb={12} cols={3}>
-        <Group spacing={2}>
-          <Button
-            size='xs'
-            variant='default'
-            mr={6}
-            onClick={() => setTime(moment())}
-          >
-            Today
-          </Button>
-          <ActionIcon onClick={() => {
-            const newTime = moment(time);
-            if (view === 'month')
-              newTime.subtract(1, 'month');
-            else if (view === 'week')
-              newTime.subtract(1, 'week');
-            else if (view === 'day')
-              newTime.subtract(1, 'day');
+    <CalendarContext.Provider value={{
+      domain: props.domain,
+      popupId,
+      setPopupId,
+      onNewEvent: onNewEventRef,
+      onEditEvent: onEditEventRef,
+      onDeleteEvent: onDeleteEventRef,
+    }}>
+      <Flex direction='column' w='100%' h='100%'>
+        <SimpleGrid pb={12} cols={3}>
+          <Group spacing={2}>
+            <Button
+              size='xs'
+              variant='default'
+              mr={6}
+              onClick={() => setTime(moment())}
+            >
+              Today
+            </Button>
+            <ActionIcon onClick={() => {
+              const newTime = moment(time);
+              if (view === 'month')
+                newTime.subtract(1, 'month');
+              else if (view === 'week')
+                newTime.subtract(1, 'week');
+              else if (view === 'day')
+                newTime.subtract(1, 'day');
 
-            setTime(newTime);
-          }}>
-            <IconChevronLeft size={20} />
-          </ActionIcon>
-          <ActionIcon onClick={() => {
-            const newTime = moment(time);
-            if (view === 'month')
-              newTime.add(1, 'month');
-            else if (view === 'week')
-              newTime.add(1, 'week');
-            else if (view === 'day')
-              newTime.add(1, 'day');
+              setTime(newTime);
+            }}>
+              <IconChevronLeft size={20} />
+            </ActionIcon>
+            <ActionIcon onClick={() => {
+              const newTime = moment(time);
+              if (view === 'month')
+                newTime.add(1, 'month');
+              else if (view === 'week')
+                newTime.add(1, 'week');
+              else if (view === 'day')
+                newTime.add(1, 'day');
 
-            setTime(newTime);
-          }}>
-            <IconChevronRight size={20} />
-          </ActionIcon>
-        </Group>
+              setTime(newTime);
+            }}>
+              <IconChevronRight size={20} />
+            </ActionIcon>
+          </Group>
 
-        <Title order={3} align='center' sx={{ alignSelf: 'center' }}>
-          {title}
-        </Title>
+          <Title order={3} align='center' sx={{ alignSelf: 'center' }}>
+            {title}
+          </Title>
 
-        <Button.Group sx={{ justifySelf: 'flex-end' }}>
-          <Button
-            size='xs'
-            variant='default'
-            sx={(theme) => ({
-              backgroundColor: view === 'month' ? theme.colors.dark[5] : undefined,
-            })}
-            onClick={() => setView('month')}
-          >
-            Month
-          </Button>
-          <Button
-            size='xs'
-            variant='default'
-            sx={(theme) => ({
-              backgroundColor: view === 'week' ? theme.colors.dark[5] : undefined,
-            })}
-            onClick={() => setView('week')}
-          >
-            Week
-          </Button>
-          <Button
-            size='xs'
-            variant='default'
-            sx={(theme) => ({
-              backgroundColor: view === 'day' ? theme.colors.dark[5] : undefined,
-            })}
-            onClick={() => setView('day')}
-          >
-            Day
-          </Button>
-        </Button.Group>
-      </SimpleGrid>
+          <Button.Group sx={{ justifySelf: 'flex-end' }}>
+            <Button
+              size='xs'
+              variant='default'
+              sx={(theme) => ({
+                backgroundColor: view === 'month' ? theme.colors.dark[5] : undefined,
+              })}
+              onClick={() => setView('month')}
+            >
+              Month
+            </Button>
+            <Button
+              size='xs'
+              variant='default'
+              sx={(theme) => ({
+                backgroundColor: view === 'week' ? theme.colors.dark[5] : undefined,
+              })}
+              onClick={() => setView('week')}
+            >
+              Week
+            </Button>
+            <Button
+              size='xs'
+              variant='default'
+              sx={(theme) => ({
+                backgroundColor: view === 'day' ? theme.colors.dark[5] : undefined,
+              })}
+              onClick={() => setView('day')}
+            >
+              Day
+            </Button>
+          </Button.Group>
+        </SimpleGrid>
 
-      {view === 'month' && (
-        <MonthView
-          time={time}
-          events={props.events}
-          style={styles}
+        {view === 'month' && (
+          <MonthView
+            time={time}
+            events={props.events}
+            style={styles}
 
-          setDay={(day) => {
-            setTime(day);
-            setView('day');
-          }}
-          onNewEventRequest={onNewEventRequest}
-        />
-      )}
+            setDay={(day) => {
+              setTime(day);
+              setView('day');
+            }}
+            onNewEventRequest={onNewEventRequest}
+            onEventChange={props.onEditEvent}
+          />
+        )}
 
-      {view === 'week' && (
-        <WeekView
-          time={time}
-          events={props.events}
-          style={styles}
+        {view === 'week' && (
+          <WeekView
+            time={time}
+            events={props.events}
+            style={styles}
 
-          setDay={(day) => {
-            setTime(day);
-            setView('day');
-          }}
-          onNewEventRequest={onNewEventRequest}
-        />
-      )}
+            setDay={(day) => {
+              setTime(day);
+              setView('day');
+            }}
+            onNewEventRequest={onNewEventRequest}
+            onEventChange={props.onEditEvent}
+          />
+        )}
 
-      {view === 'day' && (
-        <DayView
-          time={time}
-          events={props.events}
-          style={styles}
-          
-          onNewEventRequest={onNewEventRequest}
-        />
-      )}
-    </Flex>
+        {view === 'day' && (
+          <DayView
+            time={time}
+            events={props.events}
+            style={styles}
+
+            onNewEventRequest={onNewEventRequest}
+            onEventChange={props.onEditEvent}
+          />
+        )}
+      </Flex>
+    </CalendarContext.Provider>
   );
 }
+
+
+export type {
+  OnEditEvent,
+  OnNewEvent,
+} from './types';

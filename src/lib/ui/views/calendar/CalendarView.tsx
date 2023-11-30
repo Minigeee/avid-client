@@ -1,4 +1,4 @@
-import { } from 'react';
+import { useCallback, useState } from 'react';
 
 import {
   ActionIcon,
@@ -6,10 +6,12 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 
-import Calendar from '@/lib/ui/components/Calendar/Calendar';
+import Calendar, { OnEditEvent, OnNewEvent } from '@/lib/ui/components/Calendar/Calendar';
 
 import { Channel } from '@/lib/types';
-import { DomainWrapper } from '@/lib/hooks';
+import { DomainWrapper, useCalendarEvents } from '@/lib/hooks';
+import moment, { Moment } from 'moment';
+import { OnDeleteEvent } from '../../components/Calendar/types';
 
 
 ////////////////////////////////////////////////////////////
@@ -20,56 +22,45 @@ export type CalendarViewProps = {
 
 ////////////////////////////////////////////////////////////
 export default function CalendarView(props: CalendarViewProps) {
-  const theme = useMantineTheme();
+  // Calendar events
+  const [currDate, setCurrDate] = useState<Moment>(moment());
+  const events = useCalendarEvents(props.channel.id, currDate);
+
+
+  // Called on event create
+  const onNewEvent = useCallback<OnNewEvent>(async (event) => {
+    if (!events._exists) return;
+
+    // New event
+    await events._mutators.addEvent({ ...event, channel: props.channel.id });
+  }, [events, props.channel.id]);
+
+  // Called on event edit
+  const onEditEvent = useCallback<OnEditEvent>(async (event_id, event) => {
+    if (!events._exists) return;
+
+    // Update event
+    events._mutators.updateEvent(event_id, event, true);
+  }, [events]);
+
+  // Called on event delete
+  const onDeleteEvent = useCallback<OnDeleteEvent>(async (event_id,) => {
+    if (!events._exists) return;
+
+    // Delete event
+    events._mutators.removeEvent(event_id);
+  }, [events]);
 
   return (
     <Box h='100%' p='1.25rem'>
       <Calendar
         domain={props.domain}
-        events={[
-          {
-            id: 'a',
-            title: 'Test Event',
-            start: new Date(2023, 7, 28, 18).toISOString(),
-            end: new Date(2023, 7, 28, 20).toISOString(),
-            time_created: new Date().toISOString(),
-          },
-          {
-            id: 'b',
-            title: 'Test Event 2',
-            start: new Date(2023, 7, 28, 19).toISOString(),
-            end: new Date(2023, 7, 28, 21).toISOString(),
-            time_created: new Date().toISOString(),
-          },
-          {
-            id: 'c',
-            title: 'Test Event 3',
-            start: new Date(2023, 7, 28, 20, 15).toISOString(),
-            end: new Date(2023, 7, 28, 22).toISOString(),
-            time_created: new Date().toISOString(),
-          },
-          {
-            id: 'd',
-            title: 'Test Event 4',
-            start: new Date(2023, 7, 23).toISOString(),
-            end: new Date(2023, 7, 24, 1).toISOString(),
-            time_created: new Date().toISOString(),
-          },
-          {
-            id: 'e',
-            title: 'Test Event 5',
-            start: new Date(2023, 7, 25).toISOString(),
-            end: new Date(2023, 7, 27, 1).toISOString(),
-            time_created: new Date().toISOString(),
-          },
-          {
-            id: 'f',
-            title: 'Test Event 6',
-            start: new Date(2023, 7, 24).toISOString(),
-            end: new Date(2023, 7, 25, 1).toISOString(),
-            time_created: new Date().toISOString(),
-          },
-        ]}
+        events={events.data || []}
+
+        onNewEvent={onNewEvent}
+        onEditEvent={onEditEvent}
+        onDeleteEvent={onDeleteEvent}
+        onDateChange={setCurrDate}
       />
     </Box>
   );

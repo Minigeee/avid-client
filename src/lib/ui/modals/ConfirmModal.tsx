@@ -65,9 +65,9 @@ function ConfirmModalImpl(props: ConfirmModalProps & { setProps: (props: Confirm
       {...props.modalProps}
       opened
       onClose={() => props.setProps(null)}
-      zIndex={201}
+      zIndex={301}
       onClick={(e) => e.stopPropagation()}
-      overlayProps={{ zIndex: 202 }}
+      overlayProps={{ zIndex: 302 }}
     >
       <Stack>
         {props.content}

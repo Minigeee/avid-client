@@ -41,9 +41,11 @@ export const modals = {
 /** Opens the modal to create channels */
 export const openCreateCalendarEvent = (props: CreateCalendarEventProps) => openContextModal({
 	modal: 'create-calendar-event',
-	title: 'New Calendar Event',
+	title: props.mode === 'edit' ? props.event?.title || 'Edit Calendar Event' : 'New Calendar Event',
 	innerProps: props,
 	size: 'lg',
+	zIndex: 302,
+	overlayProps: { zIndex: 301 },
 });
 
 /** Opens the modal to create channels */
