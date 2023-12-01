@@ -124,41 +124,46 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
             {event.title}
           </Title>
 
-          <ActionButton tooltip='Edit event' onClick={() => {
-            openCreateCalendarEvent({
-              domain: calendar.domain,
-              mode: 'edit',
-              event,
+          {calendar.editable && (
+            <>
+              <ActionButton tooltip='Edit event' onClick={() => {
+                openCreateCalendarEvent({
+                  domain: calendar.domain,
+                  mode: 'edit',
+                  event,
 
-              onSubmit: async (updated) => {
-                // Get event diff
-                const d = omitBy(diff(event, updated), isNil);
+                  onSubmit: async (updated) => {
+                    // Get event diff
+                    const d = omitBy(diff(event, updated), isNil);
+                    if (Object.keys(d).length === 0) return;
 
-                // Update callback
-                calendar.onEditEvent.current?.(baseEvent.id, d);
-              },
-            });
-          }}>
-            <IconPencil size={16} />
-          </ActionButton>
+                    // Update callback
+                    calendar.onEditEvent.current?.(baseEvent.id, d);
+                  },
+                });
+              }}>
+                <IconPencil size={16} />
+              </ActionButton>
 
-          <ActionButton tooltip='Delete event' onClick={() => {
-            openConfirmModal({
-              title: 'Delete Event',
-              content: (
-                <Text>
-                  Are you sure you want to delete <b>{event.title}</b>?
-                </Text>
-              ),
-              confirmLabel: 'Delete',
-              onConfirm: () => {
-                // Delete event
-                calendar.onDeleteEvent.current?.(baseEvent.id);
-              }
-            })
-          }}>
-            <IconTrash size={16} />
-          </ActionButton>
+              <ActionButton tooltip='Delete event' onClick={() => {
+                openConfirmModal({
+                  title: 'Delete Event',
+                  content: (
+                    <Text>
+                      Are you sure you want to delete <b>{event.title}</b>?
+                    </Text>
+                  ),
+                  confirmLabel: 'Delete',
+                  onConfirm: () => {
+                    // Delete event
+                    calendar.onDeleteEvent.current?.(baseEvent.id);
+                  }
+                });
+              }}>
+                <IconTrash size={16} />
+              </ActionButton>
+            </>
+          )}
 
           <CloseButton
             size='md'

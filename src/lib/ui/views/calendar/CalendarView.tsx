@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
@@ -6,12 +6,13 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 
-import Calendar, { OnEditEvent, OnNewEvent } from '@/lib/ui/components/Calendar/Calendar';
+import Calendar, { OnEditEvent, OnNewEvent, OnDeleteEvent } from '@/lib/ui/components/Calendar/Calendar';
 
 import { Channel } from '@/lib/types';
-import { DomainWrapper, useCalendarEvents } from '@/lib/hooks';
+import { DomainWrapper, hasPermission, useApp, useCalendarEvents } from '@/lib/hooks';
+import { socket } from '@/lib/utility/realtime';
+
 import moment, { Moment } from 'moment';
-import { OnDeleteEvent } from '../../components/Calendar/types';
 
 
 ////////////////////////////////////////////////////////////
@@ -22,10 +23,45 @@ export type CalendarViewProps = {
 
 ////////////////////////////////////////////////////////////
 export default function CalendarView(props: CalendarViewProps) {
+  const app = useApp();
+
   // Calendar events
   const [currDate, setCurrDate] = useState<Moment>(moment());
   const events = useCalendarEvents(props.channel.id, currDate);
 
+  // Indicates if new activity detected
+  const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
+
+
+  // Refresh on stale data
+  useEffect(() => {
+    if (!app.stale[props.channel.id]) return;
+
+    // Refresh data
+    if (events._exists)
+      events._refresh();
+
+    // Reset stale flag
+    app._mutators.setStale(props.channel.id, false);
+  }, []);
+
+  // Enable refresh on board activity
+  useEffect(() => {
+    function onActivity(channel_id: string) {
+      if (channel_id !== props.channel.id) return;
+      setRefreshEnabled(true);
+    }
+
+    socket().on('calendar:activity', onActivity);
+
+    return () => {
+      socket().off('calendar:activity', onActivity);
+    };
+  }, [props.channel.id]);
+
+
+  // Determines if user can manage calendar events
+  const canManageEvents = useMemo(() => hasPermission(props.domain, props.channel.id, 'can_manage_events'), [props.domain, props.channel.id]);
 
   // Called on event create
   const onNewEvent = useCallback<OnNewEvent>(async (event) => {
@@ -36,7 +72,7 @@ export default function CalendarView(props: CalendarViewProps) {
   }, [events, props.channel.id]);
 
   // Called on event edit
-  const onEditEvent = useCallback<OnEditEvent>(async (event_id, event) => {
+  const onEditEvent = useCallback<OnEditEvent>((event_id, event) => {
     if (!events._exists) return;
 
     // Update event
@@ -44,11 +80,21 @@ export default function CalendarView(props: CalendarViewProps) {
   }, [events]);
 
   // Called on event delete
-  const onDeleteEvent = useCallback<OnDeleteEvent>(async (event_id,) => {
+  const onDeleteEvent = useCallback<OnDeleteEvent>((event_id,) => {
     if (!events._exists) return;
 
     // Delete event
     events._mutators.removeEvent(event_id);
+  }, [events]);
+
+  // Called on calendar refresh button
+  const onRefresh = useCallback(() => {
+    if (!events._exists) return;
+    
+    // Refresh
+    events._refresh();
+    // Hide refresh button
+    setRefreshEnabled(false);
   }, [events]);
 
   return (
@@ -56,11 +102,15 @@ export default function CalendarView(props: CalendarViewProps) {
       <Calendar
         domain={props.domain}
         events={events.data || []}
+        editable={canManageEvents}
+
+        withRefresh={refreshEnabled}
 
         onNewEvent={onNewEvent}
         onEditEvent={onEditEvent}
         onDeleteEvent={onDeleteEvent}
         onDateChange={setCurrDate}
+        onRefresh={onRefresh}
       />
     </Box>
   );

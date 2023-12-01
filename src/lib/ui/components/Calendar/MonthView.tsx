@@ -365,6 +365,8 @@ type WeekRowProps = {
   /** List of events from the calendar */
   events: CalendarEvent[];
 
+  /** Are events editable */
+  editable: boolean;
   /** Calendar styles */
   style: CalendarStyle;
   /** For jumping to day view */
@@ -533,14 +535,14 @@ function WeekRow(props: WeekRowProps) {
         position: 'relative',
       }}
       
-      onMouseDown={(ev) => {
+      onMouseDown={props.editable ? (ev) => {
         // Only LMB
         if (ev.button !== 0) return;
         
         // Down
         dragStateRef.current = 'down';
-      }}
-      onMouseUp={(ev) => {
+      } : undefined}
+      onMouseUp={props.editable ? (ev) => {
         // Quit if not mouse down
         if (dragStateRef.current !== 'down') return;
 
@@ -551,8 +553,8 @@ function WeekRow(props: WeekRowProps) {
         const unitX = rect.width / 7;
 
         props.onClickCreate?.(Math.floor((ev.pageX - rect.x) / unitX));
-      }}
-      onMouseMove={(ev) => {
+      } : undefined}
+      onMouseMove={props.editable ? (ev) => {
         // Quit if not mouse down
         if (dragStateRef.current !== 'down') return;
 
@@ -561,7 +563,7 @@ function WeekRow(props: WeekRowProps) {
 
         const rect = ev.currentTarget.getBoundingClientRect();
         props.onDragCreateStart?.(ev.pageX - rect.x);
-      }}
+      } : undefined}
     >
       {range(7).map((day_i) => {
         const date = moment(props.time).add(day_i, 'day');
@@ -583,10 +585,15 @@ function WeekRow(props: WeekRowProps) {
             },
           })}>
             <Group position='right' p='0.125rem' h='2rem'>
-              <ActionIcon size='md' sx={(theme) => ({
-                color: inRange ? undefined : theme.colors.dark[3],
-                userSelect: 'none',
-              })} onClick={() => props.setDay(date)}>
+              <ActionIcon
+                size='md'
+                sx={(theme) => ({
+                  color: inRange ? undefined : theme.colors.dark[3],
+                  userSelect: 'none',
+                })}
+                onClick={() => props.setDay(date)}
+                onMouseDown={(ev) => ev.stopPropagation()}
+              >
                 {date.date()}
               </ActionIcon>
             </Group>
@@ -607,8 +614,8 @@ function WeekRow(props: WeekRowProps) {
                     },
                   })}
 
-                  draggable
-                  onDragStart={(ev) => {
+                  draggable={props.editable}
+                  onDragStart={props.editable ? (ev) => {
                     ev.preventDefault();
         
                     const rect = ev.currentTarget.getBoundingClientRect();
@@ -616,7 +623,7 @@ function WeekRow(props: WeekRowProps) {
         
                     // console.log('drag', offset);
                     props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, false);
-                  }}
+                  } : undefined}
                   onMouseDown={(ev) => ev.stopPropagation()}
                 >
                   <Group spacing={6} noWrap maw='100%'>
@@ -662,8 +669,8 @@ function WeekRow(props: WeekRowProps) {
             borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
           })}
 
-          draggable
-          onDragStart={(ev) => {
+          draggable={props.editable}
+          onDragStart={props.editable ? (ev) => {
             ev.preventDefault();
 
             const rect = ev.currentTarget.getBoundingClientRect();
@@ -671,7 +678,7 @@ function WeekRow(props: WeekRowProps) {
 
             // console.log('drag', offset);
             props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, true);
-          }}
+          } : undefined}
           onMouseDown={(ev) => ev.stopPropagation()}
         >
           {e.title}
@@ -689,6 +696,8 @@ export type MonthViewProps = {
   /** List of events from the calendar */
   events: CalendarEvent[];
 
+  /** Are events editable */
+  editable: boolean;
   /** Calendar styles */
   style: CalendarStyle;
   /** For jumping to day view */
@@ -832,6 +841,7 @@ export default function MonthView(props: MonthViewProps) {
           time={moment(start).add(week_i, 'week')}
           monthRange={monthRange}
           events={events}
+          editable={props.editable}
           style={props.style}
           setDay={props.setDay}
           lastRow={week_i === 4}

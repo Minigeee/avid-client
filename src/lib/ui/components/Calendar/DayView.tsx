@@ -31,6 +31,8 @@ export type DayViewProps = {
   /** List of events from the calendar */
   events: CalendarEvent[];
 
+  /** Are events editable */
+  editable: boolean;
   /** Calendar styles */
   style: CalendarStyle;
   
@@ -233,6 +235,7 @@ export default function DayView(props: DayViewProps) {
           <TimeColumn
             day={start}
             events={events}
+            editable={props.editable}
             style={props.style}
 
             draggedId={dragDropDay.event?.id}

@@ -143,6 +143,8 @@ export type WeekViewProps = {
   /** List of events from the calendar */
   events: CalendarEvent[];
 
+  /** Are events editable */
+  editable: boolean;
   /** Calendar styles */
   style: CalendarStyle;
   /** For jumping to day view */
@@ -503,6 +505,7 @@ export default function WeekView(props: WeekViewProps) {
             <TimeColumn
               day={moment(start).add(i, 'day')}
               events={events}
+              editable={props.editable}
               style={props.style}
 
               draggedId={dragDropDay.event?.id}

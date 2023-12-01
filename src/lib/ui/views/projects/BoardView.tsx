@@ -150,7 +150,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
     return () => {
       socket().off('board:activity', onActivity);
     };
-  }, []);
+  }, [props.channel_id]);
 
 
   // Filter tasks

@@ -17,6 +17,8 @@ export type TimeColumnProps = {
   /** List of events from the calendar */
   events: CalendarEvent[];
 
+  /** Are events editable */
+  editable: boolean;
   /** Calendar styles */
   style: CalendarStyle;
 
@@ -171,14 +173,14 @@ function TimeColumnImpl(props: TimeColumnProps) {
         flexGrow: 1,
       }}
 
-      onMouseDown={(ev) => {
+      onMouseDown={props.editable ? (ev) => {
         // Only LMB
         if (ev.button !== 0) return;
 
         // Down
         dragStateRef.current = 'down';
-      }}
-      onMouseUp={(ev) => {
+      } : undefined}
+      onMouseUp={props.editable ? (ev) => {
         // Quit if not mouse down
         if (dragStateRef.current !== 'down') return;
 
@@ -189,8 +191,8 @@ function TimeColumnImpl(props: TimeColumnProps) {
         const unitY = rect.height / 24;
 
         props.onClickCreate?.(Math.round((ev.pageY - rect.y) / unitY * 4) / 4);
-      }}
-      onMouseMove={(ev) => {
+      } : undefined}
+      onMouseMove={props.editable ? (ev) => {
         // Quit if not mouse down
         if (dragStateRef.current !== 'down') return;
 
@@ -199,7 +201,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
 
         const rect = ev.currentTarget.getBoundingClientRect();
         props.onDragCreateStart?.(ev.pageY - rect.y);
-      }}
+      } : undefined}
     >
       {range(24).map((i) => (
         <Box
@@ -242,8 +244,8 @@ function TimeColumnImpl(props: TimeColumnProps) {
             borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
           })}
 
-          draggable
-          onDragStart={(ev) => {
+          draggable={props.editable}
+          onDragStart={props.editable ? (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
 
@@ -252,7 +254,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
 
             // console.log('drag', offset);
             props.onDragStart?.(e, offset);
-          }}
+          } : undefined}
 
           onMouseDown={(ev) => ev.stopPropagation()}
         >

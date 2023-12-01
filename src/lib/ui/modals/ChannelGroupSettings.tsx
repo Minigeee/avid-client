@@ -76,6 +76,7 @@ type PermissionSet = {
   can_manage_participants: boolean;
   can_manage_tasks: boolean;
   can_manage_own_tasks: boolean;
+  can_manage_events: boolean;
 };
 
 ////////////////////////////////////////////////////////////
@@ -99,6 +100,7 @@ const DEFAULT_PERMISSION_SET = {
   can_manage_participants: false,
   can_manage_tasks: false,
   can_manage_own_tasks: false,
+  can_manage_events: false,
 } as PermissionSet;
 
 
@@ -225,6 +227,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
         can_manage_participants: hasPerm(entry?.permissions, 'can_manage_participants'),
         can_manage_tasks: hasPerm(entry?.permissions, 'can_manage_tasks'),
         can_manage_own_tasks: hasPerm(entry?.permissions, 'can_manage_own_tasks'),
+        can_manage_events: hasPerm(entry?.permissions, 'can_manage_events'),
       };
     }
 
@@ -372,7 +375,8 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
       can_manage_participants: canSet && hasPermission(domain, group.id, 'can_manage_participants'),
       can_manage_tasks: canSet && hasPermission(domain, group.id, 'can_manage_tasks'),
       can_manage_own_tasks: canSet && hasPermission(domain, group.id, 'can_manage_own_tasks'),
-    };
+      can_manage_events: canSet && hasPermission(domain, group.id, 'can_manage_events'),
+    } as PermissionSet;
   }, [aclEntries.data, selectedRoleId]);
 
 
@@ -565,6 +569,25 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete their own tasks within a board.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_own_tasks`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_own_tasks}
+            withDivider={false}
+          />
+
+          <Divider maw={config.app.ui.settings_maw} mt={16} />
+          <Box mb={12}>
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='calendar' size={19} />
+              <Title order={4}>Calendar Permissions</Title>
+            </Group>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              Permissions for calendars in this group.
+            </Text>
+          </Box>
+
+          <PermissionSetting
+            title='Manage Calendar Events'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete any event within a calendar.</>}
+            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_events`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_events}
             withDivider={false}
           />
         </>

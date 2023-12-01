@@ -29,6 +29,8 @@ export interface ServerToClientEvents {
 
 	'rtc:user-joined': (domain_id: string, channel_id: string, profile_id: string) => void;
 	'rtc:user-left': (domain_id: string, channel_id: string, profile_id: string) => void;
+	
+	'calendar:activity': (channel_id: string) => void;
 }
 
 

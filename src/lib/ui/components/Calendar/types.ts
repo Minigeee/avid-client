@@ -41,6 +41,9 @@ export type OnDeleteEvent = (event_id: string) => void | Promise<void>;
 export type CalendarState = {
 	/** The domain that the calendar belongs to */
 	domain?: DomainWrapper;
+	/** Determines if user can manage calendar events */
+	editable: boolean;
+
 	/** The id of the event that has opened popup */
 	popupId: string | null;
 	/** Set the id of the event that has opened popup */
