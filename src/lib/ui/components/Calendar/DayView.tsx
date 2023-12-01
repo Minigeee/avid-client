@@ -168,13 +168,14 @@ export default function DayView(props: DayViewProps) {
           minHeight: '1.0rem',
         }} />
 
-        <Box sx={{
+        <Box sx={(theme) => ({
           flex: '1 1 0px',
+          backgroundColor: start.isSame(moment(), 'date') ? theme.colors.dark[6] : undefined,
           borderLeft: `1px solid ${props.style.colors.cellBorder}`,
           borderBottom: `1px solid ${props.style.colors.cellBorder}`,
           minHeight: '1.0rem',
           height: `calc(${allDayEvents.length * 1.75}rem + 1px)`,
-        }} />
+        })} />
 
         {allDayEvents.map((e, i) => (
           <EventButton
@@ -256,6 +257,7 @@ export default function DayView(props: DayViewProps) {
                   left: newEventRect.x,
                   boxShadow: `0px 0px 16px #00000030`,
                   cursor: 'grab',
+                  userSelect: 'none',
 
                   padding: '0.1rem 0.4rem',
                   paddingLeft: '0.75rem',

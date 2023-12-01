@@ -341,6 +341,8 @@ export default function WeekView(props: WeekViewProps) {
     });
   }, [scrollAreaRef]);
 
+  // WIP : Make calendar texts unhighlightable: all event button texts, month date label texts
+
 
   return (
     <Flex direction='column' h={0} w='100%' mt={8} sx={{ flexGrow: 1 }}>
@@ -348,18 +350,23 @@ export default function WeekView(props: WeekViewProps) {
       <Flex ml={props.style.timeGutter}>
         {range(7).map((i) => {
           const date = moment(start).add(i, 'day');
+          const isToday = date.isSame(moment(), 'date');
 
           return (
             <UnstyledButton
               sx={(theme) => ({
                 flex: '1 1 0px',
-                paddingTop: '0.1rem',
-                paddingBottom: '0.25rem',
-                borderRadius: theme.radius.sm,
+                paddingTop: '0.125rem',
+                paddingBottom: '0.3125rem',
+                borderTopRightRadius: theme.radius.sm,
+                borderTopLeftRadius: theme.radius.sm,
+                borderBottomLeftRadius: isToday ? 0 : theme.radius.sm,
+                borderBottomRightRadius: isToday ? 0 : theme.radius.sm,
+                backgroundColor: isToday ? theme.colors.dark[6] : undefined,
                 transition: 'background-color 0.18s',
 
                 '&:hover': {
-                  backgroundColor: theme.colors.dark[6],
+                  backgroundColor: theme.colors.dark[isToday ? 5 : 6],
                 },
               })}
               onClick={() => props.setDay(moment(start).add(i, 'day'))}
@@ -388,6 +395,7 @@ export default function WeekView(props: WeekViewProps) {
         {range(7).map((i) => (
           <Box sx={{
             flex: '1 1 0px',
+            backgroundColor: moment(start).add(i, 'day').isSame(moment(), 'date') ? theme.colors.dark[6] : undefined,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
             borderBottom: `1px solid ${props.style.colors.cellBorder}`,
             minHeight: '1.25rem',
@@ -520,6 +528,7 @@ export default function WeekView(props: WeekViewProps) {
                   left: newEventRect.x,
                   boxShadow: `0px 0px 16px #00000030`,
                   cursor: 'grab',
+                  userSelect: 'none',
 
                   padding: '0.1rem 0.4rem',
                   paddingLeft: '0.75rem',

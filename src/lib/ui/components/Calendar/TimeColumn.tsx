@@ -206,6 +206,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
           w='100%'
           h={slotHeight}
           sx={(theme) => ({
+            backgroundColor: props.day.isSame(now, 'date') ? theme.colors.dark[6] : undefined,
             borderBottom: `1px solid ${props.style.colors.cellBorder}`,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
           })}

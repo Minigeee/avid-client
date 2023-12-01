@@ -114,7 +114,7 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
         <Flex gap={6} wrap='nowrap' align='center'>
           <ColorSwatch
             color={event.color || PRESET_COLORS.at(-1) || ''}
-            size={22}
+            size={20}
             mr={6}
             mt={1}
             sx={{ flexShrink: 0, cursor: 'pointer' }}

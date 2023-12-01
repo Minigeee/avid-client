@@ -566,10 +566,12 @@ function WeekRow(props: WeekRowProps) {
       {range(7).map((day_i) => {
         const date = moment(props.time).add(day_i, 'day');
         const inRange = date.isBetween(...props.monthRange) || date.isSame(props.monthRange[0]);
+        const isToday = date.isSame(moment(), 'date');
 
         return (
           <Box sx={(theme) => ({
             flex: '1 1 0px',
+            backgroundColor: isToday ? theme.colors.dark[6] : undefined,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
             borderBottom: `1px solid ${props.style.colors.cellBorder}`,
             '&:first-child': props.lastRow ? {
@@ -583,6 +585,7 @@ function WeekRow(props: WeekRowProps) {
             <Group position='right' p='0.125rem' h='2rem'>
               <ActionIcon size='md' sx={(theme) => ({
                 color: inRange ? undefined : theme.colors.dark[3],
+                userSelect: 'none',
               })} onClick={() => props.setDay(date)}>
                 {date.date()}
               </ActionIcon>
@@ -600,7 +603,7 @@ function WeekRow(props: WeekRowProps) {
                     opacity: props.draggedId === e.id ? 0.6 : inRange ? undefined : 0.8,
 
                     '&:hover': {
-                      backgroundColor: theme.colors.dark[6],
+                      backgroundColor: theme.colors.dark[isToday ? 5 : 6],
                     },
                   })}
 
@@ -866,6 +869,7 @@ export default function MonthView(props: MonthViewProps) {
             left: rect.x,
             boxShadow: `0px 0px 16px #00000030`,
             cursor: 'grab',
+            userSelect: 'none',
 
             padding: '0.125rem 0.4rem',
             paddingLeft: '0.75rem',
