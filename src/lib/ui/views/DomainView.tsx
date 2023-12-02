@@ -278,7 +278,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
         <ActionIcon
           size='lg'
           sx={(theme) => ({
-            marginRight: '1.0rem',
+            marginRight: '0.75rem',
             color: theme.colors.dark[1],
             '&:hover': {
               backgroundColor: theme.colors.dark[6],
@@ -289,31 +289,41 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
           <IconMenu2 size={22} />
         </ActionIcon>
 
-        <Title order={4} size='1.25rem'>
-          {domain.name}
-        </Title>
-        <Menu width='25ch' position='bottom-start' styles={(theme) => ({
-          dropdown: {
-            backgroundColor: theme.colors.dark[7],
-            borderColor: theme.colors.dark[5],
-          },
-          item: {
-            '&:hover': {
-              backgroundColor: theme.colors.dark[6],
+        <Menu
+          width='15rem'
+          position='bottom-start'
+          styles={(theme) => ({
+            dropdown: {
+              backgroundColor: theme.colors.dark[7],
+              borderColor: theme.colors.dark[5],
             },
-          },
-        })}>
-          <Menu.Target>
-            <ActionIcon size='lg' sx={(theme) => ({
-              marginLeft: '0.25rem',
-              marginTop: 1,
-              color: theme.colors.dark[1],
+            item: {
               '&:hover': {
                 backgroundColor: theme.colors.dark[6],
-              }
+              },
+            },
+          })}
+        >
+          <Menu.Target>
+            <UnstyledButton sx={(theme) => ({
+              padding: '0.25rem 0.375rem',
+              borderRadius: theme.radius.sm,
+
+              '&:hover': {
+                backgroundColor: theme.colors.dark[6],
+              },
             })}>
-              <IconChevronDown size={22} />
-            </ActionIcon>
+              <Group spacing='xs'>
+                <DomainAvatar
+                  domain={domain}
+                  size={28}
+                />
+                <Title order={4} size='1.25rem' sx={{ lineHeight: 1 }}>
+                  {domain.name}
+                </Title>
+                <IconChevronDown size={22} style={{ marginTop: '0.25rem' }} />
+              </Group>
+            </UnstyledButton>
           </Menu.Target>
 
           <Menu.Dropdown>

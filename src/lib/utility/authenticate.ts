@@ -153,11 +153,9 @@ export async function refresh(req: { cookies: Partial<{ [k: string]: string }> }
 
 		// Get user
 		const user = await users.get(id_payload.id);
-		assert(user && id_payload.key === user._id_key);
-
-		// Create new id token
-		const new_key = uid();
-		_setIdCookie(user.id, new_key, res);
+		// Changed: doesn't check if id keys match anymore... user can now log in from many places at once and
+		// it fixes the bug where cookies weren't being saved when GET request sent from bookmark hover
+		assert(user);
 
 		// Create access token
 		const access_payload = {
@@ -174,9 +172,6 @@ export async function refresh(req: { cookies: Partial<{ [k: string]: string }> }
 			algorithm: api_config.auth.jwt_algorithm,
 			expiresIn: api_config.auth.max_access_token_age,
 		});
-
-		// Save new id key
-		await users.update(user.id, { _id_key: new_key });
 
 		return [access_token, access_payload];
 

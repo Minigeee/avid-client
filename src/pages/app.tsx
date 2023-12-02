@@ -214,11 +214,11 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   if (typeof token !== 'string' || typeof payload === 'string') return { props: {} };
 
   // Early return object
-  const ret: any = { props: { token } };
+  const tokenRet: any = { props: { token } };
 
   // Quit early if user does not have an active profile
   const { profile_id } = payload;
-  if (!profile_id) return ret;
+  if (!profile_id) return tokenRet;
 
 
   // App state id
@@ -280,7 +280,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
     sql.return('$app'),
 
   ]), { complete: true });
-  if (!_1) return ret;
+  if (!_1) return tokenRet;
 
   const [_, profiles, members, online, offline, selfs, app] = _1;
 
