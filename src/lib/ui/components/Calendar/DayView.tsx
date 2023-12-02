@@ -181,6 +181,7 @@ export default function DayView(props: DayViewProps) {
 
         {allDayEvents.map((e, i) => (
           <EventButton
+            key={e.id}
             event={e}
             popoverPosition='bottom-start'
 
@@ -226,7 +227,7 @@ export default function DayView(props: DayViewProps) {
             gap: `calc(${props.style.slotHeight} - ${theme.fontSizes.xs})`,
           })}>
             {range(23).map((i) => (
-              <Text size='xs' weight={600} color='dimmed' sx={{ lineHeight: 1 }}>
+              <Text key={i} size='xs' weight={600} color='dimmed' sx={{ lineHeight: 1 }}>
                 {moment(start).add(i + 1, 'hour').format('LT')}
               </Text>
             ))}

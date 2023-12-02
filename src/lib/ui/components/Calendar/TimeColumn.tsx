@@ -213,6 +213,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
 
       {range(24).map((i) => (
         <Box
+          key={i}
           w='100%'
           h={slotHeight}
           sx={(theme) => ({
@@ -225,6 +226,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
 
       {events.map((e, i) => (
         <EventButton
+          key={e.id}
           event={e}
 
           sx={(theme) => ({

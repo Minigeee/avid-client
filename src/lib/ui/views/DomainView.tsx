@@ -180,6 +180,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           })}>
             {profile.domains?.map((domain) => (
               <DomainButton
+                key={domain.id}
                 domain={domain}
                 active={domain.id === app.domain}
                 onClick={() => {

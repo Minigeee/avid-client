@@ -71,12 +71,12 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
   const pickerControls = useMemo(() => {
     return [
       (
-        <ActionIcon variant="subtle" color="gray" onClick={() => startTimeRef.current?.showPicker()}>
+        <ActionIcon key={0} variant="subtle" color="gray" onClick={() => startTimeRef.current?.showPicker()}>
           <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
         </ActionIcon>
       ),
       (
-        <ActionIcon variant="subtle" color="gray" onClick={() => endTimeRef.current?.showPicker()}>
+        <ActionIcon key={1} variant="subtle" color="gray" onClick={() => endTimeRef.current?.showPicker()}>
           <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
         </ActionIcon>
       ),

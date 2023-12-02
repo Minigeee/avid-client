@@ -579,7 +579,7 @@ function WeekRow(props: WeekRowProps) {
         const isToday = date.isSame(moment(), 'date');
 
         return (
-          <Box sx={(theme) => ({
+          <Box key={day_i} sx={(theme) => ({
             flex: '1 1 0px',
             backgroundColor: isToday ? theme.colors.dark[6] : undefined,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
@@ -608,6 +608,7 @@ function WeekRow(props: WeekRowProps) {
             <Stack spacing={0} p='0 0.25rem' sx={{ position: 'relative', top: `${dayOffsets[date.day()] * 1.75}rem` }}>
               {dayEvents[date.day()].map((e) => (
                 <EventButton
+                  key={e.id}
                   event={e}
 
                   sx={(theme) => ({
@@ -651,6 +652,7 @@ function WeekRow(props: WeekRowProps) {
 
       {allDayEvents.map((e) => (
         <EventButton
+          key={e.id}
           event={e}
 
           sx={(theme) => ({
@@ -817,6 +819,7 @@ export default function MonthView(props: MonthViewProps) {
       <Flex w='100%' sx={{ height: props.style.monthHeaderHeight }}>
         {range(7).map((day_i) => (
           <Text
+            key={day_i}
             align='center'
             weight={600}
             pt={3}
@@ -871,8 +874,9 @@ export default function MonthView(props: MonthViewProps) {
       ))}
 
 
-      {newEventObj && newEventRects?.map((rect) => (
+      {newEventObj && newEventRects?.map((rect, rect_i) => (
         <Box
+          key={rect_i}
           sx={(theme) => ({
             position: 'absolute',
             display: 'block',

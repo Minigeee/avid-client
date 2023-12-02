@@ -356,6 +356,7 @@ export default function WeekView(props: WeekViewProps) {
 
           return (
             <UnstyledButton
+              key={i}
               sx={(theme) => ({
                 flex: '1 1 0px',
                 paddingTop: '0.125rem',
@@ -395,7 +396,7 @@ export default function WeekView(props: WeekViewProps) {
         }} />
 
         {range(7).map((i) => (
-          <Box sx={{
+          <Box key={i} sx={{
             flex: '1 1 0px',
             backgroundColor: moment(start).add(i, 'day').isSame(moment(), 'date') ? theme.colors.dark[6] : undefined,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
@@ -407,6 +408,7 @@ export default function WeekView(props: WeekViewProps) {
 
         {allDayEvents.map((e) => (
           <EventButton
+            key={e.id}
             event={e}
             popoverPosition='bottom-start'
 
@@ -495,7 +497,7 @@ export default function WeekView(props: WeekViewProps) {
             gap: `calc(${props.style.slotHeight} - ${theme.fontSizes.xs})`,
           })}>
             {range(23).map((i) => (
-              <Text size='xs' weight={600} color='dimmed' sx={{ lineHeight: 1 }}>
+              <Text key={i} size='xs' weight={600} color='dimmed' sx={{ lineHeight: 1 }}>
                 {moment({ hours: i + 1 }).format('LT')}
               </Text>
             ))}
@@ -503,6 +505,7 @@ export default function WeekView(props: WeekViewProps) {
 
           {range(7).map((i) => (
             <TimeColumn
+              key={i}
               day={moment(start).add(i, 'day')}
               events={events}
               editable={props.editable}
