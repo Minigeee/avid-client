@@ -1,4 +1,4 @@
-import { DependencyList, MouseEventHandler, PropsWithChildren, ReactNode, createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
+import { DependencyList, HTMLProps, MouseEventHandler, PropsWithChildren, ReactNode, createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
   Box,
@@ -126,7 +126,7 @@ export function ContextMenu(props: ContextMenuProps) {
 ////////////////////////////////////////////////////////////
 export type ContextMenuDropdownProps = {
   /** A list of variables the dropdown menu depends on. This is equivalent to `useEffect()` dependency list */
-  dependencies?: DependencyList;
+  dependencies: DependencyList;
   children: (data: any) => ReactNode;
 };
 
@@ -137,7 +137,7 @@ export function ContextMenuDropdown(props: ContextMenuDropdownProps) {
   // Child function should never change
   useEffect(() => {
     context.setState({ ...context.state, dropdown: props.children });
-  }, props.dependencies || undefined);
+  }, props.dependencies || []);
 
   return null;
 }
@@ -146,14 +146,13 @@ ContextMenu.Dropdown = ContextMenuDropdown;
 
 
 ////////////////////////////////////////////////////////////
-type ContextMenuTriggerProps = PropsWithChildren & BoxProps & {
+type ContextMenuTriggerProps = PropsWithChildren & Omit<HTMLProps<HTMLDivElement>, 'ref'> & BoxProps & {
   /** Context data that gets passed to the context menu */
   context?: any;
   /** Set this to true to prevent context menu from trigger, does default behavior instead */
   disabled?: boolean;
-
-  onClick?: MouseEventHandler<HTMLDivElement>;
 };
+
 
 ////////////////////////////////////////////////////////////
 export const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>((props, ref) => {

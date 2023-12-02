@@ -534,37 +534,45 @@ function WeekRow(props: WeekRowProps) {
         flex: '1 1 0px',
         position: 'relative',
       }}
-      
-      onMouseDown={props.editable ? (ev) => {
-        // Only LMB
-        if (ev.button !== 0) return;
-        
-        // Down
-        dragStateRef.current = 'down';
-      } : undefined}
-      onMouseUp={props.editable ? (ev) => {
-        // Quit if not mouse down
-        if (dragStateRef.current !== 'down') return;
-
-        // Reset to up
-        dragStateRef.current = 'up';
-        
-        const rect = ev.currentTarget.getBoundingClientRect();
-        const unitX = rect.width / 7;
-
-        props.onClickCreate?.(Math.floor((ev.pageX - rect.x) / unitX));
-      } : undefined}
-      onMouseMove={props.editable ? (ev) => {
-        // Quit if not mouse down
-        if (dragStateRef.current !== 'down') return;
-
-        // Dragging
-        dragStateRef.current = 'dragging';
-
-        const rect = ev.currentTarget.getBoundingClientRect();
-        props.onDragCreateStart?.(ev.pageX - rect.x);
-      } : undefined}
     >
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+        }}
+
+        onMouseDown={props.editable ? (ev) => {
+          // Only LMB
+          if (ev.button !== 0) return;
+
+          // Down
+          dragStateRef.current = 'down';
+        } : undefined}
+        onMouseUp={props.editable ? (ev) => {
+          // Quit if not mouse down
+          if (dragStateRef.current !== 'down') return;
+
+          // Reset to up
+          dragStateRef.current = 'up';
+
+          const rect = ev.currentTarget.getBoundingClientRect();
+          const unitX = rect.width / 7;
+
+          props.onClickCreate?.(Math.floor((ev.pageX - rect.x) / unitX));
+        } : undefined}
+        onMouseMove={props.editable ? (ev) => {
+          // Quit if not mouse down
+          if (dragStateRef.current !== 'down') return;
+
+          // Dragging
+          dragStateRef.current = 'dragging';
+
+          const rect = ev.currentTarget.getBoundingClientRect();
+          props.onDragCreateStart?.(ev.pageX - rect.x);
+        } : undefined}
+      />
+
       {range(7).map((day_i) => {
         const date = moment(props.time).add(day_i, 'day');
         const inRange = date.isBetween(...props.monthRange) || date.isSame(props.monthRange[0]);
@@ -592,7 +600,6 @@ function WeekRow(props: WeekRowProps) {
                   userSelect: 'none',
                 })}
                 onClick={() => props.setDay(date)}
-                onMouseDown={(ev) => ev.stopPropagation()}
               >
                 {date.date()}
               </ActionIcon>
@@ -624,7 +631,6 @@ function WeekRow(props: WeekRowProps) {
                     // console.log('drag', offset);
                     props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, false);
                   } : undefined}
-                  onMouseDown={(ev) => ev.stopPropagation()}
                 >
                   <Group spacing={6} noWrap maw='100%'>
                     <ColorSwatch color={e.color || props.style.colors.event} size={14} sx={{ flexShrink: 0 }} />
@@ -679,7 +685,6 @@ function WeekRow(props: WeekRowProps) {
             // console.log('drag', offset);
             props.onDragStart(e, { x: ev.pageX, y: ev.pageY }, offset, true);
           } : undefined}
-          onMouseDown={(ev) => ev.stopPropagation()}
         >
           {e.title}
         </EventButton>

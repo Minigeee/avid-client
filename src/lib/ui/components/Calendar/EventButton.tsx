@@ -40,9 +40,11 @@ import { diff } from '@/lib/utility';
 import moment, { Moment } from 'moment';
 import { isNil, omitBy } from 'lodash';
 
+import { ContextMenu } from '../ContextMenu';
+
 
 ////////////////////////////////////////////////////////////
-export type EventPopoverProps = PropsWithChildren & UnstyledButtonProps & HTMLProps<HTMLButtonElement> & {
+export type EventPopoverProps = PropsWithChildren & UnstyledButtonProps & Omit<HTMLProps<HTMLButtonElement>, 'ref'> & {
   /** The event to display */
   event: CalendarEvent | MomentCalendarEvent;
 
@@ -94,10 +96,15 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
     >
       <Popover.Target>
         {/* @ts-ignore */}
-        <UnstyledButton
+        <ContextMenu.Trigger
           {...props}
+          // @ts-ignore
+          component={UnstyledButton}
+          context={{ event }}
+
           onClick={(ev) => {
             // Call parent click func
+            // @ts-ignore
             props.onClick?.(ev);
 
             // Toggle open state
@@ -107,10 +114,10 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
           }}
         >
           {props.children}
-        </UnstyledButton>
+        </ContextMenu.Trigger>
       </Popover.Target>
 
-      <Popover.Dropdown miw='24rem' maw='36rem' p='0.875rem 1.0rem' onMouseDown={(ev) => ev.stopPropagation()}>
+      <Popover.Dropdown miw='24rem' maw='36rem' p='0.875rem 1.0rem'>
         <Flex gap={6} wrap='nowrap' align='center'>
           <ColorSwatch
             color={event.color || PRESET_COLORS.at(-1) || ''}

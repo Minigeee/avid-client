@@ -178,6 +178,18 @@ export function useCalendarEvents(channel_id: string | undefined, date: Moment) 
 			for (const ev of events)
 				_cache[channel_id][ev.id] = _sanitize(ev);
 
+			// Remove events that were deleted (bc of cache, will need extra logic to detect which ones were deleted)
+			const idSet = new Set<string>(events.map(x => x.id));
+
+			const deleted: string[] = [];
+			for (const ev of Object.values(_cache[channel_id])) {
+				if (!idSet.has(ev.id) && (moment(ev.start).isAfter(range[0]) || ev.end && moment(ev.end).isBefore(range[1])))
+				deleted.push(ev.id);
+			}
+
+			for (const id of deleted)
+				delete _cache[channel_id][id];
+
 			// Record time
 			const key = `${channel_id}-${range[0].toISOString()}-${range[1].toISOString()}`;
 			_requests[key] = Date.now();

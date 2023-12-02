@@ -31,6 +31,7 @@ import { DomainWrapper } from '@/lib/hooks';
 
 import moment, { Moment } from 'moment';
 import { merge, range } from 'lodash';
+import { CalendarEventContextMenu } from './EventMenu';
 
 
 ////////////////////////////////////////////////////////////
@@ -274,49 +275,51 @@ export default function Calendar(props: CalendarProps) {
           </Button.Group>
         </SimpleGrid>
 
-        {view === 'month' && (
-          <MonthView
-            time={time}
-            events={props.events}
-            editable={props.editable !== false}
-            style={styles}
+        <CalendarEventContextMenu>
+          {view === 'month' && (
+            <MonthView
+              time={time}
+              events={props.events}
+              editable={props.editable !== false}
+              style={styles}
 
-            setDay={(day) => {
-              setTime(day);
-              setView('day');
-            }}
-            onNewEventRequest={onNewEventRequest}
-            onEventChange={props.onEditEvent}
-          />
-        )}
+              setDay={(day) => {
+                setTime(day);
+                setView('day');
+              }}
+              onNewEventRequest={onNewEventRequest}
+              onEventChange={props.onEditEvent}
+            />
+          )}
 
-        {view === 'week' && (
-          <WeekView
-            time={time}
-            events={props.events}
-            editable={props.editable !== false}
-            style={styles}
+          {view === 'week' && (
+            <WeekView
+              time={time}
+              events={props.events}
+              editable={props.editable !== false}
+              style={styles}
 
-            setDay={(day) => {
-              setTime(day);
-              setView('day');
-            }}
-            onNewEventRequest={onNewEventRequest}
-            onEventChange={props.onEditEvent}
-          />
-        )}
+              setDay={(day) => {
+                setTime(day);
+                setView('day');
+              }}
+              onNewEventRequest={onNewEventRequest}
+              onEventChange={props.onEditEvent}
+            />
+          )}
 
-        {view === 'day' && (
-          <DayView
-            time={time}
-            events={props.events}
-            editable={props.editable !== false}
-            style={styles}
+          {view === 'day' && (
+            <DayView
+              time={time}
+              events={props.events}
+              editable={props.editable !== false}
+              style={styles}
 
-            onNewEventRequest={onNewEventRequest}
-            onEventChange={props.onEditEvent}
-          />
-        )}
+              onNewEventRequest={onNewEventRequest}
+              onEventChange={props.onEditEvent}
+            />
+          )}
+        </CalendarEventContextMenu>
       </Flex>
     </CalendarContext.Provider>
   );

@@ -172,37 +172,45 @@ function TimeColumnImpl(props: TimeColumnProps) {
         position: 'relative',
         flexGrow: 1,
       }}
-
-      onMouseDown={props.editable ? (ev) => {
-        // Only LMB
-        if (ev.button !== 0) return;
-
-        // Down
-        dragStateRef.current = 'down';
-      } : undefined}
-      onMouseUp={props.editable ? (ev) => {
-        // Quit if not mouse down
-        if (dragStateRef.current !== 'down') return;
-
-        // Reset to up
-        dragStateRef.current = 'up';
-
-        const rect = ev.currentTarget.getBoundingClientRect();
-        const unitY = rect.height / 24;
-
-        props.onClickCreate?.(Math.round((ev.pageY - rect.y) / unitY * 4) / 4);
-      } : undefined}
-      onMouseMove={props.editable ? (ev) => {
-        // Quit if not mouse down
-        if (dragStateRef.current !== 'down') return;
-
-        // Dragging
-        dragStateRef.current = 'dragging';
-
-        const rect = ev.currentTarget.getBoundingClientRect();
-        props.onDragCreateStart?.(ev.pageY - rect.y);
-      } : undefined}
     >
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+        }}
+
+        onMouseDown={props.editable ? (ev) => {
+          // Only LMB
+          if (ev.button !== 0) return;
+
+          // Down
+          dragStateRef.current = 'down';
+        } : undefined}
+        onMouseUp={props.editable ? (ev) => {
+          // Quit if not mouse down
+          if (dragStateRef.current !== 'down') return;
+
+          // Reset to up
+          dragStateRef.current = 'up';
+
+          const rect = ev.currentTarget.getBoundingClientRect();
+          const unitY = rect.height / 24;
+
+          props.onClickCreate?.(Math.round((ev.pageY - rect.y) / unitY * 4) / 4);
+        } : undefined}
+        onMouseMove={props.editable ? (ev) => {
+          // Quit if not mouse down
+          if (dragStateRef.current !== 'down') return;
+
+          // Dragging
+          dragStateRef.current = 'dragging';
+
+          const rect = ev.currentTarget.getBoundingClientRect();
+          props.onDragCreateStart?.(ev.pageY - rect.y);
+        } : undefined}
+      />
+
       {range(24).map((i) => (
         <Box
           w='100%'
@@ -255,8 +263,6 @@ function TimeColumnImpl(props: TimeColumnProps) {
             // console.log('drag', offset);
             props.onDragStart?.(e, offset);
           } : undefined}
-
-          onMouseDown={(ev) => ev.stopPropagation()}
         >
           <Text color='dimmed' weight={600} size={11}>
             {e.start.format('LT')} - {e.end.format('LT')}
