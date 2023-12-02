@@ -60,8 +60,6 @@ export default function MainView() {
       flexGrow: 1,
       overflow: 'hidden',
       width: '100%',
-      borderTopLeftRadius: 6,
-      borderTopRightRadius: 6,
     }}>
       <ChannelsView
         channel_id={channel_id || ''}

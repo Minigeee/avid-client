@@ -288,7 +288,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
           <IconMenu2 size={22} />
         </ActionIcon>
 
-        <Title order={4}>
+        <Title order={4} size='1.25rem'>
           {domain.name}
         </Title>
         <Menu width='25ch' position='bottom-start' styles={(theme) => ({

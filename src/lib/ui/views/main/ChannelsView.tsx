@@ -549,7 +549,7 @@ export default function ChannelsView(props: ChannelsViewProps) {
         width: '100%',
         height: '3.0rem',
         paddingLeft: '1.0rem',
-        paddingRight: '0.3rem',
+        paddingRight: '0.5rem',
         borderBottom: `1px solid ${theme.colors.dark[4]}`
       })}>
         <Title order={5} sx={{ flexGrow: 1 }}>

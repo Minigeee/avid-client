@@ -24,24 +24,24 @@ import { ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
 ////////////////////////////////////////////////////////////
 const CHANNEL_TYPES = [
   {
-    value: 'text',
-    label: 'Messages',
+    value: 'calendar',
+    label: 'Calendar',
     group: 'General',
+    description: 'Schedule and organize events with other members',
+    disabled: false,
+  },
+  {
+    value: 'text',
+    label: 'Chat',
+    group: 'Communication',
     description: 'Communicate using messages, images, and emojis',
     disabled: false,
   },
   {
     value: 'rtc',
     label: 'Voice & Video',
-    group: 'General',
+    group: 'Communication',
     description: 'Chat with other members through voice, video, and screen share',
-    disabled: false,
-  },
-  {
-    value: 'calendar',
-    label: 'Calendar',
-    group: 'General',
-    description: 'Schedule and organize events with other members',
     disabled: false,
   },
   {
@@ -173,6 +173,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
           data={CHANNEL_TYPES}
           icon={<ChannelIcon type={form.values.type} size={16} />}
           itemComponent={TypeSelectItem}
+          maxDropdownHeight={300}
           withinPortal
           styles={(theme) => ({
             input: {

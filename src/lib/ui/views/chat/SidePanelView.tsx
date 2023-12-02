@@ -220,7 +220,7 @@ function ThreadsTab(props: SidePanelViewProps) {
         <Center h='10rem'>
           <div>
             <Text color='dimmed' align='center'>
-              {threads._exists && threads.data.length === 0 ? 'This channel has no threads' : 'No thread is selected'}
+              {threads._exists && threads.data.length === 0 ? 'This section has no threads' : 'No thread is selected'}
             </Text>
             {threads._exists && threads.data.length === 0 && (
               <Text color='dimmed' size='sm'>
@@ -567,7 +567,7 @@ function PinnedTab(props: SidePanelViewProps) {
       {messages._exists && messages.data.length === 0 && (
         <Center h='8rem'>
           <Text color='dimmed'>
-            This channel has no pinned messages
+            This section has no pinned messages
           </Text>
         </Center>
       )}

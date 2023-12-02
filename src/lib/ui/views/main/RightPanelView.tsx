@@ -305,7 +305,7 @@ export default function RightPanelView(props: RightPanelViewProps) {
       <Flex wrap='nowrap' align='center' sx={(theme) => ({
         width: '100%',
         height: '3.0rem',
-        paddingLeft: '0.3125rem',
+        paddingLeft: '0.25rem',
         paddingRight: '0.375rem',
         borderBottom: `1px solid ${theme.colors.dark[4]}`
       })}>
