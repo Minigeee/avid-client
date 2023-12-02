@@ -36,6 +36,7 @@ import {
   IconDotsVertical,
   IconEye,
   IconEyeOff,
+  IconFile,
   IconFolder,
   IconPlus,
   IconSearch,
@@ -135,7 +136,7 @@ function AddGroupOverrideDropdown(props: { domain: DomainWrapper; role: Role; da
   return (
     <Popover.Dropdown>
       <Select
-        placeholder='Choose a channel group'
+        placeholder='Choose a section group'
         data={groups}
         icon={<IconFolder size={16} />}
         searchable
@@ -730,7 +731,7 @@ function ChildRolesTab({ domain, form, role, roleAcl }: SubtabProps & { roleAcl:
 
           <PermissionSetting
             title='Manage Permissions'
-            description={<>Allows <b>{`@${role.label}`}</b> to manage the permissions of <b>{`@${selectedChild.label}`}</b>. This permission is required for members of <b>{`@${role.label}`}</b> to modify <b>{`@${selectedChild.label}`}</b> permissions for any channel or resource, but they must be able to manage that channel or resource to modify its permissions.</>}
+            description={<>Allows <b>{`@${role.label}`}</b> to manage the permissions of <b>{`@${selectedChild.label}`}</b>. This permission is required for members of <b>{`@${role.label}`}</b> to modify <b>{`@${selectedChild.label}`}</b> permissions for any section or resource, but they must be able to manage that section or resource to modify its permissions.</>}
             switchProps={form.getInputProps(`child_roles.${role.id}.${selectedChildId}.can_manage_permissions`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_permissions}
           />
@@ -963,8 +964,8 @@ function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps 
           />
 
           <PermissionSetting
-            title='Create Channel Groups'
-            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new channel groups in this domain.</>}
+            title='Create Section Groups'
+            description={<>Allows <b>{`@${role.label}`}</b> to create and manage new section groups in this domain.</>}
             switchProps={form.getInputProps(`domain_permissions.${role.id}.can_create_groups`, { type: 'checkbox' })}
             disabled={!_perms.can_create_groups}
           />
@@ -985,14 +986,14 @@ function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps 
         <>
           <Box mb={12}>
             <Group spacing='xs' mb={4}>
-              <ChannelIcon type='text' size={20} />
-              <Title order={4}>Channel Permissions</Title>
+              <IconFile size={20} />
+              <Title order={4}>Section Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               {/* TODO : Allow channels to be clickable (to modify channel permissions) */}
-              {isDefaultRole && (<>Permissions for <b>{'@everyone'}</b> for every channel group. Click a group to modify its permissions.</>)}
+              {isDefaultRole && (<>Permissions for <b>{'@everyone'}</b> for every section group. Click a group to modify its permissions.</>)}
               {!isDefaultRole && (<>
-                Permission sets for channel groups. Users can perform any given action if any of their assigned roles allow them to,
+                Permission sets for section groups. Users can perform any given action if any of their assigned roles allow them to,
                 which means that users may have additional capabilities granted by other roles even if <b>{`@${role.label}`}</b> does not explicitly allow those actions.
               </>)}
             </Text>

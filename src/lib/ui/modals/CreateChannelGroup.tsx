@@ -65,10 +65,10 @@ export default function CreateChannelGroup({ context, id, innerProps: props }: C
         <Flex wrap='nowrap' gap='1.0rem' mt={8}>
           <Box sx={{ flexGrow: 1 }}>
             <Text size='sm' mb={4}>
-              Allow <b>{'@everyone'}</b> to access this channel group
+              Allow <b>{'@everyone'}</b> to access this group
             </Text>
             <Text size='xs' color='dimmed'>
-              Enabling this will allow <b>@everyone</b> to access this channel. For more precise access control,
+              Enabling this will allow <b>@everyone</b> to access sections in this group. For more precise access control,
               disable this and add custom permissions for the roles that should have access to this group.
             </Text>
           </Box>

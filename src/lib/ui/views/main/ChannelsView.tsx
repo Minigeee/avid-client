@@ -12,6 +12,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Title,
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
@@ -23,13 +24,15 @@ import {
   IconChevronRight,
   IconCornerDownRight,
   IconDotsVertical,
+  IconFolderPlus,
+  IconFile,
   IconPencil,
   IconPlus,
   IconSettings,
   IconTrash,
 } from '@tabler/icons-react';
 
-import { openChannelGroupSettings, openChannelSettings, openCreateChannel } from '@/lib/ui/modals';
+import { openChannelGroupSettings, openChannelSettings, openCreateChannel, openCreateChannelGroup } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
@@ -79,19 +82,17 @@ function SingleChannel(props: SingleChannelProps) {
   return (
     <Draggable draggableId={props.channel.id} index={props.index} isDragDisabled={!canEdit}>
       {(provided, snapshot) => (
-        <Box
+        <Flex
           ref={provided.innerRef}
+          wrap='nowrap'
           sx={(theme) => ({
-            display: 'block',
             width: '100%',
-            padding: `0.2rem 0.3rem 0.2rem 0.5rem`,
+            height: '2.375rem',
             borderRadius: theme.radius.sm,
-            backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
-            color: theme.colors.dark[seen && !props.selected ? 2 : 0],
+            overflow: 'hidden',
             boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
-            transition: 'background-color 0.1s, color 0.1s',
             '&:hover': {
-              backgroundColor: theme.colors.dark[5],
+              '.btn-body': { backgroundColor: theme.colors.dark[5] },
               '.dropdown': { visibility: 'visible' },
               '.ping-indicator': { display: 'none' },
             },
@@ -105,17 +106,38 @@ function SingleChannel(props: SingleChannelProps) {
           {...provided.dragHandleProps}
           style={{ ...provided.draggableProps.style, cursor: 'pointer' }}
         >
-          <Flex gap={8} align='center'>
-            <ChannelIcon type={props.channel.type} size={17} />
+          <Box
+            sx={(theme) => ({
+              flexShrink: 0,
+              flexBasis: '0.25rem',
+              height: '100%',
+              background: props.selected ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) : undefined,
+            })}
+          />
+
+          <Flex
+            className='btn-body'
+            gap={12}
+            pl={12}
+            pr={4}
+            align='center'
+            sx={(theme) => ({
+              flexGrow: 1,
+              backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
+              color: theme.colors.dark[seen && !props.selected ? 2 : 0],
+              transition: 'background-color 0.1s, color 0.1s',
+            })}
+          >
+            <ChannelIcon type={props.channel.type} size={18} />
 
             {!renaming && (
-                <Text
-                  size='sm'
-                  weight={600}
-                  sx={{ flexGrow: 1 }}
-                >
-                  {props.channel.name}
-                </Text>
+              <Text
+                size='sm'
+                weight={600}
+                sx={{ flexGrow: 1 }}
+              >
+                {props.channel.name}
+              </Text>
             )}
             {renaming && (
               <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
@@ -206,7 +228,7 @@ function SingleChannel(props: SingleChannelProps) {
                       icon={<IconTrash size={16} />}
                       onClick={() => {
                         openConfirmModal({
-                          title: 'Delete Channel',
+                          title: 'Delete Section',
                           content: (<Text>Are you sure you want to delete <b>{props.channel.name}</b>?</Text>),
                           confirmLabel: 'Delete',
                           onConfirm: () => {
@@ -215,7 +237,7 @@ function SingleChannel(props: SingleChannelProps) {
                         })
                       }}
                     >
-                      Delete channel
+                      Delete section
                     </Menu.Item>
                   </>
                 )}
@@ -268,7 +290,7 @@ function SingleChannel(props: SingleChannelProps) {
               </Avatar.Group>
             </Group>
           )}
-        </Box>
+        </Flex>
       )}
     </Draggable>
   );
@@ -313,7 +335,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
             mb={1}
             sx={(theme) => ({
               width: '100%',
-              padding: `0.2rem 0.3rem 0.2rem 0.5rem`,
+              padding: `0.25rem 0.25rem 0.25rem 0.5rem`,
               borderRadius: theme.radius.sm,
               backgroundColor: snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
               boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
@@ -327,12 +349,12 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
             })}
             onClick={() => setOpened(!opened)}
           >
-            {!opened && (<IconChevronRight size={16} />)}
-            {opened && (<IconChevronDown size={16} />)}
+            {!opened && (<IconChevronRight size={18} />)}
+            {opened && (<IconChevronDown size={18} />)}
 
             {!renaming && (
               <Text
-                size='xs'
+                size={13}
                 weight={600}
                 ml={4}
                 sx={(theme) => ({ color: theme.colors.dark[1] })}
@@ -373,7 +395,8 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
 
             {hasPermission(props.domain, props.group.id, 'can_manage_resources') && (
               <ActionButton
-                tooltip='Create Channel'
+                tooltip='Add Section'
+                hoverBg={(theme) => theme.colors.dark[4]}
                 size='sm'
                 onClick={(e) => {
                   e.stopPropagation();
@@ -430,13 +453,13 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                         icon={<IconTrash size={16} />}
                         onClick={() => {
                           openConfirmModal({
-                            title: 'Delete Channel Group',
+                            title: 'Delete Group',
                             modalProps: {
                               yOffset: `${Math.max(30 - props.group.channels.length * 0.6, 1)}vh`,
                             },
                             content: (
                               <>
-                                <p style={{ marginBlockEnd: 0 }}>Are you sure you want to delete <b>{props.group.name}</b> and the following channels?</p>
+                                <p style={{ marginBlockEnd: 0 }}>Are you sure you want to delete <b>{props.group.name}</b> and the following sections?</p>
                                 <ul style={{ marginBlockStart: 0, marginBlockEnd: 0 }}>
                                   {props.group.channels.map(channel_id => (
                                     <li key={channel_id}><b>{props.domain.channels[channel_id].name}</b></li>
@@ -513,51 +536,98 @@ type ChannelsViewProps = {
 ////////////////////////////////////////////////////////////
 export default function ChannelsView(props: ChannelsViewProps) {
   return (
-    <ScrollArea>
-      <DragDropContext onDragEnd={(result) => {
-        // Don't allow delete channel by drag
-        if (!result.destination) return;
-        if (result.destination.index === result.source.index && result.destination.droppableId === result.source.droppableId) return;
+    <Flex
+      direction='column'
+      sx={(theme) => ({
+        flexShrink: 0,
+        width: '20rem',
+        height: '100%',
+        backgroundColor: theme.colors.dark[6],
+      })}
+    >
+      <Group sx={(theme) => ({
+        width: '100%',
+        height: '3.0rem',
+        paddingLeft: '1.0rem',
+        paddingRight: '0.5rem',
+        borderBottom: `1px solid ${theme.colors.dark[4]}`
+      })}>
+        <Title order={5} sx={{ flexGrow: 1 }}>
+          Sections
+        </Title>
+        <div style={{ flexGrow: 1 }} />
+        {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
+          <Menu width='12rem'>
+            <Menu.Target>
+              <ActionIcon sx={(theme) => ({ color: theme.colors.dark[1] })}>
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Menu.Target>
 
-        // Move channel
-        if (result.type === 'channel') {
-          props.domain._mutators.moveChannel(result.draggableId, {
-            group_id: result.source.droppableId,
-            index: result.source.index,
-          }, {
-            group_id: result.destination.droppableId,
-            index: result.destination.index,
-          });
-        }
+            <Menu.Dropdown>
+              <Menu.Item
+                icon={<IconFile size={18} />}
+                onClick={() => openCreateChannel({ domain: props.domain })}
+              >
+                New Section
+              </Menu.Item>
+              <Menu.Item
+                icon={<IconFolderPlus size={18} />}
+                onClick={() => openCreateChannelGroup({ domain: props.domain })}
+              >
+                New Group
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </Group>
 
-        // Move group
-        else if (result.type === 'group') {
-          props.domain._mutators.moveGroup(result.source.index, result.destination.index);
-        }
-      }}>
-        <Droppable droppableId={props.domain.id} type='group'>
-          {(provided) => (
-            <Stack
-              ref={provided.innerRef}
-              spacing={0}
-              pt={8}
-              {...provided.droppableProps}
-            >
-              {props.domain.groups.map((group, group_idx) => (
-                <ChannelGroupComponent
-                  key={group.id}
-                  domain={props.domain}
-                  group={group}
-                  selected={props.channel_id}
-                  index={group_idx}
-                />
-              ))}
+      <ScrollArea sx={{ flexGrow: 1 }}>
+        <DragDropContext onDragEnd={(result) => {
+          // Don't allow delete channel by drag
+          if (!result.destination) return;
+          if (result.destination.index === result.source.index && result.destination.droppableId === result.source.droppableId) return;
 
-              {provided.placeholder}
-            </Stack>
-          )}
-        </Droppable>
-      </DragDropContext>
-    </ScrollArea>
+          // Move channel
+          if (result.type === 'channel') {
+            props.domain._mutators.moveChannel(result.draggableId, {
+              group_id: result.source.droppableId,
+              index: result.source.index,
+            }, {
+              group_id: result.destination.droppableId,
+              index: result.destination.index,
+            });
+          }
+
+          // Move group
+          else if (result.type === 'group') {
+            props.domain._mutators.moveGroup(result.source.index, result.destination.index);
+          }
+        }}>
+          <Droppable droppableId={props.domain.id} type='group'>
+            {(provided) => (
+              <Stack
+                ref={provided.innerRef}
+                spacing={0}
+                p='0.5rem 0.25rem'
+                {...provided.droppableProps}
+              >
+                {props.domain.groups.map((group, group_idx) => (
+                  <ChannelGroupComponent
+                    key={group.id}
+                    domain={props.domain}
+                    group={group}
+                    selected={props.channel_id}
+                    index={group_idx}
+                  />
+                ))}
+
+                {provided.placeholder}
+              </Stack>
+            )}
+          </Droppable>
+        </DragDropContext>
+      </ScrollArea>
+    </Flex>
   );
 }

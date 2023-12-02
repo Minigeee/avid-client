@@ -3,7 +3,7 @@ import { Date } from './util';
 
 
 /** All possible channel types */
-export type ChannelTypes = 'text' | 'rtc' | 'board';
+export type ChannelTypes = 'text' | 'rtc' | 'board' | 'calendar';
 
 
 /** Data object for each channel type */

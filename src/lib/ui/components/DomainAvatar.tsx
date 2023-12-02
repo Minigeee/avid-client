@@ -11,7 +11,7 @@ import { DomainWrapper } from '@/lib/hooks';
 
 ////////////////////////////////////////////////////////////
 type DomainAvatarProps = {
-  domain: { name: string; icon?: string | null };
+  domain: { name?: string; icon?: string | null };
 
   size: number;
   color?: string;
@@ -26,7 +26,7 @@ export default function DomainAvatar(props: DomainAvatarProps) {
       return (
         <Image
           src={props.domain.icon}
-          alt={props.domain.name}
+          alt={props.domain.name || ''}
           width={props.size}
           height={props.size}
         />

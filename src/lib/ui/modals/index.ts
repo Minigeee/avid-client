@@ -1,5 +1,6 @@
 import { openContextModal } from '@mantine/modals';
 
+import CreateCalendarEvent, { CreateCalendarEventProps } from './CreateCalendarEvent';
 import CreateChannel, { CreateChannelProps } from './CreateChannel';
 import CreateChannelGroup, { CreateChannelGroupProps } from './CreateChannelGroup';
 import CreateDomain, { CreateDomainProps } from './CreateDomain';
@@ -19,6 +20,7 @@ import AttachmentPreview, { AttachmentPreviewProps } from './AttachmentPreview';
 
 ////////////////////////////////////////////////////////////
 export const modals = {
+	'create-calendar-event': CreateCalendarEvent,
 	'create-channel': CreateChannel,
 	'create-channel-group': CreateChannelGroup,
 	'create-domain': CreateDomain,
@@ -37,16 +39,26 @@ export const modals = {
 
 
 /** Opens the modal to create channels */
+export const openCreateCalendarEvent = (props: CreateCalendarEventProps) => openContextModal({
+	modal: 'create-calendar-event',
+	title: props.mode === 'edit' ? props.event?.title || 'Edit Calendar Event' : 'New Calendar Event',
+	innerProps: props,
+	size: 'lg',
+	zIndex: 302,
+	overlayProps: { zIndex: 301 },
+});
+
+/** Opens the modal to create channels */
 export const openCreateChannel = (props: CreateChannelProps) => openContextModal({
 	modal: 'create-channel',
-	title: 'New Channel',
+	title: 'New Section',
 	innerProps: props,
 });
 
 /** Opens the modal to create channel groups */
 export const openCreateChannelGroup = (props: CreateChannelGroupProps) => openContextModal({
 	modal: 'create-channel-group',
-	title: 'New Channel Group',
+	title: 'New Group',
 	innerProps: props,
 });
 

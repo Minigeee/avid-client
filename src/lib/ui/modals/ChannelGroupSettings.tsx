@@ -76,6 +76,7 @@ type PermissionSet = {
   can_manage_participants: boolean;
   can_manage_tasks: boolean;
   can_manage_own_tasks: boolean;
+  can_manage_events: boolean;
 };
 
 ////////////////////////////////////////////////////////////
@@ -99,6 +100,7 @@ const DEFAULT_PERMISSION_SET = {
   can_manage_participants: false,
   can_manage_tasks: false,
   can_manage_own_tasks: false,
+  can_manage_events: false,
 } as PermissionSet;
 
 
@@ -225,6 +227,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
         can_manage_participants: hasPerm(entry?.permissions, 'can_manage_participants'),
         can_manage_tasks: hasPerm(entry?.permissions, 'can_manage_tasks'),
         can_manage_own_tasks: hasPerm(entry?.permissions, 'can_manage_own_tasks'),
+        can_manage_events: hasPerm(entry?.permissions, 'can_manage_events'),
       };
     }
 
@@ -372,7 +375,8 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
       can_manage_participants: canSet && hasPermission(domain, group.id, 'can_manage_participants'),
       can_manage_tasks: canSet && hasPermission(domain, group.id, 'can_manage_tasks'),
       can_manage_own_tasks: canSet && hasPermission(domain, group.id, 'can_manage_own_tasks'),
-    };
+      can_manage_events: canSet && hasPermission(domain, group.id, 'can_manage_events'),
+    } as PermissionSet;
   }, [aclEntries.data, selectedRoleId]);
 
 
@@ -381,7 +385,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
       <Box>
         <Title order={3}>Roles</Title>
         <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-          Customize the permissions each role has for this channel group.
+          Customize the permissions each role has for this section group.
           Users can only modify permissions for actions that they themselves can perform.
           To prevent users from locking themselves out of being able to modify a permission,
           it is recommended to give roles every permission they should handle, even
@@ -398,7 +402,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
         }}
         emptyComponent={(
           <Stack align='center'>
-            <Text weight={600}>This channel group has no permissions</Text>
+            <Text weight={600}>This section group has no permissions</Text>
             <AddRolePopover
               domain={domain}
               type='empty'
@@ -434,13 +438,13 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
               <Title order={4}>General Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-              General permissions for channels and resources in this group.
+              General permissions for sections and resources in this group.
             </Text>
           </Box>
 
           <PermissionSetting
             title='View Group'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to view this group and the channels and resources within this group.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to view this group and the sections and resources within this group.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_view`, { type: 'checkbox' })}
             disabled={!_perms.can_view}
           />
@@ -448,7 +452,7 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
           <PermissionSetting
             title='Manage Group'
             description={<>
-              Allows <b>{`@${selectedRole.label}`}</b> to manage group settings, edit settings for existing channels within the group, and manage role access and permissions.
+              Allows <b>{`@${selectedRole.label}`}</b> to manage group settings, edit settings for existing sections within the group, and manage role access and permissions.
             </>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage`, { type: 'checkbox' })}
             disabled={!_perms.can_manage}
@@ -462,8 +466,8 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
           />
 
           <PermissionSetting
-            title='Manage Channels'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete channels within this group.</>}
+            title='Manage Sections'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete sections within this group.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_resources`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_resources}
             withDivider={false}
@@ -476,34 +480,34 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
               <Title order={4}>Chat Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-              Permissions for text channels in this group.
+              Permissions for text sections in this group.
             </Text>
           </Box>
 
           <PermissionSetting
             title='Send Messages'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send messages in text channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send messages in chat sections.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_send_messages`, { type: 'checkbox' })}
             disabled={!_perms.can_send_messages}
           />
 
           <PermissionSetting
             title='Send Attachments'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send file attachments in text channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send file attachments in chat sections.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_send_attachments`, { type: 'checkbox' })}
             disabled={!_perms.can_send_attachments}
           />
 
           <PermissionSetting
             title='Send Reactions'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send emoji reactions to messages in text channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to send emoji reactions to messages in chat sections.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_send_reactions`, { type: 'checkbox' })}
             disabled={!_perms.can_send_reactions}
           />
 
           <PermissionSetting
             title='Manage Messages'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages and remove reactions sent by other users, and pin messages in text channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to delete messages and remove reactions sent by other users, and pin messages in chat sections.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_messages`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_messages}
             withDivider={false}
@@ -516,27 +520,27 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
               <Title order={4}>Voice & Video Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-              Permissions for voice & video channels in this group. Voice & video channels will be referred to as RTC channels.
+              Permissions for voice & video sections in this group. Voice & video sections will be referred to as RTC sections.
             </Text>
           </Box>
 
           <PermissionSetting
             title='Broadcast Audio'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast audio using their microphone in RTC channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast audio using their microphone in RTC sections.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_broadcast_audio`, { type: 'checkbox' })}
             disabled={!_perms.can_broadcast_audio}
           />
 
           <PermissionSetting
             title='Broadcast Video'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast video using their webcam or screenshare in RTC channels.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to broadcast video using their webcam or screenshare in RTC sections.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_broadcast_video`, { type: 'checkbox' })}
             disabled={!_perms.can_broadcast_video}
           />
 
           <PermissionSetting
             title='Manage Participants'
-            description={<>Allows <b>{`@${selectedRole.label}`}</b> to manage other participants in RTC channels. Users with this permission are able to mute, deafen, force-stop video broadcasts, move, kick, or ban other participants within an RTC channel.</>}
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to manage other participants in RTC sections. Users with this permission are able to mute, deafen, force-stop video broadcasts, move, kick, or ban other participants within an RTC channel.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_participants`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_participants}
             withDivider={false}
@@ -565,6 +569,25 @@ function PermissionsTab({ domain, group, ...props }: TabProps & { role?: Role })
             description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete their own tasks within a board.</>}
             switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_own_tasks`, { type: 'checkbox' })}
             disabled={!_perms.can_manage_own_tasks}
+            withDivider={false}
+          />
+
+          <Divider maw={config.app.ui.settings_maw} mt={16} />
+          <Box mb={12}>
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='calendar' size={19} />
+              <Title order={4}>Calendar Permissions</Title>
+            </Group>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              Permissions for calendars in this group.
+            </Text>
+          </Box>
+
+          <PermissionSetting
+            title='Manage Calendar Events'
+            description={<>Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and delete any event within a calendar.</>}
+            switchProps={form.getInputProps(`permissions.${selectedRoleId}.can_manage_events`, { type: 'checkbox' })}
+            disabled={!_perms.can_manage_events}
             withDivider={false}
           />
         </>

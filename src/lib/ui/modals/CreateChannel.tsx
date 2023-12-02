@@ -13,7 +13,7 @@ import {
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { IconFolder, IconHash } from '@tabler/icons-react';
+import { IconFolder, IconFile } from '@tabler/icons-react';
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
@@ -24,16 +24,23 @@ import { ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
 ////////////////////////////////////////////////////////////
 const CHANNEL_TYPES = [
   {
-    value: 'text',
-    label: 'Text',
+    value: 'calendar',
+    label: 'Calendar',
     group: 'General',
+    description: 'Schedule and organize events with other members',
+    disabled: false,
+  },
+  {
+    value: 'text',
+    label: 'Chat',
+    group: 'Communication',
     description: 'Communicate using messages, images, and emojis',
     disabled: false,
   },
   {
     value: 'rtc',
     label: 'Voice & Video',
-    group: 'General',
+    group: 'Communication',
     description: 'Chat with other members through voice, video, and screen share',
     disabled: false,
   },
@@ -135,12 +142,17 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
       options = { prefix: form.values.board_prefix };
     }
 
-    // Add channel
-    await props.domain._mutators.addChannel(name, type, form.values.group, data, options);
+    try {
+      // Add channel
+      // WIP : Make sure channel create works, implement react-big-calendar and get it to work
+      await props.domain._mutators.addChannel(name, type, form.values.group, data, options);
 
-    // Close
-    setLoading(false);
-    context.closeModal(id);
+      // Close
+      context.closeModal(id);
+    }
+    finally {
+      setLoading(false);
+    }
   }
 
 
@@ -148,19 +160,20 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
     <form onSubmit={form.onSubmit(submit)}>
       <Stack>
         <TextInput
-          label='Channel Name'
-          placeholder='channel-name'
-          icon={<IconHash size={16} />}
+          label='Section Name'
+          placeholder='New Section'
+          icon={<IconFile size={16} />}
           required
           withAsterisk={false}
           data-autofocus
           {...form.getInputProps('name')}
         />
         <Select
-          label='Channel Type'
+          label='Section Type'
           data={CHANNEL_TYPES}
           icon={<ChannelIcon type={form.values.type} size={16} />}
           itemComponent={TypeSelectItem}
+          maxDropdownHeight={300}
           withinPortal
           styles={(theme) => ({
             input: {
@@ -172,7 +185,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
 
         {!props.group_id && (
           <Select
-            label='Channel Group'
+            label='Group'
             data={groups}
             icon={<IconFolder size={16} />}
             withinPortal

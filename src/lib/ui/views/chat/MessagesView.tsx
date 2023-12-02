@@ -512,7 +512,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
     if (props.scrollTo === msg.id) {
       setShouldAnimate(true);
       // Turn off animation after a bit
-      setTimeout(() => setShouldAnimate(false), 1200);
+      setTimeout(() => setShouldAnimate(false), 1500);
     }
   }, [props.scrollTo]);
 
@@ -538,11 +538,11 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           gap: 0,
 
           padding: `0.25rem 0rem 0.25rem calc(${props.p} - 4px)`,
-          backgroundColor: props.hasPing ? '#2B293A' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}10` : undefined,
+          backgroundColor: props.hasPing ? '#2B293A' : props.viewing_thread === msg.thread?.id || shouldAnimate ? `${theme.colors.indigo[5]}10` : undefined,
           transition: 'background-color 0.08s',
 
           '&:hover': {
-            backgroundColor: props.hasPing ? '#312D46' : props.viewing_thread === msg.thread?.id ? `${theme.colors.indigo[5]}1A` : theme.colors.dark[6],
+            backgroundColor: props.hasPing ? '#312D46' : props.viewing_thread === msg.thread?.id || shouldAnimate  ? `${theme.colors.indigo[5]}1A` : theme.colors.dark[6],
           },
 
           '&:first-child': {

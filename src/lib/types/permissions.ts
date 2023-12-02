@@ -80,8 +80,13 @@ export type RtcChannelPermissions =
 	/** Roles that can manage other members within this channel (all actions wrapped into this: mute, deafen, stop sharing, move, kick, ban) */
 	'can_manage_participants';
 
+/** Calendar permissions */
+export type CalendarPermissions =
+	/** Allows users to manage calendar events (create, edit, remove) */
+	'can_manage_events';
+
 /** All channel permissions */
-export type AllChannelPermissions = ChannelPermissions | TextChannelPermissions | BoardPermissions | RtcChannelPermissions;
+export type AllChannelPermissions = ChannelPermissions | TextChannelPermissions | BoardPermissions | RtcChannelPermissions | CalendarPermissions;
 
 
 /** All permissions types */

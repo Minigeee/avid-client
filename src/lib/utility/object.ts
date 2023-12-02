@@ -32,6 +32,17 @@ export function sortObject<T extends Record<any, any>>(x: T, compareFn?: (a: [st
 }
 
 
+/**
+ * Return the difference in fields between an original object and a new object.
+ * This function checks objects recursively, and returns a nested object of differences.
+ * If a field has been removed in the new object, it will be represented as `null` in
+ * the diff object. If a field is an array, then the entire new array will be returned
+ * in the diff object if even a single object is different, or if the array lengths are different.
+ * 
+ * @param origObj The original object
+ * @param newObj The new object to compare to the original
+ * @returns A diff object
+ */
 export function diff<B extends any>(origObj: any, newObj: B): Partial<B> | undefined {
 	if (origObj == null && newObj != null) {
 		// new is diff + non-null

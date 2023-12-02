@@ -39,7 +39,6 @@ export default function Main(props: { visible: boolean }) {
         e.stopPropagation();
       }
     }}>
-      <DomainBar />
       <Box sx={{
         flexGrow: 1,
         height: '100%',

@@ -203,7 +203,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   ]); */
 
 	// Create new access token
-	const refreshResult = await refresh(ctx.req, ctx.res);
+	const refreshResult = await refresh(ctx.req, ctx.res, false);
 
   // If not valid refresh, return no props
   if (!refreshResult) return { props: {} };
@@ -213,9 +213,12 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   const payload = refreshResult[1];
   if (typeof token !== 'string' || typeof payload === 'string') return { props: {} };
 
+  // Early return object
+  const ret: any = { props: { token } };
+
   // Quit early if user does not have an active profile
   const { profile_id } = payload;
-  if (!profile_id) return { props: {} };
+  if (!profile_id) return ret;
 
 
   // App state id
@@ -277,7 +280,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
     sql.return('$app'),
 
   ]), { complete: true });
-  if (!_1) return { props: {} };
+  if (!_1) return ret;
 
   const [_, profiles, members, online, offline, selfs, app] = _1;
 

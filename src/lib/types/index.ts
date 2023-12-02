@@ -3,6 +3,7 @@ export * from './app_state';
 export * from './attachment';
 export * from './auth';
 export * from './board';
+export * from './calendar';
 export * from './channel';
 export * from './common';
 export * from './domain';

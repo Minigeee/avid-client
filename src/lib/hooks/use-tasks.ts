@@ -258,7 +258,7 @@ export function useTasks(board_id: string | undefined, domain_id: string) {
 			// Cache members
 			setMembers(domain_id, Object.values(results.members), { override_online: false });
 
-			return results.tasks.map((task) => ({ ...task, assignee: task.assignee ? results.members[task.assignee] : null })) as ExpandedTask[];
+			return results.tasks.map((task) => _sanitize({ ...task, assignee: task.assignee ? results.members[task.assignee] : null })) as ExpandedTask[];
 		},
 		mutators: tasksMutators,
 		mutatorParams: [board_id],
@@ -316,7 +316,7 @@ export function useTask(task_id: string, fallback?: ExpandedTask) {
 				_singleTasks[results.board] = new Set<string>();
 			_singleTasks[results.board].add(results.id);
 
-			return results;
+			return _sanitize(results);
 		},
 		mutators: taskMutators,
 		fallback,
