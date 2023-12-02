@@ -3,7 +3,10 @@ import assert from 'assert';
 
 import {
   Box,
+  Divider,
   Flex,
+  Group,
+  Title,
 } from '@mantine/core';
 
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
@@ -14,9 +17,13 @@ import RoomView from '@/lib/ui/views/rtc/RoomView';
 import CalendarView from '@/lib/ui/views/calendar/CalendarView';
 import BoardView from '@/lib/ui/views/projects/BoardView';
 
-import { useApp, useDomain } from '@/lib/hooks';
+import { useApp, useDomain, useRtc } from '@/lib/hooks';
 import { Channel } from '@/lib/types';
 import RightPanelView from './RightPanelView';
+import ChannelIcon from '../../components/ChannelIcon';
+import RtcControlBar from '../../components/rtc/RtcControlBar';
+import ActionButton from '../../components/ActionButton';
+import { IconArrowBarLeft } from '@tabler/icons-react';
 
 const HEADER_HEIGHT = '2.8rem';
 
@@ -24,14 +31,13 @@ const HEADER_HEIGHT = '2.8rem';
 ////////////////////////////////////////////////////////////
 export default function MainView() {
   const app = useApp();
+  const rtc = useRtc();
   assert(app.domain && app.domain.startsWith('domains'));
 
   const domain = useDomain(app.domain);
   // Get channel, using nav state as first choice and first channel as back up
   const channel_id = app.channels[app.domain] ||
     (Object.keys(domain?.channels || {}).length ? Object.keys(domain?.channels || {})[0] : undefined);
-
-  const [headerData, setHeaderData] = useState<Record<string, any>>({});
 
   // Retrieve channel object
   const channel = channel_id ? domain?.channels?.[channel_id] || undefined : undefined;
@@ -50,37 +56,67 @@ export default function MainView() {
     return null;
 
   return (
-    <>
+    <Flex sx={{
+      flexGrow: 1,
+      overflow: 'hidden',
+      width: '100%',
+      borderTopLeftRadius: 6,
+      borderTopRightRadius: 6,
+    }}>
+      <ChannelsView
+        channel_id={channel_id || ''}
+        domain={domain}
+      />
+
       <ErrorBoundary>
-        <HeaderView
-          domain={domain}
-          channel={channel}
-          height={HEADER_HEIGHT}
-          data={headerData}
-          setData={setHeaderData}
-        />
-      </ErrorBoundary>
+        {channel && (
+          <Flex direction='column' sx={(theme) => ({
+            flexGrow: 1,
+            width: 0, // idk why this works
+            height: '100%',
+            backgroundColor: theme.colors.dark[7],
+          })}>
+            <Group
+              spacing={8}
+              noWrap
+              sx={(theme) => ({
+                flexShrink: 0,
+                height: '3.0rem',
+                paddingLeft: '1.0rem',
+                paddingRight: '0.3rem',
+                borderBottom: `1px solid ${theme.colors.dark[5]}`,
+              })}
+            >
+              <ChannelIcon type={channel.type} size={18} />
+              <Title order={5} ml={4}>
+                {channel.name}
+              </Title>
 
-      <Flex w='100%' h={`calc(100% - ${HEADER_HEIGHT})`}>
-        <Box sx={(theme) => ({
-          flexShrink: 0,
-          width: '18rem',
-          height: '100%',
-          backgroundColor: theme.colors.dark[6],
-        })}>
-          <ChannelsView
-            channel_id={channel_id || ''}
-            domain={domain}
-          />
-        </Box>
+              <div style={{ flexGrow: 1 }} />
 
-        <ErrorBoundary>
-          {channel && (
+              {rtc.joined && (
+                <>
+                  <RtcControlBar />
+                  {!app.right_panel_opened && <Divider orientation='vertical' m='0.5rem 0.0rem' />}
+                </>
+              )}
+
+              {!app.right_panel_opened && (
+                <ActionButton
+                  tooltip='Open Side Panel'
+                  hoverBg={(theme) => theme.colors.dark[6]}
+                  mr={4}
+                  onClick={() => app._mutators.setRightPanelOpened(true)}
+                >
+                  <IconArrowBarLeft size={18} />
+                </ActionButton>
+              )}
+            </Group>
+
             <Box sx={(theme) => ({
               flexGrow: 1,
-              width: 0, // idk why this works
-              height: '100%',
-              backgroundColor: theme.colors.dark[7],
+              width: '100%',
+              height: 0,
             })}>
               {channel.type === 'text' && (
                 <MessagesView
@@ -111,32 +147,25 @@ export default function MainView() {
                 />
               )}
             </Box>
-          )}
-        </ErrorBoundary>
-
-        {!channel && (
-          <Box sx={(theme) => ({
-            flexGrow: 1,
-            width: 0, // idk why this works
-            height: '100%',
-            backgroundColor: theme.colors.dark[7],
-          })} />
-        )}
-
-        {app.right_panel_opened && (
-          <Flex direction='column' sx={(theme) => ({
-            flexShrink: 0,
-            width: '16rem',
-            height: '100%',
-            backgroundColor: theme.colors.dark[6],
-          })}>
-            <RightPanelView
-              key={domain.id}
-              domain={domain}
-            />
           </Flex>
         )}
-      </Flex>
-    </>
+      </ErrorBoundary>
+
+      {!channel && (
+        <Box sx={(theme) => ({
+          flexGrow: 1,
+          width: 0, // idk why this works
+          height: '100%',
+          backgroundColor: theme.colors.dark[7],
+        })} />
+      )}
+
+      {app.right_panel_opened && (
+        <RightPanelView
+          key={domain.id}
+          domain={domain}
+        />
+      )}
+    </Flex>
   )
 }

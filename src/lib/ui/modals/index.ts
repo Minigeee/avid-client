@@ -51,14 +51,14 @@ export const openCreateCalendarEvent = (props: CreateCalendarEventProps) => open
 /** Opens the modal to create channels */
 export const openCreateChannel = (props: CreateChannelProps) => openContextModal({
 	modal: 'create-channel',
-	title: 'New Channel',
+	title: 'New Section',
 	innerProps: props,
 });
 
 /** Opens the modal to create channel groups */
 export const openCreateChannelGroup = (props: CreateChannelGroupProps) => openContextModal({
 	modal: 'create-channel-group',
-	title: 'New Channel Group',
+	title: 'New Group',
 	innerProps: props,
 });
 

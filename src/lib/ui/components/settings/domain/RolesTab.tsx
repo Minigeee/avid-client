@@ -36,6 +36,7 @@ import {
   IconDotsVertical,
   IconEye,
   IconEyeOff,
+  IconFile,
   IconFolder,
   IconPlus,
   IconSearch,
@@ -985,7 +986,7 @@ function PermissionsTab({ domain, domainAcl, form, role, roleAcl }: SubtabProps 
         <>
           <Box mb={12}>
             <Group spacing='xs' mb={4}>
-              <ChannelIcon type='text' size={20} />
+              <IconFile size={20} />
               <Title order={4}>Channel Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>

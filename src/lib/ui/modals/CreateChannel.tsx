@@ -13,7 +13,7 @@ import {
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { IconFolder, IconHash } from '@tabler/icons-react';
+import { IconFolder, IconFile } from '@tabler/icons-react';
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
@@ -25,7 +25,7 @@ import { ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
 const CHANNEL_TYPES = [
   {
     value: 'text',
-    label: 'Text',
+    label: 'Messages',
     group: 'General',
     description: 'Communicate using messages, images, and emojis',
     disabled: false,
@@ -160,16 +160,16 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
     <form onSubmit={form.onSubmit(submit)}>
       <Stack>
         <TextInput
-          label='Channel Name'
-          placeholder='channel-name'
-          icon={<IconHash size={16} />}
+          label='Section Name'
+          placeholder='New Section'
+          icon={<IconFile size={16} />}
           required
           withAsterisk={false}
           data-autofocus
           {...form.getInputProps('name')}
         />
         <Select
-          label='Channel Type'
+          label='Section Type'
           data={CHANNEL_TYPES}
           icon={<ChannelIcon type={form.values.type} size={16} />}
           itemComponent={TypeSelectItem}
@@ -184,7 +184,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
 
         {!props.group_id && (
           <Select
-            label='Channel Group'
+            label='Group'
             data={groups}
             icon={<IconFolder size={16} />}
             withinPortal

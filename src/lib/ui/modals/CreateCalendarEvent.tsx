@@ -18,7 +18,7 @@ import { DatePickerInput, DateTimePicker, TimeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { IconClock, IconFolder, IconHash } from '@tabler/icons-react';
+import { IconClock, IconFolder } from '@tabler/icons-react';
 
 import PRESET_COLORS from '@/lib/ui/components/PresetColors';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';

@@ -52,7 +52,7 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
           });
         }}
       >
-        Edit
+        Edit event
       </Menu.Item>
 
       <Menu.Divider />
@@ -76,7 +76,7 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
           });
         }}
       >
-        Delete
+        Delete event
       </Menu.Item>
     </>
   );

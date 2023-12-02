@@ -38,7 +38,6 @@ import {
   IconDotsVertical,
   IconFileDatabase,
   IconGitMerge,
-  IconHash,
   IconPlus,
   IconSearch,
   IconSubtask,
