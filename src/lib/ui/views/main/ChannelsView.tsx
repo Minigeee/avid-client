@@ -85,9 +85,10 @@ function SingleChannel(props: SingleChannelProps) {
         <Flex
           ref={provided.innerRef}
           wrap='nowrap'
+          align='stretch'
           sx={(theme) => ({
             width: '100%',
-            height: '2.375rem',
+            minHeight: '2.375rem',
             borderRadius: theme.radius.sm,
             overflow: 'hidden',
             boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
@@ -110,17 +111,15 @@ function SingleChannel(props: SingleChannelProps) {
             sx={(theme) => ({
               flexShrink: 0,
               flexBasis: '0.25rem',
-              height: '100%',
               background: props.selected ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) : undefined,
             })}
           />
 
           <Flex
             className='btn-body'
-            gap={12}
-            pl={12}
-            pr={4}
-            align='center'
+            direction='column'
+            justify='center'
+            p='0.25rem 0.25rem 0.25rem 0.75rem'
             sx={(theme) => ({
               flexGrow: 1,
               backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
@@ -128,168 +127,170 @@ function SingleChannel(props: SingleChannelProps) {
               transition: 'background-color 0.1s, color 0.1s',
             })}
           >
-            <ChannelIcon type={props.channel.type} size={18} />
+            <Flex gap={12} align='center'>
+              <ChannelIcon type={props.channel.type} size={18} />
 
-            {!renaming && (
-              <Text
-                size='sm'
-                weight={600}
-                sx={{ flexGrow: 1 }}
+              {!renaming && (
+                <Text
+                  size='sm'
+                  weight={600}
+                  sx={{ flexGrow: 1 }}
+                >
+                  {props.channel.name}
+                </Text>
+              )}
+              {renaming && (
+                <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
+                  // Rename channel
+                  props.domain._mutators.renameChannel(props.channel.id, values.name);
+                  // Go back to default view
+                  setRenaming(false);
+                })}>
+                  <TextInput
+                    size='xs'
+                    mt={0}
+                    styles={(theme) => ({
+                      wrapper: { marginTop: 0, maxWidth: '20ch' },
+                      input: { fontSize: theme.fontSizes.sm, fontWeight: 600 },
+                    })}
+                    {...form.getInputProps('name')}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => setRenaming(false)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape')
+                        e.currentTarget.blur();
+                    }}
+                    autoFocus
+                  />
+                </form>
+              )}
+
+              <Menu
+                width={180}
+                withinPortal
+                onClose={() => setShowMenu(false)}
               >
-                {props.channel.name}
-              </Text>
-            )}
-            {renaming && (
-              <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
-                // Rename channel
-                props.domain._mutators.renameChannel(props.channel.id, values.name);
-                // Go back to default view
-                setRenaming(false);
-              })}>
-                <TextInput
-                  size='xs'
-                  mt={0}
-                  styles={(theme) => ({
-                    wrapper: { marginTop: 0, maxWidth: '20ch' },
-                    input: { fontSize: theme.fontSizes.sm, fontWeight: 600 },
-                  })}
-                  {...form.getInputProps('name')}
-                  onFocus={(e) => e.target.select()}
-                  onBlur={() => setRenaming(false)}
+                <Menu.Target>
+                  <ActionIcon
+                    className='dropdown'
+                    sx={(theme) => ({
+                      visibility: showMenu ? 'visible' : 'hidden',
+                      '&:hover': {
+                        backgroundColor: theme.colors.dark[4]
+                      },
+                    })}
+                    onClick={((e) => {
+                      e.stopPropagation();
+                      setShowMenu(!showMenu);
+                    }) as MouseEventHandler<HTMLButtonElement>}
+                  >
+                    <IconDotsVertical size={16} />
+                  </ActionIcon>
+                </Menu.Target>
+
+                <Menu.Dropdown
                   onClick={(e) => {
                     e.stopPropagation();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape')
-                      e.currentTarget.blur();
-                  }}
-                  autoFocus
-                />
-              </form>
-            )}
-
-            <Menu
-              width={180}
-              withinPortal
-              onClose={() => setShowMenu(false)}
-            >
-              <Menu.Target>
-                <ActionIcon
-                  className='dropdown'
-                  sx={(theme) => ({
-                    visibility: showMenu ? 'visible' : 'hidden',
-                    '&:hover': {
-                      backgroundColor: theme.colors.dark[4]
-                    },
-                  })}
-                  onClick={((e) => {
-                    e.stopPropagation();
-                    setShowMenu(!showMenu);
-                  }) as MouseEventHandler<HTMLButtonElement>}
-                >
-                  <IconDotsVertical size={16} />
-                </ActionIcon>
-              </Menu.Target>
-
-              <Menu.Dropdown
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                }}>
-                <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
-                {canEdit && (
-                  <Menu.Item
-                    icon={<IconSettings size={16} />}
-                    disabled={props.channel.type !== 'board'}
-                    onClick={() => openChannelSettings({
-                      domain_id: props.domain.id,
-                      channel: props.channel,
-                    })}
-                  >
-                    Settings
-                  </Menu.Item>
-                )}
-
-                <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
-
-                {canEdit && (
-                  <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
-                    // Reset form value to channel name
-                    form.setFieldValue('name', props.channel.name);
-                    setRenaming(true);
-                  }}>Rename</Menu.Item>
-                )}
-
-                {hasPermission(props.domain, props.channel.id, 'can_manage_resources') && (
-                  <>
-                    <Menu.Divider />
+                    setShowMenu(false);
+                  }}>
+                  <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
+                  {canEdit && (
                     <Menu.Item
-                      color='red'
-                      icon={<IconTrash size={16} />}
-                      onClick={() => {
-                        openConfirmModal({
-                          title: 'Delete Section',
-                          content: (<Text>Are you sure you want to delete <b>{props.channel.name}</b>?</Text>),
-                          confirmLabel: 'Delete',
-                          onConfirm: () => {
-                            props.domain._mutators.removeChannel(props.channel.id);
-                          }
-                        })
-                      }}
+                      icon={<IconSettings size={16} />}
+                      disabled={props.channel.type !== 'board'}
+                      onClick={() => openChannelSettings({
+                        domain_id: props.domain.id,
+                        channel: props.channel,
+                      })}
                     >
-                      Delete section
+                      Settings
                     </Menu.Item>
-                  </>
-                )}
-              </Menu.Dropdown>
-            </Menu>
+                  )}
 
-            {app.pings?.[props.channel.id] !== undefined && app.pings[props.channel.id] > 0 && (
-              <Text
-                className='ping-indicator'
-                size='xs'
-                weight={600}
-                inline
-                sx={(theme) => ({
-                  display: showMenu ? 'none' : undefined,
-                  padding: '0.15rem 0.3rem 0.25rem 0.3rem',
-                  marginRight: '0.4rem',
-                  backgroundColor: theme.colors.red[5],
-                  color: theme.colors.dark[0],
-                  borderRadius: '1.0rem',
-                })}>
-                {app.pings?.[props.channel.id]}
-              </Text>
+                  <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
+
+                  {canEdit && (
+                    <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
+                      // Reset form value to channel name
+                      form.setFieldValue('name', props.channel.name);
+                      setRenaming(true);
+                    }}>Rename</Menu.Item>
+                  )}
+
+                  {hasPermission(props.domain, props.channel.id, 'can_manage_resources') && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Item
+                        color='red'
+                        icon={<IconTrash size={16} />}
+                        onClick={() => {
+                          openConfirmModal({
+                            title: 'Delete Section',
+                            content: (<Text>Are you sure you want to delete <b>{props.channel.name}</b>?</Text>),
+                            confirmLabel: 'Delete',
+                            onConfirm: () => {
+                              props.domain._mutators.removeChannel(props.channel.id);
+                            }
+                          })
+                        }}
+                      >
+                        Delete section
+                      </Menu.Item>
+                    </>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
+
+              {app.pings?.[props.channel.id] !== undefined && app.pings[props.channel.id] > 0 && (
+                <Text
+                  className='ping-indicator'
+                  size='xs'
+                  weight={600}
+                  inline
+                  sx={(theme) => ({
+                    display: showMenu ? 'none' : undefined,
+                    padding: '0.15rem 0.3rem 0.25rem 0.3rem',
+                    marginRight: '0.4rem',
+                    backgroundColor: theme.colors.red[5],
+                    color: theme.colors.dark[0],
+                    borderRadius: '1.0rem',
+                  })}>
+                  {app.pings?.[props.channel.id]}
+                </Text>
+              )}
+            </Flex>
+
+            {participants._exists && participants.data.length > 0 && (
+              <Group spacing={4} mb={4} pl={3}>
+                <Box sx={(theme) => ({ color: theme.colors.dark[3] })}>
+                  <IconCornerDownRight size={20} />
+                </Box>
+
+                <Avatar.Group spacing={6}>
+                  {participants.data.slice(0, 5).map((member, i) => (
+                    <Tooltip key={member.id} label={member.alias} withArrow>
+                      <MemberAvatar
+                        key={member.id}
+                        size={28}
+                        member={member}
+                      />
+                    </Tooltip>
+                  ))}
+                  {participants.data.length > 5 && (
+                    <Avatar
+                      size={28}
+                      radius={28}
+                    >
+                      +{participants.data.length - 5}
+                    </Avatar>
+                  )}
+                </Avatar.Group>
+              </Group>
             )}
           </Flex>
-
-          {participants._exists && participants.data.length > 0 && (
-            <Group spacing={4} mb={4} pl={3}>
-              <Box sx={(theme) => ({ color: theme.colors.dark[3] })}>
-                <IconCornerDownRight size={20} />
-              </Box>
-
-              <Avatar.Group spacing={6}>
-                {participants.data.slice(0, 5).map((member, i) => (
-                  <Tooltip key={member.id} label={member.alias} withArrow>
-                    <MemberAvatar
-                      key={member.id}
-                      size={28}
-                      member={member}
-                    />
-                  </Tooltip>
-                ))}
-                {participants.data.length > 5 && (
-                  <Avatar
-                    size={28}
-                    radius={28}
-                  >
-                    +{participants.data.length - 5}
-                  </Avatar>
-                )}
-              </Avatar.Group>
-            </Group>
-          )}
         </Flex>
       )}
     </Draggable>
@@ -310,7 +311,7 @@ type ChannelGroupProps = {
 function ChannelGroupComponent(props: ChannelGroupProps) {
   const app = useApp();
   const { open: openConfirmModal } = useConfirmModal();
-  
+
   const form = useForm({
     initialValues: { name: props.group.name },
   });
@@ -552,7 +553,7 @@ export default function ChannelsView(props: ChannelsViewProps) {
         paddingRight: '0.5rem',
         borderBottom: `1px solid ${theme.colors.dark[4]}`
       })}>
-        <Title order={5} sx={{ flexGrow: 1 }}>
+        <Title order={4} sx={{ flexGrow: 1 }}>
           Sections
         </Title>
         <div style={{ flexGrow: 1 }} />

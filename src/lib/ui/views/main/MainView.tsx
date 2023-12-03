@@ -66,51 +66,55 @@ export default function MainView() {
         domain={domain}
       />
 
-      <ErrorBoundary>
-        {channel && (
-          <Flex direction='column' sx={(theme) => ({
-            flexGrow: 1,
-            width: 0, // idk why this works
-            height: '100%',
-            backgroundColor: theme.colors.dark[7],
-          })}>
-            <Group
-              spacing={8}
-              noWrap
-              sx={(theme) => ({
-                flexShrink: 0,
-                height: '3.0rem',
-                paddingLeft: '1.0rem',
-                paddingRight: '0.3rem',
-                borderBottom: `1px solid ${theme.colors.dark[5]}`,
-              })}
-            >
-              <ChannelIcon type={channel.type} size={18} />
-              <Title order={5} ml={4}>
+      <Flex direction='column' sx={(theme) => ({
+        flexGrow: 1,
+        width: 0, // idk why this works
+        height: '100%',
+        backgroundColor: theme.colors.dark[7],
+      })}>
+        <Group
+          spacing={8}
+          noWrap
+          sx={(theme) => ({
+            flexShrink: 0,
+            height: '3.0rem',
+            paddingLeft: '1.0rem',
+            paddingRight: '0.3rem',
+            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+          })}
+        >
+          {channel && (
+            <>
+              <ChannelIcon type={channel.type} size={20} />
+              <Title order={4} ml={4} sx={{ lineHeight: 1 }}>
                 {channel.name}
               </Title>
+            </>
+          )}
 
-              <div style={{ flexGrow: 1 }} />
+          <div style={{ flexGrow: 1 }} />
 
-              {rtc.joined && (
-                <>
-                  <RtcControlBar />
-                  {!app.right_panel_opened && <Divider orientation='vertical' m='0.5rem 0.0rem' />}
-                </>
-              )}
+          {rtc.joined && (
+            <>
+              <RtcControlBar />
+              {!app.right_panel_opened && <Divider orientation='vertical' m='0.5rem 0.0rem' />}
+            </>
+          )}
 
-              {!app.right_panel_opened && (
-                <ActionButton
-                  tooltip='Open Side Panel'
-                  hoverBg={(theme) => theme.colors.dark[6]}
-                  mr={4}
-                  onClick={() => app._mutators.setRightPanelOpened(true)}
-                >
-                  <IconArrowBarLeft size={18} />
-                </ActionButton>
-              )}
-            </Group>
+          {!app.right_panel_opened && (
+            <ActionButton
+              tooltip='Open Side Panel'
+              hoverBg={(theme) => theme.colors.dark[6]}
+              mr={4}
+              onClick={() => app._mutators.setRightPanelOpened(true)}
+            >
+              <IconArrowBarLeft size={18} />
+            </ActionButton>
+          )}
+        </Group>
 
+        <ErrorBoundary>
+          {channel && (
             <Box sx={(theme) => ({
               flexGrow: 1,
               width: '100%',
@@ -145,18 +149,18 @@ export default function MainView() {
                 />
               )}
             </Box>
-          </Flex>
-        )}
-      </ErrorBoundary>
+          )}
+        </ErrorBoundary>
 
-      {!channel && (
-        <Box sx={(theme) => ({
-          flexGrow: 1,
-          width: 0, // idk why this works
-          height: '100%',
-          backgroundColor: theme.colors.dark[7],
-        })} />
-      )}
+        {!channel && (
+          <Box sx={(theme) => ({
+            flexGrow: 1,
+            width: 0, // idk why this works
+            height: '100%',
+            backgroundColor: theme.colors.dark[7],
+          })} />
+        )}
+      </Flex>
 
       {app.right_panel_opened && (
         <RightPanelView

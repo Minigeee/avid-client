@@ -1035,7 +1035,7 @@ function MessagesViewport(props: MessagesViewportProps) {
 
                       sender={context.sender as MemberWrapper}
                       thread_id={context.style.withSidePanel ? context.thread_id : '_'}
-                      viewing_thread={context.state.viewing_thread}
+                      viewing_thread={context.style.withSidePanel ? context.state.viewing_thread : null}
                       editing={cachedProps[`${day}.${j}`].editing}
                       p={context.style.p}
                       avatarGap={context.style.avatarGap}

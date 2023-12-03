@@ -15,11 +15,11 @@ const config = {
 		/** Major version number */
 		major: 0,
 		/** Minor version number */
-		minor: 1,
+		minor: 2,
 		/** Patch version number */
-		patch: 5,
+		patch: 0,
 		/** Revision number */
-		revision: 0,
+		revision: 1,
 		/** Build metadata */
 		metadata: ['alpha'],
 	},

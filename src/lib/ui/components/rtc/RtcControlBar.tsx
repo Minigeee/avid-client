@@ -88,12 +88,11 @@ export default function RtcControlBar() {
   const [webcamLoading, setWebcamLoading] = useState<boolean>(false);
 
   // Check if viewing room
-  const domain_id = app.domain;
   const room_id = rtc.room_id;
-  const inRoom = domain_id === rtc.domain_id && app.channels?.[domain_id || ''] === room_id;
+  const inRoom = app.domain === rtc.domain_id && app.channels?.[app.domain || ''] === room_id;
 
   // Get domain for permissions
-  const domain = useDomain(domain_id || undefined);
+  const domain = useDomain(rtc.domain_id || undefined);
   
   // Rtc permissions
   const canSpeak = domain._exists && room_id ? hasPermission(domain, room_id, 'can_broadcast_audio') : false;

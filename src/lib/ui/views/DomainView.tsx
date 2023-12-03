@@ -278,7 +278,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
         <ActionIcon
           size='lg'
           sx={(theme) => ({
-            marginRight: '0.75rem',
+            marginRight: '0.5rem',
             color: theme.colors.dark[1],
             '&:hover': {
               backgroundColor: theme.colors.dark[6],
@@ -316,7 +316,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
               <Group spacing='xs'>
                 <DomainAvatar
                   domain={domain}
-                  size={28}
+                  size={32}
                 />
                 <Title order={4} size='1.25rem' sx={{ lineHeight: 1 }}>
                   {domain.name}
