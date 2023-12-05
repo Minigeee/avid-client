@@ -16,7 +16,7 @@ import { useSession } from './use-session';
 import { SwrWrapper, useSwrWrapper } from './use-swr-wrapper';
 import { getThreadSync, setThreads, useThreadCache } from './use-threads';
 
-import { Emoji, emojiSearch } from '@/lib/ui/components/Emoji';
+import { emojiSearch, renderNativeEmojis } from '@/lib/utility/emoji';
 import { errorWrapper, swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import hljs from 'highlight.js';
@@ -29,7 +29,6 @@ import { v4 as uuid } from 'uuid';
 import sanitizeHtml from 'sanitize-html';
 import StateCore from 'markdown-it/lib/rules_core/state_core';
 import Token from 'markdown-it/lib/token';
-import emojiRegex from 'emoji-regex';
 
 
 /** An expanded message with information on if a target member was pinged within message */
@@ -52,8 +51,6 @@ type MarkdownEnv = {
 	};
 };
 
-
-const _emojiRegex = emojiRegex();
 
 /** Markdown renderer */
 const _md = new MarkdownIt({
@@ -1010,10 +1007,7 @@ export function renderMessage(message: string, env: MarkdownEnv) {
 	let rendered = _md.render(message, env);
 
 	// Native emojis
-	rendered = rendered.replaceAll(_emojiRegex, (match) => {
-		const emoji = emojiSearch.get(match);
-		return emoji ? `<span class="emoji" data-type="emojis" emoji-id="${emoji.id}" data-emoji-set="native">${match}</span>` : match;
-	});
+	rendered = renderNativeEmojis(rendered);
 
 	return rendered;
 }

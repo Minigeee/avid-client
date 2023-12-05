@@ -57,7 +57,7 @@ import { DomainWrapper, useChatStyles, useSession, useTimeout } from '@/lib/hook
 import { uid } from 'uid';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import { FileAttachment } from '@/lib/types';
-import { emojiSearch } from '../Emoji';
+import { emojiSearch } from '@/lib/utility/emoji';
 
 
 ////////////////////////////////////////////////////////////

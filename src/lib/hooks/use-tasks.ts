@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { ExpandedTask } from '@/lib/types';
 
+import { renderNativeEmojis } from '@/lib/utility/emoji';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { SwrWrapper } from './use-swr-wrapper';
@@ -18,7 +19,7 @@ import { setMembers } from './use-members';
 ////////////////////////////////////////////////////////////
 function _sanitize<T extends Partial<ExpandedTask>>(task: T) {
 	if (task.description)
-		task.description = sanitizeHtml(task.description, config.sanitize);
+		task.description = renderNativeEmojis(sanitizeHtml(task.description, config.sanitize));
 
 	return task;
 }

@@ -15,7 +15,8 @@ import {
 } from '@mantine/core';
 import { useElementSize } from '@mantine/hooks';
 
-import { Emoji, EmojiType, emojiSearch } from '../Emoji';
+import { Emoji } from '../Emoji';
+import { EmojiType, emojiSearch } from '@/lib/utility/emoji';
 
 import data from '@emoji-mart/data';
 import emojiRegex from 'emoji-regex';

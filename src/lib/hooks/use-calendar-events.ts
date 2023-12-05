@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
 import { CalendarEvent } from '@/lib/types';
 
+import { renderNativeEmojis } from '@/lib/utility/emoji';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
 
 import { SwrWrapper } from './use-swr-wrapper';
@@ -26,7 +27,7 @@ const _requests: Record<string, number> = {};
 ////////////////////////////////////////////////////////////
 function _sanitize<T extends Partial<CalendarEvent>>(event: T) {
 	if (event.description)
-		event.description = sanitizeHtml(event.description, config.sanitize);
+		event.description = renderNativeEmojis(sanitizeHtml(event.description, config.sanitize));
 
 	return event;
 }
@@ -87,7 +88,7 @@ function mutators(mutate: KeyedMutator<CalendarEvent[]>, session: SessionState |
 
 				// Update individual hook
 				if (!optimistic)
-					_mutate(event_id, sanitized, { revalidate: false });
+					_mutate(event_id, (old: CalendarEvent | undefined) => ({ ...old, ...sanitized }), { revalidate: false });
 
 				return copy;
 			}, { message: 'An error occurred while modifying calendar event' }),
@@ -103,7 +104,7 @@ function mutators(mutate: KeyedMutator<CalendarEvent[]>, session: SessionState |
 					copy[idx] = _sanitize({ ...copy[idx], ...event });
 
 					// Optimistic update for individual hook
-					_mutate(event_id, copy[idx], { revalidate: false });
+					_mutate(event_id, (old: CalendarEvent | undefined) => ({ ...old, ...copy[idx] }), { revalidate: false });
 
 					return copy;
 				} : undefined,
