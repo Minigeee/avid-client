@@ -77,6 +77,8 @@ export default function Calendar(props: CalendarProps) {
     timeGutter: 60,
     monthHeaderHeight: 32,
     slotHeight: '4rem',
+    
+    resizeMarginSize: 4,
   } as CalendarStyle), []);
 
   // Callback refs

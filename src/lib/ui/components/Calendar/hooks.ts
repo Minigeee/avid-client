@@ -33,7 +33,7 @@ export type UseDraggableEventsProps = {
 	useYOffset?: boolean;
 
 	/** Called when event is dropped */
-	onDrop?: (e: MomentCalendarEvent, gridPos: { x: number; y: number }) => void;
+	onDrop?: (e: MomentCalendarEvent, gridPos: { x: number; y: number }, resizing: boolean) => void;
 };
 
 ////////////////////////////////////////////////////////////
@@ -44,15 +44,18 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
 	const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 	// Dragged position
 	const [eventRect, setEventRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+	// Event being dragged
+	const [resizing, setResizing] = useState<boolean>(false);
 
 	// Tracks current dragged event's grid position
 	const gridPos = useRef<{ x: number; y: number } | null>(null);
 
 
 	// Called on event drag start
-	const onDragStart = useCallback((e: MomentCalendarEvent, offset: { x: number; y: number }) => {
+	const onDragStart = useCallback((e: MomentCalendarEvent, offset: { x: number; y: number }, resize?: boolean) => {
 		setDraggedEvent(e);
 		setOffset(offset);
+		setResizing(resize || false);
 	}, []);
 
 	// Called on mouse move (only when event being dragged)
@@ -70,22 +73,29 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
 			// Calculate position relative to scroll area
 			const rect = scrollArea.getBoundingClientRect();
 			const left = e.clientX - rect.x;
-			const top = e.clientY - rect.y + scrollArea.scrollTop - (useYOffset ? offset.y : 0);
+			const top = e.clientY - rect.y + scrollArea.scrollTop - (useYOffset && !resizing ? offset.y : 0);
 
 			// Snap to grid
 			const unitX = (scrollArea.clientWidth - props.timeGutter) / cols;
 			const unitY = (scrollArea.scrollHeight - header) / rows;
-			const gridX = Math.max(0, Math.min(Math.floor((left - props.timeGutter) / unitX), cols - 1));
-			const gridY = Math.max(0, Math.min(Math.floor((top - header) / unitY), rows - 1));
+			const gridX = resizing ? draggedEvent.start.day() : Math.max(0, Math.min(Math.floor((left - props.timeGutter) / unitX), cols - 1));
+			const gridY = Math.max(0, Math.min(Math[resizing ? 'round' : 'floor']((top - header) / unitY), rows - 1));
 			const snapped = {
 				x: gridX * unitX + props.timeGutter,
 				y: gridY * unitY + header,
 			};
 
 			if (!eventRect || snapped.x != eventRect.x || snapped.y != eventRect.y) {
-				let h = 1;
+				let y = snapped.y, h = 1;
 
-				if (subdivs > 0) {
+				if (resizing) {
+					const startH = draggedEvent.start.hours() + draggedEvent.start.minutes() / 60;
+					y = startH * subdivs * unitY + header;
+					h = Math.abs(snapped.y - y);
+					y = Math.min(y, snapped.y);
+				}
+				
+				else if (subdivs > 0) {
 					const duration = draggedEvent.end ? draggedEvent.end.diff(draggedEvent.start) : moment({ h: 1 }).unix();
 					const newStart = moment({ h: gridY / subdivs, m: 60 * (gridY % subdivs) / subdivs });
 					const newEnd = moment(newStart).add(duration);
@@ -99,7 +109,7 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
 				// Set event rect
 				setEventRect({
 					x: snapped.x,
-					y: snapped.y,
+					y,
 					w: unitX,
 					h,
 				});
@@ -116,7 +126,7 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
 			// Callback
 			if (draggedEvent && gridPos.current) {
 				const subdivs = props.subdivisions || 1;
-				props.onDrop?.(draggedEvent, { x: gridPos.current.x, y: gridPos.current.y / subdivs });
+				props.onDrop?.(draggedEvent, { x: gridPos.current.x, y: gridPos.current.y / subdivs }, resizing);
 			}
 
 			setDraggedEvent(null);
@@ -139,6 +149,7 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
 		event: draggedEvent,
 		rect: eventRect,
 		gridPos: gridPos.current,
+		resizing,
 	};
 }
 

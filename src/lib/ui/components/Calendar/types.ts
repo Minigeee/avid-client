@@ -22,6 +22,9 @@ export type CalendarStyle = {
 	slotHeight: string;
 	/** The size of the month header (px) */
 	monthHeaderHeight: number;
+
+	/** Size of event resize border (px) */
+	resizeMarginSize: number;
 };
 
 export type MomentCalendarEvent = Omit<CalendarEvent, 'start' | 'end'> & {

@@ -25,7 +25,7 @@ export type TimeColumnProps = {
   /** The event that is currently being dragged */
   draggedId?: string | null;
   /** Called when an event is start drag */
-  onDragStart?: (event: MomentCalendarEvent, offset: { x: number; y: number }) => void;
+  onDragStart?: (event: MomentCalendarEvent, offset: { x: number; y: number }, resizing?: boolean) => void;
   /** Called when a column drag start */
   onDragCreateStart?: (offsetY: number) => void;
   /** Called on click create */
@@ -252,6 +252,16 @@ function TimeColumnImpl(props: TimeColumnProps) {
             borderTopRightRadius: e.has_prev ? 0 : theme.radius.sm,
             borderBottomLeftRadius: e.has_next ? 0 : theme.radius.sm,
             borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
+
+            '::after': {
+              content: '""',
+              position: 'absolute',
+              width: '100%',
+              height: props.style.resizeMarginSize,
+              bottom: 0,
+              left: 0,
+              cursor: 'ns-resize',
+            },
           })}
 
           draggable={props.editable}
@@ -262,8 +272,9 @@ function TimeColumnImpl(props: TimeColumnProps) {
             const rect = ev.currentTarget.getBoundingClientRect();
             const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
 
-            // console.log('drag', offset);
-            props.onDragStart?.(e, offset);
+            // Detect if drag or resize
+            const resizing = offset.y >= rect.height - props.style.resizeMarginSize - 1;
+            props.onDragStart?.(e, offset, resizing);
           } : undefined}
         >
           <Text color='dimmed' weight={600} size={11}>

@@ -52,11 +52,25 @@ export default function DayView(props: DayViewProps) {
   
 
   // Called when event is dropped
-  const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }) => {
+  const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }, resizing: boolean) => {
+    let start: Moment, end: Moment;
+
     // Calculate new times
-    const duration = e.end ? moment(e.end).diff(e.start) : moment({ h: 1 }).unix();
-    const start = moment(props.time).startOf('day').add(gridPos.y, 'hours');
-    const end = moment(start).add(duration);
+    if (resizing) {
+      start = moment(e.start);
+      end = moment(start).startOf('day').add({ h: gridPos.y });
+    }
+    else {
+      const duration = e.end ? moment(e.end).diff(e.start) : moment({ h: 1 }).unix();
+      start = moment(props.time).startOf('day').add(gridPos.y, 'hours');
+      end = moment(start).add(duration);
+    }
+
+    if (end.isBefore(start)) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
 
     // User callback
     props.onEventChange?.(e.id, {
@@ -94,13 +108,26 @@ export default function DayView(props: DayViewProps) {
   const draggedEventTimes = useMemo(() => {
     if (dragCreate.event) return dragCreate.event;
 
-    const { event, gridPos } = dragDropDay;
+    const { event, gridPos, resizing } = dragDropDay;
     if (!event || !gridPos)
       return { start: moment(), end: moment() };
+    let start: Moment, end: Moment;
 
-    const duration = event.end ? event.end.diff(event.start) : moment({ h: 1 }).unix();
-    const start = moment({ h: gridPos.y / 4, m: 60 * (gridPos.y % 4) / 4 });
-    const end = moment(start).add(duration);
+    if (resizing) {
+      start = moment(event.start);
+      end = moment(start).startOf('day').add({ h: gridPos.y / 4 });
+    }
+    else {
+      const duration = event.end ? event.end.diff(event.start) : moment({ h: 1 }).unix();
+      start = moment({ h: gridPos.y / 4 });
+      end = moment(start).add(duration);
+    }
+
+    if (end.isBefore(start)) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
 
     return { start, end };
   }, [dragDropDay.gridPos?.x, dragDropDay.gridPos?.y, dragCreate.event?.start, dragCreate.event?.end]);

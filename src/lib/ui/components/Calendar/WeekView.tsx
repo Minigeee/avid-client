@@ -170,15 +170,29 @@ export default function WeekView(props: WeekViewProps) {
 
 
   // Called when event is dropped
-  const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }) => {
+  const onEventDrop = useCallback((e: MomentCalendarEvent, gridPos: { x: number; y: number }, resizing?: boolean) => {
     // Get original event
     const origEvent = props.events.find((x) => x.id === e.id) || e;
+    let start: Moment, end: Moment;
 
     // Calculate new times
     const estart = moment(origEvent.start);
-    const duration = origEvent.end ? moment(origEvent.end).diff(estart) : moment({ h: 1 }).unix();
-    const start = moment(props.time).startOf('week').add(gridPos.x, 'days').add(gridPos.y >= 0 ? gridPos.y : estart.diff(moment(estart).startOf('day'), 'minutes') / 60, 'hours');
-    const end = moment(start).add(duration);
+
+    if (resizing) {
+      start = estart;
+      end = moment(start).startOf('day').add({ h: gridPos.y });
+    }
+    else {
+      const duration = origEvent.end ? moment(origEvent.end).diff(estart) : moment({ h: 1 }).unix();
+      start = moment(props.time).startOf('week').add(gridPos.x, 'days').add(gridPos.y >= 0 ? gridPos.y : estart.diff(moment(estart).startOf('day'), 'minutes') / 60, 'hours');
+      end = moment(start).add(duration);
+    }
+
+    if (end.isBefore(start)) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
 
     // User callback
     props.onEventChange?.(e.id, {
@@ -223,13 +237,26 @@ export default function WeekView(props: WeekViewProps) {
   const draggedEventTimes = useMemo(() => {
     if (dragCreate.event) return dragCreate.event;
 
-    const { event, gridPos } = dragDropDay;
+    const { event, gridPos, resizing } = dragDropDay;
     if (!event || !gridPos)
       return { start: moment(), end: moment() };
+    let start: Moment, end: Moment;
 
-    const duration = event.end ? event.end.diff(event.start) : moment({ h: 1 }).unix();
-    const start = moment({ h: gridPos.y / 4, m: 60 * (gridPos.y % 4) / 4 });
-    const end = moment(start).add(duration);
+    if (resizing) {
+      start = moment(event.start);
+      end = moment(start).startOf('day').add({ h: gridPos.y / 4 });
+    }
+    else {
+      const duration = event.end ? event.end.diff(event.start) : moment({ h: 1 }).unix();
+      start = moment({ h: gridPos.y / 4 });
+      end = moment(start).add(duration);
+    }
+
+    if (end.isBefore(start)) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
 
     return { start, end };
   }, [dragDropDay.gridPos?.x, dragDropDay.gridPos?.y, dragCreate.event?.start, dragCreate.event?.end]);
