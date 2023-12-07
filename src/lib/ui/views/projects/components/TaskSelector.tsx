@@ -1,16 +1,19 @@
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 
 import {
   Box,
   Button,
+  Center,
   ColorSwatch,
   Divider,
   Flex,
   Group,
+  ScrollArea,
   Select,
   SelectProps,
   Stack,
   Text,
+  UnstyledButton,
 } from '@mantine/core';
 
 import {
@@ -32,6 +35,8 @@ import {
   ExpandedTask,
   Label,
 } from '@/lib/types';
+import SearchBar from '@/lib/ui/components/SearchBar';
+import { useDebouncedValue } from '@mantine/hooks';
 
 
 
@@ -40,7 +45,7 @@ interface TaskSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
   value: string;
   label: string;
   summary: string;
-  assignee: ExpandedMember | null;
+  assignee: ExpandedMember | null | undefined;
   status: Label;
 }
 
@@ -124,6 +129,11 @@ type TaskSelectorProps = {
 
 ////////////////////////////////////////////////////////////
 export function TaskSelector(props: TaskSelectorProps) {
+  // Task searcher
+  const [search, setSearch] = useState<string>('');
+  // Debounced search value
+  const [debouncedSearch] = useDebouncedValue(search, 200, { leading: true });
+
   // Available tasks
   const options = useMemo(() => {
     // Status map
@@ -137,49 +147,95 @@ export function TaskSelector(props: TaskSelectorProps) {
     return props.tasks.data.filter(x => !exclude.has(x.id)).sort((a, b) => b.sid - a.sid).map((task) => ({
       value: task.id,
       label: `${props.board.prefix}-${task.sid}`,
+      sid: task.sid,
       summary: task.summary,
       assignee: task.assignee,
       status: statusMap[task.status],
     }));
   }, [props.tasks.data, props.board.prefix, props.task.subtasks, props.task.dependencies]);
 
+  // Filtered tasks
+  const filtered = useMemo(() => {
+    let list: typeof options = [];
+    if (!debouncedSearch?.length)
+      list = options;
+
+    else {
+      const terms = debouncedSearch.toLocaleLowerCase().split(/\s+/);
+      list = options.filter(x => {
+        // Search filter
+        if (debouncedSearch && !x.sid.toString().includes(debouncedSearch)) {
+          const lcSummary = x.summary.toLocaleLowerCase();
+
+          for (const term of terms) {
+            if (term.length > 0 && !lcSummary.includes(term))
+              return false;
+          }
+        }
+
+        return true;
+      })
+    }
+
+    return list.map((task) => (
+      <UnstyledButton
+        sx={(theme) => ({
+          padding: '0.375rem 0.75rem',
+          borderRadius: theme.radius.sm,
+
+          '&:hover': {
+            background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
+          },
+        })}
+
+        onClick={() => {
+          const id = task.value;
+          
+          // Perform update
+          const update = props.type === 'subtask' ? { subtasks: (props.task.subtasks || []).concat([id]) } : { dependencies: (props.task.dependencies || []).concat([id]) };
+          props.tasks._mutators.updateTask(props.task.id, update, true);
+
+          props.onSelect?.(id);
+        }}
+      >
+        <TaskSelectItem {...task} />
+      </UnstyledButton>
+    ));
+  }, [options, debouncedSearch]);
+
 
   return (
     <Stack spacing='sm'>
-      <Select
-          data={options}
-          icon={<IconSearch size={16} />}
-          placeholder='Select a task'
-          searchable
-          itemComponent={TaskSelectItem}
-          withinPortal
-          sx={{ minWidth: config.app.ui.short_input_width }}
-          onChange={(id) => {
-            if (!id) return;
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+      />
+      {options.length === 0 && (
+        <Center w={config.app.ui.short_input_width} h='5rem'>
+          <Text size='sm' color='dimmed'>There are no tasks</Text>
+        </Center>
+      )}
+      <ScrollArea.Autosize w={config.app.ui.short_input_width} mah='15rem'>
+        <Stack spacing={0}>
+          {filtered}
+        </Stack>
+      </ScrollArea.Autosize>
 
-            // Perform update
-            const update = props.type === 'subtask' ? { subtasks: (props.task.subtasks || []).concat([id]) } : { dependencies: (props.task.dependencies || []).concat([id]) };
-            props.tasks._mutators.updateTask(props.task.id, update, true);
+      <Divider label='or' labelPosition='center' labelProps={{ color: 'dimmed' }} />
 
-            props.onSelect?.(id);
-          }}
-        />
-
-        <Divider label='or' labelPosition='center' labelProps={{ color: 'dimmed' }} />
-
-        <Button
-          component={props.buttonComponent}
-          variant='gradient'
-          leftIcon={<IconPlus size={16} />}
-          onClick={() => openCreateTask({
-            board_id: props.board.id,
-            domain: props.domain,
-            type: props.type,
-            extra_task: props.task.id,
-          })}
-        >
-          Create Task
-        </Button>
+      <Button
+        component={props.buttonComponent}
+        variant='gradient'
+        leftIcon={<IconPlus size={16} />}
+        onClick={() => openCreateTask({
+          board_id: props.board.id,
+          domain: props.domain,
+          type: props.type,
+          extra_task: props.task.id,
+        })}
+      >
+        Create Task
+      </Button>
     </Stack>
   );
 }

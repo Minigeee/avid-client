@@ -912,7 +912,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     if (!board._exists || !tasks._exists || !editable) return;
     return {
       name: (
-        <Popover withArrow shadow='lg'>
+        <Popover withArrow withinPortal shadow='lg'>
           <Popover.Target>
             <ActionIcon ref={subtaskAddBtnRef}>
               <IconPlus size={19} />
@@ -957,7 +957,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     if (!board._exists || !tasks._exists || !editable) return;
     return {
       name: (
-        <Popover withArrow shadow='lg'>
+        <Popover withArrow withinPortal shadow='lg'>
           <Popover.Target>
             <ActionIcon ref={depAddBtnRef}>
               <IconPlus size={19} />
