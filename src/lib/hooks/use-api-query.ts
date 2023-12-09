@@ -48,7 +48,7 @@ export function useApiQuery<Path extends ApiPath, In = ApiReturn<Path>, Mutators
 	// Swr wrapper
 	return useSwrWrapper<In, Mutators, false, Out>({
 		...swr,
-		data: swr.isLoading || swr.error ? options.fallback : swr.data,
+		data: !key || swr.isLoading || swr.error ? options.fallback : swr.data,
 	}, {
 		...options,
 		session,

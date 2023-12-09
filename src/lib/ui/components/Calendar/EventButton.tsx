@@ -23,6 +23,7 @@ import {
   UnstyledButtonProps
 } from '@mantine/core';
 import { FloatingPosition } from '@mantine/core/lib/Floating';
+import { useDebouncedValue } from '@mantine/hooks';
 import { IconClock, IconDotsVertical, IconPencil, IconTrash } from '@tabler/icons-react';
 
 import { openCreateCalendarEvent } from '@/lib/ui/modals';
@@ -57,15 +58,16 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
   const { open: openConfirmModal } = useConfirmModal();
   const calendar = useCalendarContext();
 
+  // Controls popover open state
+  const [opened, setOpened] = useState<boolean>(false);
+  const [delayedOpen] = useDebouncedValue(opened, 200);
+
   // Get full event
-  const event = useCalendarEvent(baseEvent.id, {
+  const event = useCalendarEvent(opened || delayedOpen ? baseEvent.id : undefined, {
     ...baseEvent,
     start: typeof baseEvent.start ==='string' ? baseEvent.start : baseEvent.start.toISOString(),
     end: typeof baseEvent.end ==='string' ? baseEvent.end : baseEvent.end?.toISOString(),
   });
-
-  // Controls popover open state
-  const [opened, setOpened] = useState<boolean>(false);
 
 
   // Check if user can edit event

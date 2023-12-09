@@ -184,8 +184,8 @@ export function useCalendarEvents(channel_id: string | undefined, date: Moment) 
 
 			const deleted: string[] = [];
 			for (const ev of Object.values(_cache[channel_id])) {
-				if (!idSet.has(ev.id) && (moment(ev.start).isAfter(range[0]) || ev.end && moment(ev.end).isBefore(range[1])))
-				deleted.push(ev.id);
+				if (!idSet.has(ev.id) && (moment(ev.start).isAfter(range[0]) && ev.end && moment(ev.end).isBefore(range[1])))
+					deleted.push(ev.id);
 			}
 
 			for (const id of deleted)
@@ -204,8 +204,21 @@ export function useCalendarEvents(channel_id: string | undefined, date: Moment) 
 
 	// Refresh when range changes
 	useEffect(() => {
-		// Calculate time since last request
+		if (!channel_id) return;
+
+		// Request key
 		const key = `${channel_id}-${range[0].toISOString()}-${range[1].toISOString()}`;
+
+		// Check if this is first channel call, if it is skip to avoid double api call
+		if (!_requests[key]) {
+			const keys = Object.keys(_requests);
+			const idx = keys.findIndex(k => k.startsWith(channel_id));
+			if (idx < 0)
+				// First call, skip
+				return;
+		}
+
+		// Calculate time since last request
 		const dt = Date.now() - (_requests[key] || 0);
 
 		// Refresh if past dedupe interval
@@ -230,9 +243,9 @@ const _singleEvents: Record<string, Set<string>> = {};
  * @param fallback The optional fallback task data to display while task is loading or errored
  * @returns A swr object containing the requested task
  */
-export function useCalendarEvent(event_id: string, fallback?: CalendarEvent) {
+export function useCalendarEvent(event_id: string | undefined, fallback?: CalendarEvent) {
 	return useApiQuery(event_id, 'GET /calendar_events/:event_id', {
-		params: { event_id },
+		params: { event_id: event_id || '' },
 	}, {
 		then: (results) => {
 			assert(results);

@@ -121,11 +121,7 @@ type TaskSelectorProps = {
   domain: DomainWrapper;
   board: BoardWrapper;
   tasks: TasksWrapper;
-  task: {
-    id?: string;
-    dependencies?: string[] | null;
-    subtasks?: string[] | null;
-  };
+  task: Partial<Pick<ExpandedTask, 'id' | 'subtasks' | 'dependencies' | 'collection'>>;
 
   /** Determines if task should automatically be updated on task select (default true) */
   shouldUpdate?: boolean;
@@ -246,6 +242,7 @@ export function TaskSelector(props: TaskSelectorProps) {
               domain: props.domain,
               type: props.type,
               extra_task: props.task.id,
+              collection: props.task.collection || undefined,
             })}
           >
             Create Task
