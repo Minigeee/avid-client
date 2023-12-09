@@ -121,8 +121,16 @@ type TaskSelectorProps = {
   domain: DomainWrapper;
   board: BoardWrapper;
   tasks: TasksWrapper;
-  task: ExpandedTask;
+  task: {
+    id?: string;
+    dependencies?: string[] | null;
+    subtasks?: string[] | null;
+  };
 
+  /** Determines if task should automatically be updated on task select (default true) */
+  shouldUpdate?: boolean;
+  /** Determines if the user is allowed to create new task (default true) */
+  canCreateTask?: boolean;
   onSelect?: (id: string) => void;
   buttonComponent?: any;
 };
@@ -142,7 +150,9 @@ export function TaskSelector(props: TaskSelectorProps) {
       statusMap[status.id] = status;
 
     // Set to exclude
-    const exclude = new Set<string>((props.task[props.type === 'subtask' ? 'subtasks' : 'dependencies'] || []).concat([props.task.id]));
+    const exclude = new Set<string>((props.task[props.type === 'subtask' ? 'subtasks' : 'dependencies'] || []));
+    if (props.task.id)
+      exclude.add(props.task.id);
 
     return props.tasks.data.filter(x => !exclude.has(x.id)).sort((a, b) => b.sid - a.sid).map((task) => ({
       value: task.id,
@@ -192,8 +202,10 @@ export function TaskSelector(props: TaskSelectorProps) {
           const id = task.value;
           
           // Perform update
-          const update = props.type === 'subtask' ? { subtasks: (props.task.subtasks || []).concat([id]) } : { dependencies: (props.task.dependencies || []).concat([id]) };
-          props.tasks._mutators.updateTask(props.task.id, update, true);
+          if (props.shouldUpdate !== false && props.task.id) {
+            const update = props.type === 'subtask' ? { subtasks: (props.task.subtasks || []).concat([id]) } : { dependencies: (props.task.dependencies || []).concat([id]) };
+            props.tasks._mutators.updateTask(props.task.id, update, true);
+          }
 
           props.onSelect?.(id);
         }}
@@ -205,7 +217,7 @@ export function TaskSelector(props: TaskSelectorProps) {
 
 
   return (
-    <Stack spacing='sm'>
+    <Stack spacing={0}>
       <SearchBar
         value={search}
         onChange={setSearch}
@@ -216,26 +228,30 @@ export function TaskSelector(props: TaskSelectorProps) {
         </Center>
       )}
       <ScrollArea.Autosize w={config.app.ui.short_input_width} mah='15rem'>
-        <Stack spacing={0}>
+        <Stack spacing={0} mt={4}>
           {filtered}
         </Stack>
       </ScrollArea.Autosize>
 
-      <Divider label='or' labelPosition='center' labelProps={{ color: 'dimmed' }} />
+      {props.canCreateTask !== false && (
+        <>
+          <Divider label='or' labelPosition='center' labelProps={{ color: 'dimmed' }} sx={{ margin: '0.5rem 0.0rem' }} />
 
-      <Button
-        component={props.buttonComponent}
-        variant='gradient'
-        leftIcon={<IconPlus size={16} />}
-        onClick={() => openCreateTask({
-          board_id: props.board.id,
-          domain: props.domain,
-          type: props.type,
-          extra_task: props.task.id,
-        })}
-      >
-        Create Task
-      </Button>
+          <Button
+            component={props.buttonComponent}
+            variant='gradient'
+            leftIcon={<IconPlus size={16} />}
+            onClick={() => openCreateTask({
+              board_id: props.board.id,
+              domain: props.domain,
+              type: props.type,
+              extra_task: props.task.id,
+            })}
+          >
+            Create Task
+          </Button>
+        </>
+      )}
     </Stack>
   );
 }

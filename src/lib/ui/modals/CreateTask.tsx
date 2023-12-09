@@ -22,6 +22,7 @@ import {
   Popover,
   Select,
   SelectProps,
+  Spoiler,
   Stack,
   Text,
   TextInput,
@@ -287,6 +288,8 @@ type FormValues = {
   assignee: Member | null;
   collection: string;
   tags: string[];
+  subtasks?: string[];
+  dependencies?: string[];
 };
 
 
@@ -418,6 +421,10 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
   const session = useSession();
   const board = useBoard(props.board_id);
   const tasks = useTasks(props.board_id, props.domain.id);
+  
+  // Used to close menu
+  const subtaskAddBtnRef = useRef<HTMLButtonElement>(null);
+  const depAddBtnRef = useRef<HTMLButtonElement>(null);
 
   // Check if user can manage any task
   const canManageAny = hasPermission(props.domain, props.board_id, 'can_manage_tasks');
@@ -425,6 +432,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
   // Create form
   const form = useForm({
     initialValues: {
+      id: '',
       summary: '',
       description: '',
       type: props.type || 'task',
@@ -435,9 +443,12 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
       assignee: props.assignee || (canManageAny ? null : getMemberSync(props.domain.id, session.profile_id)),
       collection: props.collection || config.app.board.default_backlog.id,
       tags: props.tag !== undefined ? [props.tag.trim()] : [],
+      subtasks: [],
+      dependencies: [],
     } as FormValues,
   });
 
+  // If create modal is loading
   const [loading, setLoading] = useState<boolean>(false);
 
   const {
@@ -447,6 +458,20 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     statusMap,
   } = useTaskHooks(board);
 
+
+  // Task map for lookups
+  const tasksMap = useMemo(() => {
+    const map: Record<string, ExpandedTask> = {};
+    for (const t of tasks.data || [])
+      map[t.id] = t;
+    return map;
+  }, [tasks.data]);
+
+  // Get subtask objects
+  const subtasks = useMemo(() => form.values.subtasks?.map((task_id) => tasksMap[task_id]) || [], [form.values.subtasks, tasksMap]);
+  
+  // Get dependency objects
+  const dependencies = useMemo(() => form.values.dependencies?.map((task_id) => tasksMap[task_id]) || [], [form.values.dependencies, tasksMap]);
 
   // Tasks to exclude from task relation select
   const relationExcludeIds = useMemo(() => {
@@ -462,6 +487,84 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     else
       return [];
   }, [tasks._exists, form.values.type, form.values.extra_task]);
+  
+  // Subtask table action column
+  const subtaskActionCol = useMemo(() => {
+    if (!board._exists || !tasks._exists) return;
+    return {
+      name: (
+        <Popover withArrow withinPortal shadow='lg' position='top'>
+          <Popover.Target>
+            <ActionIcon ref={subtaskAddBtnRef}>
+              <IconPlus size={19} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+            <TaskSelector
+              type='subtask'
+              domain={props.domain}
+              board={board}
+              tasks={tasks}
+              task={form.values}
+              shouldUpdate={false}
+              canCreateTask={false}
+              onSelect={() => {
+                subtaskAddBtnRef.current?.click();
+              }}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      ),
+      cell: (subtask: ExpandedTask) => (
+        <CloseButton
+          size='md'
+          onClick={() => {
+            form.setFieldValue('subtasks', form.values.subtasks?.filter(x => x !== subtask.id));
+          }}
+        />
+      ),
+      width: '4rem',
+      right: true,
+    };
+  }, [board, tasks, form.values.subtasks]);
+
+  // Dependency table action column
+  const depActionCol = useMemo(() => {
+    if (!board._exists || !tasks._exists) return;
+    return {
+      name: (
+        <Popover withArrow withinPortal shadow='lg' position='top'>
+          <Popover.Target>
+            <ActionIcon ref={depAddBtnRef}>
+              <IconPlus size={19} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+            <TaskSelector
+              type='dependency'
+              domain={props.domain}
+              board={board}
+              tasks={tasks}
+              task={form.values}
+              shouldUpdate={false}
+              canCreateTask={false}
+              onSelect={() => depAddBtnRef.current?.click()}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      ),
+      cell: (dependency: ExpandedTask) => (
+        <CloseButton
+          size='md'
+          onClick={() => {
+            form.setFieldValue('dependencies', form.values.dependencies?.filter(x => x !== dependency.id));
+          }}
+        />
+      ),
+      width: '4rem',
+      right: true,
+    };
+  }, [board, tasks, form.values.dependencies]);
 
   // Set base assignee if needed (can only manage own tasks)
   useEffect(() => {
@@ -484,6 +587,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     // Create task and upload it
     const task = {
       ...values,
+      id: undefined,
       due_date: values.due_date?.toISOString(),
       tags: updatedTagIds,
       type: undefined,
@@ -533,7 +637,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           />
         </Box>
 
-        <Select
+        {/* <Select
           label='Type'
           description='Choose whether this should be a regular task, a subtask, or a dependency task'
           data={[
@@ -543,7 +647,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           ]}
           {...form.getInputProps('type')}
           sx={{ maxWidth: config.app.ui.med_input_width }}
-        />
+        /> */}
 
         {tasks._exists && form.values.type !== 'task' && (
           <TaskSelect
@@ -678,6 +782,127 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           {...form.getInputProps('tags')}
         />
 
+        <Divider />
+
+        {tasks._exists && (
+          <Stack mb={8}>
+            {(!form.values.subtasks?.length || !form.values.dependencies?.length) && (
+              <Group>
+                {!form.values.subtasks?.length && (
+                  <Popover withArrow withinPortal shadow='lg' position='top'>
+                    <Popover.Target>
+                      <Button
+                        ref={subtaskAddBtnRef}
+                        variant='default'
+                        leftIcon={<IconSubtask size={16} />}
+                      >
+                        Add subtask
+                      </Button>
+                    </Popover.Target>
+                    <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+                      <TaskSelector
+                        type='subtask'
+                        domain={props.domain}
+                        board={board}
+                        tasks={tasks}
+                        task={form.values}
+                        shouldUpdate={false}
+                        canCreateTask={false}
+                        onSelect={(task_id) => {
+                          form.setFieldValue('subtasks', [...(form.values.subtasks || []), task_id]);
+                          subtaskAddBtnRef.current?.click();
+                        }}
+                      />
+                    </Popover.Dropdown>
+                  </Popover>
+                )}
+                
+                {!form.values.dependencies?.length && (
+                  <Popover withArrow withinPortal shadow='lg' position='top'>
+                    <Popover.Target>
+                      <Button
+                        ref={depAddBtnRef}
+                        variant='default'
+                        leftIcon={<IconGitMerge size={16} />}
+                      >
+                        Add dependency
+                      </Button>
+                    </Popover.Target>
+                    <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+                      <TaskSelector
+                        type='dependency'
+                        domain={props.domain}
+                        board={board}
+                        tasks={tasks}
+                        task={form.values}
+                        shouldUpdate={false}
+                        canCreateTask={false}
+                        onSelect={(task_id) => {
+                          form.setFieldValue('dependencies', [...(form.values.dependencies || []), task_id]);
+                          depAddBtnRef.current?.click();
+                        }}
+                      />
+                    </Popover.Dropdown>
+                  </Popover>
+                )}
+              </Group>
+            )}
+
+            <TaskContextMenu
+              board={board}
+              tasks={tasks}
+              domain={props.domain}
+              statuses={statusMap}
+            >
+              {form.values.subtasks && form.values.subtasks.length > 0 && (
+                <Box>
+                  <Text size='sm' weight={600} mb={6}>Subtasks</Text>
+                  <TaskTable
+                    board={board}
+                    domain={props.domain}
+                    statuses={statusMap}
+                    tasks={subtasks}
+                    tasksWrapper={tasks}
+
+                    columns={TASK_COLUMNS}
+                    columnOverrides={TASK_COLUMN_OVERRIDES}
+                    actionColumn={subtaskActionCol}
+                    creatable={false}
+                    multiselectable={false}
+
+                    headerHeight='3rem'
+                    rowHeight='2.75rem'
+                  />
+                </Box>
+              )}
+
+              {form.values.dependencies && form.values.dependencies.length > 0 && (
+                <Box>
+                  <Text size='sm' weight={600} mb={6}>Dependencies</Text>
+                  <TaskTable
+                    board={board}
+                    domain={props.domain}
+                    statuses={statusMap}
+                    tasks={dependencies}
+                    tasksWrapper={tasks}
+
+                    columns={TASK_COLUMNS}
+                    columnOverrides={TASK_COLUMN_OVERRIDES}
+                    actionColumn={depActionCol}
+                    creatable={false}
+                    multiselectable={false}
+
+                    headerHeight='3rem'
+                    rowHeight='2.75rem'
+                  />
+                </Box>
+              )}
+            </TaskContextMenu>
+          </Stack>
+        )}
+
+        
+
 
         <Group spacing='xs' position='right'>
           <Button
@@ -752,7 +977,7 @@ function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
         </Menu.Target>
       </Tooltip>
 
-      <Menu.Dropdown maw='20rem'>
+      <Menu.Dropdown miw='15rem' maw='20rem'>
         {tasks.map((t) => (
           <Menu.Item key={t.id} onClick={() => {
             openEditTask({

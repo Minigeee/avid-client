@@ -77,7 +77,7 @@ export const openCreateDomain = (props: CreateDomainProps) => openContextModal({
 /** Opens the modal to create task */
 export const openCreateTask = (props: CreateTaskProps) => openContextModal({
 	modal: 'create-task',
-	title: 'New Task',
+	title: `New ${props.type === 'dependency' ? 'Dependency Task' : props.type === 'subtask' ? 'Subtask' : 'Task'}`,
 	innerProps: props,
 	size: 'xl',
 });

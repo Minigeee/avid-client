@@ -82,9 +82,9 @@ type TaskTableProps = {
   group?: string;
 
   /** Status map used to display status column */
-  statuses: Record<string, Label & { index: number }>;
+  statuses?: Record<string, Label & { index: number }>;
   /** Tags map used to display tags column */
-  tags: Record<string, Label>;
+  tags?: Record<string, Label>;
 
   /** The columns that should be shown */
   columns?: (keyof ExpandedTask)[];
@@ -96,6 +96,8 @@ type TaskTableProps = {
   multiselectable?: boolean;
   /** Indicates if tasks can be created using table UI */
   creatable?: boolean;
+  /** Extra components for no data component */
+  noDataOverride?: JSX.Element;
 
   /** Props for wrapper object */
   wrapperProps?: BoxProps;
@@ -185,7 +187,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           </Group>
         ),
       },
-      status: {
+      status: props.statuses ? {
         name: 'Status',
         center: true,
         grow: 2,
@@ -195,18 +197,18 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             padding: '1px 13px 2px 11px',
             width: 'fit-content',
             maxWidth: 'calc(100% - 1.0rem)',
-            backgroundColor: props.statuses[task.status].color,
+            backgroundColor: props.statuses?.[task.status].color,
             borderRadius: 3,
             textOverflow: 'ellipsis',
             overflow: 'hidden',
             whiteSpace: 'nowrap',
           }}>
-            {props.statuses[task.status].label}
+            {props.statuses?.[task.status].label}
           </Text>
         ),
         sortable: true,
-        sortFunction: (a: ExpandedTask, b: ExpandedTask) => props.statuses[a.status].index - props.statuses[b.status].index,
-      },
+        sortFunction: (a: ExpandedTask, b: ExpandedTask) => props.statuses ? props.statuses[a.status].index - props.statuses[b.status].index : 0,
+      } : undefined,
       assignee: {
         name: 'Assignee',
         center: true,
@@ -253,7 +255,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
       },
-      tags: {
+      tags: props.tags ? {
         name: 'Tags',
         grow: 3,
         cell: (task: ExpandedTask) => {
@@ -286,7 +288,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             </Group>
           );
         },
-      },
+      } : undefined,
     } as Partial<Record<keyof ExpandedTask, TableColumn<ExpandedTask>>>;
 
     // Create array
@@ -487,7 +489,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           noRowsPerPage: true,
         }}
 
-        noDataComponent='There are no tasks to display'
+        noDataComponent={props.noDataOverride || 'There are no tasks to display'}
 
         selectableRows={props.multiselectable !== false}
         // @ts-ignore
