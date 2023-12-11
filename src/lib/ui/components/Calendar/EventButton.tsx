@@ -78,14 +78,14 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
 
   // Time text
   const timeText = useMemo(() => {
-    const s = moment(event.start);
-    const e = moment(event.end);
+    const s = moment(baseEvent.start);
+    const e = moment(baseEvent.end);
 
     if (!event.all_day)
       return `${s.format('dddd, LL | LT')} \u2013 ${e.format('LT')}`;
 
     return `${s.format('LL')} \u2013 ${e.format('LL')}`;
-  }, [event.start, event.end]);
+  }, [baseEvent.start, baseEvent.end]);
 
 
   return (

@@ -8,6 +8,7 @@ import { CalendarEvent } from '@/lib/types/calendar';
 
 import { range } from 'lodash';
 import moment, { Moment } from 'moment';
+import { hasRepeatEvent } from './funcs';
 
 
 ////////////////////////////////////////////////////////////
@@ -64,18 +65,27 @@ function TimeColumnImpl(props: TimeColumnProps) {
       const eend = moment(event.end);
 
       // Check if this event should be dsiplayed, if event starts or ends in this day
-      return event.end && !event.all_day && (estart.isAfter(start) && estart.isBefore(end) || eend.isAfter(start) && eend.isBefore(end)) && eend.subtract(1, 'day').isBefore(estart);
-    }).map((e) => ({
-      ...e,
-      start: moment(e.start),
-      end: moment(e.end as string),
-      left: 0,
-      width: 1,
-      top: 0,
-      height: 0,
-      has_prev: false,
-      has_next: false,
-    })).sort((a, b) => {
+      const displayed = event.end && !event.all_day && (estart.isAfter(start) && estart.isBefore(end) || eend.isAfter(start) && eend.isBefore(end)) && eend.subtract(1, 'day').isBefore(estart);
+      if (displayed) return true;
+
+      // Handle repeat events
+      return !event.all_day && hasRepeatEvent(start, event);
+    }).map((e) => {
+      const estart = moment(e.start);
+      const eend = moment(e.end);
+
+      return {
+        ...e,
+        start: moment(start).add({ h: estart.hours(), m: estart.minutes() }),
+        end: moment(start).add({ h: eend.hours(), m: eend.minutes() }),
+        left: 0,
+        width: 1,
+        top: 0,
+        height: 0,
+        has_prev: false,
+        has_next: false,
+      };
+    }).sort((a, b) => {
       return (a.start.unix() - b.start.unix()) || (a.end.unix() - b.end.unix()) || (b.title.length - a.title.length);
     });
 

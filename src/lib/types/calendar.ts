@@ -19,6 +19,18 @@ export type CalendarEvent = {
     all_day?: boolean | undefined;
 	/** THe time the event was created */
 	time_created: string;
+
+	/** Data used to define repeating event behavior */
+	repeat?: {
+		/** Interval between repeat events */
+		interval: number;
+		/** Interval type */
+		interval_type: 'day' | 'week' | 'month' | 'year';
+		/** The ending date of the repeat event (never if undefined) */
+		end_on?: string;
+		/** Days to repeat if in `week` mode, list of days of the week 0 = Sunday */
+		week_repeat_days?: number[];
+	};
 };
 
 

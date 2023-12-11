@@ -24,6 +24,7 @@ import { CalendarStyle, MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
 import assert from 'assert';
+import { hasRepeatEvent } from './funcs';
 
 
 
@@ -397,7 +398,7 @@ function WeekRow(props: WeekRowProps) {
 
     return props.events.filter((e) => {
       const estart = moment(e.start);
-      return estart.isBefore(end) && (e.end && moment(e.end).isAfter(props.time) || e.all_day && estart.isAfter(props.time));
+      return estart.isBefore(end) && (e.end && (moment(e.end).isAfter(props.time) || e.repeat && (!e.repeat.end_on || moment(e.repeat.end_on).isAfter(props.time))) || e.all_day && estart.isAfter(props.time));
     });
   }, [props.time, props.events]);
 
@@ -418,25 +419,49 @@ function WeekRow(props: WeekRowProps) {
 
     // Split events up
     for (const e of events) {
-      if (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start)) {
+      const estart = moment(e.start);
+      const eend = moment(e.end || e.start);
+
+      // Func for add all day event
+      const addAllDay = (start: Moment) => {
         allDayEvents.push({
           ...e,
-          start: moment(e.start).startOf('day'),
-          end: moment(e.end || e.start).endOf('day'),
+          start: moment(start).startOf('day'),
+          end: moment(start).add(eend.diff(estart, 'days'), 'days').endOf('day'),
           left: 0,
           width: 1,
           top: 0,
           has_prev: false,
           has_next: false,
         });
-      }
-      else {
-        const start = moment(e.start);
-        dayEvents[start.day()].push({
+      };
+
+      // Func for adding normal event
+      const addEvent = (start: Moment, i: number) => {
+        dayEvents[i].push({
           ...e,
-          start,
-          end: moment(e.end),
+          start: moment(start).add({ h: estart.hours(), m: estart.minutes() }),
+          end: moment(start).add({ h: eend.hours(), m: eend.minutes() }),
         });
+      };
+
+      if (e.repeat) {
+        for (let i = 0; i < 7; ++i) {
+          const start = moment(props.time).add(i, 'days');
+          if (hasRepeatEvent(start, e)) {
+            if (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start))
+              addAllDay(start);
+            else
+              addEvent(start, i);
+          }
+        }
+      }
+
+      else {
+        if (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start))
+          addAllDay(estart);
+        else
+          addEvent(estart.startOf('day'), estart.day());
       }
     }
 
@@ -798,7 +823,7 @@ export default function MonthView(props: MonthViewProps) {
 
     return props.events.filter((e) => {
       const estart = moment(e.start);
-      return estart.isBefore(end) && (e.end && moment(e.end).isAfter(start) || e.all_day && estart.isAfter(start));
+      return estart.isBefore(end) && (e.end && (moment(e.end).isAfter(start) || e.repeat && (!e.repeat.end_on || moment(e.repeat.end_on).isAfter(start))) || e.all_day && estart.isAfter(start));
     });
   }, [start, numWeeks, props.events]);
 

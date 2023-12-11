@@ -22,6 +22,7 @@ import { CalendarStyle, MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
 import assert from 'assert';
+import { hasRepeatEvent } from './funcs';
 
 
 ////////////////////////////////////////////////////////////
@@ -143,7 +144,7 @@ export default function DayView(props: DayViewProps) {
 
     return props.events.filter((e) => {
       const estart = moment(e.start);
-      return estart.isBefore(end) && (e.end && moment(e.end).isAfter(start) || e.all_day && estart.isAfter(start));
+      return estart.isBefore(end) && (e.end && (moment(e.end).isAfter(start) || e.repeat && (!e.repeat.end_on || moment(e.repeat.end_on).isAfter(start))) || e.all_day && estart.isAfter(start));
     });
   }, [start, props.events]);
   
@@ -151,16 +152,22 @@ export default function DayView(props: DayViewProps) {
   const allDayEvents = useMemo(() => {
     // Filter events
     return events
-      .filter((e) => e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start))
+      .filter((e) => (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start)) && (!e.repeat || hasRepeatEvent(start, e)))
       .map((e) => {
-        const start = moment(e.start).startOf('day');
-        const end = moment(e.end || e.start).endOf('day');
+        let newStart = moment(e.start).startOf('day');
+        let newEnd = moment(e.end || e.start).endOf('day');
+
+        if (e.repeat) {
+          newStart = moment(start).startOf('day');
+          newEnd = moment(start).add(moment(e.end).diff(e.start, 'days'), 'days').endOf('day');
+        }
 
         return {
           ...e,
-          start, end,
-          has_prev: start.day() !== props.time.day(),
-          has_next: end.day() !== props.time.day(),
+          start: newStart,
+          end: newEnd,
+          has_prev: newStart.day() !== props.time.day(),
+          has_next: newEnd.day() !== props.time.day(),
         };
       })
       .sort((a, b) => {

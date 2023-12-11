@@ -23,6 +23,7 @@ import { CalendarStyle, MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
 import assert from 'assert';
+import { hasRepeatEvent } from './funcs';
 
 
 ////////////////////////////////////////////////////////////
@@ -272,28 +273,59 @@ export default function WeekView(props: WeekViewProps) {
 
     return props.events.filter((e) => {
       const estart = moment(e.start);
-      return estart.isBefore(end) && (e.end && moment(e.end).isAfter(start) || e.all_day && estart.isAfter(start));
+      return estart.isBefore(end) && (e.end && (moment(e.end).isAfter(start) || e.repeat && (!e.repeat.end_on || moment(e.repeat.end_on).isAfter(start))) || e.all_day && estart.isAfter(start));
     });
   }, [start, props.events]);
 
   // Events that should be displayed in all day section
   const { filtered: allDayEvents, maxNumColumns: numAllDayRows } = useMemo(() => {
     // Filter events
-    const filtered = events
-      .filter((e) => e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start))
-      .map((e) => ({
-        ...e,
-        start: moment(e.start).startOf('day'),
-        end: moment(e.end || e.start).endOf('day'),
-        left: 0,
-        width: 1,
-        top: 0,
-        has_prev: false,
-        has_next: false,
-      }))
-      .sort((a, b) => {
-        return (a.start.unix() - b.start.unix()) || (a.end.unix() - b.end.unix()) || (b.title.length - a.title.length);
-      });
+    const prefiltered = events.filter((e) => e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start));
+
+    const filtered: (Omit<CalendarEvent, 'start' | 'end'> & {
+      start: Moment;
+      end: Moment;
+      left: number;
+      top: number;
+      width: number;
+      has_prev: boolean;
+      has_next: boolean;
+    })[] = [];
+
+    // Add all day events, including repeat events
+    for (const e of prefiltered) {
+      const estart = moment(e.start);
+      const eend = moment(e.end || e.start);
+
+      // Func for add all day event
+      const addAllDay = (start: Moment) => {
+        filtered.push({
+          ...e,
+          start: moment(start).startOf('day'),
+          end: moment(start).add(eend.diff(estart, 'days'), 'days').endOf('day'),
+          left: 0,
+          width: 1,
+          top: 0,
+          has_prev: false,
+          has_next: false,
+        });
+      };
+
+      if (e.repeat) {
+        for (let i = 0; i < 7; ++i) {
+          const dayStart = moment(start).add(i, 'days');
+          if (hasRepeatEvent(dayStart, e))
+            addAllDay(dayStart);
+        }
+      }
+
+      else
+        addAllDay(estart);
+    }
+
+    filtered.sort((a, b) => {
+      return (a.start.unix() - b.start.unix()) || (a.end.unix() - b.end.unix()) || (b.title.length - a.title.length);
+    });
 
     // Grid of event columns
     let columns: (typeof filtered)[] = [];

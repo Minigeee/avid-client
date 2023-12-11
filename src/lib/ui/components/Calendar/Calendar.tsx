@@ -78,7 +78,7 @@ export default function Calendar(props: CalendarProps) {
     monthHeaderHeight: 32,
     slotHeight: '4rem',
     
-    resizeMarginSize: 4,
+    resizeMarginSize: 6,
   } as CalendarStyle), []);
 
   // Callback refs
@@ -143,6 +143,7 @@ export default function Calendar(props: CalendarProps) {
       },
 
       onSubmit: async (event) => {
+        console.log('on submit', event)
         await props.onNewEvent?.(event);
       },
     });

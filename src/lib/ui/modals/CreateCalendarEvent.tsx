@@ -28,6 +28,7 @@ import { DomainWrapper } from '@/lib/hooks';
 import { CalendarEvent, ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
 
 import moment from 'moment';
+import { range } from 'lodash';
 
 
 ////////////////////////////////////////////////////////////
@@ -55,6 +56,14 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
       end: props.event?.end ? new Date(props.event.end) : (props.event?.start ? new Date(props.event.start) : new Date()),
       all_day: props.event?.all_day || false,
       color: props.event?.color || PRESET_COLORS.at(-1),
+
+      repeat: props.event?.repeat ? {
+        ...props.event.repeat,
+        end_on: props.event.repeat.end_on ? new Date(props.event.repeat.end_on) : undefined,
+      } : {
+        interval: 1,
+        interval_type: 'week',
+      } as Omit<NonNullable<CalendarEvent['repeat']>, 'end_on'> & { end_on?: Date },
     },
     validate: {
       end: (value, values) => value.getTime() > values.start.getTime() ? null : 'End date must be after start date',
@@ -65,6 +74,16 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
   const endTimeRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
+  // Determines if repeating event mode
+  const [repeat, setRepeatImpl] = useState<boolean>(props.event?.repeat !== undefined);
+  const setRepeat = useCallback((value: boolean) => {
+    if (value) {
+      // Reset week repeat days
+      form.setFieldValue('repeat.week_repeat_days', [moment(form.values.start).day()]);
+    }
+
+    setRepeatImpl(value);
+  }, []);
 
 
   // Picker elements for start/end time inputs
@@ -98,6 +117,50 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
     }
   }, [form.values.start, form.values.end, form.values.all_day]);
 
+  // Repeat interval types
+  const intervalTypes = useMemo(() => {
+    const suf = form.values.repeat?.interval !== 1 ? 's' : '';
+    return [
+      { value: 'day', label: 'Day' + suf },
+      { value: 'week', label: 'Week' + suf },
+      { value: 'month', label: 'Month' + suf },
+      { value: 'year', label: 'Year' + suf },
+    ];
+  }, [form.values.repeat?.interval]);
+
+
+  // Week days repeat
+  const weekRepeatButtons = useMemo(() => {
+    const start = moment().startOf('week');
+
+    return range(7).map((i) => {
+      const idx = form.values.repeat?.week_repeat_days?.findIndex(x => i === x);
+      const selected = idx !== undefined && idx >= 0;
+
+      return (
+        <ActionIcon
+          size='lg'
+          sx={(theme) => ({
+            backgroundColor: selected ? theme.colors.indigo[5] : undefined,
+            fontSize: 14,
+
+            '&:hover': {
+              backgroundColor: selected ? theme.colors.indigo[5] : undefined,
+            },
+          })}
+          onClick={(e) => {
+            if (selected)
+              form.setFieldValue('repeat.week_repeat_days', form.values.repeat?.week_repeat_days?.filter(x => x !== i));
+            else
+              form.setFieldValue('repeat.week_repeat_days', [...(form.values.repeat?.week_repeat_days || []), i]);
+          }}
+        >
+          {moment(start).add(i, 'days').format('dd')}
+        </ActionIcon>
+      );
+    })
+  }, [form.values.repeat?.week_repeat_days]);
+
   // Called when form submitted
   const onSubmit = useCallback(async (values: typeof form.values) => {
     setLoading(true);
@@ -111,6 +174,13 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
         all_day: values.all_day,
         color: values.color,
         description: values.description || undefined,
+
+        repeat: repeat && values.repeat ? {
+          interval: values.repeat.interval,
+          interval_type: values.repeat.interval_type,
+          end_on: values.repeat.end_on?.toISOString() || undefined,
+          week_repeat_days: values.repeat.interval_type === 'week' ? values.repeat.week_repeat_days : undefined,
+        } : undefined,
       }, mode);
 
       // Close modal
@@ -122,7 +192,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
     finally {
       setLoading(false);
     }
-  }, [props.onSubmit]);
+  }, [props.onSubmit, repeat]);
 
   return (
     <form onSubmit={form.onSubmit(onSubmit)}>
@@ -227,26 +297,33 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
             )}
           </Group>
 
-          <Checkbox
-            label='All Day'
-            mt={8}
-            {...form.getInputProps('all_day', { type: 'checkbox' })}
-            onChange={(e) => {
-              const checked = e.currentTarget.checked;
+          <Group mt={8}>
+            <Checkbox
+              label='All Day'
+              {...form.getInputProps('all_day', { type: 'checkbox' })}
+              onChange={(e) => {
+                const checked = e.currentTarget.checked;
 
-              // Reset end date
-              if (!checked) {
-                const newValue = new Date(form.values.end);
-                newValue.setDate(form.values.start.getDate());
-                newValue.setMonth(form.values.start.getMonth());
-                newValue.setFullYear(form.values.start.getFullYear());
+                // Reset end date
+                if (!checked) {
+                  const newValue = new Date(form.values.end);
+                  newValue.setDate(form.values.start.getDate());
+                  newValue.setMonth(form.values.start.getMonth());
+                  newValue.setFullYear(form.values.start.getFullYear());
 
-                form.setFieldValue('end', newValue);
-              }
+                  form.setFieldValue('end', newValue);
+                }
 
-              form.setFieldValue('all_day', checked);
-            }}
-          />
+                form.setFieldValue('all_day', checked);
+              }}
+            />
+
+            <Checkbox
+              label='Repeat'
+              checked={repeat}
+              onChange={(e) => setRepeat(e.currentTarget.checked)}
+            />
+          </Group>
         </Box>
 
         <ColorInput
@@ -257,6 +334,43 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
           {...form.getInputProps('color')}
           sx={{ maxWidth: config.app.ui.med_input_width }}
         />
+
+        {repeat && (
+          <>
+            <Divider />
+
+            <Box>
+              <Text size='sm' weight={600}>Repeat Every</Text>
+              <Group spacing='sm'>
+                <NumberInput
+                  {...form.getInputProps('repeat.interval')}
+                  sx={{ maxWidth: '6rem' }}
+                />
+                <Select
+                  data={intervalTypes}
+                  {...form.getInputProps('repeat.interval_type')}
+                />
+              </Group>
+            </Box>
+
+            {form.values.repeat?.interval_type === 'week' && (
+              <Box>
+                <Text size='sm' weight={600}>Repeat On</Text>
+
+                <Group mt={6} spacing='xs'>
+                  {weekRepeatButtons}
+                </Group>
+              </Box>
+            )}
+
+            <DatePickerInput
+              label='End On'
+              placeholder='Never'
+              clearable
+              sx={{ maxWidth: '15rem' }}
+            />
+          </>
+        )}
 
         <Divider />
 
