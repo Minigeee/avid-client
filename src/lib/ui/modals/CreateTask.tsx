@@ -41,6 +41,7 @@ import {
   IconGitMerge,
   IconPlus,
   IconSearch,
+  IconStarFilled,
   IconSubtask,
   IconTrash
 } from '@tabler/icons-react';
@@ -260,16 +261,24 @@ interface CollectionSelectItemProps extends React.ComponentPropsWithoutRef<'div'
 
 ////////////////////////////////////////////////////////////
 const CollectionSelectItem = forwardRef<HTMLDivElement, CollectionSelectItemProps>(
-  ({ name, start_date, end_date, ...others }: CollectionSelectItemProps, ref) => (
-    <div ref={ref} {...others}>
-      <Text weight={600}>{name}</Text>
-      {(start_date || end_date) && (
-        <Text size='xs' color='dimmed'>
-          {start_date ? moment(start_date).format('l') : ''} - {end_date ? moment(end_date).format('l') : ''}
-        </Text>
-      )}
-    </div>
-  )
+  ({ name, start_date, end_date, ...others }: CollectionSelectItemProps, ref) => {
+    const t = new Date();
+    const current = (start_date && t >= new Date(start_date)) && (!end_date || t <= moment(end_date).add(1, 'day').toDate());
+
+    return (
+      <div ref={ref} {...others}>
+        <Group spacing={8} align='center'>
+          {current && <IconStarFilled size={16} />}
+          <Text weight={600}>{name}</Text>
+        </Group>
+        {(start_date || end_date) && (
+          <Text size='xs' color='dimmed'>
+            {start_date ? moment(start_date).format('l') : ''} - {end_date ? moment(end_date).format('l') : ''}
+          </Text>
+        )}
+      </div>
+    );
+  }
 );
 CollectionSelectItem.displayName = 'CollectionSelectItem';
 
@@ -458,6 +467,18 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
     statusMap,
   } = useTaskHooks(board);
 
+  
+  // Collection selections
+  const collectionSelections = useMemo(() => {
+    if (!board._exists) return [];
+
+    const collections = board.collections.map(x => ({ value: x.id, label: x.name, ...x }));
+    return collections.sort((a, b) =>
+      a.start_date ?
+        b.start_date ? new Date(b.start_date).getTime() - new Date(a.start_date).getTime() : 1 :
+        b.start_date ? -1 : a.name.localeCompare(b.name)
+    );
+  }, [board.collections]);
 
   // Task map for lookups
   const tasksMap = useMemo(() => {
@@ -724,7 +745,7 @@ export function CreateTask({ context, id, innerProps: props }: ContextModalProps
           label='Collection'
           description='Assign a task collection or objective'
           placeholder='None'
-          data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
+          data={collectionSelections}
           itemComponent={CollectionSelectItem}
           sx={{ maxWidth: config.app.ui.med_input_width }}
           {...form.getInputProps('collection')}
@@ -1079,6 +1100,18 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
     if (form.values.description !== task.description)
       form.setFieldValue('description', task.description || '');
   }, [task.description]);
+  
+  // Collection selections
+  const collectionSelections = useMemo(() => {
+    if (!board._exists) return [];
+
+    const collections = board.collections.map(x => ({ value: x.id, label: x.name, ...x }));
+    return collections.sort((a, b) =>
+      a.start_date ?
+        b.start_date ? new Date(b.start_date).getTime() - new Date(a.start_date).getTime() : 1 :
+        b.start_date ? -1 : a.name.localeCompare(b.name)
+    );
+  }, [board.collections]);
 
   // Subtasks
   const subtasks = useMemo(() => {
@@ -1675,7 +1708,7 @@ export function EditTask({ context, id, innerProps: props }: ContextModalProps<E
               label='Collection'
               placeholder='None'
               withinPortal
-              data={board.collections.map(x => ({ value: x.id, label: x.name, ...x }))}
+              data={collectionSelections}
               itemComponent={CollectionSelectItem}
               disabled={!editable}
               {...form.getInputProps('collection')}

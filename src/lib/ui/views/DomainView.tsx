@@ -278,7 +278,7 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
         <ActionIcon
           size='lg'
           sx={(theme) => ({
-            marginRight: '0.5rem',
+            marginRight: '0.75rem',
             color: theme.colors.dark[1],
             '&:hover': {
               backgroundColor: theme.colors.dark[6],
@@ -289,61 +289,58 @@ function DomainHeader({ app, domain }: DomainHeaderProps) {
           <IconMenu2 size={22} />
         </ActionIcon>
 
-        <Menu
-          width='15rem'
-          position='bottom-start'
-          styles={(theme) => ({
-            dropdown: {
-              backgroundColor: theme.colors.dark[7],
-              borderColor: theme.colors.dark[5],
-            },
-            item: {
-              '&:hover': {
-                backgroundColor: theme.colors.dark[6],
-              },
-            },
-          })}
-        >
-          <Menu.Target>
-            <UnstyledButton sx={(theme) => ({
-              padding: '0.25rem 0.375rem',
-              borderRadius: theme.radius.sm,
+        <Group spacing={8}>
+          <DomainAvatar
+            domain={domain}
+            size={32}
+          />
+          <Title order={4} size='1.25rem' sx={{ lineHeight: 1, marginLeft: '0.125rem' }}>
+            {domain.name}
+          </Title>
 
-              '&:hover': {
-                backgroundColor: theme.colors.dark[6],
+          <Menu
+            width='15rem'
+            position='bottom-start'
+            styles={(theme) => ({
+              dropdown: {
+                backgroundColor: theme.colors.dark[7],
+                borderColor: theme.colors.dark[5],
               },
-            })}>
-              <Group spacing='xs'>
-                <DomainAvatar
-                  domain={domain}
-                  size={32}
-                />
-                <Title order={4} size='1.25rem' sx={{ lineHeight: 1 }}>
-                  {domain.name}
-                </Title>
-                <IconChevronDown size={22} style={{ marginTop: '0.25rem' }} />
-              </Group>
-            </UnstyledButton>
-          </Menu.Target>
+              item: {
+                '&:hover': {
+                  backgroundColor: theme.colors.dark[6],
+                },
+              },
+            })}
+          >
+            <Menu.Target>
+              <ActionIcon sx={(theme) => ({
+                marginTop: '0.25rem',
+                '&:hover': { backgroundColor: theme.colors.dark[6] },
+              })}>
+                <IconChevronDown size={22} />
+              </ActionIcon>
+            </Menu.Target>
 
-          <Menu.Dropdown>
-            <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
-            {canManage && (
-              <Menu.Item
-                icon={<IconSettings size={16} />}
-                onClick={() => openDomainSettings({ domain_id: domain.id })}
-              >
-                Settings
+            <Menu.Dropdown>
+              <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
+              {canManage && (
+                <Menu.Item
+                  icon={<IconSettings size={16} />}
+                  onClick={() => openDomainSettings({ domain_id: domain.id })}
+                >
+                  Settings
+                </Menu.Item>
+              )}
+
+              <Menu.Item icon={<IconCopy size={16} />} onClick={() =>
+                clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}`)
+              }>
+                Copy Invite URL
               </Menu.Item>
-            )}
-
-            <Menu.Item icon={<IconCopy size={16} />} onClick={() =>
-              clipboard.copy(`${config.domains.site}/join/${domain.id.split(':')[1]}`)
-            }>
-              Copy Invite URL
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
       </Group>
     </>
   );

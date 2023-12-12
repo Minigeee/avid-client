@@ -644,7 +644,7 @@ export default function BoardView(props: BoardViewProps) {
 
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, app.board_states?.[props.channel.data?.board || '']?.collection || null);
+  const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
   // Refresh enabled
   const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
   // Show scroll to top button
@@ -683,13 +683,8 @@ export default function BoardView(props: BoardViewProps) {
     if (!board._exists) return;
 
     // If collection id exists, it is using cached value and should be left as is
-    if (collectionId && collection) {
-      // Save collection
-      if (app.board_states?.[board.id]?.collection !== collectionId)
-        app._mutators.setBoardState(board.id, { collection: collectionId });
-
+    if (collectionId && collection)
       return;
-    }
 
     // Choose a current objective (choose the one with largest start date before today)
     const today = new Date();
@@ -974,7 +969,7 @@ export default function BoardView(props: BoardViewProps) {
           radius='xl'
           sx={(theme) => ({
             position: 'absolute',
-            bottom: '2.0rem',
+            top: '2.0rem',
             right: '2.5rem',
             backgroundColor: theme.colors.dark[8],
             '&:hover': {

@@ -35,6 +35,7 @@ import TaskTagsSelector from '@/lib/ui/components/TaskTagsSelector';
 import TaskGroupAccordion from '@/lib/ui/components/TaskGroupAccordion';
 import { openCreateTask, openEditTask } from '@/lib/ui/modals';
 import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
+import MemberPopover from '@/lib/ui/components/MemberPopover';
 
 import { TaskContextMenu, TaskMenuContext } from './components/TaskMenu';
 import { DoubleGrouped, GroupableFields, SingleGrouped } from './BoardView';
@@ -58,6 +59,7 @@ import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 
 ////////////////////////////////////////////////////////////
 type TaskCardProps = {
+  domain: DomainWrapper;
   task: ExpandedTask;
   prefix: string;
   editable?: boolean;
@@ -179,10 +181,15 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
               <Box sx={{ flexGrow: 1 }} />
 
               {task.assignee && (
-                <MemberAvatar
-                  member={task.assignee}
-                  size={32}
-                />
+                <Box onClick={(ev) => ev.stopPropagation()}>
+                  <MemberPopover member={task.assignee} domain={props.domain} tooltip={task.assignee.alias} tooltipProps={{ position: 'left', withArrow: true, openDelay: 500 }}>
+                    <MemberAvatar
+                      member={task.assignee}
+                      size={32}
+                      sx={{ cursor: 'pointer' }}
+                    />
+                  </MemberPopover>
+                </Box>
               )}
             </Group>
           </Stack>
@@ -281,6 +288,7 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
               >
                 {tasks && tasks[status.id]?.map((task, j) => (
                   <MemoTaskCard
+                    domain={props.domain}
                     task={task}
                     prefix={board?.prefix || ''}
                     tags={props.tagMap}

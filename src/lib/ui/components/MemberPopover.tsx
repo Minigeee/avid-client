@@ -11,7 +11,9 @@ import {
   PopoverProps,
   Stack,
   Text,
-  Title
+  Title,
+  Tooltip,
+  TooltipProps
 } from '@mantine/core';
 
 import { Emoji } from './Emoji';
@@ -214,6 +216,8 @@ export type MemberPopoverProps = PropsWithChildren & {
   member: ExpandedMember;
   popoverProps?: Partial<PopoverProps>;
   withinPortal?: boolean;
+  tooltip?: string;
+  tooltipProps?: Partial<TooltipProps>;
 };
 
 ////////////////////////////////////////////////////////////
@@ -227,9 +231,11 @@ export default function MemberPopover(props: MemberPopoverProps) {
       {...props.popoverProps}
       withinPortal={props.withinPortal}
     >
-      <Popover.Target>
-        {props.children}
-      </Popover.Target>
+      <Tooltip {...props.tooltipProps} label={props.tooltip} disabled={props.tooltip === undefined}>
+        <Popover.Target>
+          {props.children}
+        </Popover.Target>
+      </Tooltip>
 
       <Popover.Dropdown sx={(theme) => ({
         padding: 0,

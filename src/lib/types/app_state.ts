@@ -22,8 +22,6 @@ export type RemoteAppState = {
 
 	/** Current state for task boards */
 	board_states?: Record<string, {
-		/** The current collection being viewed */
-		collection?: string;
 		/** The view type for each collection */
 		view?: Record<string, string>;
 		/** The grouper for each collection */

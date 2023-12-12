@@ -223,7 +223,7 @@ export function TaskSelector(props: TaskSelectorProps) {
           <Text size='sm' color='dimmed'>There are no tasks</Text>
         </Center>
       )}
-      <ScrollArea.Autosize w={config.app.ui.short_input_width} mah='15rem'>
+      <ScrollArea.Autosize w={config.app.ui.short_input_width} mah='16rem' mb={props.canCreateTask !== false ? 0 : 4}>
         <Stack spacing={0} mt={4}>
           {filtered}
         </Stack>

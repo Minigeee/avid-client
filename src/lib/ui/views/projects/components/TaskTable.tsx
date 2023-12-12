@@ -24,6 +24,7 @@ import { CreateTaskProps } from '@/lib/ui/modals/CreateTask';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import TaskPriorityIcon from '@/lib/ui/components/TaskPriorityIcon';
+import MemberPopover from '@/lib/ui/components/MemberPopover';
 
 import { GroupableFields } from '../BoardView';
 import { TaskMenuContext, TaskMenuProps } from './TaskMenu';
@@ -215,10 +216,14 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         grow: 1,
         cell: (task: ExpandedTask) =>
           task.assignee ? (
-            <MemberAvatar
-              member={task.assignee}
-              size={32}
-            />
+            <Box onClick={(ev) => ev.stopPropagation()}>
+              <MemberPopover member={task.assignee} domain={props.domain} tooltip={task.assignee.alias} tooltipProps={{ position: 'left', withArrow: true, openDelay: 500 }}>
+                <MemberAvatar
+                  member={task.assignee}
+                  size={32}
+                />
+              </MemberPopover>
+            </Box>
           ) : undefined,
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
