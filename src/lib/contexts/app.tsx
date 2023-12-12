@@ -12,6 +12,7 @@ import { SessionState } from './session';
 import { merge, throttle } from 'lodash';
 import { api } from '../api';
 import { socket } from '../utility/realtime';
+import { id } from '../db';
 
 
 /** All subparts put together */
@@ -153,7 +154,20 @@ function remoteMutators(state: RemoteAppState, setState: (value: RemoteAppState)
 			});
 			
 			save(diff);
-		}
+		},
+
+		/**
+		 * Set the board state by merging
+		 * 
+		 * @param board_id The id of the board state to save
+		 * @param boardState The new board state values that should be set
+		 */
+		setBoardState: (board_id: string, boardState: Partial<NonNullable<RemoteAppState['board_states']>[string]>) => {
+			const diff = { board_states: { [id(board_id)]: boardState } } as Partial<RemoteAppState>;
+			setState(merge({}, state, diff));
+
+			save(diff);
+		},
 	};
 }
 
@@ -243,13 +257,12 @@ export default function AppProvider({ children, ...props }: PropsWithChildren & 
 	// Save function
 	const diffRef = useRef<Partial<RemoteAppState>>({});
 	const _api = useCallback(throttle(() => {
-		api('POST /app', {
-			body: { ...diffRef.current, _merge: true },
-		}, { session });
+		// Update using websocket
+		socket().emit('general:update-app-state', diffRef.current);
 
 		// Reset
 		diffRef.current = {};
-	}, 1000), []);
+	}, 1000, { trailing: true }), []);
 	const save = useCallback((state: Partial<RemoteAppState>) => {
 		merge(diffRef.current, state);
 		_api();

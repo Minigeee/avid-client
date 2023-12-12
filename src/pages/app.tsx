@@ -329,6 +329,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
 				expansions: recordKeys(app.expansions, 'domains'),
 				last_accessed: recordKeys(app.last_accessed, 'domains', (v) => recordKeys(v, 'channels')),
 				pings: recordKeys(app.pings, 'channels'),
+				board_states: recordKeys(app.board_states, 'boards'),
 			} : undefined,
       token,
     }),

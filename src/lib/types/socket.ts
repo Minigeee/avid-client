@@ -1,7 +1,9 @@
 import { RawMessage } from './api';
+import { RemoteAppState } from './app_state';
 import { TaskCollection } from './board';
 import { Member } from './member';
 import { Message } from './message';
+import { DeepPartial } from './util';
 
 
 type MediaType = 'audio' | 'video' | 'share';
@@ -37,6 +39,7 @@ export interface ServerToClientEvents {
 /** All events signatures that are sent from client to server */
 export interface ClientToServerEvents {
 	'general:switch-room': (domain_id: string, channel_id: string) => void;
+	'general:update-app-state': (state: DeepPartial<RemoteAppState>) => void;
 
 	'chat:typing': (profile_id: string, channel_id: string, type: 'start' | 'stop') => void;
 

@@ -19,6 +19,16 @@ export type RemoteAppState = {
 	pings?: Record<string, number>;
 	/** Indicates if the right side panel is opened */
 	right_panel_opened?: boolean;
+
+	/** Current state for task boards */
+	board_states?: Record<string, {
+		/** The current collection being viewed */
+		collection?: string;
+		/** The view type for each collection */
+		view?: Record<string, string>;
+		/** The grouper for each collection */
+		group_by?: Record<string, string | null>;
+	}>;
 };
 
 /** App state that is only tracked locally within a single session */

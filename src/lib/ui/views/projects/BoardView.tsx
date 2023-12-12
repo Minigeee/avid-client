@@ -70,6 +70,7 @@ import { socket } from '@/lib/utility/realtime';
 
 import moment from 'moment-business-days';
 import { groupBy, throttle } from 'lodash';
+import { AppState } from '@/lib/contexts';
 
 
 ////////////////////////////////////////////////////////////
@@ -82,6 +83,7 @@ export type GroupableFields = 'assignee' | 'tags' | 'priority' | 'due_date' | 's
 
 ////////////////////////////////////////////////////////////
 type TabViewProps = {
+  app: AppState;
   channel_id: string;
   board: BoardWrapper;
   tasks: TasksWrapper;
@@ -100,7 +102,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
   // Filter tags
   const [filterTags, setFilterTags] = useCachedState<string[]>(`${board.id}.${props.collection}.${type}.tags`, []);
   // Groping field
-  const [grouper, setGrouper] = useCachedState<GroupableFields | null>(`${board.id}.${props.collection}.${type}.grouper`, null);
+  const [grouper, setGrouperImpl] = useCachedState<GroupableFields | null>(`${board.id}.${props.collection}.${type}.grouper`, props.app.board_states?.[board.id].group_by?.[props.collection] as GroupableFields || null);
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
   // Real time search value
@@ -111,6 +113,12 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
   const [selectedAssignee, setSelectedAssignee] = useCachedState<string | null>(`${board.id}.${props.collection}.${type}.assignee`, null);
   // Extra assignee if it was chosen from dropdown
   const [extraAssignee, setExtraAssignee] = useState<ExpandedMember | null>(null);
+
+  // Custom func to save grouping variable
+  const setGrouper = useCallback((value: GroupableFields | null) => {
+    props.app._mutators.setBoardState(board.id, { group_by: { [props.collection]: value } });
+    setGrouperImpl(value);
+  }, [props.app]);
 
   // Available grouping options
   const groupingOptions = useMemo(() => {
@@ -576,14 +584,18 @@ GroupSelectItem.displayName = 'GroupSelectItem';
 
 ////////////////////////////////////////////////////////////
 function BoardTabs(props: Omit<TabViewProps, 'type'>) {
-  const [view, setView] = useCachedState<string>(`${props.board.id}.${props.collection}.view`, config.app.board.default_task_view);
+  const [view, setView] = useCachedState<string>(`${props.board.id}.${props.collection}.view`, props.app.board_states?.[props.board.id].view?.[props.collection] || config.app.board.default_task_view);
+  const onTabChange = useCallback((value: string) => {
+    props.app._mutators.setBoardState(props.board.id, { view: { [props.collection]: value } });
+    setView(value);
+  }, [props.board.id, props.collection, props.app]);
 
   return (
     <Tabs
       variant='outline'
       mt={32}
       value={view}
-      onTabChange={setView}
+      onTabChange={onTabChange}
       styles={(theme) => ({
         tab: {
           fontWeight: 500,
@@ -632,7 +644,7 @@ export default function BoardView(props: BoardViewProps) {
 
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, null);
+  const [collectionId, setCollectionId] = useCachedState<string | null>(`${board.id}.collection`, app.board_states?.[props.channel.data?.board || '']?.collection || null);
   // Refresh enabled
   const [refreshEnabled, setRefreshEnabled] = useState<boolean>(false);
   // Show scroll to top button
@@ -671,8 +683,13 @@ export default function BoardView(props: BoardViewProps) {
     if (!board._exists) return;
 
     // If collection id exists, it is using cached value and should be left as is
-    if (collectionId && collection)
+    if (collectionId && collection) {
+      // Save collection
+      if (app.board_states?.[board.id]?.collection !== collectionId)
+        app._mutators.setBoardState(board.id, { collection: collectionId });
+
       return;
+    }
 
     // Choose a current objective (choose the one with largest start date before today)
     const today = new Date();
@@ -934,6 +951,7 @@ export default function BoardView(props: BoardViewProps) {
 
               <MemoBoardTabs
                 key={collectionId}
+                app={app}
                 channel_id={props.channel.id}
                 board={board}
                 tasks={tasks}

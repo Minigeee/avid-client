@@ -52,10 +52,6 @@ export type ApiSchema = {
 		return: Partial<RemoteAppState> | null;
 	},
 
-	'POST /app': {
-		body: Partial<RemoteAppState> & { _merge?: boolean };
-	},
-
 
 	/** Boards */
 	'GET /boards/:board_id': {
