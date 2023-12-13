@@ -43,7 +43,15 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
 
             onSubmit: async (updated) => {
               // Get event diff
-              const d = omitBy(diff(props.event, updated), isNil);
+              let d = diff(event, updated);
+              const remRepeat = d?.repeat === null;
+              d = omitBy(d, isNil);
+
+              // Add repeat null for remove
+              if (remRepeat)
+                // @ts-ignore
+                d.repeat = null;
+              
               if (Object.keys(d).length === 0) return;
 
               // Update callback

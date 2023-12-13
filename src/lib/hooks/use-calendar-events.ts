@@ -17,6 +17,7 @@ import { useApiQuery } from './use-api-query';
 import { setMembers } from './use-members';
 
 import moment, { Moment } from 'moment';
+import { merge } from 'lodash';
 
 
 /** Cache used to keep all calendar events loaded */
@@ -101,7 +102,7 @@ function mutators(mutate: KeyedMutator<CalendarEvent[]>, session: SessionState |
 					if (idx < 0) return events;
 
 					const copy = events.slice();
-					copy[idx] = _sanitize({ ...copy[idx], ...event });
+					copy[idx] = _sanitize(merge({}, copy[idx], event));
 
 					// Optimistic update for individual hook
 					_mutate(event_id, (old: CalendarEvent | undefined) => ({ ...old, ...copy[idx] }), { revalidate: false });

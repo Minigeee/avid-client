@@ -23,7 +23,7 @@ import { CalendarStyle, MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
 import assert from 'assert';
-import { hasRepeatEvent } from './funcs';
+import { getAllRepeatEvents, hasRepeatEvent } from './funcs';
 
 
 ////////////////////////////////////////////////////////////
@@ -294,33 +294,30 @@ export default function WeekView(props: WeekViewProps) {
 
     // Add all day events, including repeat events
     for (const e of prefiltered) {
-      const estart = moment(e.start);
-      const eend = moment(e.end || e.start);
-
-      // Func for add all day event
-      const addAllDay = (start: Moment) => {
+      if (e.repeat) {
+        filtered.push(
+          ...getAllRepeatEvents(start, e).map((e) => ({
+            ...e,
+            left: 0,
+            width: 1,
+            top: 0,
+            has_prev: false,
+            has_next: false,
+          }))
+        );
+      }
+      else {
         filtered.push({
           ...e,
-          start: moment(start).startOf('day'),
-          end: moment(start).add(eend.diff(estart, 'days'), 'days').endOf('day'),
+          start: moment(e.start).startOf('day'),
+          end: moment(e.end || e.start).endOf('day'),
           left: 0,
           width: 1,
           top: 0,
           has_prev: false,
           has_next: false,
         });
-      };
-
-      if (e.repeat) {
-        for (let i = 0; i < 7; ++i) {
-          const dayStart = moment(start).add(i, 'days');
-          if (hasRepeatEvent(dayStart, e))
-            addAllDay(dayStart);
-        }
       }
-
-      else
-        addAllDay(estart);
     }
 
     filtered.sort((a, b) => {
@@ -465,9 +462,9 @@ export default function WeekView(props: WeekViewProps) {
           }} />
         ))}
 
-        {allDayEvents.map((e) => (
+        {allDayEvents.map((e, i) => (
           <EventButton
-            key={e.id}
+            key={e.id + (e.repeat ? '-' + i : '')}
             event={e}
             popoverPosition='bottom-start'
 

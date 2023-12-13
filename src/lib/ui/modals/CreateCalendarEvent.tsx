@@ -75,7 +75,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
   const [loading, setLoading] = useState<boolean>(false);
   // Determines if repeating event mode
-  const [repeat, setRepeatImpl] = useState<boolean>(props.event?.repeat !== undefined);
+  const [repeat, setRepeatImpl] = useState<boolean>(props.event?.repeat !== undefined && props.event?.repeat !== null);
   const setRepeat = useCallback((value: boolean) => {
     if (value) {
       // Reset week repeat days
@@ -367,6 +367,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
               label='End On'
               placeholder='Never'
               clearable
+              {...form.getInputProps('repeat.end_on')}
               sx={{ maxWidth: '15rem' }}
             />
           </>

@@ -24,7 +24,7 @@ import { CalendarStyle, MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
 import assert from 'assert';
-import { hasRepeatEvent } from './funcs';
+import { getAllRepeatEvents, hasRepeatEvent } from './funcs';
 
 
 
@@ -423,17 +423,15 @@ function WeekRow(props: WeekRowProps) {
       const eend = moment(e.end || e.start);
 
       // Func for add all day event
-      const addAllDay = (start: Moment) => {
-        allDayEvents.push({
-          ...e,
-          start: moment(start).startOf('day'),
-          end: moment(start).add(eend.diff(estart, 'days'), 'days').endOf('day'),
+      const addAllDays = (events: (Omit<CalendarEvent, 'start' | 'end'> & { start: Moment; end: Moment; })[]) => {
+        allDayEvents.push(...events.map((ev) => ({
+          ...ev,
           left: 0,
           width: 1,
           top: 0,
           has_prev: false,
           has_next: false,
-        });
+        })));
       };
 
       // Func for adding normal event
@@ -445,21 +443,20 @@ function WeekRow(props: WeekRowProps) {
         });
       };
 
-      if (e.repeat) {
-        for (let i = 0; i < 7; ++i) {
-          const start = moment(props.time).add(i, 'days');
-          if (hasRepeatEvent(start, e)) {
-            if (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start))
-              addAllDay(start);
-            else
+      if (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start)) {
+        if (e.repeat)
+          addAllDays(getAllRepeatEvents(props.time, e));
+        else
+          addAllDays([{ ...e, start: estart, end: eend }]);
+      }
+      else {
+        if (e.repeat) {
+          for (let i = 0; i < 7; ++i) {
+            const start = moment(props.time).add(i, 'days');
+            if (hasRepeatEvent(start, e))
               addEvent(start, i);
           }
         }
-      }
-
-      else {
-        if (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start))
-          addAllDay(estart);
         else
           addEvent(estart.startOf('day'), estart.day());
       }
@@ -675,9 +672,9 @@ function WeekRow(props: WeekRowProps) {
         );
       })}
 
-      {allDayEvents.map((e) => (
+      {allDayEvents.map((e, i) => (
         <EventButton
-          key={e.id}
+          key={e.id + (e.repeat ? '-' + i : '')}
           event={e}
 
           sx={(theme) => ({

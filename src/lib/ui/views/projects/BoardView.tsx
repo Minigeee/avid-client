@@ -102,7 +102,7 @@ function TabView({ board, type, refreshEnabled, setRefreshEnabled, ...props }: T
   // Filter tags
   const [filterTags, setFilterTags] = useCachedState<string[]>(`${board.id}.${props.collection}.${type}.tags`, []);
   // Groping field
-  const [grouper, setGrouperImpl] = useCachedState<GroupableFields | null>(`${board.id}.${props.collection}.${type}.grouper`, props.app.board_states?.[board.id].group_by?.[props.collection] as GroupableFields || null);
+  const [grouper, setGrouperImpl] = useCachedState<GroupableFields | null>(`${board.id}.${props.collection}.${type}.grouper`, props.app.board_states?.[board.id]?.group_by?.[props.collection] as GroupableFields || null);
   // Groping field (that changes when filter tags are done updating)
   const [grouperLagged, setGrouperLagged] = useState<GroupableFields | null>(null);
   // Real time search value
@@ -584,7 +584,7 @@ GroupSelectItem.displayName = 'GroupSelectItem';
 
 ////////////////////////////////////////////////////////////
 function BoardTabs(props: Omit<TabViewProps, 'type'>) {
-  const [view, setView] = useCachedState<string>(`${props.board.id}.${props.collection}.view`, props.app.board_states?.[props.board.id].view?.[props.collection] || config.app.board.default_task_view);
+  const [view, setView] = useCachedState<string>(`${props.board.id}.${props.collection}.view`, props.app.board_states?.[props.board.id]?.view?.[props.collection] || config.app.board.default_task_view);
   const onTabChange = useCallback((value: string) => {
     props.app._mutators.setBoardState(props.board.id, { view: { [props.collection]: value } });
     setView(value);

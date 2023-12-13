@@ -22,7 +22,7 @@ import { CalendarStyle, MomentCalendarEvent } from './types';
 import moment, { Moment } from 'moment';
 import { range } from 'lodash';
 import assert from 'assert';
-import { hasRepeatEvent } from './funcs';
+import { getAllRepeatEvents, hasRepeatEvent } from './funcs';
 
 
 ////////////////////////////////////////////////////////////
@@ -151,28 +151,45 @@ export default function DayView(props: DayViewProps) {
   // Events that should be displayed in all day section
   const allDayEvents = useMemo(() => {
     // Filter events
-    return events
-      .filter((e) => (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start)) && (!e.repeat || hasRepeatEvent(start, e)))
-      .map((e) => {
-        let newStart = moment(e.start).startOf('day');
-        let newEnd = moment(e.end || e.start).endOf('day');
+    const allDays = events.filter((e) => (e.all_day || e.end && moment(e.end).subtract(1, 'day').isAfter(e.start)));
 
-        if (e.repeat) {
-          newStart = moment(start).startOf('day');
-          newEnd = moment(start).add(moment(e.end).diff(e.start, 'days'), 'days').endOf('day');
-        }
+    const filtered: (Omit<CalendarEvent, 'start' | 'end'> & {
+      start: Moment;
+      end: Moment;
+      has_prev: boolean;
+      has_next: boolean;
+    })[] = [];
 
-        return {
+    // Add all day events, including repeat events
+    for (const e of allDays) {
+      if (e.repeat) {
+        filtered.push(
+          ...getAllRepeatEvents(start, e, 'day').map((e) => ({
+            ...e,
+            has_prev: e.start.day() !== props.time.day(),
+            has_next: e.end.day() !== props.time.day(),
+          }))
+        );
+      }
+      else {
+        const estart = moment(e.start).startOf('day');
+        const eend = moment(e.end || e.start).endOf('day');
+
+        filtered.push({
           ...e,
-          start: newStart,
-          end: newEnd,
-          has_prev: newStart.day() !== props.time.day(),
-          has_next: newEnd.day() !== props.time.day(),
-        };
-      })
-      .sort((a, b) => {
-        return (a.start.unix() - b.start.unix()) || (a.end.unix() - b.end.unix()) || (b.title.length - a.title.length);
-      });
+          start: estart,
+          end: eend,
+          has_prev: estart.day() !== props.time.day(),
+          has_next: eend.day() !== props.time.day(),
+        });
+      }
+    }
+
+    filtered.sort((a, b) => {
+      return (a.start.unix() - b.start.unix()) || (a.end.unix() - b.end.unix()) || (b.title.length - a.title.length);
+    });
+
+    return filtered;
   }, [events]);
 
   // Scroll to current time on mount
@@ -215,7 +232,7 @@ export default function DayView(props: DayViewProps) {
 
         {allDayEvents.map((e, i) => (
           <EventButton
-            key={e.id}
+            key={e.id + (e.repeat ? '-' + i : '')}
             event={e}
             popoverPosition='bottom-start'
 
