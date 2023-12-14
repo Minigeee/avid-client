@@ -185,6 +185,7 @@ export function TaskSelector(props: TaskSelectorProps) {
 
     return list.map((task) => (
       <UnstyledButton
+        key={task.sid}
         sx={(theme) => ({
           padding: '0.375rem 0.75rem',
           borderRadius: theme.radius.sm,

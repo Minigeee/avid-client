@@ -139,6 +139,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
       return (
         <ActionIcon
+          key={i}
           size='lg'
           sx={(theme) => ({
             backgroundColor: selected ? theme.colors.indigo[5] : undefined,
