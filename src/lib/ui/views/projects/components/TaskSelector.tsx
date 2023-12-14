@@ -16,29 +16,16 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 
-import {
-  IconPlus,
-  IconSearch,
-} from '@tabler/icons-react';
+import { IconPlus, IconSearch } from '@tabler/icons-react';
 
 import { openCreateTask } from '@/lib/ui/modals';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 
 import config from '@/config';
-import {
-  BoardWrapper,
-  DomainWrapper,
-  TasksWrapper,
-} from '@/lib/hooks';
-import {
-  ExpandedMember,
-  ExpandedTask,
-  Label,
-} from '@/lib/types';
+import { BoardWrapper, DomainWrapper, TasksWrapper } from '@/lib/hooks';
+import { ExpandedMember, ExpandedTask, Label } from '@/lib/types';
 import SearchBar from '@/lib/ui/components/SearchBar';
 import { useDebouncedValue } from '@mantine/hooks';
-
-
 
 ////////////////////////////////////////////////////////////
 interface TaskSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
@@ -53,24 +40,23 @@ interface TaskSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const TaskSelectItem = forwardRef<HTMLDivElement, TaskSelectItemProps>(
   ({ value, label, ...others }: TaskSelectItemProps, ref) => (
     <div ref={ref} {...others}>
-      <Flex gap='sm' wrap='nowrap'>
+      <Flex gap="sm" wrap="nowrap">
         <Box sx={{ flexGrow: 1 }}>
           <Group spacing={8}>
             <ColorSwatch size={16} color={others.status.color || ''} />
-            <Text size='sm' weight={600}>{label}</Text>
+            <Text size="sm" weight={600}>
+              {label}
+            </Text>
           </Group>
-          <Text size='xs' color='dimmed'>{others.summary}</Text>
+          <Text size="xs" color="dimmed">
+            {others.summary}
+          </Text>
         </Box>
 
-        {others.assignee && (
-          <MemberAvatar
-            member={others.assignee}
-            size={32}
-          />
-        )}
+        {others.assignee && <MemberAvatar member={others.assignee} size={32} />}
       </Flex>
     </div>
-  )
+  ),
 );
 TaskSelectItem.displayName = 'TaskSelectItem';
 
@@ -87,21 +73,22 @@ export function TaskSelect(props: TaskSelectProps) {
   const options = useMemo(() => {
     // Status map
     const statusMap: Record<string, Label> = {};
-    for (const status of props.board.statuses)
-      statusMap[status.id] = status;
+    for (const status of props.board.statuses) statusMap[status.id] = status;
 
     // Set to exclude
     const exclude = new Set<string>(props.exclude_ids);
 
-    return props.tasks.data.filter(x => !exclude.has(x.id)).sort((a, b) => b.sid - a.sid).map((task) => ({
-      value: task.id,
-      label: `${props.board.prefix}-${task.sid}`,
-      summary: task.summary,
-      assignee: task.assignee,
-      status: statusMap[task.status],
-    }));
+    return props.tasks.data
+      .filter((x) => !exclude.has(x.id))
+      .sort((a, b) => b.sid - a.sid)
+      .map((task) => ({
+        value: task.id,
+        label: `${props.board.prefix}-${task.sid}`,
+        summary: task.summary,
+        assignee: task.assignee,
+        status: statusMap[task.status],
+      }));
   }, [props.tasks.data, props.board.prefix, props.exclude_ids]);
-
 
   return (
     <Select
@@ -113,15 +100,15 @@ export function TaskSelect(props: TaskSelectProps) {
   );
 }
 
-
-
 ////////////////////////////////////////////////////////////
 type TaskSelectorProps = {
-  type: 'subtask' | 'dependency',
+  type: 'subtask' | 'dependency';
   domain: DomainWrapper;
   board: BoardWrapper;
   tasks: TasksWrapper;
-  task: Partial<Pick<ExpandedTask, 'id' | 'subtasks' | 'dependencies' | 'collection'>>;
+  task: Partial<
+    Pick<ExpandedTask, 'id' | 'subtasks' | 'dependencies' | 'collection'>
+  >;
 
   /** Determines if task should automatically be updated on task select (default true) */
   shouldUpdate?: boolean;
@@ -142,45 +129,50 @@ export function TaskSelector(props: TaskSelectorProps) {
   const options = useMemo(() => {
     // Status map
     const statusMap: Record<string, Label> = {};
-    for (const status of props.board.statuses)
-      statusMap[status.id] = status;
+    for (const status of props.board.statuses) statusMap[status.id] = status;
 
     // Set to exclude
-    const exclude = new Set<string>((props.task[props.type === 'subtask' ? 'subtasks' : 'dependencies'] || []));
-    if (props.task.id)
-      exclude.add(props.task.id);
+    const exclude = new Set<string>(
+      props.task[props.type === 'subtask' ? 'subtasks' : 'dependencies'] || [],
+    );
+    if (props.task.id) exclude.add(props.task.id);
 
-    return props.tasks.data.filter(x => !exclude.has(x.id)).sort((a, b) => b.sid - a.sid).map((task) => ({
-      value: task.id,
-      label: `${props.board.prefix}-${task.sid}`,
-      sid: task.sid,
-      summary: task.summary,
-      assignee: task.assignee,
-      status: statusMap[task.status],
-    }));
-  }, [props.tasks.data, props.board.prefix, props.task.subtasks, props.task.dependencies]);
+    return props.tasks.data
+      .filter((x) => !exclude.has(x.id))
+      .sort((a, b) => b.sid - a.sid)
+      .map((task) => ({
+        value: task.id,
+        label: `${props.board.prefix}-${task.sid}`,
+        sid: task.sid,
+        summary: task.summary,
+        assignee: task.assignee,
+        status: statusMap[task.status],
+      }));
+  }, [
+    props.tasks.data,
+    props.board.prefix,
+    props.task.subtasks,
+    props.task.dependencies,
+  ]);
 
   // Filtered tasks
   const filtered = useMemo(() => {
     let list: typeof options = [];
-    if (!debouncedSearch?.length)
-      list = options;
-
+    if (!debouncedSearch?.length) list = options;
     else {
       const terms = debouncedSearch.toLocaleLowerCase().split(/\s+/);
-      list = options.filter(x => {
+      list = options.filter((x) => {
         // Search filter
         if (debouncedSearch && !x.sid.toString().includes(debouncedSearch)) {
           const lcSummary = x.summary.toLocaleLowerCase();
 
           for (const term of terms) {
-            if (term.length > 0 && !lcSummary.includes(term))
-              return false;
+            if (term.length > 0 && !lcSummary.includes(term)) return false;
           }
         }
 
         return true;
-      })
+      });
     }
 
     return list.map((task) => (
@@ -194,13 +186,17 @@ export function TaskSelector(props: TaskSelectorProps) {
             background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
           },
         })}
-
         onClick={() => {
           const id = task.value;
-          
+
           // Perform update
           if (props.shouldUpdate !== false && props.task.id) {
-            const update = props.type === 'subtask' ? { subtasks: (props.task.subtasks || []).concat([id]) } : { dependencies: (props.task.dependencies || []).concat([id]) };
+            const update =
+              props.type === 'subtask'
+                ? { subtasks: (props.task.subtasks || []).concat([id]) }
+                : {
+                    dependencies: (props.task.dependencies || []).concat([id]),
+                  };
             props.tasks._mutators.updateTask(props.task.id, update, true);
           }
 
@@ -212,19 +208,21 @@ export function TaskSelector(props: TaskSelectorProps) {
     ));
   }, [options, debouncedSearch]);
 
-
   return (
     <Stack spacing={0}>
-      <SearchBar
-        value={search}
-        onChange={setSearch}
-      />
+      <SearchBar value={search} onChange={setSearch} />
       {options.length === 0 && (
-        <Center w={config.app.ui.short_input_width} h='5rem'>
-          <Text size='sm' color='dimmed'>There are no tasks</Text>
+        <Center w={config.app.ui.short_input_width} h="5rem">
+          <Text size="sm" color="dimmed">
+            There are no tasks
+          </Text>
         </Center>
       )}
-      <ScrollArea.Autosize w={config.app.ui.short_input_width} mah='16rem' mb={props.canCreateTask !== false ? 0 : 4}>
+      <ScrollArea.Autosize
+        w={config.app.ui.short_input_width}
+        mah="16rem"
+        mb={props.canCreateTask !== false ? 0 : 4}
+      >
         <Stack spacing={0} mt={4}>
           {filtered}
         </Stack>
@@ -232,19 +230,26 @@ export function TaskSelector(props: TaskSelectorProps) {
 
       {props.canCreateTask !== false && (
         <>
-          <Divider label='or' labelPosition='center' labelProps={{ color: 'dimmed' }} sx={{ margin: '0.5rem 0.0rem' }} />
+          <Divider
+            label="or"
+            labelPosition="center"
+            labelProps={{ color: 'dimmed' }}
+            sx={{ margin: '0.5rem 0.0rem' }}
+          />
 
           <Button
             component={props.buttonComponent}
-            variant='gradient'
+            variant="gradient"
             leftIcon={<IconPlus size={16} />}
-            onClick={() => openCreateTask({
-              board_id: props.board.id,
-              domain: props.domain,
-              type: props.type,
-              extra_task: props.task.id,
-              collection: props.task.collection || undefined,
-            })}
+            onClick={() =>
+              openCreateTask({
+                board_id: props.board.id,
+                domain: props.domain,
+                type: props.type,
+                extra_task: props.task.id,
+                collection: props.task.collection || undefined,
+              })
+            }
           >
             Create Task
           </Button>

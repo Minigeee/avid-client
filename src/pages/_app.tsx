@@ -11,7 +11,6 @@ import SessionProvider from '@/lib/contexts/session';
 import { swrHandler } from '@/lib/utility/error-handler';
 import { DatesProvider } from '@mantine/dates';
 
-
 export default function App(props: AppProps) {
   const { Component, pageProps } = props;
 
@@ -20,7 +19,7 @@ export default function App(props: AppProps) {
       <Head>
         <title>Avid</title>
       </Head>
-      
+
       <SessionProvider>
         <MantineProvider
           withGlobalStyles
@@ -38,7 +37,7 @@ export default function App(props: AppProps) {
                 '#272B34',
                 '#1F242A',
                 '#181D23',
-                '#111519'
+                '#111519',
               ],
               red: [
                 '#FFF5F5',
@@ -63,7 +62,7 @@ export default function App(props: AppProps) {
                   day: {
                     '&[data-today="true"]:not([data-selected="true"])': {
                       backgroundColor: theme.colors.dark[4],
-                      '&:hover': { backgroundColor: theme.colors.dark[3] }
+                      '&:hover': { backgroundColor: theme.colors.dark[3] },
                     },
                     '&[data-weekend="true"]': {
                       color: theme.colors.dark[2],
@@ -137,15 +136,17 @@ export default function App(props: AppProps) {
                   },
                 }),
               },
-            }
+            },
           }}
         >
-          <Notifications position='top-right' />
-          <SWRConfig value={{
-            onError: swrHandler,
-            dedupingInterval: config.swr.dedupe_interval * 1000,
-            focusThrottleInterval: config.swr.focus_throttle_interval * 1000,
-          }}>
+          <Notifications position="top-right" />
+          <SWRConfig
+            value={{
+              onError: swrHandler,
+              dedupingInterval: config.swr.dedupe_interval * 1000,
+              focusThrottleInterval: config.swr.focus_throttle_interval * 1000,
+            }}
+          >
             <DatesProvider settings={{ firstDayOfWeek: 0 }}>
               <Component {...pageProps} />
             </DatesProvider>

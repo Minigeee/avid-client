@@ -1,11 +1,10 @@
-import React from 'react'
+import React from 'react';
 import { readFileSync } from 'fs';
 
 import BlogPost from '@/lib/ui/components/BlogPost';
 import { Box, Center, ScrollArea } from '@mantine/core';
 import { s3 } from '@/lib/utility/spaces';
 import config from '@/config';
-
 
 ////////////////////////////////////////////////////////////
 type BlogProps = {
@@ -14,18 +13,18 @@ type BlogProps = {
 
 ////////////////////////////////////////////////////////////
 export default function Roadmap({ post }: BlogProps) {
-
-
   return (
-    <ScrollArea w='100vw' h='100vh'>
+    <ScrollArea w="100vw" h="100vh">
       <Center>
-        <Box sx={(theme) => ({
-          padding: '3.5rem 3.0rem',
-          maxWidth: '100vw',
-          backgroundColor: theme.colors.dark[6],
-          boxShadow: `0px 0px 15px #00000030`,
-        })}>
-          <BlogPost post={post} width='65ch' />
+        <Box
+          sx={(theme) => ({
+            padding: '3.5rem 3.0rem',
+            maxWidth: '100vw',
+            backgroundColor: theme.colors.dark[6],
+            boxShadow: `0px 0px 15px #00000030`,
+          })}
+        >
+          <BlogPost post={post} width="65ch" />
         </Box>
       </Center>
     </ScrollArea>

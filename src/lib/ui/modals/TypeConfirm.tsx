@@ -1,4 +1,10 @@
-import { ComponentPropsWithoutRef, PropsWithChildren, forwardRef, useMemo, useState } from 'react';
+import {
+  ComponentPropsWithoutRef,
+  PropsWithChildren,
+  forwardRef,
+  useMemo,
+  useState,
+} from 'react';
 
 import {
   Box,
@@ -10,7 +16,6 @@ import {
   TextInput,
 } from '@mantine/core';
 import { ContextModalProps } from '@mantine/modals';
-
 
 ////////////////////////////////////////////////////////////
 export type TypeConfirmProps = PropsWithChildren & {
@@ -26,10 +31,14 @@ export type TypeConfirmProps = PropsWithChildren & {
   confirmBtnProps?: ButtonProps;
   /** Called when user confirms */
   onConfirm: () => void;
-}
+};
 
 ////////////////////////////////////////////////////////////
-export default function TypeConfirm({ context, id, innerProps: props }: ContextModalProps<TypeConfirmProps>) {
+export default function TypeConfirm({
+  context,
+  id,
+  innerProps: props,
+}: ContextModalProps<TypeConfirmProps>) {
   const [text, setText] = useState<string>('');
 
   return (
@@ -37,19 +46,18 @@ export default function TypeConfirm({ context, id, innerProps: props }: ContextM
       {props.children}
 
       <Box>
-        <Text size='sm'>{props.confirmText || 'Please type the name to confirm this action.'}</Text>
+        <Text size="sm">
+          {props.confirmText || 'Please type the name to confirm this action.'}
+        </Text>
         <TextInput onChange={(e) => setText(e.currentTarget.value)} />
       </Box>
 
-      <Group spacing='xs' position='right' mt={16}>
-        <Button
-          variant='default'
-          onClick={() => context.closeModal(id)}
-        >
+      <Group spacing="xs" position="right" mt={16}>
+        <Button variant="default" onClick={() => context.closeModal(id)}>
           Cancel
         </Button>
         <Button
-          color='red'
+          color="red"
           {...props.confirmBtnProps}
           disabled={text !== props.confirm}
           onClick={() => {

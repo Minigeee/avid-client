@@ -1,11 +1,6 @@
 import { PropsWithChildren, useMemo, useRef } from 'react';
 
-import {
-  ActionIcon,
-  Flex,
-  Group,
-  Menu, Slider, Text
-} from '@mantine/core';
+import { ActionIcon, Flex, Group, Menu, Slider, Text } from '@mantine/core';
 import {
   IconArrowBackUp,
   IconCopy,
@@ -27,16 +22,20 @@ import {
   IconVideoOff,
   IconVolume,
   IconVolume2,
-  IconVolumeOff
+  IconVolumeOff,
 } from '@tabler/icons-react';
 
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
-import { DomainWrapper, MessagesWrapper, hasPermission, useRtc } from '@/lib/hooks';
+import {
+  DomainWrapper,
+  MessagesWrapper,
+  hasPermission,
+  useRtc,
+} from '@/lib/hooks';
 import { ExpandedMember, ExpandedMessage, Member } from '@/lib/types';
 import { RtcParticipant } from '@/lib/contexts';
-
 
 ////////////////////////////////////////////////////////////
 export type RtcMenuProps = PropsWithChildren & {
@@ -46,50 +45,65 @@ export type RtcMenuProps = PropsWithChildren & {
 
 ////////////////////////////////////////////////////////////
 export type RtcMenuContext = {
-	/** The member object that is being targeted */
-	member: ExpandedMember;
+  /** The member object that is being targeted */
+  member: ExpandedMember;
 };
 
 ////////////////////////////////////////////////////////////
 type RtcMenuDropdownProps = Omit<RtcMenuProps, 'children'> & RtcMenuContext;
 
-
 ////////////////////////////////////////////////////////////
 export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
   const { open: openConfirmModal } = useConfirmModal();
 
-	const rtc = useRtc();
+  const rtc = useRtc();
 
   const participant = rtc.participants?.[member.id];
 
   // Rtc must exist
-  if (!participant)
-    return null;
+  if (!participant) return null;
 
   // Permissions
-  const canManage = !participant.is_admin && (props.domain._permissions.is_admin || rtc.room_id && hasPermission(props.domain, rtc.room_id, 'can_manage_participants') && !participant.is_manager);
+  const canManage =
+    !participant.is_admin &&
+    (props.domain._permissions.is_admin ||
+      (rtc.room_id &&
+        hasPermission(props.domain, rtc.room_id, 'can_manage_participants') &&
+        !participant.is_manager));
 
   return (
     <>
       <Menu.Label>{member.alias}</Menu.Label>
 
       {!rtc.is_deafened && participant.audio && (
-        <Flex wrap='nowrap' gap={12} align='center' m='0.1rem 0.6rem' mb='0.4rem'>
-          <ActionIcon onClick={() => {
-            if (participant.audio?.paused.local)
-              rtc._mutators.resume(participant.id, 'audio');
-            else
-              rtc._mutators.pause(participant.id, 'audio');
-          }}>
-            {participant.audio.paused.local || participant.volume === 0 ? <IconVolumeOff size={20} /> : participant.volume >= 50 ? <IconVolume size={20} /> : <IconVolume2 size={20} />}
+        <Flex
+          wrap="nowrap"
+          gap={12}
+          align="center"
+          m="0.1rem 0.6rem"
+          mb="0.4rem"
+        >
+          <ActionIcon
+            onClick={() => {
+              if (participant.audio?.paused.local)
+                rtc._mutators.resume(participant.id, 'audio');
+              else rtc._mutators.pause(participant.id, 'audio');
+            }}
+          >
+            {participant.audio.paused.local || participant.volume === 0 ? (
+              <IconVolumeOff size={20} />
+            ) : participant.volume >= 50 ? (
+              <IconVolume size={20} />
+            ) : (
+              <IconVolume2 size={20} />
+            )}
           </ActionIcon>
 
           <Slider
             label={(value) => `${value}%`}
             value={participant.audio.paused.local ? 0 : participant.volume}
             onChange={(value) => {
-              if (rtc.joined)
-                rtc._mutators.audio.setVolume(member.id, value);
+              if (rtc.joined) rtc._mutators.audio.setVolume(member.id, value);
             }}
             sx={{ flexGrow: 1 }}
           />
@@ -99,53 +113,81 @@ export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
       {canManage && (
         <>
           <Menu.Item
-            icon={participant.locked.audio ? <IconMicrophone size={17} /> : <IconMicrophoneOff size={17} />}
+            icon={
+              participant.locked.audio ? (
+                <IconMicrophone size={17} />
+              ) : (
+                <IconMicrophoneOff size={17} />
+              )
+            }
             onClick={() => {
               if (participant.locked.audio)
                 rtc._mutators.unlock(member.id, 'audio');
-              else
-                rtc._mutators.lock(member.id, 'audio');
+              else rtc._mutators.lock(member.id, 'audio');
             }}
           >
-            {participant.locked.audio ? 'Unlock Microphone' : !participant.audio || participant.audio.paused.remote ? 'Lock Microphone' : 'Disable Microphone'}
+            {participant.locked.audio
+              ? 'Unlock Microphone'
+              : !participant.audio || participant.audio.paused.remote
+                ? 'Lock Microphone'
+                : 'Disable Microphone'}
           </Menu.Item>
 
           <Menu.Item
-            icon={participant.locked.video ? <IconVideo size={17} /> : <IconVideoOff size={17} />}
+            icon={
+              participant.locked.video ? (
+                <IconVideo size={17} />
+              ) : (
+                <IconVideoOff size={17} />
+              )
+            }
             onClick={() => {
               if (participant.locked.video)
                 rtc._mutators.unlock(member.id, 'video');
-              else
-                rtc._mutators.lock(member.id, 'video');
+              else rtc._mutators.lock(member.id, 'video');
             }}
           >
-            {participant.locked.video ? 'Unlock Webcam' : !participant.video || participant.video.paused.remote ? 'Lock Webcam' : 'Disable Webcam'}
+            {participant.locked.video
+              ? 'Unlock Webcam'
+              : !participant.video || participant.video.paused.remote
+                ? 'Lock Webcam'
+                : 'Disable Webcam'}
           </Menu.Item>
 
           <Menu.Item
-            icon={participant.locked.share ? <IconScreenShare size={17} /> : <IconScreenShareOff size={17} />}
+            icon={
+              participant.locked.share ? (
+                <IconScreenShare size={17} />
+              ) : (
+                <IconScreenShareOff size={17} />
+              )
+            }
             onClick={() => {
               if (participant.locked.share)
                 rtc._mutators.unlock(member.id, 'share');
-              else
-                rtc._mutators.lock(member.id, 'share');
+              else rtc._mutators.lock(member.id, 'share');
             }}
           >
-            {participant.locked.share ? 'Unlock Screen Share' : !participant.share || participant.share.paused.remote ? 'Lock Screen Share' : 'Disable Screen Share'}
+            {participant.locked.share
+              ? 'Unlock Screen Share'
+              : !participant.share || participant.share.paused.remote
+                ? 'Lock Screen Share'
+                : 'Disable Screen Share'}
           </Menu.Item>
 
           <Menu.Divider />
 
           <Menu.Item
             icon={<IconUserX size={17} />}
-            color='red'
+            color="red"
             onClick={() => {
               openConfirmModal({
                 title: 'Kick Participant',
                 content: (
                   <Text>
-                    Are you sure you want to kick <b>{member.alias}</b> from this room?
-                    They will not be able to join again until this session is over.
+                    Are you sure you want to kick <b>{member.alias}</b> from
+                    this room? They will not be able to join again until this
+                    session is over.
                   </Text>
                 ),
                 confirmLabel: 'Kick',
@@ -160,22 +202,16 @@ export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
         </>
       )}
     </>
-  )
+  );
 }
-
 
 ////////////////////////////////////////////////////////////
 export function RtcContextMenu(props: RtcMenuProps) {
   return (
-    <ContextMenu
-      width='16rem'
-    >
+    <ContextMenu width="16rem">
       <ContextMenu.Dropdown dependencies={[props.domain._permissions]}>
         {(context: RtcMenuContext) => (
-          <RtcMenuDropdown
-            domain={props.domain}
-            {...context}
-          />
+          <RtcMenuDropdown domain={props.domain} {...context} />
         )}
       </ContextMenu.Dropdown>
 

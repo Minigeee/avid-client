@@ -15,7 +15,12 @@ import {
   UnstyledButton,
   useMantineTheme,
 } from '@mantine/core';
-import { IconChevronLeft, IconChevronRight, IconPlus, IconRefresh } from '@tabler/icons-react';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconPlus,
+  IconRefresh,
+} from '@tabler/icons-react';
 
 import { openCreateCalendarEvent } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -33,7 +38,6 @@ import moment, { Moment } from 'moment';
 import { merge, range } from 'lodash';
 import { CalendarEventContextMenu } from './EventMenu';
 
-
 ////////////////////////////////////////////////////////////
 export type CalendarView = 'month' | 'week' | 'day' | 'resource';
 
@@ -43,7 +47,7 @@ export type CalendarProps = {
   events: CalendarEvent[];
   /** Domain the calendar is part of, used for context */
   domain?: DomainWrapper;
-  
+
   /** Determines if a refresh button should be shown (default false) */
   withRefresh?: boolean;
   /** Determines if user can manage calendar events (default true) */
@@ -59,7 +63,7 @@ export type CalendarProps = {
   onDateChange?: (date: Moment) => void;
   /** Called when the refresh button is clicked */
   onRefresh?: () => void;
-  
+
   /** Optional calendar style */
   styles?: DeepPartial<CalendarStyle>;
 };
@@ -68,18 +72,22 @@ export type CalendarProps = {
 export default function Calendar(props: CalendarProps) {
   // Calendar style
   const theme = useMantineTheme();
-  const styles = useMemo(() => merge({}, props.styles, {
-    colors: {
-      event: theme.colors.gray[6],
-      cellBorder: theme.colors.dark[5],
-      timeIndicator: theme.colors.indigo[4],
-    },
-    timeGutter: 60,
-    monthHeaderHeight: 32,
-    slotHeight: '4rem',
-    
-    resizeMarginSize: 6,
-  } as CalendarStyle), []);
+  const styles = useMemo(
+    () =>
+      merge({}, props.styles, {
+        colors: {
+          event: theme.colors.gray[6],
+          cellBorder: theme.colors.dark[5],
+          timeIndicator: theme.colors.indigo[4],
+        },
+        timeGutter: 60,
+        monthHeaderHeight: 32,
+        slotHeight: '4rem',
+
+        resizeMarginSize: 6,
+      } as CalendarStyle),
+    [],
+  );
 
   // Callback refs
   const onNewEventRef = useRef(props.onNewEvent);
@@ -93,7 +101,6 @@ export default function Calendar(props: CalendarProps) {
   // The id of the currently opened popup
   const [popupId, setPopupId] = useState<string | null>(null);
 
-
   // Update refs on function change
   useEffect(() => {
     onNewEventRef.current = props.onNewEvent;
@@ -102,10 +109,13 @@ export default function Calendar(props: CalendarProps) {
   }, [props.onNewEvent, props.onEditEvent, props.onDeleteEvent]);
 
   // Set time wrapper func
-  const setTime = useCallback((value: Moment) => {
-    setTimeImpl(value);
-    props.onDateChange?.(value);
-  }, [setTimeImpl]);
+  const setTime = useCallback(
+    (value: Moment) => {
+      setTimeImpl(value);
+      props.onDateChange?.(value);
+    },
+    [setTimeImpl],
+  );
 
   // Calendar title
   const title = useMemo(() => {
@@ -115,59 +125,61 @@ export default function Calendar(props: CalendarProps) {
 
       if (start.month() !== end.month())
         return `${start.format('MMM YYYY')} - ${end.format('MMM YYYY')}`;
-      else
-        return start.format('MMMM YYYY');
-    }
-    else if (view === 'day') {
+      else return start.format('MMMM YYYY');
+    } else if (view === 'day') {
       return time.format('LL');
-    }
-    else if (view === 'month') {
+    } else if (view === 'month') {
       return time.format('MMMM YYYY');
     }
 
     return '';
   }, [time, view]);
 
-
   // Create event callback
-  const onNewEventRequest = useCallback((start: Moment, initial?: { duration?: number, all_day?: boolean }) => {
-    // Don't open modal if can't manage events
-    if (props.editable === false) return;
+  const onNewEventRequest = useCallback(
+    (start: Moment, initial?: { duration?: number; all_day?: boolean }) => {
+      // Don't open modal if can't manage events
+      if (props.editable === false) return;
 
-    openCreateCalendarEvent({
-      domain: props.domain,
-      event: {
-        start: start.toISOString(),
-        end: moment(start).add(initial?.duration || 1, 'hours').toISOString(),
-        all_day: initial?.all_day,
-      },
+      openCreateCalendarEvent({
+        domain: props.domain,
+        event: {
+          start: start.toISOString(),
+          end: moment(start)
+            .add(initial?.duration || 1, 'hours')
+            .toISOString(),
+          all_day: initial?.all_day,
+        },
 
-      onSubmit: async (event) => {
-        console.log('on submit', event)
-        await props.onNewEvent?.(event);
-      },
-    });
-  }, [props.domain, props.onNewEvent]);
-
+        onSubmit: async (event) => {
+          console.log('on submit', event);
+          await props.onNewEvent?.(event);
+        },
+      });
+    },
+    [props.domain, props.onNewEvent],
+  );
 
   return (
-    <CalendarContext.Provider value={{
-      domain: props.domain,
-      editable: props.editable !== false,
-      popupId,
-      setPopupId,
-      onNewEvent: onNewEventRef,
-      onEditEvent: onEditEventRef,
-      onDeleteEvent: onDeleteEventRef,
-    }}>
-      <Flex direction='column' w='100%' h='100%'>
+    <CalendarContext.Provider
+      value={{
+        domain: props.domain,
+        editable: props.editable !== false,
+        popupId,
+        setPopupId,
+        onNewEvent: onNewEventRef,
+        onEditEvent: onEditEventRef,
+        onDeleteEvent: onDeleteEventRef,
+      }}
+    >
+      <Flex direction="column" w="100%" h="100%">
         <SimpleGrid pb={12} cols={3}>
           <Group spacing={2}>
             {props.editable && (
               <>
                 <Button
-                  variant='gradient'
-                  size='xs'
+                  variant="gradient"
+                  size="xs"
                   leftIcon={<IconPlus size={16} />}
                   onClick={() => {
                     // Nearest hour
@@ -188,48 +200,46 @@ export default function Calendar(props: CalendarProps) {
                 >
                   Create
                 </Button>
-                <Divider orientation='vertical' ml={10} mr={10} />
+                <Divider orientation="vertical" ml={10} mr={10} />
               </>
             )}
 
             <Button
-              size='xs'
-              variant='default'
+              size="xs"
+              variant="default"
               mr={6}
               onClick={() => setTime(moment())}
             >
               Today
             </Button>
-            <ActionIcon onClick={() => {
-              const newTime = moment(time);
-              if (view === 'month')
-                newTime.subtract(1, 'month');
-              else if (view === 'week')
-                newTime.subtract(1, 'week');
-              else if (view === 'day')
-                newTime.subtract(1, 'day');
+            <ActionIcon
+              onClick={() => {
+                const newTime = moment(time);
+                if (view === 'month') newTime.subtract(1, 'month');
+                else if (view === 'week') newTime.subtract(1, 'week');
+                else if (view === 'day') newTime.subtract(1, 'day');
 
-              setTime(newTime);
-            }}>
+                setTime(newTime);
+              }}
+            >
               <IconChevronLeft size={20} />
             </ActionIcon>
-            <ActionIcon onClick={() => {
-              const newTime = moment(time);
-              if (view === 'month')
-                newTime.add(1, 'month');
-              else if (view === 'week')
-                newTime.add(1, 'week');
-              else if (view === 'day')
-                newTime.add(1, 'day');
+            <ActionIcon
+              onClick={() => {
+                const newTime = moment(time);
+                if (view === 'month') newTime.add(1, 'month');
+                else if (view === 'week') newTime.add(1, 'week');
+                else if (view === 'day') newTime.add(1, 'day');
 
-              setTime(newTime);
-            }}>
+                setTime(newTime);
+              }}
+            >
               <IconChevronRight size={20} />
             </ActionIcon>
 
             {props.withRefresh && (
               <ActionButton
-                tooltip='Refresh'
+                tooltip="Refresh"
                 tooltipProps={{ position: 'right' }}
                 hoverBg={(theme) => theme.colors.dark[6]}
                 ml={2}
@@ -240,36 +250,39 @@ export default function Calendar(props: CalendarProps) {
             )}
           </Group>
 
-          <Title order={3} align='center' sx={{ alignSelf: 'center' }}>
+          <Title order={3} align="center" sx={{ alignSelf: 'center' }}>
             {title}
           </Title>
 
           <Button.Group sx={{ justifySelf: 'flex-end' }}>
             <Button
-              size='xs'
-              variant='default'
+              size="xs"
+              variant="default"
               sx={(theme) => ({
-                backgroundColor: view === 'month' ? theme.colors.dark[5] : undefined,
+                backgroundColor:
+                  view === 'month' ? theme.colors.dark[5] : undefined,
               })}
               onClick={() => setView('month')}
             >
               Month
             </Button>
             <Button
-              size='xs'
-              variant='default'
+              size="xs"
+              variant="default"
               sx={(theme) => ({
-                backgroundColor: view === 'week' ? theme.colors.dark[5] : undefined,
+                backgroundColor:
+                  view === 'week' ? theme.colors.dark[5] : undefined,
               })}
               onClick={() => setView('week')}
             >
               Week
             </Button>
             <Button
-              size='xs'
-              variant='default'
+              size="xs"
+              variant="default"
               sx={(theme) => ({
-                backgroundColor: view === 'day' ? theme.colors.dark[5] : undefined,
+                backgroundColor:
+                  view === 'day' ? theme.colors.dark[5] : undefined,
               })}
               onClick={() => setView('day')}
             >
@@ -285,7 +298,6 @@ export default function Calendar(props: CalendarProps) {
               events={props.events}
               editable={props.editable !== false}
               style={styles}
-
               setDay={(day) => {
                 setTime(day);
                 setView('day');
@@ -301,7 +313,6 @@ export default function Calendar(props: CalendarProps) {
               events={props.events}
               editable={props.editable !== false}
               style={styles}
-
               setDay={(day) => {
                 setTime(day);
                 setView('day');
@@ -317,7 +328,6 @@ export default function Calendar(props: CalendarProps) {
               events={props.events}
               editable={props.editable !== false}
               style={styles}
-
               onNewEventRequest={onNewEventRequest}
               onEventChange={props.onEditEvent}
             />
@@ -328,9 +338,4 @@ export default function Calendar(props: CalendarProps) {
   );
 }
 
-
-export type {
-  OnEditEvent,
-  OnNewEvent,
-  OnDeleteEvent,
-} from './types';
+export type { OnEditEvent, OnNewEvent, OnDeleteEvent } from './types';

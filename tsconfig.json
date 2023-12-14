@@ -18,6 +18,16 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/lib/ui/components/VirtualList/createListComponent.jsx", "src/lib/ui/components/VirtualList/timer.js", "src/lib/ui/components/VirtualList/FixedSizeList.jsx", "src/lib/ui/components/VirtualList/domHelpers.js", "src/lib/ui/components/VirtualList/createListComponent.jsx", "src/lib/ui/components/VirtualList.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "src/lib/ui/components/VirtualList/createListComponent.jsx",
+    "src/lib/ui/components/VirtualList/timer.js",
+    "src/lib/ui/components/VirtualList/FixedSizeList.jsx",
+    "src/lib/ui/components/VirtualList/domHelpers.js",
+    "src/lib/ui/components/VirtualList/createListComponent.jsx",
+    "src/lib/ui/components/VirtualList.js"
+  ],
   "exclude": ["node_modules"]
 }

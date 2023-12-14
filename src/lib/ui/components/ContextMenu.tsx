@@ -1,4 +1,16 @@
-import { DependencyList, HTMLProps, MouseEventHandler, PropsWithChildren, ReactNode, createContext, forwardRef, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  DependencyList,
+  HTMLProps,
+  MouseEventHandler,
+  PropsWithChildren,
+  ReactNode,
+  createContext,
+  forwardRef,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import {
   Box,
@@ -20,7 +32,6 @@ import { IconChevronRight } from '@tabler/icons-react';
 
 import { merge } from 'lodash';
 
-
 ////////////////////////////////////////////////////////////
 type ContextMenuState = {
   opened: boolean;
@@ -35,16 +46,22 @@ type SubmenuState = string | null;
 
 /** Context menu context */
 // @ts-ignore
-export const ContextMenuContext = createContext<{ state: ContextMenuState; setState: (state: ContextMenuState) => void }>();
+export const ContextMenuContext = createContext<{
+  state: ContextMenuState;
+  setState: (state: ContextMenuState) => void;
+}>();
 /** Submenu context */
 // @ts-ignore
-export const SubmenuContext = createContext<{ submenu: SubmenuState; setSubmenu: (state: SubmenuState) => void }>();
-
+export const SubmenuContext = createContext<{
+  submenu: SubmenuState;
+  setSubmenu: (state: SubmenuState) => void;
+}>();
 
 ////////////////////////////////////////////////////////////
-export type ContextMenuProps = PropsWithChildren & MenuProps & {
-  dropdownProps?: MenuDropdownProps;
-};
+export type ContextMenuProps = PropsWithChildren &
+  MenuProps & {
+    dropdownProps?: MenuDropdownProps;
+  };
 
 ////////////////////////////////////////////////////////////
 export function ContextMenu(props: ContextMenuProps) {
@@ -62,56 +79,59 @@ export function ContextMenu(props: ContextMenuProps) {
 
   // Reset submenu when close
   useEffect(() => {
-    if (!state.opened)
-      setSubmenu(null);
+    if (!state.opened) setSubmenu(null);
   }, [state.opened]);
-
 
   return (
     <>
-      <Portal onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}>
+      <Portal
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <SubmenuContext.Provider value={{ submenu, setSubmenu }}>
           <Menu
             {...props}
             opened={state.opened}
-            position='bottom-start'
+            position="bottom-start"
             offset={-1}
-            onChange={(opened) => { setState({ ...state, opened }) }}
-
+            onChange={(opened) => {
+              setState({ ...state, opened });
+            }}
             styles={(theme, params, context) => {
               // Get passed styles
               let styles: MenuProps['styles'] = {};
               if (props.styles) {
                 if (typeof props.styles === 'function')
                   styles = props.styles(theme, params, context);
-                else
-                  styles = props.styles;
+                else styles = props.styles;
               }
 
-              return merge({
-                dropdown: {
-                  borderColor: theme.colors.dark[5],
-                  boxShadow: `0px 0px 12px #00000020`,
-                },
-                divider: {
-                  borderColor: theme.colors.dark[5],
-                },
-              } as MenuProps['styles'], styles);
+              return merge(
+                {
+                  dropdown: {
+                    borderColor: theme.colors.dark[5],
+                    boxShadow: `0px 0px 12px #00000020`,
+                  },
+                  divider: {
+                    borderColor: theme.colors.dark[5],
+                  },
+                } as MenuProps['styles'],
+                styles,
+              );
             }}
           >
             <Menu.Target>
-              <div style={{
-                position: 'absolute',
-                left: state.x,
-                top: state.y,
-              }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: state.x,
+                  top: state.y,
+                }}
+              />
             </Menu.Target>
-            <Menu.Dropdown {...props.dropdownProps}>
-              {dropdown}
-            </Menu.Dropdown>
+            <Menu.Dropdown {...props.dropdownProps}>{dropdown}</Menu.Dropdown>
           </Menu>
         </SubmenuContext.Provider>
       </Portal>
@@ -121,7 +141,6 @@ export function ContextMenu(props: ContextMenuProps) {
     </>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 export type ContextMenuDropdownProps = {
@@ -144,44 +163,50 @@ export function ContextMenuDropdown(props: ContextMenuDropdownProps) {
 
 ContextMenu.Dropdown = ContextMenuDropdown;
 
+////////////////////////////////////////////////////////////
+type ContextMenuTriggerProps = PropsWithChildren &
+  Omit<HTMLProps<HTMLDivElement>, 'ref'> &
+  BoxProps & {
+    /** Context data that gets passed to the context menu */
+    context?: any;
+    /** Set this to true to prevent context menu from trigger, does default behavior instead */
+    disabled?: boolean;
+  };
 
 ////////////////////////////////////////////////////////////
-type ContextMenuTriggerProps = PropsWithChildren & Omit<HTMLProps<HTMLDivElement>, 'ref'> & BoxProps & {
-  /** Context data that gets passed to the context menu */
-  context?: any;
-  /** Set this to true to prevent context menu from trigger, does default behavior instead */
-  disabled?: boolean;
-};
-
-
-////////////////////////////////////////////////////////////
-export const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>((props, ref) => {
+export const ContextMenuTrigger = forwardRef<
+  HTMLDivElement,
+  ContextMenuTriggerProps
+>((props, ref) => {
   const context = useContext(ContextMenuContext);
 
   return (
-    <Box ref={ref} {...{ ...props, context: undefined }} onContextMenu={(e) => {
-      if (props.disabled) return;
+    <Box
+      ref={ref}
+      {...{ ...props, context: undefined }}
+      onContextMenu={(e) => {
+        if (props.disabled) return;
 
-      // Prevent default
-      e.preventDefault();
-      e.stopPropagation();
+        // Prevent default
+        e.preventDefault();
+        e.stopPropagation();
 
-      // Set context
-      context.setState({
-        ...context.state,
-        opened: true,
-        x: e.clientX,
-        y: e.clientY,
-        data: props.context,
-      });
-    }}>
+        // Set context
+        context.setState({
+          ...context.state,
+          opened: true,
+          x: e.clientX,
+          y: e.clientY,
+          data: props.context,
+        });
+      }}
+    >
       {props.children}
     </Box>
   );
 });
 ContextMenuTrigger.displayName = 'ContextMenu.Trigger';
 ContextMenu.Trigger = ContextMenuTrigger;
-
 
 ////////////////////////////////////////////////////////////
 export function SubmenuProvider(props: PropsWithChildren & MenuProps) {
@@ -190,10 +215,8 @@ export function SubmenuProvider(props: PropsWithChildren & MenuProps) {
 
   // Reset submenu when close
   useEffect(() => {
-    if (!opened)
-      setSubmenu(null);
+    if (!opened) setSubmenu(null);
   }, [opened]);
-
 
   return (
     <SubmenuContext.Provider value={{ submenu, setSubmenu }}>
@@ -207,7 +230,6 @@ export function SubmenuProvider(props: PropsWithChildren & MenuProps) {
     </SubmenuContext.Provider>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 type SubmenuProps = PropsWithChildren & {
@@ -230,68 +252,69 @@ export function Submenu(props: SubmenuProps) {
 
   const openTimeout = useTimeout(
     () => setSubmenu(props.id),
-    props.hoverDelay || 150
+    props.hoverDelay || 150,
   );
 
-  return useMemo(() => (
-    <Popover
-      opened={submenu === props.id}
-      position={props.position || 'right-start'}
-      offset={{ mainAxis: 12, crossAxis: 9 }}
-      withArrow
-      styles={(theme, params, context) => {
-        // Get passed styles
-        let styles: PopoverProps['styles'] = {};
-        if (props.styles) {
-          if (typeof props.styles === 'function')
-            styles = props.styles(theme, params, context);
-          else
-            styles = props.styles;
-        }
+  return useMemo(
+    () => (
+      <Popover
+        opened={submenu === props.id}
+        position={props.position || 'right-start'}
+        offset={{ mainAxis: 12, crossAxis: 9 }}
+        withArrow
+        styles={(theme, params, context) => {
+          // Get passed styles
+          let styles: PopoverProps['styles'] = {};
+          if (props.styles) {
+            if (typeof props.styles === 'function')
+              styles = props.styles(theme, params, context);
+            else styles = props.styles;
+          }
 
-        return merge({
-          dropdown: {
-            borderColor: theme.colors.dark[5],
-          },
-        } as PopoverProps['styles'], styles);
-      }}
-    >
-      <Popover.Target>
-        <Menu.Item
-          closeMenuOnClick={false}
-          icon={props.icon}
-          color={props.color}
-          rightSection={<IconChevronRight size={16} />}
-          sx={(theme) => ({
-            alignItems: 'start',
-            paddingBottom: '0.5rem',
-
-            '.tabler-icon-chevron-right': {
-              color: theme.colors.dark[2],
-            },
-          })}
-
-          onMouseEnter={() => openTimeout.start()}
-          onMouseLeave={(e) => openTimeout.clear()}
-          onClick={() => setSubmenu(props.id)}
-        >
-          {props.label}
-        </Menu.Item>
-      </Popover.Target>
-
-      <Popover.Dropdown
-        p={4}
-        {...props.dropdownProps}
+          return merge(
+            {
+              dropdown: {
+                borderColor: theme.colors.dark[5],
+              },
+            } as PopoverProps['styles'],
+            styles,
+          );
+        }}
       >
-        {!props.noScroll && (
-          <ScrollArea.Autosize mah={props.maxHeight || '25rem'}>
-            {props.children}
-          </ScrollArea.Autosize>
-        )}
-        {props.noScroll && props.children}
-      </Popover.Dropdown>
-    </Popover>
-  ), [props, submenu]);
+        <Popover.Target>
+          <Menu.Item
+            closeMenuOnClick={false}
+            icon={props.icon}
+            color={props.color}
+            rightSection={<IconChevronRight size={16} />}
+            sx={(theme) => ({
+              alignItems: 'start',
+              paddingBottom: '0.5rem',
+
+              '.tabler-icon-chevron-right': {
+                color: theme.colors.dark[2],
+              },
+            })}
+            onMouseEnter={() => openTimeout.start()}
+            onMouseLeave={(e) => openTimeout.clear()}
+            onClick={() => setSubmenu(props.id)}
+          >
+            {props.label}
+          </Menu.Item>
+        </Popover.Target>
+
+        <Popover.Dropdown p={4} {...props.dropdownProps}>
+          {!props.noScroll && (
+            <ScrollArea.Autosize mah={props.maxHeight || '25rem'}>
+              {props.children}
+            </ScrollArea.Autosize>
+          )}
+          {props.noScroll && props.children}
+        </Popover.Dropdown>
+      </Popover>
+    ),
+    [props, submenu],
+  );
 }
 
 ContextMenu.Submenu = Submenu;

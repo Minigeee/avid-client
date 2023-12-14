@@ -1,8 +1,6 @@
 import { ReactNode, useMemo, useState } from 'react';
 
-import {
-  Accordion, Group, Text
-} from '@mantine/core';
+import { Accordion, Group, Text } from '@mantine/core';
 
 import { GroupableFields, SingleGrouped } from '../views/projects/BoardView';
 import MemberAvatar from './MemberAvatar';
@@ -12,7 +10,6 @@ import { Label } from '@/lib/types';
 
 import { capitalize } from 'lodash';
 import moment from 'moment';
-
 
 ////////////////////////////////////////////////////////////
 type TaskGroupAccordionProps = {
@@ -27,23 +24,37 @@ type TaskGroupAccordionProps = {
 
   collection: string;
   grouper: GroupableFields | null;
-}
+};
 
 ////////////////////////////////////////////////////////////
-export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...props }: TaskGroupAccordionProps) {
+export default function TaskGroupAccordion({
+  expanded,
+  setExpanded,
+  grouper,
+  ...props
+}: TaskGroupAccordionProps) {
   // Create controls once
   const controls = useMemo(() => {
     return props.groups.map((group, group_idx) => (
       <Group key={group} noWrap>
         {grouper === 'assignee' && (
-          <MemberAvatar member={group === '_' ? null : getMemberSync(props.domain.id, group)} size={32} />
+          <MemberAvatar
+            member={
+              group === '_' ? null : getMemberSync(props.domain.id, group)
+            }
+            size={32}
+          />
         )}
-        <Text weight={600} size='lg'>
+        <Text weight={600} size="lg">
           {(() => {
             if (grouper === 'tags')
-              return group === '_' ? 'No Tags' : props.tagMap[group.trim()].label;
+              return group === '_'
+                ? 'No Tags'
+                : props.tagMap[group.trim()].label;
             else if (grouper === 'assignee')
-              return group === '_' ? 'Unassigned' : getMemberSync(props.domain.id, group)?.alias;
+              return group === '_'
+                ? 'Unassigned'
+                : getMemberSync(props.domain.id, group)?.alias;
             else if (grouper === 'priority')
               return group === '_' ? 'None' : capitalize(group);
             else if (grouper === 'due_date')
@@ -56,7 +67,6 @@ export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...
     ));
   }, [grouper, props.groups]);
 
-
   // Key used to find expand values
   const expandKey = `${props.collection}.${grouper}`;
   if (!expanded[expandKey])
@@ -64,28 +74,24 @@ export default function TaskGroupAccordion({ expanded, setExpanded, grouper, ...
 
   return (
     <Accordion
-    value={expanded[expandKey] || props.groups}
-    onChange={(values) => setExpanded({ ...expanded, [expandKey]: values })}
-    multiple
-    sx={{
-      minWidth: '100ch',
-    }}
-    styles={(theme) => ({
-      item: {
-        borderWidth: 2,
-      },
-    })}
-  >
-    {props.groups.map((group, group_idx) => (
-      <Accordion.Item key={group} value={group}>
-        <Accordion.Control>
-          {controls[group_idx]}
-        </Accordion.Control>
-        <Accordion.Panel>
-          {props.component(group)}
-        </Accordion.Panel>
-      </Accordion.Item>
-    ))}
-  </Accordion>
-  )
+      value={expanded[expandKey] || props.groups}
+      onChange={(values) => setExpanded({ ...expanded, [expandKey]: values })}
+      multiple
+      sx={{
+        minWidth: '100ch',
+      }}
+      styles={(theme) => ({
+        item: {
+          borderWidth: 2,
+        },
+      })}
+    >
+      {props.groups.map((group, group_idx) => (
+        <Accordion.Item key={group} value={group}>
+          <Accordion.Control>{controls[group_idx]}</Accordion.Control>
+          <Accordion.Panel>{props.component(group)}</Accordion.Panel>
+        </Accordion.Item>
+      ))}
+    </Accordion>
+  );
 }

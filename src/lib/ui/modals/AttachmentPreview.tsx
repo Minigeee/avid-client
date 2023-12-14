@@ -4,22 +4,27 @@ import { Image } from '@mantine/core';
 import { ContextModalProps } from '@mantine/modals';
 
 import { Attachment } from '@/lib/types';
-import { config as spacesConfig, getResourceUrl } from '@/lib/utility/spaces-util';
-
+import {
+  config as spacesConfig,
+  getResourceUrl,
+} from '@/lib/utility/spaces-util';
 
 ////////////////////////////////////////////////////////////
 export type AttachmentPreviewProps = {
-  attachment: Attachment
+  attachment: Attachment;
 };
 
 ////////////////////////////////////////////////////////////
-export default function AttachmentPreview({ context, id, innerProps: props }: ContextModalProps<AttachmentPreviewProps>) {
+export default function AttachmentPreview({
+  context,
+  id,
+  innerProps: props,
+}: ContextModalProps<AttachmentPreviewProps>) {
   const { attachment } = props;
 
   // Get image size
   const size = useMemo(() => {
-    if (!attachment.width || !attachment.height)
-      return { w: 0, h: 0 };
+    if (!attachment.width || !attachment.height) return { w: 0, h: 0 };
 
     const windowAr = window.innerWidth / window.innerHeight;
     const imageAr = attachment.width / attachment.height;
@@ -28,13 +33,13 @@ export default function AttachmentPreview({ context, id, innerProps: props }: Co
     const MAX_IMAGE_HEIGHT = 90 / windowAr;
 
     // Determine if width or height should be filled
-    let w = 0, h = 0;
+    let w = 0,
+      h = 0;
     if (imageAr > windowAr) {
       // Wide image, fill width
       w = MAX_IMAGE_WIDTH;
       h = w / imageAr;
-    }
-    else {
+    } else {
       // Tall image, fill width
       h = MAX_IMAGE_HEIGHT;
       w = h * imageAr;
@@ -42,7 +47,6 @@ export default function AttachmentPreview({ context, id, innerProps: props }: Co
 
     return { w, h };
   }, [attachment.type]);
-
 
   if (props.attachment.type === 'image') {
     return (

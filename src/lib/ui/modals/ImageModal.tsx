@@ -21,7 +21,6 @@ import { useElementSize } from '@mantine/hooks';
 
 // TODO : Separate all image uploads by user (/images/profiles/{user_id}/{rand_id}.png)
 
-
 ////////////////////////////////////////////////////////////
 export type ImageModalProps = {
   /** Text that is shown within the dropzone */
@@ -42,7 +41,7 @@ export type ImageModalProps = {
 
   _opened: boolean;
   _setOpened: (opened: boolean) => void;
-}
+};
 
 ////////////////////////////////////////////////////////////
 export default function ImageModal(props: ImageModalProps) {
@@ -54,7 +53,6 @@ export default function ImageModal(props: ImageModalProps) {
   const [files, setFiles] = useState<FileWithPath[]>([]);
   const [zoom, setZoom] = useState<number>(1.0);
   const [loading, setLoading] = useState<boolean>(false);
-
 
   return (
     <Modal
@@ -72,33 +70,40 @@ export default function ImageModal(props: ImageModalProps) {
             onReject={(files) => console.log('rejected files', files)}
             accept={IMAGE_MIME_TYPE}
             maxSize={props.maxSize}
-
             mt={8}
           >
-            <Group position='center' spacing='xl' style={{ minHeight: rem(220), pointerEvents: 'none' }}>
+            <Group
+              position="center"
+              spacing="xl"
+              style={{ minHeight: rem(220), pointerEvents: 'none' }}
+            >
               <Dropzone.Accept>
                 <IconUpload
-                  size='3.2rem'
+                  size="3.2rem"
                   strokeWidth={1.5}
-                  color={theme.colors[theme.primaryColor][theme.colorScheme === 'dark' ? 4 : 6]}
+                  color={
+                    theme.colors[theme.primaryColor][
+                      theme.colorScheme === 'dark' ? 4 : 6
+                    ]
+                  }
                 />
               </Dropzone.Accept>
               <Dropzone.Reject>
                 <IconX
-                  size='3.2rem'
+                  size="3.2rem"
                   strokeWidth={1.5}
                   color={theme.colors.red[theme.colorScheme === 'dark' ? 4 : 6]}
                 />
               </Dropzone.Reject>
               <Dropzone.Idle>
-                <IconPhoto size='3.2rem' strokeWidth={1.5} />
+                <IconPhoto size="3.2rem" strokeWidth={1.5} />
               </Dropzone.Idle>
 
               <div>
-                <Text size='lg' inline>
+                <Text size="lg" inline>
                   {props.description || 'Drop image here or click to browse'}
                 </Text>
-                <Text size='sm' color='dimmed' inline mt={7}>
+                <Text size="sm" color="dimmed" inline mt={7}>
                   {props.subtext}
                 </Text>
               </div>
@@ -119,10 +124,17 @@ export default function ImageModal(props: ImageModalProps) {
                 rotate={0}
                 borderRadius={props.shape === 'rect' ? 0 : props.imgSize?.w}
                 disableBoundaryChecks={props.shape !== 'rect'}
-                style={{ width: stackW, height: stackW * (props.imgSize?.h || 512) / (props.imgSize?.w || 512) }}
+                style={{
+                  width: stackW,
+                  height:
+                    (stackW * (props.imgSize?.h || 512)) /
+                    (props.imgSize?.w || 512),
+                }}
               />
 
-              <Text size='sm' weight={600} mt={8}>Zoom</Text>
+              <Text size="sm" weight={600} mt={8}>
+                Zoom
+              </Text>
               <Slider
                 scale={(v) => v ** 3}
                 min={0.5}
@@ -148,16 +160,13 @@ export default function ImageModal(props: ImageModalProps) {
           </Center>
         )}
 
-        <Group spacing='xs' position='right' mt={16}>
-          <Button
-            variant='default'
-            onClick={() => props._setOpened(false)}
-          >
+        <Group spacing="xs" position="right" mt={16}>
+          <Button variant="default" onClick={() => props._setOpened(false)}>
             Cancel
           </Button>
           {files.length > 0 && (
             <Button
-              variant='gradient'
+              variant="gradient"
               loading={loading}
               onClick={() => {
                 if (!editorRef.current) return;
@@ -184,13 +193,13 @@ export default function ImageModal(props: ImageModalProps) {
   );
 }
 
-
 /** Hook for creating/opening image modal */
 export function useImageModal() {
   const [opened, setOpened] = useState<boolean>(false);
 
   return {
-    ImageModal: (props: Omit<ImageModalProps, '_opened' | '_setOpened'>) => ImageModal({ ...props, _opened: opened, _setOpened: setOpened }),
+    ImageModal: (props: Omit<ImageModalProps, '_opened' | '_setOpened'>) =>
+      ImageModal({ ...props, _opened: opened, _setOpened: setOpened }),
     open: () => setOpened(true),
     close: () => setOpened(false),
   };

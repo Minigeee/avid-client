@@ -10,7 +10,6 @@ import { range } from 'lodash';
 import moment, { Moment } from 'moment';
 import { hasRepeatEvent } from './funcs';
 
-
 ////////////////////////////////////////////////////////////
 export type TimeColumnProps = {
   /** The start of the day to display events for */
@@ -26,7 +25,11 @@ export type TimeColumnProps = {
   /** The event that is currently being dragged */
   draggedId?: string | null;
   /** Called when an event is start drag */
-  onDragStart?: (event: MomentCalendarEvent, offset: { x: number; y: number }, resizing?: boolean) => void;
+  onDragStart?: (
+    event: MomentCalendarEvent,
+    offset: { x: number; y: number },
+    resizing?: boolean,
+  ) => void;
   /** Called when a column drag start */
   onDragCreateStart?: (offsetY: number) => void;
   /** Called on click create */
@@ -59,35 +62,47 @@ function TimeColumnImpl(props: TimeColumnProps) {
     const end = moment(props.day).add(1, 'd');
 
     // Get filtered events
-    const filtered = props.events.filter((event) => {
-      // Event range
-      const estart = moment(event.start);
-      const eend = moment(event.end);
+    const filtered = props.events
+      .filter((event) => {
+        // Event range
+        const estart = moment(event.start);
+        const eend = moment(event.end);
 
-      // Check if this event should be dsiplayed, if event starts or ends in this day
-      const displayed = event.end && !event.all_day && (estart.isAfter(start) && estart.isBefore(end) || eend.isAfter(start) && eend.isBefore(end)) && eend.subtract(1, 'day').isBefore(estart);
-      if (displayed) return true;
+        // Check if this event should be dsiplayed, if event starts or ends in this day
+        const displayed =
+          event.end &&
+          !event.all_day &&
+          ((estart.isAfter(start) && estart.isBefore(end)) ||
+            (eend.isAfter(start) && eend.isBefore(end))) &&
+          eend.subtract(1, 'day').isBefore(estart);
+        if (displayed) return true;
 
-      // Handle repeat events
-      return !event.all_day && hasRepeatEvent(start, event);
-    }).map((e) => {
-      const estart = moment(e.start);
-      const eend = moment(e.end);
+        // Handle repeat events
+        return !event.all_day && hasRepeatEvent(start, event);
+      })
+      .map((e) => {
+        const estart = moment(e.start);
+        const eend = moment(e.end);
 
-      return {
-        ...e,
-        start: moment(start).add({ h: estart.hours(), m: estart.minutes() }),
-        end: moment(start).add({ h: eend.hours(), m: eend.minutes() }),
-        left: 0,
-        width: 1,
-        top: 0,
-        height: 0,
-        has_prev: false,
-        has_next: false,
-      };
-    }).sort((a, b) => {
-      return (a.start.unix() - b.start.unix()) || (a.end.unix() - b.end.unix()) || (b.title.length - a.title.length);
-    });
+        return {
+          ...e,
+          start: moment(start).add({ h: estart.hours(), m: estart.minutes() }),
+          end: moment(start).add({ h: eend.hours(), m: eend.minutes() }),
+          left: 0,
+          width: 1,
+          top: 0,
+          height: 0,
+          has_prev: false,
+          has_next: false,
+        };
+      })
+      .sort((a, b) => {
+        return (
+          a.start.unix() - b.start.unix() ||
+          a.end.unix() - b.end.unix() ||
+          b.title.length - a.title.length
+        );
+      });
 
     // Grid of event columns
     var columns: (typeof filtered)[] = [];
@@ -95,12 +110,19 @@ function TimeColumnImpl(props: TimeColumnProps) {
     let lastEventEnding: Moment | null = null;
 
     // Checks if date ranges collide
-    function collides(a: { start: Moment; end: Moment }, b: { start: Moment; end: Moment }) {
+    function collides(
+      a: { start: Moment; end: Moment },
+      b: { start: Moment; end: Moment },
+    ) {
       return a.start.isBefore(b.end) && a.end.isAfter(b.start);
     }
 
     // Expands events to take up more width
-    function expandEvent(e: { start: Moment; end: Moment }, skip: number, columns: (typeof filtered)[]) {
+    function expandEvent(
+      e: { start: Moment; end: Moment },
+      skip: number,
+      columns: (typeof filtered)[],
+    ) {
       let colSpan = 1;
 
       for (let i = 0; i < columns.length; ++i) {
@@ -151,14 +173,11 @@ function TimeColumnImpl(props: TimeColumnProps) {
         }
       }
 
-      if (!placed)
-        columns.push([e]);
-      if (!lastEventEnding || e.end > lastEventEnding)
-        lastEventEnding = e.end;
+      if (!placed) columns.push([e]);
+      if (!lastEventEnding || e.end > lastEventEnding) lastEventEnding = e.end;
     }
 
-    if (columns.length > 0)
-      packEvents(columns);
+    if (columns.length > 0) packEvents(columns);
 
     // Calculate height and top
     for (const e of filtered) {
@@ -175,7 +194,6 @@ function TimeColumnImpl(props: TimeColumnProps) {
     return filtered.sort((a, b) => a.left - b.left);
   }, [props.day, props.events]);
 
-
   return (
     <Box
       sx={{
@@ -189,45 +207,60 @@ function TimeColumnImpl(props: TimeColumnProps) {
           width: '100%',
           height: '100%',
         }}
+        onMouseDown={
+          props.editable
+            ? (ev) => {
+                // Only LMB
+                if (ev.button !== 0) return;
 
-        onMouseDown={props.editable ? (ev) => {
-          // Only LMB
-          if (ev.button !== 0) return;
+                // Down
+                dragStateRef.current = 'down';
+              }
+            : undefined
+        }
+        onMouseUp={
+          props.editable
+            ? (ev) => {
+                // Quit if not mouse down
+                if (dragStateRef.current !== 'down') return;
 
-          // Down
-          dragStateRef.current = 'down';
-        } : undefined}
-        onMouseUp={props.editable ? (ev) => {
-          // Quit if not mouse down
-          if (dragStateRef.current !== 'down') return;
+                // Reset to up
+                dragStateRef.current = 'up';
 
-          // Reset to up
-          dragStateRef.current = 'up';
+                const rect = ev.currentTarget.getBoundingClientRect();
+                const unitY = rect.height / 24;
 
-          const rect = ev.currentTarget.getBoundingClientRect();
-          const unitY = rect.height / 24;
+                props.onClickCreate?.(
+                  Math.round(((ev.pageY - rect.y) / unitY) * 4) / 4,
+                );
+              }
+            : undefined
+        }
+        onMouseMove={
+          props.editable
+            ? (ev) => {
+                // Quit if not mouse down
+                if (dragStateRef.current !== 'down') return;
 
-          props.onClickCreate?.(Math.round((ev.pageY - rect.y) / unitY * 4) / 4);
-        } : undefined}
-        onMouseMove={props.editable ? (ev) => {
-          // Quit if not mouse down
-          if (dragStateRef.current !== 'down') return;
+                // Dragging
+                dragStateRef.current = 'dragging';
 
-          // Dragging
-          dragStateRef.current = 'dragging';
-
-          const rect = ev.currentTarget.getBoundingClientRect();
-          props.onDragCreateStart?.(ev.pageY - rect.y);
-        } : undefined}
+                const rect = ev.currentTarget.getBoundingClientRect();
+                props.onDragCreateStart?.(ev.pageY - rect.y);
+              }
+            : undefined
+        }
       />
 
       {range(24).map((i) => (
         <Box
           key={i}
-          w='100%'
+          w="100%"
           h={slotHeight}
           sx={(theme) => ({
-            backgroundColor: props.day.isSame(now, 'date') ? theme.colors.dark[6] : undefined,
+            backgroundColor: props.day.isSame(now, 'date')
+              ? theme.colors.dark[6]
+              : undefined,
             borderBottom: `1px solid ${props.style.colors.cellBorder}`,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
           })}
@@ -238,16 +271,17 @@ function TimeColumnImpl(props: TimeColumnProps) {
         <EventButton
           key={e.id}
           event={e}
-
           sx={(theme) => ({
             display: 'flex',
             flexDirection: 'column',
             position: 'absolute',
             overflow: 'hidden',
-            width: (e.width * 95) + '%',
-            height: `calc(${e.height} * ${slotHeight} - ${e.has_next ? '1px' : '0.25rem'})`,
+            width: e.width * 95 + '%',
+            height: `calc(${e.height} * ${slotHeight} - ${
+              e.has_next ? '1px' : '0.25rem'
+            })`,
             top: `calc(${e.top} * ${slotHeight})`,
-            left: (e.left * 95) + '%',
+            left: e.left * 95 + '%',
             boxShadow: `0px 0px 8px #00000030`,
             opacity: props.draggedId === e.id ? 0.6 : undefined,
             cursor: 'pointer',
@@ -256,7 +290,11 @@ function TimeColumnImpl(props: TimeColumnProps) {
             paddingLeft: '0.75rem',
             marginBottom: '0.25rem',
             marginLeft: '0.25rem',
-            background: `linear-gradient(to right, ${e.color || theme.colors.gray[6]} 0.25rem, color-mix(in srgb, ${e.color || theme.colors.gray[6]} 20%, ${theme.colors.dark[7]}) 0)`,
+            background: `linear-gradient(to right, ${
+              e.color || theme.colors.gray[6]
+            } 0.25rem, color-mix(in srgb, ${
+              e.color || theme.colors.gray[6]
+            } 20%, ${theme.colors.dark[7]}) 0)`,
             fontSize: theme.fontSizes.sm,
             borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
             borderTopRightRadius: e.has_prev ? 0 : theme.radius.sm,
@@ -273,28 +311,36 @@ function TimeColumnImpl(props: TimeColumnProps) {
               cursor: 'ns-resize',
             },
           })}
-
           draggable={props.editable}
-          onDragStart={props.editable ? (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
+          onDragStart={
+            props.editable
+              ? (ev) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
 
-            const rect = ev.currentTarget.getBoundingClientRect();
-            const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
+                  const rect = ev.currentTarget.getBoundingClientRect();
+                  const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
 
-            // Detect if drag or resize
-            const resizing = offset.y >= rect.height - props.style.resizeMarginSize - 1;
-            props.onDragStart?.(e, offset, resizing);
-          } : undefined}
+                  // Detect if drag or resize
+                  const resizing =
+                    offset.y >= rect.height - props.style.resizeMarginSize - 1;
+                  props.onDragStart?.(e, offset, resizing);
+                }
+              : undefined
+          }
         >
-          <Text color='dimmed' weight={600} size={11}>
+          <Text color="dimmed" weight={600} size={11}>
             {e.start.format('LT')} - {e.end.format('LT')}
           </Text>
-          <Text weight={600} maw='100%' sx={{
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
+          <Text
+            weight={600}
+            maw="100%"
+            sx={{
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             {e.title}
           </Text>
         </EventButton>

@@ -13,7 +13,6 @@ import { diff } from '@/lib/utility';
 import { isNil, omitBy } from 'lodash';
 import { useCalendarContext } from './hooks';
 
-
 ////////////////////////////////////////////////////////////
 export type CalendarEventContext = {
   /** The event the menu should target */
@@ -23,9 +22,10 @@ export type CalendarEventContext = {
 ////////////////////////////////////////////////////////////
 export type CalendarEventMenuDropdownProps = CalendarEventContext;
 
-
 ////////////////////////////////////////////////////////////
-export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps) {
+export function CalendarEventMenuDropdown(
+  props: CalendarEventMenuDropdownProps,
+) {
   const { open: openConfirmModal } = useConfirmModal();
   const calendar = useCalendarContext();
 
@@ -51,7 +51,7 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
               if (remRepeat)
                 // @ts-ignore
                 d.repeat = null;
-              
+
               if (Object.keys(d).length === 0) return;
 
               // Update callback
@@ -64,9 +64,9 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
       </Menu.Item>
 
       <Menu.Divider />
-      
+
       <Menu.Item
-        color='red'
+        color="red"
         icon={<IconTrash size={16} />}
         onClick={() => {
           openConfirmModal({
@@ -80,7 +80,7 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
             onConfirm: () => {
               // Delete event
               calendar.onDeleteEvent.current?.(props.event.id);
-            }
+            },
           });
         }}
       >
@@ -90,18 +90,15 @@ export function CalendarEventMenuDropdown(props: CalendarEventMenuDropdownProps)
   );
 }
 
-
 ////////////////////////////////////////////////////////////
 export function CalendarEventContextMenu(props: PropsWithChildren) {
   return (
-    <ContextMenu width='14rem'>
+    <ContextMenu width="14rem">
       <ContextMenu.Dropdown dependencies={[]}>
-        {(data) => (
-          <CalendarEventMenuDropdown {...data} />
-        )}
+        {(data) => <CalendarEventMenuDropdown {...data} />}
       </ContextMenu.Dropdown>
 
       {props.children}
     </ContextMenu>
-  )
+  );
 }

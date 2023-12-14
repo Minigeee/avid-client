@@ -10,10 +10,9 @@ import {
   Space,
   Stack,
   Text,
-  UnstyledButton
+  UnstyledButton,
 } from '@mantine/core';
 import { IconExternalLink } from '@tabler/icons-react';
-
 
 ////////////////////////////////////////////////////////////
 type SettingsTabProps = {
@@ -27,13 +26,19 @@ type SettingsTabProps = {
 ////////////////////////////////////////////////////////////
 function SettingsTab(props: SettingsTabProps) {
   return (
-    <Flex wrap='nowrap'>
-      <Box sx={(theme) => ({
-        width: props.selected ? 4 : 0,
-        background: theme.fn.linearGradient(50, theme.colors.violet[5], theme.colors.pink[5]),
-        borderTopLeftRadius: 4,
-        borderBottomLeftRadius: 4,
-      })} />
+    <Flex wrap="nowrap">
+      <Box
+        sx={(theme) => ({
+          width: props.selected ? 4 : 0,
+          background: theme.fn.linearGradient(
+            50,
+            theme.colors.violet[5],
+            theme.colors.pink[5],
+          ),
+          borderTopLeftRadius: 4,
+          borderBottomLeftRadius: 4,
+        })}
+      />
       {/* @ts-ignore */}
       <UnstyledButton
         data-selected={props.selected || undefined}
@@ -57,14 +62,18 @@ function SettingsTab(props: SettingsTabProps) {
           },
         })}
         onClick={props.link ? undefined : props.onClick}
-        {...(props.link ? {
-          component: 'a',
-          href: props.link,
-          target: '_blank',
-          rel: 'noreferrer noopener',
-        } : {})}
+        {...(props.link
+          ? {
+              component: 'a',
+              href: props.link,
+              target: '_blank',
+              rel: 'noreferrer noopener',
+            }
+          : {})}
       >
-        <Text size='md' weight={600}>{props.label}</Text>
+        <Text size="md" weight={600}>
+          {props.label}
+        </Text>
         {props.link && (
           <>
             <div style={{ flexGrow: 1 }} />
@@ -75,7 +84,6 @@ function SettingsTab(props: SettingsTabProps) {
     </Flex>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 type SettingsMenuProps = {
@@ -90,11 +98,11 @@ type SettingsMenuProps = {
 ////////////////////////////////////////////////////////////
 export default function SettingsMenu(props: SettingsMenuProps) {
   return (
-    <ScrollArea h='100%' {...props.scrollAreaProps}>
+    <ScrollArea h="100%" {...props.scrollAreaProps}>
       <Stack spacing={0} p={4} pt={8} pl={6}>
         {Object.entries(props.values).map(([group, values]) => (
           <>
-            <Text size='sm' weight={700} color='dimmed' ml={6} mb={3}>
+            <Text size="sm" weight={700} color="dimmed" ml={6} mb={3}>
               {props.groupNames?.[group] || group}
             </Text>
             {values.map((tab, i) => (
@@ -106,11 +114,11 @@ export default function SettingsMenu(props: SettingsMenuProps) {
               />
             ))}
 
-            <Space h='sm' />
+            <Space h="sm" />
             {/* <Divider mt={6} mb={4} mr={6} ml={6} /> */}
           </>
         ))}
       </Stack>
     </ScrollArea>
-  )
+  );
 }

@@ -1,4 +1,10 @@
-import { createContext, PropsWithChildren, useContext, useRef, useState } from 'react';
+import {
+  createContext,
+  PropsWithChildren,
+  useContext,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   Box,
@@ -22,7 +28,6 @@ import { IconPhoto, IconUpload, IconX } from '@tabler/icons-react';
 
 import AvatarEditor from 'react-avatar-editor';
 import { useElementSize } from '@mantine/hooks';
-
 
 ////////////////////////////////////////////////////////////
 export type ConfirmModalProps = {
@@ -50,18 +55,23 @@ export type ConfirmModalProps = {
 
 /** Context menu context */
 // @ts-ignore
-export const ConfirmModalContext = createContext<{ setProps: (props: ConfirmModalProps | null) => void }>();
-
+export const ConfirmModalContext = createContext<{
+  setProps: (props: ConfirmModalProps | null) => void;
+}>();
 
 ////////////////////////////////////////////////////////////
-function ConfirmModalImpl(props: ConfirmModalProps & { setProps: (props: ConfirmModalProps | null) => void }) {
+function ConfirmModalImpl(
+  props: ConfirmModalProps & {
+    setProps: (props: ConfirmModalProps | null) => void;
+  },
+) {
   const [loading, setLoading] = useState<boolean>(false);
   const [text, setText] = useState<string>('');
 
   return (
     <Modal
       title={props.title}
-      yOffset='30vh'
+      yOffset="30vh"
       {...props.modalProps}
       opened
       onClose={() => props.setProps(null)}
@@ -74,14 +84,17 @@ function ConfirmModalImpl(props: ConfirmModalProps & { setProps: (props: Confirm
 
         {props.typeToConfirm && (
           <Box>
-            <Text size='sm'>{props.confirmText || 'Please type the name to confirm this action.'}</Text>
+            <Text size="sm">
+              {props.confirmText ||
+                'Please type the name to confirm this action.'}
+            </Text>
             <TextInput onChange={(e) => setText(e.currentTarget.value)} />
           </Box>
         )}
 
-        <Group spacing='xs' position='right' mt={16}>
+        <Group spacing="xs" position="right" mt={16}>
           <Button
-            variant='default'
+            variant="default"
             onClick={(e) => {
               props.onCancel?.();
               props.setProps(null);
@@ -90,19 +103,20 @@ function ConfirmModalImpl(props: ConfirmModalProps & { setProps: (props: Confirm
             {props.cancelLabel || 'Cancel'}
           </Button>
           <Button
-            color='red'
+            color="red"
             {...props.confirmProps}
-            disabled={props.typeToConfirm !== undefined && text !== props.typeToConfirm}
+            disabled={
+              props.typeToConfirm !== undefined && text !== props.typeToConfirm
+            }
             loading={loading}
             onClick={async (e) => {
               try {
                 setLoading(true);
                 await props.onConfirm?.();
-              }
-              finally {
+              } finally {
                 setLoading(false);
               }
-              
+
               props.setProps(null);
             }}
           >
@@ -126,7 +140,6 @@ export default function ConfirmModal({ children }: PropsWithChildren) {
     </ConfirmModalContext.Provider>
   );
 }
-
 
 /** Hook for creating/opening image modal */
 export function useConfirmModal() {

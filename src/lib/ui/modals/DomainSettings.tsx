@@ -24,13 +24,11 @@ import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { DomainWrapper, useDomain, useProfile, useSession } from '@/lib/hooks';
 
-
 ////////////////////////////////////////////////////////////
 type TabProps = {
   session: SessionState;
   domain: DomainWrapper;
 };
-
 
 ////////////////////////////////////////////////////////////
 function GeneralTab({ domain, ...props }: TabProps) {
@@ -42,44 +40,42 @@ function GeneralTab({ domain, ...props }: TabProps) {
   return (
     <>
       <ImageModal
-        subtext='Image must not exceed 2MB.'
+        subtext="Image must not exceed 2MB."
         maxSize={2 * 1024 ** 2}
         imgSize={config.upload.profile_picture.image_size}
-        size='md'
-
+        size="md"
         onUpload={async (image, fname) => {
           if (image) {
             await domain._mutators.setIcon(image, fname);
 
             // Apply change to profile
-            if (profile._exists)
-              profile._refresh();
+            if (profile._exists) profile._refresh();
           }
         }}
       />
 
       <Title order={3}>Domain Icon</Title>
 
-      <Group spacing='xl' sx={(theme) => ({
-        padding: '1.2rem',
-        backgroundColor: theme.colors.dark[8],
-        borderRadius: theme.radius.md,
-      })}>
+      <Group
+        spacing="xl"
+        sx={(theme) => ({
+          padding: '1.2rem',
+          backgroundColor: theme.colors.dark[8],
+          borderRadius: theme.radius.md,
+        })}
+      >
         <DomainAvatar domain={domain} size={120} />
-        <Stack spacing='sm'>
-          <Group spacing='sm'>
-            <Button
-              variant='gradient'
-              onClick={openImageModal}
-            >
+        <Stack spacing="sm">
+          <Group spacing="sm">
+            <Button variant="gradient" onClick={openImageModal}>
               {domain.icon ? 'Change' : 'Upload'} Image
             </Button>
 
             {domain.icon && (
               <ActionButton
-                tooltip='Remove Image'
+                tooltip="Remove Image"
                 tooltipProps={{ position: 'right' }}
-                size='lg'
+                size="lg"
                 sx={(theme) => ({
                   color: theme.colors.dark[1],
                   '&:hover': {
@@ -90,24 +86,31 @@ function GeneralTab({ domain, ...props }: TabProps) {
                   openConfirmModal({
                     title: 'Remove Domain Icon',
                     confirmLabel: 'Remove',
-                    content: (<Text>Are you sure you want to remove the domain icon picture?</Text>),
+                    content: (
+                      <Text>
+                        Are you sure you want to remove the domain icon picture?
+                      </Text>
+                    ),
                     // Optimistic mutation
                     onConfirm: async () => {
                       // Remove domain icon picture
                       await domain._mutators.removeIcon();
 
                       // Apply change to profile
-                      if (profile._exists)
-                        profile._refresh();
+                      if (profile._exists) profile._refresh();
                     },
-                  })
+                  });
                 }}
               >
                 <IconTrash size={22} />
               </ActionButton>
             )}
           </Group>
-          <Text size='xs' color='dimmed'>Domain icons are resized to {config.upload.profile_picture.image_size.w}x{config.upload.profile_picture.image_size.h}</Text>
+          <Text size="xs" color="dimmed">
+            Domain icons are resized to{' '}
+            {config.upload.profile_picture.image_size.w}x
+            {config.upload.profile_picture.image_size.h}
+          </Text>
         </Stack>
       </Group>
 
@@ -115,7 +118,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
       <Title order={3}>Domain Settings</Title>
 
       <TextInput
-        label='Domain Name'
+        label="Domain Name"
         value={domain.name}
         disabled
         sx={{ width: config.app.ui.short_input_width }}
@@ -123,8 +126,6 @@ function GeneralTab({ domain, ...props }: TabProps) {
     </>
   );
 }
-
-
 
 ////////////////////////////////////////////////////////////
 export type DomainSettingsProps = {
@@ -135,18 +136,24 @@ export type DomainSettingsProps = {
 };
 
 ////////////////////////////////////////////////////////////
-export default function DomainSettings({ context, id, innerProps: props }: ContextModalProps<DomainSettingsProps>) {
+export default function DomainSettings({
+  context,
+  id,
+  innerProps: props,
+}: ContextModalProps<DomainSettingsProps>) {
   const session = useSession();
   const domain = useDomain(props.domain_id);
 
   // Tabs
-  const tabs = useMemo(() => ({
-    [domain.name || '_']: [
-      { value: 'general', label: 'General' },
-      { value: 'roles', label: 'Roles' },
-    ],
-  }), [domain.name]);
-
+  const tabs = useMemo(
+    () => ({
+      [domain.name || '_']: [
+        { value: 'general', label: 'General' },
+        { value: 'roles', label: 'Roles' },
+      ],
+    }),
+    [domain.name],
+  );
 
   if (!domain._exists) return null;
   const tabProps = { session, domain };
@@ -158,10 +165,10 @@ export default function DomainSettings({ context, id, innerProps: props }: Conte
       defaultTab={props.tab}
       close={() => context.closeModal(id)}
     >
-      <SettingsModal.Panel value='general'>
+      <SettingsModal.Panel value="general">
         <GeneralTab {...tabProps} />
       </SettingsModal.Panel>
-      <SettingsModal.Panel value='roles'>
+      <SettingsModal.Panel value="roles">
         <RolesTab {...tabProps} />
       </SettingsModal.Panel>
     </SettingsModal>

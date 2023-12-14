@@ -12,7 +12,7 @@ const now = hasNativePerformanceNow
   : () => Date.now();
 
 export type TimeoutID = {
-  id: AnimationFrameID,
+  id: AnimationFrameID;
 };
 
 export function cancelTimeout(timeoutID: TimeoutID) {

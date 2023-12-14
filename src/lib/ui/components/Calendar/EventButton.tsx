@@ -1,4 +1,11 @@
-import { HTMLProps, PropsWithChildren, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  HTMLProps,
+  PropsWithChildren,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   ActionIcon,
@@ -20,11 +27,16 @@ import {
   Title,
   Tooltip,
   UnstyledButton,
-  UnstyledButtonProps
+  UnstyledButtonProps,
 } from '@mantine/core';
 import { FloatingPosition } from '@mantine/core/lib/Floating';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconClock, IconDotsVertical, IconPencil, IconTrash } from '@tabler/icons-react';
+import {
+  IconClock,
+  IconDotsVertical,
+  IconPencil,
+  IconTrash,
+} from '@tabler/icons-react';
 
 import { openCreateCalendarEvent } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -35,7 +47,12 @@ import config from '@/config';
 import { CalendarEvent } from '@/lib/types';
 import { useCalendarContext } from './hooks';
 import { MomentCalendarEvent } from './types';
-import { CalendarEventsWrapper, DomainWrapper, useCalendarEvent, useChatStyles } from '@/lib/hooks';
+import {
+  CalendarEventsWrapper,
+  DomainWrapper,
+  useCalendarEvent,
+  useChatStyles,
+} from '@/lib/hooks';
 import { diff } from '@/lib/utility';
 
 import moment, { Moment } from 'moment';
@@ -43,18 +60,22 @@ import { isNil, omitBy } from 'lodash';
 
 import { ContextMenu } from '../ContextMenu';
 
+////////////////////////////////////////////////////////////
+export type EventPopoverProps = PropsWithChildren &
+  UnstyledButtonProps &
+  Omit<HTMLProps<HTMLButtonElement>, 'ref'> & {
+    /** The event to display */
+    event: CalendarEvent | MomentCalendarEvent;
+
+    /** Popover position */
+    popoverPosition?: FloatingPosition;
+  };
 
 ////////////////////////////////////////////////////////////
-export type EventPopoverProps = PropsWithChildren & UnstyledButtonProps & Omit<HTMLProps<HTMLButtonElement>, 'ref'> & {
-  /** The event to display */
-  event: CalendarEvent | MomentCalendarEvent;
-
-  /** Popover position */
-  popoverPosition?: FloatingPosition;
-};
-
-////////////////////////////////////////////////////////////
-export default function EventButton({ event: baseEvent, ...props }: EventPopoverProps) {
+export default function EventButton({
+  event: baseEvent,
+  ...props
+}: EventPopoverProps) {
   const { open: openConfirmModal } = useConfirmModal();
   const calendar = useCalendarContext();
 
@@ -63,12 +84,20 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
   const [delayedOpen] = useDebouncedValue(opened, 200);
 
   // Get full event
-  const event = useCalendarEvent(opened || delayedOpen ? baseEvent.id : undefined, {
-    ...baseEvent,
-    start: typeof baseEvent.start ==='string' ? baseEvent.start : baseEvent.start.toISOString(),
-    end: typeof baseEvent.end ==='string' ? baseEvent.end : baseEvent.end?.toISOString(),
-  });
-
+  const event = useCalendarEvent(
+    opened || delayedOpen ? baseEvent.id : undefined,
+    {
+      ...baseEvent,
+      start:
+        typeof baseEvent.start === 'string'
+          ? baseEvent.start
+          : baseEvent.start.toISOString(),
+      end:
+        typeof baseEvent.end === 'string'
+          ? baseEvent.end
+          : baseEvent.end?.toISOString(),
+    },
+  );
 
   // Check if user can edit event
   const editable = true;
@@ -87,7 +116,6 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
     return `${s.format('LL')} \u2013 ${e.format('LL')}`;
   }, [baseEvent.start, baseEvent.end]);
 
-
   return (
     <Popover
       opened={calendar.popupId === baseEvent.id && opened}
@@ -103,7 +131,6 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
           // @ts-ignore
           component={UnstyledButton}
           context={{ event }}
-
           onClick={(ev) => {
             // Call parent click func
             // @ts-ignore
@@ -111,16 +138,15 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
 
             // Toggle open state
             setOpened(!opened);
-            if (!opened)
-              calendar.setPopupId(baseEvent.id);
+            if (!opened) calendar.setPopupId(baseEvent.id);
           }}
         >
           {props.children}
         </ContextMenu.Trigger>
       </Popover.Target>
 
-      <Popover.Dropdown miw='24rem' maw='36rem' p='0.875rem 1.0rem'>
-        <Flex gap={6} wrap='nowrap' align='center'>
+      <Popover.Dropdown miw="24rem" maw="36rem" p="0.875rem 1.0rem">
+        <Flex gap={6} wrap="nowrap" align="center">
           <ColorSwatch
             color={event.color || PRESET_COLORS.at(-1) || ''}
             size={20}
@@ -135,55 +161,61 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
 
           {calendar.editable && (
             <>
-              <ActionButton tooltip='Edit event' onClick={() => {
-                openCreateCalendarEvent({
-                  domain: calendar.domain,
-                  mode: 'edit',
-                  event,
+              <ActionButton
+                tooltip="Edit event"
+                onClick={() => {
+                  openCreateCalendarEvent({
+                    domain: calendar.domain,
+                    mode: 'edit',
+                    event,
 
-                  onSubmit: async (updated) => {
-                    // Get event diff
-                    let d = diff(event, updated);
-                    const remRepeat = d?.repeat === null;
-                    d = omitBy(d, isNil);
+                    onSubmit: async (updated) => {
+                      // Get event diff
+                      let d = diff(event, updated);
+                      const remRepeat = d?.repeat === null;
+                      d = omitBy(d, isNil);
 
-                    // Add repeat null for remove
-                    if (remRepeat)
-                      // @ts-ignore
-                      d.repeat = null;
-                    
-                    if (Object.keys(d).length === 0) return;
+                      // Add repeat null for remove
+                      if (remRepeat)
+                        // @ts-ignore
+                        d.repeat = null;
 
-                    // Update callback
-                    calendar.onEditEvent.current?.(baseEvent.id, d);
-                  },
-                });
-              }}>
+                      if (Object.keys(d).length === 0) return;
+
+                      // Update callback
+                      calendar.onEditEvent.current?.(baseEvent.id, d);
+                    },
+                  });
+                }}
+              >
                 <IconPencil size={16} />
               </ActionButton>
 
-              <ActionButton tooltip='Delete event' onClick={() => {
-                openConfirmModal({
-                  title: 'Delete Event',
-                  content: (
-                    <Text>
-                      Are you sure you want to delete <b>{event.title}</b>?
-                    </Text>
-                  ),
-                  confirmLabel: 'Delete',
-                  onConfirm: () => {
-                    // Delete event
-                    calendar.onDeleteEvent.current?.(baseEvent.id);
-                  }
-                });
-              }}>
+              <ActionButton
+                tooltip="Delete event"
+                onClick={() => {
+                  openConfirmModal({
+                    title: 'Delete Event',
+                    content: (
+                      <Text>
+                        Are you sure you want to delete <b>{event.title}</b>?
+                      </Text>
+                    ),
+                    confirmLabel: 'Delete',
+                    onConfirm: () => {
+                      // Delete event
+                      calendar.onDeleteEvent.current?.(baseEvent.id);
+                    },
+                  });
+                }}
+              >
                 <IconTrash size={16} />
               </ActionButton>
             </>
           )}
 
           <CloseButton
-            size='md'
+            size="md"
             iconSize={18}
             sx={(theme) => ({
               '&:hover': { backgroundColor: theme.colors.dark[5] },
@@ -192,19 +224,21 @@ export default function EventButton({ event: baseEvent, ...props }: EventPopover
           />
         </Flex>
 
-        <Text size='xs' color='dimmed' mt={4}>
+        <Text size="xs" color="dimmed" mt={4}>
           {timeText}
         </Text>
 
         {event.description && (
           <Text
             className={classes.typography}
-            size='sm'
+            size="sm"
             mt={12}
-            dangerouslySetInnerHTML={{ __html: event.description || '<em>Click to add description<em>' }}
+            dangerouslySetInnerHTML={{
+              __html: event.description || '<em>Click to add description<em>',
+            }}
           />
         )}
       </Popover.Dropdown>
     </Popover>
-  )
+  );
 }

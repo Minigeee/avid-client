@@ -32,7 +32,12 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 
-import { openChannelGroupSettings, openChannelSettings, openCreateChannel, openCreateChannelGroup } from '@/lib/ui/modals';
+import {
+  openChannelGroupSettings,
+  openChannelSettings,
+  openCreateChannel,
+  openCreateChannelGroup,
+} from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
@@ -42,7 +47,6 @@ import { Channel, ChannelGroup } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import MemberAvatar from '../../components/MemberAvatar';
-
 
 ////////////////////////////////////////////////////////////
 type SingleChannelProps = {
@@ -54,7 +58,7 @@ type SingleChannelProps = {
   onDelete: () => void;
 
   index: number;
-}
+};
 
 ////////////////////////////////////////////////////////////
 function SingleChannel(props: SingleChannelProps) {
@@ -70,28 +74,45 @@ function SingleChannel(props: SingleChannelProps) {
 
   // Is channel seen
   const seen = useMemo(() => {
-    const lastAccessedStr = app.last_accessed[props.domain.id]?.[props.channel.id];
-    return lastAccessedStr !== undefined && new Date(lastAccessedStr) >= new Date(props.channel._last_event);
+    const lastAccessedStr =
+      app.last_accessed[props.domain.id]?.[props.channel.id];
+    return (
+      lastAccessedStr !== undefined &&
+      new Date(lastAccessedStr) >= new Date(props.channel._last_event)
+    );
   }, [app.last_accessed, props.channel._last_event]);
 
   // RTC participants
-  const participants = useMembers(props.domain.id, props.channel.type === 'rtc' ? (props.channel as Channel<'rtc'>).data?.participants || [] : []);
+  const participants = useMembers(
+    props.domain.id,
+    props.channel.type === 'rtc'
+      ? (props.channel as Channel<'rtc'>).data?.participants || []
+      : [],
+  );
 
-  const canEdit = hasPermission(props.domain, props.channel.id, 'can_manage_resources') || hasPermission(props.domain, props.channel.id, 'can_manage');
+  const canEdit =
+    hasPermission(props.domain, props.channel.id, 'can_manage_resources') ||
+    hasPermission(props.domain, props.channel.id, 'can_manage');
 
   return (
-    <Draggable draggableId={props.channel.id} index={props.index} isDragDisabled={!canEdit}>
+    <Draggable
+      draggableId={props.channel.id}
+      index={props.index}
+      isDragDisabled={!canEdit}
+    >
       {(provided, snapshot) => (
         <Flex
           ref={provided.innerRef}
-          wrap='nowrap'
-          align='stretch'
+          wrap="nowrap"
+          align="stretch"
           sx={(theme) => ({
             width: '100%',
             minHeight: '2.375rem',
             borderRadius: theme.radius.sm,
             overflow: 'hidden',
-            boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
+            boxShadow: snapshot.isDragging
+              ? '0px 0px 10px #00000033'
+              : undefined,
             '&:hover': {
               '.btn-body': { backgroundColor: theme.colors.dark[5] },
               '.dropdown': { visibility: 'visible' },
@@ -111,43 +132,54 @@ function SingleChannel(props: SingleChannelProps) {
             sx={(theme) => ({
               flexShrink: 0,
               flexBasis: '0.25rem',
-              background: props.selected ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) : undefined,
+              background: props.selected
+                ? theme.fn.linearGradient(
+                    0,
+                    theme.colors.violet[5],
+                    theme.colors.pink[5],
+                  )
+                : undefined,
             })}
           />
 
           <Flex
-            className='btn-body'
-            direction='column'
-            justify='center'
-            p='0.25rem 0.25rem 0.25rem 0.75rem'
+            className="btn-body"
+            direction="column"
+            justify="center"
+            p="0.25rem 0.25rem 0.25rem 0.75rem"
             sx={(theme) => ({
               flexGrow: 1,
-              backgroundColor: props.selected || snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
+              backgroundColor:
+                props.selected || snapshot.isDragging
+                  ? theme.colors.dark[5]
+                  : theme.colors.dark[6],
               color: theme.colors.dark[seen && !props.selected ? 2 : 0],
               transition: 'background-color 0.1s, color 0.1s',
             })}
           >
-            <Flex gap={12} align='center'>
+            <Flex gap={12} align="center">
               <ChannelIcon type={props.channel.type} size={18} />
 
               {!renaming && (
-                <Text
-                  size='sm'
-                  weight={600}
-                  sx={{ flexGrow: 1 }}
-                >
+                <Text size="sm" weight={600} sx={{ flexGrow: 1 }}>
                   {props.channel.name}
                 </Text>
               )}
               {renaming && (
-                <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
-                  // Rename channel
-                  props.domain._mutators.renameChannel(props.channel.id, values.name);
-                  // Go back to default view
-                  setRenaming(false);
-                })}>
+                <form
+                  style={{ flexGrow: 1 }}
+                  onSubmit={form.onSubmit((values) => {
+                    // Rename channel
+                    props.domain._mutators.renameChannel(
+                      props.channel.id,
+                      values.name,
+                    );
+                    // Go back to default view
+                    setRenaming(false);
+                  })}
+                >
                   <TextInput
-                    size='xs'
+                    size="xs"
                     mt={0}
                     styles={(theme) => ({
                       wrapper: { marginTop: 0, maxWidth: '20ch' },
@@ -160,32 +192,29 @@ function SingleChannel(props: SingleChannelProps) {
                       e.stopPropagation();
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Escape')
-                        e.currentTarget.blur();
+                      if (e.key === 'Escape') e.currentTarget.blur();
                     }}
                     autoFocus
                   />
                 </form>
               )}
 
-              <Menu
-                width={180}
-                withinPortal
-                onClose={() => setShowMenu(false)}
-              >
+              <Menu width={180} withinPortal onClose={() => setShowMenu(false)}>
                 <Menu.Target>
                   <ActionIcon
-                    className='dropdown'
+                    className="dropdown"
                     sx={(theme) => ({
                       visibility: showMenu ? 'visible' : 'hidden',
                       '&:hover': {
-                        backgroundColor: theme.colors.dark[4]
+                        backgroundColor: theme.colors.dark[4],
                       },
                     })}
-                    onClick={((e) => {
-                      e.stopPropagation();
-                      setShowMenu(!showMenu);
-                    }) as MouseEventHandler<HTMLButtonElement>}
+                    onClick={
+                      ((e) => {
+                        e.stopPropagation();
+                        setShowMenu(!showMenu);
+                      }) as MouseEventHandler<HTMLButtonElement>
+                    }
                   >
                     <IconDotsVertical size={16} />
                   </ActionIcon>
@@ -195,46 +224,67 @@ function SingleChannel(props: SingleChannelProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
-                  }}>
+                  }}
+                >
                   <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
                   {canEdit && (
                     <Menu.Item
                       icon={<IconSettings size={16} />}
                       disabled={props.channel.type !== 'board'}
-                      onClick={() => openChannelSettings({
-                        domain_id: props.domain.id,
-                        channel: props.channel,
-                      })}
+                      onClick={() =>
+                        openChannelSettings({
+                          domain_id: props.domain.id,
+                          channel: props.channel,
+                        })
+                      }
                     >
                       Settings
                     </Menu.Item>
                   )}
 
-                  <Menu.Item icon={<IconBell size={16} />} disabled>Notifications</Menu.Item>
+                  <Menu.Item icon={<IconBell size={16} />} disabled>
+                    Notifications
+                  </Menu.Item>
 
                   {canEdit && (
-                    <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
-                      // Reset form value to channel name
-                      form.setFieldValue('name', props.channel.name);
-                      setRenaming(true);
-                    }}>Rename</Menu.Item>
+                    <Menu.Item
+                      icon={<IconPencil size={16} />}
+                      onClick={() => {
+                        // Reset form value to channel name
+                        form.setFieldValue('name', props.channel.name);
+                        setRenaming(true);
+                      }}
+                    >
+                      Rename
+                    </Menu.Item>
                   )}
 
-                  {hasPermission(props.domain, props.channel.id, 'can_manage_resources') && (
+                  {hasPermission(
+                    props.domain,
+                    props.channel.id,
+                    'can_manage_resources',
+                  ) && (
                     <>
                       <Menu.Divider />
                       <Menu.Item
-                        color='red'
+                        color="red"
                         icon={<IconTrash size={16} />}
                         onClick={() => {
                           openConfirmModal({
                             title: 'Delete Section',
-                            content: (<Text>Are you sure you want to delete <b>{props.channel.name}</b>?</Text>),
+                            content: (
+                              <Text>
+                                Are you sure you want to delete{' '}
+                                <b>{props.channel.name}</b>?
+                              </Text>
+                            ),
                             confirmLabel: 'Delete',
                             onConfirm: () => {
-                              props.domain._mutators.removeChannel(props.channel.id);
-                            }
-                          })
+                              props.domain._mutators.removeChannel(
+                                props.channel.id,
+                              );
+                            },
+                          });
                         }}
                       >
                         Delete section
@@ -244,23 +294,25 @@ function SingleChannel(props: SingleChannelProps) {
                 </Menu.Dropdown>
               </Menu>
 
-              {app.pings?.[props.channel.id] !== undefined && app.pings[props.channel.id] > 0 && (
-                <Text
-                  className='ping-indicator'
-                  size='xs'
-                  weight={600}
-                  inline
-                  sx={(theme) => ({
-                    display: showMenu ? 'none' : undefined,
-                    padding: '0.15rem 0.3rem 0.25rem 0.3rem',
-                    marginRight: '0.4rem',
-                    backgroundColor: theme.colors.red[5],
-                    color: theme.colors.dark[0],
-                    borderRadius: '1.0rem',
-                  })}>
-                  {app.pings?.[props.channel.id]}
-                </Text>
-              )}
+              {app.pings?.[props.channel.id] !== undefined &&
+                app.pings[props.channel.id] > 0 && (
+                  <Text
+                    className="ping-indicator"
+                    size="xs"
+                    weight={600}
+                    inline
+                    sx={(theme) => ({
+                      display: showMenu ? 'none' : undefined,
+                      padding: '0.15rem 0.3rem 0.25rem 0.3rem',
+                      marginRight: '0.4rem',
+                      backgroundColor: theme.colors.red[5],
+                      color: theme.colors.dark[0],
+                      borderRadius: '1.0rem',
+                    })}
+                  >
+                    {app.pings?.[props.channel.id]}
+                  </Text>
+                )}
             </Flex>
 
             {participants._exists && participants.data.length > 0 && (
@@ -272,18 +324,11 @@ function SingleChannel(props: SingleChannelProps) {
                 <Avatar.Group spacing={6}>
                   {participants.data.slice(0, 5).map((member, i) => (
                     <Tooltip key={member.id} label={member.alias} withArrow>
-                      <MemberAvatar
-                        key={member.id}
-                        size={28}
-                        member={member}
-                      />
+                      <MemberAvatar key={member.id} size={28} member={member} />
                     </Tooltip>
                   ))}
                   {participants.data.length > 5 && (
-                    <Avatar
-                      size={28}
-                      radius={28}
-                    >
+                    <Avatar size={28} radius={28}>
                       +{participants.data.length - 5}
                     </Avatar>
                   )}
@@ -296,7 +341,6 @@ function SingleChannel(props: SingleChannelProps) {
     </Draggable>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 type ChannelGroupProps = {
@@ -322,7 +366,13 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
   // TODO : fix/apply inherited permissions
 
   return (
-    <Draggable draggableId={props.group.id} index={props.index} isDragDisabled={!hasPermission(props.domain, props.domain.id, 'can_manage')}>
+    <Draggable
+      draggableId={props.group.id}
+      index={props.index}
+      isDragDisabled={
+        !hasPermission(props.domain, props.domain.id, 'can_manage')
+      }
+    >
       {(provided, snapshot) => (
         <Box
           ref={provided.innerRef}
@@ -338,8 +388,12 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               width: '100%',
               padding: `0.25rem 0.25rem 0.25rem 0.5rem`,
               borderRadius: theme.radius.sm,
-              backgroundColor: snapshot.isDragging ? theme.colors.dark[5] : theme.colors.dark[6],
-              boxShadow: snapshot.isDragging ? '0px 0px 10px #00000033' : undefined,
+              backgroundColor: snapshot.isDragging
+                ? theme.colors.dark[5]
+                : theme.colors.dark[6],
+              boxShadow: snapshot.isDragging
+                ? '0px 0px 10px #00000033'
+                : undefined,
               transition: 'background-color 0.1s',
               '&:hover': {
                 backgroundColor: theme.colors.dark[5],
@@ -350,8 +404,8 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
             })}
             onClick={() => setOpened(!opened)}
           >
-            {!opened && (<IconChevronRight size={18} />)}
-            {opened && (<IconChevronDown size={18} />)}
+            {!opened && <IconChevronRight size={18} />}
+            {opened && <IconChevronDown size={18} />}
 
             {!renaming && (
               <Text
@@ -364,14 +418,20 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               </Text>
             )}
             {renaming && (
-              <form style={{ flexGrow: 1 }} onSubmit={form.onSubmit((values) => {
-                // Rename channel
-                props.domain._mutators.renameGroup(props.group.id, values.name);
-                // Go back to default view
-                setRenaming(false);
-              })}>
+              <form
+                style={{ flexGrow: 1 }}
+                onSubmit={form.onSubmit((values) => {
+                  // Rename channel
+                  props.domain._mutators.renameGroup(
+                    props.group.id,
+                    values.name,
+                  );
+                  // Go back to default view
+                  setRenaming(false);
+                })}
+              >
                 <TextInput
-                  size='xs'
+                  size="xs"
                   mt={0}
                   styles={(theme) => ({
                     wrapper: { marginTop: 0, maxWidth: '20ch' },
@@ -384,8 +444,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                     e.stopPropagation();
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Escape')
-                      e.currentTarget.blur();
+                    if (e.key === 'Escape') e.currentTarget.blur();
                   }}
                   autoFocus
                 />
@@ -394,32 +453,43 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
 
             <div style={{ flexGrow: 1 }} />
 
-            {hasPermission(props.domain, props.group.id, 'can_manage_resources') && (
+            {hasPermission(
+              props.domain,
+              props.group.id,
+              'can_manage_resources',
+            ) && (
               <ActionButton
-                tooltip='Add Section'
+                tooltip="Add Section"
                 hoverBg={(theme) => theme.colors.dark[4]}
-                size='sm'
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  openCreateChannel({ domain: props.domain, group_id: props.group.id });
+                  openCreateChannel({
+                    domain: props.domain,
+                    group_id: props.group.id,
+                  });
                 }}
               >
                 <IconPlus size={16} />
               </ActionButton>
             )}
 
-            {(hasPermission(props.domain, props.group.id, 'can_manage') || hasPermission(props.domain, props.group.id, 'can_delete_group')) && (
-              <Menu
-                width={180}
-                withinPortal
-              >
+            {(hasPermission(props.domain, props.group.id, 'can_manage') ||
+              hasPermission(
+                props.domain,
+                props.group.id,
+                'can_delete_group',
+              )) && (
+              <Menu width={180} withinPortal>
                 <Menu.Target>
                   <ActionIcon
-                    size='sm'
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                     }}
-                    sx={(theme) => ({ '&:hover': { backgroundColor: theme.colors.dark[4] } })}
+                    sx={(theme) => ({
+                      '&:hover': { backgroundColor: theme.colors.dark[4] },
+                    })}
                   >
                     <IconDotsVertical size={14} />
                   </ActionIcon>
@@ -427,54 +497,97 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                 <Menu.Dropdown
                   onClick={(e) => {
                     e.stopPropagation();
-                  }}>
+                  }}
+                >
                   <Menu.Label>{props.group.name.toUpperCase()}</Menu.Label>
                   <Menu.Item
                     icon={<IconSettings size={16} />}
                     onClick={() => {
-                      openChannelGroupSettings({ domain_id: props.domain.id, group: props.group });
+                      openChannelGroupSettings({
+                        domain_id: props.domain.id,
+                        group: props.group,
+                      });
                     }}
                   >
                     Settings
                   </Menu.Item>
 
-                  {hasPermission(props.domain, props.group.id, 'can_manage') && (
-                    <Menu.Item icon={<IconPencil size={16} />} onClick={() => {
-                      // Reset form value to channel name
-                      form.setFieldValue('name', props.group.name);
-                      setRenaming(true);
-                    }}>Rename</Menu.Item>
+                  {hasPermission(
+                    props.domain,
+                    props.group.id,
+                    'can_manage',
+                  ) && (
+                    <Menu.Item
+                      icon={<IconPencil size={16} />}
+                      onClick={() => {
+                        // Reset form value to channel name
+                        form.setFieldValue('name', props.group.name);
+                        setRenaming(true);
+                      }}
+                    >
+                      Rename
+                    </Menu.Item>
                   )}
 
-                  {hasPermission(props.domain, props.group.id, 'can_delete_group') && (
+                  {hasPermission(
+                    props.domain,
+                    props.group.id,
+                    'can_delete_group',
+                  ) && (
                     <>
                       <Menu.Divider />
                       <Menu.Item
-                        color='red'
+                        color="red"
                         icon={<IconTrash size={16} />}
                         onClick={() => {
                           openConfirmModal({
                             title: 'Delete Group',
                             modalProps: {
-                              yOffset: `${Math.max(30 - props.group.channels.length * 0.6, 1)}vh`,
+                              yOffset: `${Math.max(
+                                30 - props.group.channels.length * 0.6,
+                                1,
+                              )}vh`,
                             },
                             content: (
                               <>
-                                <p style={{ marginBlockEnd: 0 }}>Are you sure you want to delete <b>{props.group.name}</b> and the following sections?</p>
-                                <ul style={{ marginBlockStart: 0, marginBlockEnd: 0 }}>
-                                  {props.group.channels.map(channel_id => (
-                                    <li key={channel_id}><b>{props.domain.channels[channel_id].name}</b></li>
+                                <p style={{ marginBlockEnd: 0 }}>
+                                  Are you sure you want to delete{' '}
+                                  <b>{props.group.name}</b> and the following
+                                  sections?
+                                </p>
+                                <ul
+                                  style={{
+                                    marginBlockStart: 0,
+                                    marginBlockEnd: 0,
+                                  }}
+                                >
+                                  {props.group.channels.map((channel_id) => (
+                                    <li key={channel_id}>
+                                      <b>
+                                        {props.domain.channels[channel_id].name}
+                                      </b>
+                                    </li>
                                   ))}
                                 </ul>
                               </>
                             ),
                             confirmLabel: 'Delete',
-                            typeToConfirm: props.group.channels.length > 2 ? props.group.name : undefined,
-                            confirmText: (<>Please type <b>{props.group.name}</b> to confirm this action.</>),
+                            typeToConfirm:
+                              props.group.channels.length > 2
+                                ? props.group.name
+                                : undefined,
+                            confirmText: (
+                              <>
+                                Please type <b>{props.group.name}</b> to confirm
+                                this action.
+                              </>
+                            ),
                             onConfirm: () => {
-                              props.domain._mutators.removeGroup(props.group.id);
-                            }
-                          })
+                              props.domain._mutators.removeGroup(
+                                props.group.id,
+                              );
+                            },
+                          });
                         }}
                       >
                         Delete group
@@ -487,11 +600,24 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
           </Group>
 
           {!snapshot.isDragging && opened && (
-            <Droppable droppableId={props.group.id} type='channel' isDropDisabled={!(hasPermission(props.domain, props.group.id, 'can_manage') || hasPermission(props.domain, props.group.id, 'can_manage_resources'))}>
+            <Droppable
+              droppableId={props.group.id}
+              type="channel"
+              isDropDisabled={
+                !(
+                  hasPermission(props.domain, props.group.id, 'can_manage') ||
+                  hasPermission(
+                    props.domain,
+                    props.group.id,
+                    'can_manage_resources',
+                  )
+                )
+              }
+            >
               {(provided) => (
                 <Stack
                   ref={provided.innerRef}
-                  mih='0.5rem'
+                  mih="0.5rem"
                   spacing={0}
                   {...provided.droppableProps}
                 >
@@ -511,7 +637,6 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                         if (channels.length > 0)
                           app._mutators.setChannel(channels[0].id);
                       }}
-
                       index={i}
                     />
                   ))}
@@ -527,18 +652,17 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
   );
 }
 
-
 ////////////////////////////////////////////////////////////
 type ChannelsViewProps = {
   domain: DomainWrapper;
   channel_id: string;
-}
+};
 
 ////////////////////////////////////////////////////////////
 export default function ChannelsView(props: ChannelsViewProps) {
   return (
     <Flex
-      direction='column'
+      direction="column"
       sx={(theme) => ({
         flexShrink: 0,
         width: '20rem',
@@ -546,19 +670,21 @@ export default function ChannelsView(props: ChannelsViewProps) {
         backgroundColor: theme.colors.dark[6],
       })}
     >
-      <Group sx={(theme) => ({
-        width: '100%',
-        height: '3.0rem',
-        paddingLeft: '1.0rem',
-        paddingRight: '0.5rem',
-        borderBottom: `1px solid ${theme.colors.dark[4]}`
-      })}>
+      <Group
+        sx={(theme) => ({
+          width: '100%',
+          height: '3.0rem',
+          paddingLeft: '1.0rem',
+          paddingRight: '0.5rem',
+          borderBottom: `1px solid ${theme.colors.dark[4]}`,
+        })}
+      >
         <Title order={4} sx={{ flexGrow: 1 }}>
           Sections
         </Title>
         <div style={{ flexGrow: 1 }} />
         {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
-          <Menu width='12rem'>
+          <Menu width="12rem">
             <Menu.Target>
               <ActionIcon sx={(theme) => ({ color: theme.colors.dark[1] })}>
                 <IconPlus size={18} />
@@ -584,33 +710,46 @@ export default function ChannelsView(props: ChannelsViewProps) {
       </Group>
 
       <ScrollArea sx={{ flexGrow: 1 }}>
-        <DragDropContext onDragEnd={(result) => {
-          // Don't allow delete channel by drag
-          if (!result.destination) return;
-          if (result.destination.index === result.source.index && result.destination.droppableId === result.source.droppableId) return;
+        <DragDropContext
+          onDragEnd={(result) => {
+            // Don't allow delete channel by drag
+            if (!result.destination) return;
+            if (
+              result.destination.index === result.source.index &&
+              result.destination.droppableId === result.source.droppableId
+            )
+              return;
 
-          // Move channel
-          if (result.type === 'channel') {
-            props.domain._mutators.moveChannel(result.draggableId, {
-              group_id: result.source.droppableId,
-              index: result.source.index,
-            }, {
-              group_id: result.destination.droppableId,
-              index: result.destination.index,
-            });
-          }
+            // Move channel
+            if (result.type === 'channel') {
+              props.domain._mutators.moveChannel(
+                result.draggableId,
+                {
+                  group_id: result.source.droppableId,
+                  index: result.source.index,
+                },
+                {
+                  group_id: result.destination.droppableId,
+                  index: result.destination.index,
+                },
+              );
+            }
 
-          // Move group
-          else if (result.type === 'group') {
-            props.domain._mutators.moveGroup(result.source.index, result.destination.index);
-          }
-        }}>
-          <Droppable droppableId={props.domain.id} type='group'>
+            // Move group
+            else if (result.type === 'group') {
+              props.domain._mutators.moveGroup(
+                result.source.index,
+                result.destination.index,
+              );
+            }
+          }}
+        >
+          <Droppable droppableId={props.domain.id} type="group">
             {(provided) => (
               <Stack
                 ref={provided.innerRef}
                 spacing={0}
-                p='0.5rem 0.25rem'
+                p="0.5rem 0.25rem"
                 {...provided.droppableProps}
               >
                 {props.domain.groups.map((group, group_idx) => (

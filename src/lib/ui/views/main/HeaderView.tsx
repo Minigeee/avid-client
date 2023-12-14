@@ -12,7 +12,16 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 
-import { IconArrowBarLeft, IconArrowBarRight, IconBell, IconCalendarTime, IconFolderPlus, IconHash, IconPlus, IconUsers } from '@tabler/icons-react';
+import {
+  IconArrowBarLeft,
+  IconArrowBarRight,
+  IconBell,
+  IconCalendarTime,
+  IconFolderPlus,
+  IconHash,
+  IconPlus,
+  IconUsers,
+} from '@tabler/icons-react';
 
 import { openCreateChannel, openCreateChannelGroup } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -23,7 +32,6 @@ import RtcControlBar from '@/lib/ui/components/rtc/RtcControlBar';
 import { DomainWrapper, hasPermission, useApp, useRtc } from '@/lib/hooks';
 import { Channel, RightPanelTab } from '@/lib/types';
 import { AppState } from '@/lib/contexts';
-
 
 ////////////////////////////////////////////////////////////
 type RightPanelTabProps = {
@@ -40,10 +48,16 @@ function RightPanelTabIcon(props: RightPanelTabProps) {
     <ActionButton
       tooltip={props.label}
       sx={(theme) => ({
-        backgroundColor: props.selected === props.value ? theme.colors.dark[4] : undefined,
+        backgroundColor:
+          props.selected === props.value ? theme.colors.dark[4] : undefined,
         color: theme.colors.dark[props.selected === props.value ? 0 : 1],
         transition: 'background-color 0.08s',
-        '&:hover': { backgroundColor: props.selected === props.value ? theme.colors.dark[4] : theme.colors.dark[5] },
+        '&:hover': {
+          backgroundColor:
+            props.selected === props.value
+              ? theme.colors.dark[4]
+              : theme.colors.dark[5],
+        },
       })}
       onClick={() => props.app._mutators.setRightPanelTab(props.value)}
     >
@@ -51,7 +65,6 @@ function RightPanelTabIcon(props: RightPanelTabProps) {
     </ActionButton>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 type HeaderViewProps = {
@@ -65,7 +78,7 @@ type HeaderViewProps = {
 
   /** Height of header bar in rem */
   height: string;
-}
+};
 
 ////////////////////////////////////////////////////////////
 export default function HeaderView(props: HeaderViewProps) {
@@ -73,31 +86,34 @@ export default function HeaderView(props: HeaderViewProps) {
   const app = useApp();
   const rtc = useRtc();
 
-
   // Current right panel tab
   const rpTab = app.right_panel_tab[props.domain.id] || 'members';
 
   return (
-    <Box sx={(theme) => ({
-      position: 'relative',
-      display: 'flex',
-      height: props.height,
-      backgroundColor: theme.colors.dark[6],
-      boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`,
-      zIndex: 3,
-    })}>
-      <Group sx={(theme) => ({
-        width: '18rem',
-        height: '100%',
-        paddingLeft: '1.0rem',
-        paddingRight: '0.3rem',
-      })}>
+    <Box
+      sx={(theme) => ({
+        position: 'relative',
+        display: 'flex',
+        height: props.height,
+        backgroundColor: theme.colors.dark[6],
+        boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`,
+        zIndex: 3,
+      })}
+    >
+      <Group
+        sx={(theme) => ({
+          width: '18rem',
+          height: '100%',
+          paddingLeft: '1.0rem',
+          paddingRight: '0.3rem',
+        })}
+      >
         <Title order={5} sx={{ flexGrow: 1 }}>
           {'Channels'}
         </Title>
         <div style={{ flexGrow: 1 }} />
         {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
-          <Menu width='12rem'>
+          <Menu width="12rem">
             <Menu.Target>
               <ActionIcon>
                 <IconPlus size={18} color={theme.colors.dark[1]} />
@@ -135,36 +151,35 @@ export default function HeaderView(props: HeaderViewProps) {
           })}
         >
           <ChannelIcon type={props.channel.type} size={18} />
-          <Title order={5}>
-            {props.channel.name}
-          </Title>
+          <Title order={5}>{props.channel.name}</Title>
 
           {/* TODO : props.channel.type === 'board' && <BoardHeader data={props.data} setData={props.setData} /> */}
 
           <div style={{ flexGrow: 1 }} />
 
-          {rtc.joined && (
-            <RtcControlBar />
-          )}
+          {rtc.joined && <RtcControlBar />}
         </Group>
       )}
-      {!props.channel && (
-        <div style={{ flexGrow: 1 }} />
-      )}
+      {!props.channel && <div style={{ flexGrow: 1 }} />}
 
       {app.right_panel_opened && (
-        <Group spacing={2} sx={(theme) => ({
-          width: '16rem',
-          height: '100%',
-          paddingLeft: '0.25rem',
-          paddingRight: '0.5rem',
-          borderLeft: `1px solid ${theme.colors.dark[7]}`,
-        })}>
+        <Group
+          spacing={2}
+          sx={(theme) => ({
+            width: '16rem',
+            height: '100%',
+            paddingLeft: '0.25rem',
+            paddingRight: '0.5rem',
+            borderLeft: `1px solid ${theme.colors.dark[7]}`,
+          })}
+        >
           <Tabs
             value={rpTab}
-            onTabChange={(value) => app._mutators.setRightPanelTab(value as RightPanelTab)}
-            variant='pills'
-            color='dark'
+            onTabChange={(value) =>
+              app._mutators.setRightPanelTab(value as RightPanelTab)
+            }
+            variant="pills"
+            color="dark"
             styles={(theme) => ({
               root: {
                 flexGrow: 1,
@@ -190,33 +205,44 @@ export default function HeaderView(props: HeaderViewProps) {
             })}
           >
             <Tabs.List>
-              <Tooltip label='Members' withArrow>
-                <Tabs.Tab icon={<IconUsers size={18} />} value='members' />
+              <Tooltip label="Members" withArrow>
+                <Tabs.Tab icon={<IconUsers size={18} />} value="members" />
               </Tooltip>
-              <Tooltip label='Activity' withArrow>
-                <Tabs.Tab icon={<IconBell size={18} />} value='activity' disabled />
+              <Tooltip label="Activity" withArrow>
+                <Tabs.Tab
+                  icon={<IconBell size={18} />}
+                  value="activity"
+                  disabled
+                />
               </Tooltip>
-              <Tooltip label='Upcoming' withArrow>
-                <Tabs.Tab icon={<IconCalendarTime size={18} />} value='upcoming' disabled />
+              <Tooltip label="Upcoming" withArrow>
+                <Tabs.Tab
+                  icon={<IconCalendarTime size={18} />}
+                  value="upcoming"
+                  disabled
+                />
               </Tooltip>
             </Tabs.List>
           </Tabs>
 
           <CloseButton
-            size='lg'
+            size="lg"
             iconSize={20}
             onClick={() => app._mutators.setRightPanelOpened(false)}
           />
         </Group>
       )}
       {!app.right_panel_opened && (
-        <Group spacing={2} sx={(theme) => ({
-          height: '100%',
-          paddingLeft: '0.5rem',
-          paddingRight: '0.5rem',
-        })}>
+        <Group
+          spacing={2}
+          sx={(theme) => ({
+            height: '100%',
+            paddingLeft: '0.5rem',
+            paddingRight: '0.5rem',
+          })}
+        >
           <ActionButton
-            tooltip='Open Panel'
+            tooltip="Open Panel"
             onClick={() => app._mutators.setRightPanelOpened(true)}
           >
             <IconArrowBarLeft size={18} />

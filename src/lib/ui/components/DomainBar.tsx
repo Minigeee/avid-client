@@ -13,14 +13,18 @@ import {
   Transition,
 } from '@mantine/core';
 
-import { IconCalendar, IconMessage2, IconPlus, IconSettings } from '@tabler/icons-react';
+import {
+  IconCalendar,
+  IconMessage2,
+  IconPlus,
+  IconSettings,
+} from '@tabler/icons-react';
 
 import { Domain } from '@/lib/types';
 import { useApp, useProfile, useSession } from '@/lib/hooks';
 import { openCreateDomain, openUserSettings } from '@/lib/ui/modals';
 
 const AVATAR_RADIUS = 24;
-
 
 ////////////////////////////////////////////////////////////
 type DomainAvatarProps = {
@@ -34,8 +38,7 @@ type DomainAvatarProps = {
 function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
   // Avatar content
   const content = useMemo<string | JSX.Element>(() => {
-    if (icon)
-      return icon;
+    if (icon) return icon;
     else if (domain.icon)
       return (
         <Image
@@ -45,29 +48,39 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
           height={2 * AVATAR_RADIUS}
         />
       );
-
     else if (domain.name)
-      return domain.name.split(/[\s_]+/).map(x => x.charAt(0)).join('').toUpperCase();
+      return domain.name
+        .split(/[\s_]+/)
+        .map((x) => x.charAt(0))
+        .join('')
+        .toUpperCase();
 
     return '';
   }, [icon, domain.icon, domain.name]);
 
   return (
-    <Group spacing={0} position='right'>
-      <Transition mounted={active} transition='slide-right' duration={180}>
+    <Group spacing={0} position="right">
+      <Transition mounted={active} transition="slide-right" duration={180}>
         {(styles) => (
-          <Box style={styles} sx={(theme) => ({
-            height: 2 * AVATAR_RADIUS - 6,
-            width: 4,
-            background: theme.fn.linearGradient(50, theme.colors.violet[5], theme.colors.pink[5]),
-            borderTopRightRadius: 5,
-            borderBottomRightRadius: 5,
-          })} />
+          <Box
+            style={styles}
+            sx={(theme) => ({
+              height: 2 * AVATAR_RADIUS - 6,
+              width: 4,
+              background: theme.fn.linearGradient(
+                50,
+                theme.colors.violet[5],
+                theme.colors.pink[5],
+              ),
+              borderTopRightRadius: 5,
+              borderBottomRightRadius: 5,
+            })}
+          />
         )}
       </Transition>
       <Tooltip
         label={domain.name}
-        position='right'
+        position="right"
         transitionProps={{ transition: 'fade' }}
         withArrow
         withinPortal
@@ -86,7 +99,7 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
             },
             '&:active': {
               transform: 'translateY(1px)',
-            }
+            },
           })}
           onClick={props.onClick}
         >
@@ -96,7 +109,6 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
     </Group>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 const PERSONAL_TABS = [
@@ -121,10 +133,9 @@ export default function DomainBar() {
 
   // WIP : Update domain avatar in profile object
 
-
   ////////////////////////////////////////////////////////////
   return (
-    <Flex direction='column' h='100%'>
+    <Flex direction="column" h="100%">
       <ScrollArea sx={{ flexGrow: 1 }}>
         <Stack spacing={0} sx={{ marginTop: '0.18rem' }}>
           {PERSONAL_TABS.map((tab, i) => (
@@ -139,7 +150,9 @@ export default function DomainBar() {
               onClick={() => app._mutators.setDomain(tab.id)}
             />
           ))}
-          <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
+          <Divider
+            sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }}
+          />
           {profile.domains?.map((domain, i) => (
             <DomainAvatar
               key={domain.id}
@@ -154,8 +167,8 @@ export default function DomainBar() {
       <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
 
       <Tooltip
-        label='New Domain'
-        position='right'
+        label="New Domain"
+        position="right"
         transitionProps={{ transition: 'fade' }}
         withArrow
         withinPortal
@@ -173,7 +186,7 @@ export default function DomainBar() {
             },
             '&:active': {
               transform: 'translateY(1px)',
-            }
+            },
           })}
           onClick={() => {
             if (profile._exists) {
@@ -192,8 +205,8 @@ export default function DomainBar() {
       </Tooltip>
 
       <Tooltip
-        label='Settings'
-        position='right'
+        label="Settings"
+        position="right"
         transitionProps={{ transition: 'fade' }}
         withArrow
         withinPortal
@@ -211,7 +224,7 @@ export default function DomainBar() {
             },
             '&:active': {
               transform: 'translateY(1px)',
-            }
+            },
           })}
           onClick={() => openUserSettings({})}
         >

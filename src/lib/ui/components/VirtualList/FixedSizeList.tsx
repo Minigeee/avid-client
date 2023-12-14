@@ -11,8 +11,7 @@ const FixedSizeList = createListComponent({
   getItemOffset: ({ itemSize }: Props<any>, index: number): number =>
     index * itemSize,
 
-  getItemSize: ({ itemSize }: Props<any>, index: number): number =>
-    itemSize,
+  getItemSize: ({ itemSize }: Props<any>, index: number): number => itemSize,
 
   getEstimatedTotalSize: ({ itemCount, itemSize }: Props<any>) =>
     itemSize * itemCount,
@@ -23,25 +22,16 @@ const FixedSizeList = createListComponent({
     align: ScrollToAlign,
     scrollOffset: number,
     instanceProps: InstanceProps,
-    scrollbarSize: number
+    scrollbarSize: number,
   ): number => {
     // TODO Deprecate direction "horizontal"
     const isHorizontal = direction === 'horizontal' || layout === 'horizontal';
     const size = isHorizontal ? width : height;
-    const lastItemOffset = Math.max(
-      0,
-      itemCount * itemSize - size
-    );
-    const maxOffset = Math.min(
-      lastItemOffset,
-      index * itemSize
-    );
+    const lastItemOffset = Math.max(0, itemCount * itemSize - size);
+    const maxOffset = Math.min(lastItemOffset, index * itemSize);
     const minOffset = Math.max(
       0,
-      index * itemSize -
-        size +
-        itemSize +
-        scrollbarSize
+      index * itemSize - size + itemSize + scrollbarSize,
     );
 
     if (align === 'smart') {
@@ -64,7 +54,7 @@ const FixedSizeList = createListComponent({
         // "Centered" offset is usually the average of the min and max.
         // But near the edges of the list, this doesn't hold true.
         const middleOffset = Math.round(
-          minOffset + (maxOffset - minOffset) / 2
+          minOffset + (maxOffset - minOffset) / 2,
         );
         if (middleOffset < Math.ceil(size / 2)) {
           return 0; // near the beginning
@@ -88,31 +78,28 @@ const FixedSizeList = createListComponent({
 
   getStartIndexForOffset: (
     { itemCount, itemSize }: Props<any>,
-    offset: number
+    offset: number,
   ): number =>
-    Math.max(
-      0,
-      Math.min(itemCount - 1, Math.floor(offset / itemSize))
-    ),
+    Math.max(0, Math.min(itemCount - 1, Math.floor(offset / itemSize))),
 
   getStopIndexForStartIndex: (
     { direction, height, itemCount, itemSize, layout, width }: Props<any>,
     startIndex: number,
-    scrollOffset: number
+    scrollOffset: number,
   ): number => {
     // TODO Deprecate direction "horizontal"
     const isHorizontal = direction === 'horizontal' || layout === 'horizontal';
     const offset = startIndex * itemSize;
     const size = isHorizontal ? width : height;
     const numVisibleItems = Math.ceil(
-      (size + scrollOffset - offset) / itemSize
+      (size + scrollOffset - offset) / itemSize,
     );
     return Math.max(
       0,
       Math.min(
         itemCount - 1,
-        startIndex + numVisibleItems - 1 // -1 is because stop index is inclusive
-      )
+        startIndex + numVisibleItems - 1, // -1 is because stop index is inclusive
+      ),
     );
   },
 
@@ -128,7 +115,7 @@ const FixedSizeList = createListComponent({
         throw Error(
           'An invalid "itemSize" prop has been specified. ' +
             'Value should be a number. ' +
-            `"${itemSize === null ? 'null' : typeof itemSize}" was specified.`
+            `"${itemSize === null ? 'null' : typeof itemSize}" was specified.`,
         );
       }
     }

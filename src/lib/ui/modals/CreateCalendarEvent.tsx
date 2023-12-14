@@ -1,4 +1,11 @@
-import { ComponentPropsWithoutRef, forwardRef, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  ComponentPropsWithoutRef,
+  forwardRef,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   ActionIcon,
@@ -25,11 +32,15 @@ import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
 
 import config from '@/config';
 import { DomainWrapper } from '@/lib/hooks';
-import { CalendarEvent, ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
+import {
+  CalendarEvent,
+  ChannelData,
+  ChannelOptions,
+  ChannelTypes,
+} from '@/lib/types';
 
 import moment from 'moment';
 import { range } from 'lodash';
-
 
 ////////////////////////////////////////////////////////////
 export type CreateCalendarEventProps = {
@@ -42,31 +53,51 @@ export type CreateCalendarEventProps = {
   event?: Partial<CalendarEvent>;
 
   /** Called when event is created */
-  onSubmit: (event: Omit<CalendarEvent, 'id' | 'time_created' | 'channel'>, mode: 'create' | 'edit') => Promise<void>;
-}
+  onSubmit: (
+    event: Omit<CalendarEvent, 'id' | 'time_created' | 'channel'>,
+    mode: 'create' | 'edit',
+  ) => Promise<void>;
+};
 
 ////////////////////////////////////////////////////////////
-export default function CreateCalendarEvent({ context, id, innerProps: props }: ContextModalProps<CreateCalendarEventProps>) {
+export default function CreateCalendarEvent({
+  context,
+  id,
+  innerProps: props,
+}: ContextModalProps<CreateCalendarEventProps>) {
   const mode = props.mode || 'create';
   const form = useForm({
     initialValues: {
       title: props.event?.title || '',
       description: props.event?.description || '',
       start: props.event?.start ? new Date(props.event.start) : new Date(),
-      end: props.event?.end ? new Date(props.event.end) : (props.event?.start ? new Date(props.event.start) : new Date()),
+      end: props.event?.end
+        ? new Date(props.event.end)
+        : props.event?.start
+          ? new Date(props.event.start)
+          : new Date(),
       all_day: props.event?.all_day || false,
       color: props.event?.color || PRESET_COLORS.at(-1),
 
-      repeat: props.event?.repeat ? {
-        ...props.event.repeat,
-        end_on: props.event.repeat.end_on ? new Date(props.event.repeat.end_on) : undefined,
-      } : {
-        interval: 1,
-        interval_type: 'week',
-      } as Omit<NonNullable<CalendarEvent['repeat']>, 'end_on'> & { end_on?: Date },
+      repeat: props.event?.repeat
+        ? {
+            ...props.event.repeat,
+            end_on: props.event.repeat.end_on
+              ? new Date(props.event.repeat.end_on)
+              : undefined,
+          }
+        : ({
+            interval: 1,
+            interval_type: 'week',
+          } as Omit<NonNullable<CalendarEvent['repeat']>, 'end_on'> & {
+            end_on?: Date;
+          }),
     },
     validate: {
-      end: (value, values) => value.getTime() > values.start.getTime() ? null : 'End date must be after start date',
+      end: (value, values) =>
+        value.getTime() > values.start.getTime()
+          ? null
+          : 'End date must be after start date',
     },
   });
 
@@ -75,30 +106,39 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
   const [loading, setLoading] = useState<boolean>(false);
   // Determines if repeating event mode
-  const [repeat, setRepeatImpl] = useState<boolean>(props.event?.repeat !== undefined && props.event?.repeat !== null);
+  const [repeat, setRepeatImpl] = useState<boolean>(
+    props.event?.repeat !== undefined && props.event?.repeat !== null,
+  );
   const setRepeat = useCallback((value: boolean) => {
     if (value) {
       // Reset week repeat days
-      form.setFieldValue('repeat.week_repeat_days', [moment(form.values.start).day()]);
+      form.setFieldValue('repeat.week_repeat_days', [
+        moment(form.values.start).day(),
+      ]);
     }
 
     setRepeatImpl(value);
   }, []);
 
-
   // Picker elements for start/end time inputs
   const pickerControls = useMemo(() => {
     return [
-      (
-        <ActionIcon key={0} variant="subtle" color="gray" onClick={() => startTimeRef.current?.showPicker()}>
-          <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
-        </ActionIcon>
-      ),
-      (
-        <ActionIcon key={1} variant="subtle" color="gray" onClick={() => endTimeRef.current?.showPicker()}>
-          <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
-        </ActionIcon>
-      ),
+      <ActionIcon
+        key={0}
+        variant="subtle"
+        color="gray"
+        onClick={() => startTimeRef.current?.showPicker()}
+      >
+        <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
+      </ActionIcon>,
+      <ActionIcon
+        key={1}
+        variant="subtle"
+        color="gray"
+        onClick={() => endTimeRef.current?.showPicker()}
+      >
+        <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
+      </ActionIcon>,
     ];
   }, []);
 
@@ -109,8 +149,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
     if (form.values.all_day) {
       return `${Math.ceil(diffm / (24 * 60))}d`;
-    }
-    else {
+    } else {
       const h = Math.floor(diffm / 60);
       const m = diffm % 60;
       return `${h ? h + 'h' : ''} ${m ? m + 'm' : ''}`.trim();
@@ -128,19 +167,20 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
     ];
   }, [form.values.repeat?.interval]);
 
-
   // Week days repeat
   const weekRepeatButtons = useMemo(() => {
     const start = moment().startOf('week');
 
     return range(7).map((i) => {
-      const idx = form.values.repeat?.week_repeat_days?.findIndex(x => i === x);
+      const idx = form.values.repeat?.week_repeat_days?.findIndex(
+        (x) => i === x,
+      );
       const selected = idx !== undefined && idx >= 0;
 
       return (
         <ActionIcon
           key={i}
-          size='lg'
+          size="lg"
           sx={(theme) => ({
             backgroundColor: selected ? theme.colors.indigo[5] : undefined,
             fontSize: 14,
@@ -151,56 +191,72 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
           })}
           onClick={(e) => {
             if (selected)
-              form.setFieldValue('repeat.week_repeat_days', form.values.repeat?.week_repeat_days?.filter(x => x !== i));
+              form.setFieldValue(
+                'repeat.week_repeat_days',
+                form.values.repeat?.week_repeat_days?.filter((x) => x !== i),
+              );
             else
-              form.setFieldValue('repeat.week_repeat_days', [...(form.values.repeat?.week_repeat_days || []), i]);
+              form.setFieldValue('repeat.week_repeat_days', [
+                ...(form.values.repeat?.week_repeat_days || []),
+                i,
+              ]);
           }}
         >
           {moment(start).add(i, 'days').format('dd')}
         </ActionIcon>
       );
-    })
+    });
   }, [form.values.repeat?.week_repeat_days]);
 
   // Called when form submitted
-  const onSubmit = useCallback(async (values: typeof form.values) => {
-    setLoading(true);
+  const onSubmit = useCallback(
+    async (values: typeof form.values) => {
+      setLoading(true);
 
-    try {
-      // Callback
-      await props.onSubmit({
-        title: values.title,
-        start: values.start.toISOString(),
-        end: values.end.toISOString(),
-        all_day: values.all_day,
-        color: values.color,
-        description: values.description || undefined,
+      try {
+        // Callback
+        await props.onSubmit(
+          {
+            title: values.title,
+            start: values.start.toISOString(),
+            end: values.end.toISOString(),
+            all_day: values.all_day,
+            color: values.color,
+            description: values.description || undefined,
 
-        repeat: repeat && values.repeat ? {
-          interval: values.repeat.interval,
-          interval_type: values.repeat.interval_type,
-          end_on: values.repeat.end_on?.toISOString() || undefined,
-          week_repeat_days: values.repeat.interval_type === 'week' ? values.repeat.week_repeat_days : undefined,
-        } : undefined,
-      }, mode);
+            repeat:
+              repeat && values.repeat
+                ? {
+                    interval: values.repeat.interval,
+                    interval_type: values.repeat.interval_type,
+                    end_on: values.repeat.end_on?.toISOString() || undefined,
+                    week_repeat_days:
+                      values.repeat.interval_type === 'week'
+                        ? values.repeat.week_repeat_days
+                        : undefined,
+                  }
+                : undefined,
+          },
+          mode,
+        );
 
-      // Close modal
-      context.closeModal(id);
-    }
-    catch (err) {
-      throw err;
-    }
-    finally {
-      setLoading(false);
-    }
-  }, [props.onSubmit, repeat]);
+        // Close modal
+        context.closeModal(id);
+      } catch (err) {
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [props.onSubmit, repeat],
+  );
 
   return (
     <form onSubmit={form.onSubmit(onSubmit)}>
       <Stack>
         <TextInput
-          label='Title'
-          placeholder='New Event'
+          label="Title"
+          placeholder="New Event"
           required
           withAsterisk={false}
           data-autofocus
@@ -209,13 +265,13 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
         />
 
         <Box>
-          <Text size='sm' weight={600}>
+          <Text size="sm" weight={600}>
             Time{' '}
-            <Text color='dimmed' span>
+            <Text color="dimmed" span>
               {`(${durationText})`}
             </Text>
           </Text>
-          <Group align='start' spacing='sm'>
+          <Group align="start" spacing="sm">
             <DatePickerInput
               sx={{ minWidth: '12rem' }}
               value={form.values.start}
@@ -233,7 +289,10 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
                 const dm = e.diff(s, 'minutes');
 
                 form.setFieldValue('start', newValue);
-                form.setFieldValue('end', moment(newValue).add(dm, 'minutes').toDate());
+                form.setFieldValue(
+                  'end',
+                  moment(newValue).add(dm, 'minutes').toDate(),
+                );
               }}
             />
 
@@ -242,7 +301,13 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
                 <TimeInput
                   ref={startTimeRef}
                   rightSection={pickerControls[0]}
-                  value={`${form.values.start.getHours().toString().padStart(2, '0')}:${form.values.start.getMinutes().toString().padStart(2, '0')}`}
+                  value={`${form.values.start
+                    .getHours()
+                    .toString()
+                    .padStart(2, '0')}:${form.values.start
+                    .getMinutes()
+                    .toString()
+                    .padStart(2, '0')}`}
                   onChange={(ev) => {
                     const [h, m] = ev.target.value.split(':');
 
@@ -256,14 +321,23 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
                     const dm = e.diff(s, 'minutes');
 
                     form.setFieldValue('start', newValue);
-                    form.setFieldValue('end', moment(newValue).add(dm, 'minutes').toDate());
+                    form.setFieldValue(
+                      'end',
+                      moment(newValue).add(dm, 'minutes').toDate(),
+                    );
                   }}
                 />
                 <div style={{ marginTop: '0.5rem', flexGrow: 0 }}>&ndash;</div>
                 <TimeInput
                   ref={endTimeRef}
                   rightSection={pickerControls[1]}
-                  value={`${form.values.end.getHours().toString().padStart(2, '0')}:${form.values.end.getMinutes().toString().padStart(2, '0')}`}
+                  value={`${form.values.end
+                    .getHours()
+                    .toString()
+                    .padStart(2, '0')}:${form.values.end
+                    .getMinutes()
+                    .toString()
+                    .padStart(2, '0')}`}
                   onChange={(ev) => {
                     const [h, m] = ev.target.value.split(':');
 
@@ -300,7 +374,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
           <Group mt={8}>
             <Checkbox
-              label='All Day'
+              label="All Day"
               {...form.getInputProps('all_day', { type: 'checkbox' })}
               onChange={(e) => {
                 const checked = e.currentTarget.checked;
@@ -320,7 +394,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
             />
 
             <Checkbox
-              label='Repeat'
+              label="Repeat"
               checked={repeat}
               onChange={(e) => setRepeat(e.currentTarget.checked)}
             />
@@ -328,7 +402,7 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
         </Box>
 
         <ColorInput
-          label='Color'
+          label="Color"
           swatches={PRESET_COLORS}
           swatchesPerRow={7}
           dropdownZIndex={303}
@@ -341,8 +415,10 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
             <Divider />
 
             <Box>
-              <Text size='sm' weight={600}>Repeat Every</Text>
-              <Group spacing='sm'>
+              <Text size="sm" weight={600}>
+                Repeat Every
+              </Text>
+              <Group spacing="sm">
                 <NumberInput
                   {...form.getInputProps('repeat.interval')}
                   sx={{ maxWidth: '6rem' }}
@@ -356,17 +432,19 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
 
             {form.values.repeat?.interval_type === 'week' && (
               <Box>
-                <Text size='sm' weight={600}>Repeat On</Text>
+                <Text size="sm" weight={600}>
+                  Repeat On
+                </Text>
 
-                <Group mt={6} spacing='xs'>
+                <Group mt={6} spacing="xs">
                   {weekRepeatButtons}
                 </Group>
               </Box>
             )}
 
             <DatePickerInput
-              label='End On'
-              placeholder='Never'
+              label="End On"
+              placeholder="Never"
               clearable
               {...form.getInputProps('repeat.end_on')}
               sx={{ maxWidth: '15rem' }}
@@ -377,26 +455,20 @@ export default function CreateCalendarEvent({ context, id, innerProps: props }: 
         <Divider />
 
         <Box>
-          <Text size='sm' weight={600} sx={{ marginBottom: 5 }}>Description</Text>
+          <Text size="sm" weight={600} sx={{ marginBottom: 5 }}>
+            Description
+          </Text>
           <RichTextEditor
             domain={props.domain}
             {...form.getInputProps('description')}
           />
         </Box>
 
-
-        <Group spacing='xs' position='right' mt={16}>
-          <Button
-            variant='default'
-            onClick={() => context.closeModal(id)}
-          >
+        <Group spacing="xs" position="right" mt={16}>
+          <Button variant="default" onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button
-            variant='gradient'
-            type='submit'
-            loading={loading}
-          >
+          <Button variant="gradient" type="submit" loading={loading}>
             {mode === 'create' ? 'Create' : 'Save'}
           </Button>
         </Group>

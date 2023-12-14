@@ -1,4 +1,12 @@
-import { PropsWithChildren, RefObject, forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  PropsWithChildren,
+  RefObject,
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSWRConfig } from 'swr';
 
 import {
@@ -19,12 +27,18 @@ import {
   TextInput,
   Title,
   Tooltip,
-  useMantineTheme
+  useMantineTheme,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { IconAt, IconBadgeOff, IconFolder, IconPlus, IconTrash } from '@tabler/icons-react';
+import {
+  IconAt,
+  IconBadgeOff,
+  IconFolder,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
@@ -48,11 +62,17 @@ import {
   useDomain,
   useMemoState,
   useProfile,
-  useSession
+  useSession,
 } from '@/lib/hooks';
-import { AclEntry, AllPermissions, Channel, ChannelGroup, Label, Role } from '@/lib/types';
+import {
+  AclEntry,
+  AllPermissions,
+  Channel,
+  ChannelGroup,
+  Label,
+  Role,
+} from '@/lib/types';
 import { diff } from '@/lib/utility';
-
 
 ////////////////////////////////////////////////////////////
 type TabProps = {
@@ -61,16 +81,14 @@ type TabProps = {
   channel: Channel;
 };
 
-
 ////////////////////////////////////////////////////////////
 function BoardTab({ channel, ...props }: TabProps) {
   const board = useBoard((channel as Channel<'board'>).data?.board);
-  console.log(board)
+  console.log(board);
 
   const initialValues = useMemo(() => {
     const tagMap: Record<string, Label> = {};
-    for (const tag of board.tags || [])
-      tagMap[tag.id] = tag;
+    for (const tag of board.tags || []) tagMap[tag.id] = tag;
 
     return {
       prefix: board.prefix || '',
@@ -79,12 +97,11 @@ function BoardTab({ channel, ...props }: TabProps) {
   }, [board.prefix, board.tags]);
   const form = useForm({ initialValues });
 
-
   return (
     <>
       <TextInput
-        label='Board Prefix'
-        placeholder='PRFX'
+        label="Board Prefix"
+        placeholder="PRFX"
         sx={{ width: config.app.ui.short_input_width }}
         {...form.getInputProps('prefix')}
         onChange={(e) => {
@@ -102,13 +119,12 @@ function BoardTab({ channel, ...props }: TabProps) {
 
             if (form.values.prefix !== initialValues.prefix)
               await board._mutators.setPrefix(form.values.prefix);
-        }}
+          }}
         />
       )}
     </>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 export type ChannelSettingsProps = {
@@ -121,17 +137,19 @@ export type ChannelSettingsProps = {
 };
 
 ////////////////////////////////////////////////////////////
-export default function ChannelGroupSettings({ context, id, innerProps: props }: ContextModalProps<ChannelSettingsProps>) {
+export default function ChannelGroupSettings({
+  context,
+  id,
+  innerProps: props,
+}: ContextModalProps<ChannelSettingsProps>) {
   const session = useSession();
   const domain = useDomain(props.domain_id);
 
   // Tabs
   const tabs = useMemo(() => {
     let typeLabel = 'Text';
-    if (props.channel.type === 'rtc')
-      typeLabel = 'Voice & Video';
-    else if (props.channel.type === 'board')
-      typeLabel = 'Board';
+    if (props.channel.type === 'rtc') typeLabel = 'Voice & Video';
+    else if (props.channel.type === 'board') typeLabel = 'Board';
 
     return {
       [`${domain.name} / ${props.channel.name}`]: [
@@ -139,7 +157,6 @@ export default function ChannelGroupSettings({ context, id, innerProps: props }:
       ],
     };
   }, [domain.name, props.channel.name, props.channel.type]);
-
 
   if (!domain._exists) return null;
   const tabProps = { session, domain, channel: props.channel };
@@ -151,7 +168,7 @@ export default function ChannelGroupSettings({ context, id, innerProps: props }:
       defaultTab={props.tab}
       close={() => context.closeModal(id)}
     >
-      <SettingsModal.Panel value='type'>
+      <SettingsModal.Panel value="type">
         {props.channel.type === 'board' && <BoardTab {...tabProps} />}
       </SettingsModal.Panel>
     </SettingsModal>

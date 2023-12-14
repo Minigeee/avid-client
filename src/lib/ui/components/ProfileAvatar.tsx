@@ -1,12 +1,9 @@
 import { useMemo } from 'react';
 import Image from 'next/image';
 
-import {
-  Avatar,
-} from '@mantine/core';
+import { Avatar } from '@mantine/core';
 
 import { ProfileWrapper } from '@/lib/hooks';
-
 
 ////////////////////////////////////////////////////////////
 type ProfileAvatarProps = {
@@ -18,7 +15,10 @@ type ProfileAvatarProps = {
 };
 
 ////////////////////////////////////////////////////////////
-export default function ProfileAvatar({ profile, ...props }: ProfileAvatarProps) {
+export default function ProfileAvatar({
+  profile,
+  ...props
+}: ProfileAvatarProps) {
   // Avatar content
   const content = useMemo<string | JSX.Element>(() => {
     if (!profile._exists) return '';
@@ -33,7 +33,11 @@ export default function ProfileAvatar({ profile, ...props }: ProfileAvatarProps)
         />
       );
     else if (profile.username)
-      return profile.username.split(/[\s_]+/).map(x => x.charAt(0)).join('').toUpperCase();
+      return profile.username
+        .split(/[\s_]+/)
+        .map((x) => x.charAt(0))
+        .join('')
+        .toUpperCase();
 
     return '';
   }, [profile._exists, profile.profile_picture, profile.username]);

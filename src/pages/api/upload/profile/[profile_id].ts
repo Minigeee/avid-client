@@ -10,71 +10,82 @@ import { getImageKey, getImageUrl } from '@/lib/utility/spaces-util';
 
 import { uid } from 'uid';
 
-
-const router = createRouter<NextApiRequest & { image: string }, NextApiResponse>();
+const router = createRouter<
+  NextApiRequest & { image: string },
+  NextApiResponse
+>();
 
 router
-	// POST
-	.post(
-		// Image uploader
-		// @ts-ignore
-		expressWrapper(upload((req: Express.Request<>, file) => {
-			// Generate key
-			const id = uid();
-			const profile_id = req.query.profile_id as string;
-			const ext = file.originalname.split('.').at(-1);
-			const key = `images/profiles/${profile_id}/${id}.${ext}`;
+  // POST
+  .post(
+    // Image uploader
+    // @ts-ignore
+    expressWrapper(
+      upload(
+        (req: Express.Request<>, file) => {
+          // Generate key
+          const id = uid();
+          const profile_id = req.query.profile_id as string;
+          const ext = file.originalname.split('.').at(-1);
+          const key = `images/profiles/${profile_id}/${id}.${ext}`;
 
-			// Set image url
-			req.image = getImageUrl(key);
+          // Set image url
+          req.image = getImageUrl(key);
 
-			return key;
-		}, { fileSize: _config.upload.profile_picture.max_size }).single('image')),
+          return key;
+        },
+        { fileSize: _config.upload.profile_picture.max_size },
+      ).single('image'),
+    ),
 
-		async (req, res) => {
-			// Update profile
-			const profile_id = record('profiles', req.query.profile_id as string);
-			const results = await query<Profile[]>(sql.update<Profile>(profile_id, {
-				content: { profile_picture: req.image },
-				return: 'BEFORE',
-			}));
-			assert(results && results.length > 0);
+    async (req, res) => {
+      // Update profile
+      const profile_id = record('profiles', req.query.profile_id as string);
+      const results = await query<Profile[]>(
+        sql.update<Profile>(profile_id, {
+          content: { profile_picture: req.image },
+          return: 'BEFORE',
+        }),
+      );
+      assert(results && results.length > 0);
 
-			// Delete old image
-			if (results[0].profile_picture)
-				s3.delete(getImageKey(results[0].profile_picture));
+      // Delete old image
+      if (results[0].profile_picture)
+        s3.delete(getImageKey(results[0].profile_picture));
 
-			// Send new image url
-			res.json({ image: req.image });
-		}
-	)
-	
-	// DELETE
-	.delete(async (req, res) => {
-		// Update profile
-		const profile_id = record('profiles', req.query.profile_id as string);
-		const results = await query<Profile[]>(sql.update<Profile>(profile_id, {
-			content: { profile_picture: null },
-			return: 'BEFORE',
-		}));
-		assert(results && results.length > 0);
+      // Send new image url
+      res.json({ image: req.image });
+    },
+  )
 
-		// Delete old image
-		if (results[0].profile_picture)
-			s3.delete(getImageKey(results[0].profile_picture));
+  // DELETE
+  .delete(async (req, res) => {
+    // Update profile
+    const profile_id = record('profiles', req.query.profile_id as string);
+    const results = await query<Profile[]>(
+      sql.update<Profile>(profile_id, {
+        content: { profile_picture: null },
+        return: 'BEFORE',
+      }),
+    );
+    assert(results && results.length > 0);
 
-		res.end();
-	});
+    // Delete old image
+    if (results[0].profile_picture)
+      s3.delete(getImageKey(results[0].profile_picture));
+
+    res.end();
+  });
 
 export const config = {
-	api: {
-		bodyParser: false,
-	}
-}
+  api: {
+    bodyParser: false,
+  },
+};
 
 export default router.handler({
-	onError: (err: any, req, res) => {
-		console.error(err.stack);
-		res.status(err.statusCode || 500).end(err.message);
-	},
+  onError: (err: any, req, res) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).end(err.message);
+  },
 });

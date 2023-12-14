@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "format": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\""
+  },
+  "prettier": {
+    "singleQuote": true
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.329.0",
@@ -98,6 +102,7 @@
     "@types/react-window": "^1.8.5",
     "@types/sanitize-html": "^2.9.0",
     "@types/string-hash": "^1.1.1",
-    "@types/uuid": "^9.0.1"
+    "@types/uuid": "^9.0.1",
+    "prettier": "^3.1.1"
   }
 }

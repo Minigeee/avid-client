@@ -8,38 +8,38 @@ import { profiles, query, sql } from '@/lib/db';
 
 import { refresh, token } from '@/lib/utility/authenticate';
 
-
-const router = createRouter<NextApiRequest & { token: AccessToken }, NextApiResponse>();
+const router = createRouter<
+  NextApiRequest & { token: AccessToken },
+  NextApiResponse
+>();
 
 router
-	.use(token)
+  .use(token)
 
-	// POST
-	.post(
-		async (req, res) => {
-			const params = req.body as {
-				username: string;
-			};
+  // POST
+  .post(async (req, res) => {
+    const params = req.body as {
+      username: string;
+    };
 
-			// TODO : Check if user can create new profile
-			const id = await profiles.create(req.token.user_id, params.username, true);
-			
-			// Refresh session
-			const refreshResults = await refresh(req, res);
+    // TODO : Check if user can create new profile
+    const id = await profiles.create(req.token.user_id, params.username, true);
 
-			res.status(200).json({ token: refreshResults?.[0], profile_id: id });
-		}
-	)
+    // Refresh session
+    const refreshResults = await refresh(req, res);
+
+    res.status(200).json({ token: refreshResults?.[0], profile_id: id });
+  });
 
 export const config = {
-	api: {
-		bodyParser: true,
-	}
-}
+  api: {
+    bodyParser: true,
+  },
+};
 
 export default router.handler({
-	onError: (err: any, req, res) => {
-		console.error(err.stack);
-		res.status(err.statusCode || 500).end(err.message);
-	},
+  onError: (err: any, req, res) => {
+    console.error(err.stack);
+    res.status(err.statusCode || 500).end(err.message);
+  },
 });

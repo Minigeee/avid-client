@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import assert from 'assert';
 
-import {
-  Box,
-  Divider,
-  Flex,
-  Group,
-  Title,
-} from '@mantine/core';
+import { Box, Divider, Flex, Group, Title } from '@mantine/core';
 
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import ChannelsView from '@/lib/ui/views/main/ChannelsView';
@@ -27,7 +21,6 @@ import { IconArrowBarLeft } from '@tabler/icons-react';
 
 const HEADER_HEIGHT = '2.8rem';
 
-
 ////////////////////////////////////////////////////////////
 export default function MainView() {
   const app = useApp();
@@ -36,12 +29,16 @@ export default function MainView() {
 
   const domain = useDomain(app.domain);
   // Get channel, using nav state as first choice and first channel as back up
-  const channel_id = app.channels[app.domain] ||
-    (Object.keys(domain?.channels || {}).length ? Object.keys(domain?.channels || {})[0] : undefined);
+  const channel_id =
+    app.channels[app.domain] ||
+    (Object.keys(domain?.channels || {}).length
+      ? Object.keys(domain?.channels || {})[0]
+      : undefined);
 
   // Retrieve channel object
-  const channel = channel_id ? domain?.channels?.[channel_id] || undefined : undefined;
-
+  const channel = channel_id
+    ? domain?.channels?.[channel_id] || undefined
+    : undefined;
 
   // Set channel remote
   useEffect(() => {
@@ -49,29 +46,29 @@ export default function MainView() {
 
     if (!app.channels[app.domain] && channel_id)
       app._mutators.setChannel(channel_id);
-  }, [channel_id, app.channels[app.domain]])
+  }, [channel_id, app.channels[app.domain]]);
 
-
-  if (!domain._exists)
-    return null;
+  if (!domain._exists) return null;
 
   return (
-    <Flex sx={{
-      flexGrow: 1,
-      overflow: 'hidden',
-      width: '100%',
-    }}>
-      <ChannelsView
-        channel_id={channel_id || ''}
-        domain={domain}
-      />
-
-      <Flex direction='column' sx={(theme) => ({
+    <Flex
+      sx={{
         flexGrow: 1,
-        width: 0, // idk why this works
-        height: '100%',
-        backgroundColor: theme.colors.dark[7],
-      })}>
+        overflow: 'hidden',
+        width: '100%',
+      }}
+    >
+      <ChannelsView channel_id={channel_id || ''} domain={domain} />
+
+      <Flex
+        direction="column"
+        sx={(theme) => ({
+          flexGrow: 1,
+          width: 0, // idk why this works
+          height: '100%',
+          backgroundColor: theme.colors.dark[7],
+        })}
+      >
         <Group
           spacing={8}
           noWrap
@@ -97,13 +94,15 @@ export default function MainView() {
           {rtc.joined && (
             <>
               <RtcControlBar />
-              {!app.right_panel_opened && <Divider orientation='vertical' m='0.5rem 0.0rem' />}
+              {!app.right_panel_opened && (
+                <Divider orientation="vertical" m="0.5rem 0.0rem" />
+              )}
             </>
           )}
 
           {!app.right_panel_opened && (
             <ActionButton
-              tooltip='Open Side Panel'
+              tooltip="Open Side Panel"
               hoverBg={(theme) => theme.colors.dark[6]}
               mr={4}
               onClick={() => app._mutators.setRightPanelOpened(true)}
@@ -115,11 +114,13 @@ export default function MainView() {
 
         <ErrorBoundary>
           {channel && (
-            <Box sx={(theme) => ({
-              flexGrow: 1,
-              width: '100%',
-              height: 0,
-            })}>
+            <Box
+              sx={(theme) => ({
+                flexGrow: 1,
+                width: '100%',
+                height: 0,
+              })}
+            >
               {channel.type === 'text' && (
                 <MessagesView
                   key={channel.id}
@@ -153,21 +154,20 @@ export default function MainView() {
         </ErrorBoundary>
 
         {!channel && (
-          <Box sx={(theme) => ({
-            flexGrow: 1,
-            width: 0, // idk why this works
-            height: '100%',
-            backgroundColor: theme.colors.dark[7],
-          })} />
+          <Box
+            sx={(theme) => ({
+              flexGrow: 1,
+              width: 0, // idk why this works
+              height: '100%',
+              backgroundColor: theme.colors.dark[7],
+            })}
+          />
         )}
       </Flex>
 
       {app.right_panel_opened && (
-        <RightPanelView
-          key={domain.id}
-          domain={domain}
-        />
+        <RightPanelView key={domain.id} domain={domain} />
       )}
     </Flex>
-  )
+  );
 }

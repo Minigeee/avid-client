@@ -20,7 +20,6 @@ import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 import { DomainWrapper } from '@/lib/hooks';
 import { ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
 
-
 ////////////////////////////////////////////////////////////
 const CHANNEL_TYPES = [
   {
@@ -41,18 +40,19 @@ const CHANNEL_TYPES = [
     value: 'rtc',
     label: 'Voice & Video',
     group: 'Communication',
-    description: 'Chat with other members through voice, video, and screen share',
+    description:
+      'Chat with other members through voice, video, and screen share',
     disabled: false,
   },
   {
     value: 'board',
     label: 'Board',
     group: 'Project',
-    description: 'Create to-do lists and roadmaps to plan and organize large-scale projects',
+    description:
+      'Create to-do lists and roadmaps to plan and organize large-scale projects',
     disabled: false,
   },
 ];
-
 
 ////////////////////////////////////////////////////////////
 interface TypeSelectItemProps extends ComponentPropsWithoutRef<'div'> {
@@ -65,43 +65,65 @@ interface TypeSelectItemProps extends ComponentPropsWithoutRef<'div'> {
 
 ////////////////////////////////////////////////////////////
 const TypeSelectItem = forwardRef<HTMLDivElement, TypeSelectItemProps>(
-  ({ value, label, group, description, disabled, ...others }: TypeSelectItemProps, ref) => (
+  (
+    {
+      value,
+      label,
+      group,
+      description,
+      disabled,
+      ...others
+    }: TypeSelectItemProps,
+    ref,
+  ) => (
     <div ref={ref} {...others}>
       <Group noWrap>
         <ChannelIcon type={value} size={20} />
 
         <div>
-          <Text size='sm' weight={500}>{label}</Text>
-          <Text size='xs' color='dimmed'>
+          <Text size="sm" weight={500}>
+            {label}
+          </Text>
+          <Text size="xs" color="dimmed">
             {description}
           </Text>
           {disabled && (
-            <Text size='xs' mt={6} sx={(theme) => ({ color: theme.colors.dark[0] })}>
-              Please enable the <b>{group}</b> extension to use this channel type
+            <Text
+              size="xs"
+              mt={6}
+              sx={(theme) => ({ color: theme.colors.dark[0] })}
+            >
+              Please enable the <b>{group}</b> extension to use this channel
+              type
             </Text>
           )}
         </div>
       </Group>
     </div>
-  )
+  ),
 );
 TypeSelectItem.displayName = 'TypeSelectItem';
-
 
 ////////////////////////////////////////////////////////////
 export type CreateChannelProps = {
   domain: DomainWrapper;
   /** Id of the group to add channel to */
   group_id?: string;
-}
+};
 
 ////////////////////////////////////////////////////////////
-export default function CreateChannel({ context, id, innerProps: props }: ContextModalProps<CreateChannelProps>) {
+export default function CreateChannel({
+  context,
+  id,
+  innerProps: props,
+}: ContextModalProps<CreateChannelProps>) {
   const form = useForm({
     initialValues: {
       name: '',
       type: 'text' as ChannelTypes,
-      group: props.group_id || (props.domain.groups.length > 0 ? props.domain.groups[0].id : null),
+      group:
+        props.group_id ||
+        (props.domain.groups.length > 0 ? props.domain.groups[0].id : null),
 
       rtc_max_participants: 50,
 
@@ -112,13 +134,14 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
   const [loading, setLoading] = useState<boolean>(false);
 
   const groups = useMemo(() => {
-    return props.domain.groups.map(group => ({ value: group.id, label: group.name }));
+    return props.domain.groups.map((group) => ({
+      value: group.id,
+      label: group.name,
+    }));
   }, [props.domain.groups]);
 
   const extraSettings =
-    form.values.type === 'rtc' ||
-    form.values.type === 'board';
-
+    form.values.type === 'rtc' || form.values.type === 'board';
 
   async function submit() {
     if (!props.domain._exists || !form.values.group) return;
@@ -137,31 +160,34 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
         max_participants: form.values.rtc_max_participants,
         participants: [],
       };
-    }
-    else if (type === 'board') {
+    } else if (type === 'board') {
       options = { prefix: form.values.board_prefix };
     }
 
     try {
       // Add channel
       // WIP : Make sure channel create works, implement react-big-calendar and get it to work
-      await props.domain._mutators.addChannel(name, type, form.values.group, data, options);
+      await props.domain._mutators.addChannel(
+        name,
+        type,
+        form.values.group,
+        data,
+        options,
+      );
 
       // Close
       context.closeModal(id);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
-
 
   return (
     <form onSubmit={form.onSubmit(submit)}>
       <Stack>
         <TextInput
-          label='Section Name'
-          placeholder='New Section'
+          label="Section Name"
+          placeholder="New Section"
           icon={<IconFile size={16} />}
           required
           withAsterisk={false}
@@ -169,7 +195,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
           {...form.getInputProps('name')}
         />
         <Select
-          label='Section Type'
+          label="Section Type"
           data={CHANNEL_TYPES}
           icon={<ChannelIcon type={form.values.type} size={16} />}
           itemComponent={TypeSelectItem}
@@ -185,7 +211,7 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
 
         {!props.group_id && (
           <Select
-            label='Group'
+            label="Group"
             data={groups}
             icon={<IconFolder size={16} />}
             withinPortal
@@ -198,8 +224,8 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
         {form.values.type === 'rtc' && (
           <>
             <NumberInput
-              label='Max Participants'
-              description='The maximum allowed number of concurrent participants'
+              label="Max Participants"
+              description="The maximum allowed number of concurrent participants"
               required
               withAsterisk={false}
               min={2}
@@ -212,32 +238,28 @@ export default function CreateChannel({ context, id, innerProps: props }: Contex
         {form.values.type === 'board' && (
           <>
             <TextInput
-              label='Board Prefix'
-              description='A short prefix used to generate IDs for tasks (max 5 characters)'
-              placeholder='PRFX'
+              label="Board Prefix"
+              description="A short prefix used to generate IDs for tasks (max 5 characters)"
+              placeholder="PRFX"
               required
               withAsterisk={false}
               {...form.getInputProps('board_prefix')}
               onChange={(e) => {
                 if (e.target.value.length <= 5)
-                  form.setFieldValue('board_prefix', e.target.value.toLocaleUpperCase());
+                  form.setFieldValue(
+                    'board_prefix',
+                    e.target.value.toLocaleUpperCase(),
+                  );
               }}
             />
           </>
         )}
 
-        <Group spacing='xs' position='right' mt={16}>
-          <Button
-            variant='default'
-            onClick={() => context.closeModal(id)}
-          >
+        <Group spacing="xs" position="right" mt={16}>
+          <Button variant="default" onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button
-            variant='gradient'
-            type='submit'
-            loading={loading}
-          >
+          <Button variant="gradient" type="submit" loading={loading}>
             Create
           </Button>
         </Group>

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useRtc } from '@/lib/hooks';
 import { RtcParticipant } from '@/lib/contexts';
 
-
 ////////////////////////////////////////////////////////////
 type RtcVoiceProps = {
   participant: RtcParticipant;
@@ -32,16 +31,9 @@ function RtcVoice({ participant }: RtcVoiceProps) {
   }, [participant.volume, audioRef.current]);
 
   return (
-    <audio
-      ref={audioRef}
-      autoPlay
-      playsInline
-      muted={false}
-      controls={false}
-    />
+    <audio ref={audioRef} autoPlay playsInline muted={false} controls={false} />
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 export default function RtcVoices() {
@@ -49,7 +41,9 @@ export default function RtcVoices() {
 
   // Get a list of participants with a voice element
   const participants = useMemo<RtcParticipant[]>(() => {
-    return Object.values(rtc.participants || {}).filter(x => x.audio !== undefined);
+    return Object.values(rtc.participants || {}).filter(
+      (x) => x.audio !== undefined,
+    );
   }, [rtc.participants]);
 
   return (

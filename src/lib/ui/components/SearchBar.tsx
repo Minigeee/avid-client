@@ -1,8 +1,7 @@
-import { } from 'react';
+import {} from 'react';
 
 import { CloseButton, TextInput, TextInputProps } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-
 
 ////////////////////////////////////////////////////////////
 export type SearchBarProps = Omit<TextInputProps, 'onChange'> & {
@@ -14,15 +13,15 @@ export type SearchBarProps = Omit<TextInputProps, 'onChange'> & {
 export default function SearchBar(props: SearchBarProps) {
   return (
     <TextInput
-      placeholder='Search'
+      placeholder="Search"
       icon={<IconSearch size={18} />}
       {...props}
       onChange={(e) => props.onChange(e.currentTarget.value)}
-      rightSection={props.value && (props.value as string).length > 0 ? (
-        <CloseButton
-          onClick={() => props.onChange('')}
-        />
-      ) : undefined}
+      rightSection={
+        props.value && (props.value as string).length > 0 ? (
+          <CloseButton onClick={() => props.onChange('')} />
+        ) : undefined
+      }
     />
   );
 }

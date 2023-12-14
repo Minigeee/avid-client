@@ -1,9 +1,4 @@
-import {
-  Sx,
-  ThemeIcon,
-  Tooltip,
-  useMantineTheme,
-} from '@mantine/core';
+import { Sx, ThemeIcon, Tooltip, useMantineTheme } from '@mantine/core';
 
 import {
   IconChevronDown,
@@ -16,7 +11,6 @@ import {
 import { TaskPriority } from '@/lib/types';
 import { useMemo } from 'react';
 
-
 ////////////////////////////////////////////////////////////
 type TaskPriorityIconProps = {
   priority: TaskPriority | null | undefined;
@@ -26,7 +20,7 @@ type TaskPriorityIconProps = {
   tooltip?: boolean;
   tooltipPos?: 'left' | 'right';
   sx?: Sx;
-}
+};
 
 ////////////////////////////////////////////////////////////
 export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
@@ -37,41 +31,61 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
     const size = props.innerSize || 18;
 
     if (id === 'critical')
-      return { label: 'Critical', color: theme.colors.red[4], icon: <IconChevronsUp size={size} /> };
+      return {
+        label: 'Critical',
+        color: theme.colors.red[4],
+        icon: <IconChevronsUp size={size} />,
+      };
     else if (id === 'high')
-      return { label: 'High', color: theme.colors.orange[5], icon: <IconChevronUp size={size} /> };
+      return {
+        label: 'High',
+        color: theme.colors.orange[5],
+        icon: <IconChevronUp size={size} />,
+      };
     else if (id === 'medium')
-      return { label: 'Medium', color: theme.colors.yellow[4], icon: <IconEqual size={size} /> };
+      return {
+        label: 'Medium',
+        color: theme.colors.yellow[4],
+        icon: <IconEqual size={size} />,
+      };
     else if (id === 'low')
-      return { label: 'Low', color: theme.colors.blue[4], icon: <IconChevronDown size={size} /> };
+      return {
+        label: 'Low',
+        color: theme.colors.blue[4],
+        icon: <IconChevronDown size={size} />,
+      };
     else
-      return { label: 'None', color: theme.colors.gray[5], icon: <IconPoint size={size} /> };
+      return {
+        label: 'None',
+        color: theme.colors.gray[5],
+        icon: <IconPoint size={size} />,
+      };
   }, [props.innerSize, props.priority]);
-
 
   if (props.tooltip === false) {
     return (
-      <ThemeIcon size={props.outerSize || 21} radius='xl' sx={(theme) => {
-        // Get passed in sx
-        let sx = {};
-        if (props.sx) {
-          if (typeof props.sx === 'function')
-            sx = props.sx(theme);
-          else
-            sx = props.sx;
-        }
+      <ThemeIcon
+        size={props.outerSize || 21}
+        radius="xl"
+        sx={(theme) => {
+          // Get passed in sx
+          let sx = {};
+          if (props.sx) {
+            if (typeof props.sx === 'function') sx = props.sx(theme);
+            else sx = props.sx;
+          }
 
-        return {
-          backgroundColor: theme.colors.dark[4],
-          color: priority.color,
-          ...sx,
-        };
-      }}>
+          return {
+            backgroundColor: theme.colors.dark[4],
+            color: priority.color,
+            ...sx,
+          };
+        }}
+      >
         {priority.icon}
       </ThemeIcon>
     );
-  }
-  else {
+  } else {
     return (
       <Tooltip
         label={priority.label}
@@ -80,11 +94,15 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
         withinPortal
         sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
       >
-        <ThemeIcon size={props.outerSize || 21} radius='xl' sx={(theme) => ({
-          backgroundColor: theme.colors.dark[4],
-          color: priority.color,
-          cursor: 'default',
-        })}>
+        <ThemeIcon
+          size={props.outerSize || 21}
+          radius="xl"
+          sx={(theme) => ({
+            backgroundColor: theme.colors.dark[4],
+            color: priority.color,
+            cursor: 'default',
+          })}
+        >
           {priority.icon}
         </ThemeIcon>
       </Tooltip>

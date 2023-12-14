@@ -11,8 +11,6 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 
-
-
 ////////////////////////////////////////////////////////////
 interface TagItemProps extends React.ComponentPropsWithoutRef<'div'> {
   value: number;
@@ -24,38 +22,48 @@ interface TagItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
   ({ label, color, ...others }: TagItemProps, ref) => (
     <div ref={ref} {...others}>
-      <Box sx={{
-        width: 'fit-content',
-        padding: '1px 11px 2px 11px',
-        backgroundColor: color,
-        borderRadius: 15,
-      }}>
-        <Text size='xs' weight={500}>{label}</Text>
+      <Box
+        sx={{
+          width: 'fit-content',
+          padding: '1px 11px 2px 11px',
+          backgroundColor: color,
+          borderRadius: 15,
+        }}
+      >
+        <Text size="xs" weight={500}>
+          {label}
+        </Text>
       </Box>
     </div>
-  )
+  ),
 );
 TagSelectItem.displayName = 'TagSelectItem';
 
-
 ////////////////////////////////////////////////////////////
-function TagSelectValue({ value, label, color, onRemove, ...others }: MultiSelectValueProps & { value: string, color: string }) {
+function TagSelectValue({
+  value,
+  label,
+  color,
+  onRemove,
+  ...others
+}: MultiSelectValueProps & { value: string; color: string }) {
   return (
     <div {...others}>
-      <UnstyledButton sx={{
-        padding: '1px 5px 2px 11px',
-        backgroundColor: color,
-        borderRadius: 15,
-      }}>
-        <Group
-          spacing={2}
-          align='end'
-        >
-          <Text size='xs' weight={500}>{label}</Text>
+      <UnstyledButton
+        sx={{
+          padding: '1px 5px 2px 11px',
+          backgroundColor: color,
+          borderRadius: 15,
+        }}
+      >
+        <Group spacing={2} align="end">
+          <Text size="xs" weight={500}>
+            {label}
+          </Text>
           <CloseButton
             size={16}
             iconSize={12.5}
-            variant='transparent'
+            variant="transparent"
             tabIndex={-1}
             onMouseDown={onRemove}
           />
@@ -65,8 +73,7 @@ function TagSelectValue({ value, label, color, onRemove, ...others }: MultiSelec
   );
 }
 
-
-export default function TaskTagsSelector(props:  MultiSelectProps) {
+export default function TaskTagsSelector(props: MultiSelectProps) {
   return (
     <>
       <MultiSelect
@@ -74,7 +81,10 @@ export default function TaskTagsSelector(props:  MultiSelectProps) {
         clearable
         itemComponent={TagSelectItem}
         valueComponent={TagSelectValue}
-        styles={{ wrapper: { width: '40ch' }, value: { margin: '3px 5px 3px 2px' } }}
+        styles={{
+          wrapper: { width: '40ch' },
+          value: { margin: '3px 5px 3px 2px' },
+        }}
         {...props}
       />
     </>

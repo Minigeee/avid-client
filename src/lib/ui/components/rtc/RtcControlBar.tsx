@@ -24,11 +24,10 @@ import {
   IconScreenShareOff,
   IconSettings,
   IconVideo,
-  IconVideoOff
+  IconVideoOff,
 } from '@tabler/icons-react';
 
 import { hasPermission, useApp, useDomain, useRtc } from '@/lib/hooks';
-
 
 ////////////////////////////////////////////////////////////
 type ControlButtonProps = PropsWithChildren & {
@@ -36,24 +35,33 @@ type ControlButtonProps = PropsWithChildren & {
   disabled?: boolean;
   tooltip?: string;
   color?: [MantineColor, number];
-  onClick?: () => unknown,
+  onClick?: () => unknown;
 
   buttonProps?: ActionIconProps;
-}
+};
 
 ////////////////////////////////////////////////////////////
-function ControlButton({ active, disabled, tooltip, color, ...props }: ControlButtonProps) {
-  const CustomTooltip = useCallback(({ children }: PropsWithChildren) => (
-    <Tooltip
-      label={tooltip || ''}
-      position='top'
-      withArrow
-      openDelay={500}
-      sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
-    >
-      {children}
-    </Tooltip>
-  ), [tooltip]);
+function ControlButton({
+  active,
+  disabled,
+  tooltip,
+  color,
+  ...props
+}: ControlButtonProps) {
+  const CustomTooltip = useCallback(
+    ({ children }: PropsWithChildren) => (
+      <Tooltip
+        label={tooltip || ''}
+        position="top"
+        withArrow
+        openDelay={500}
+        sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
+      >
+        {children}
+      </Tooltip>
+    ),
+    [tooltip],
+  );
 
   return (
     <CustomTooltip>
@@ -79,25 +87,31 @@ function ControlButton({ active, disabled, tooltip, color, ...props }: ControlBu
   );
 }
 
-
 ////////////////////////////////////////////////////////////
 export default function RtcControlBar() {
   const app = useApp();
   const rtc = useRtc();
-  
+
   const [webcamLoading, setWebcamLoading] = useState<boolean>(false);
 
   // Check if viewing room
   const room_id = rtc.room_id;
-  const inRoom = app.domain === rtc.domain_id && app.channels?.[app.domain || ''] === room_id;
+  const inRoom =
+    app.domain === rtc.domain_id &&
+    app.channels?.[app.domain || ''] === room_id;
 
   // Get domain for permissions
   const domain = useDomain(rtc.domain_id || undefined);
-  
-  // Rtc permissions
-  const canSpeak = domain._exists && room_id ? hasPermission(domain, room_id, 'can_broadcast_audio') : false;
-  const canVideo =  domain._exists && room_id ? hasPermission(domain, room_id, 'can_broadcast_video') : false;
 
+  // Rtc permissions
+  const canSpeak =
+    domain._exists && room_id
+      ? hasPermission(domain, room_id, 'can_broadcast_audio')
+      : false;
+  const canVideo =
+    domain._exists && room_id
+      ? hasPermission(domain, room_id, 'can_broadcast_video')
+      : false;
 
   return (
     <Group
@@ -123,19 +137,17 @@ export default function RtcControlBar() {
             <IconArrowBackUp size={20} />
           </ControlButton>
 
-          <Divider orientation='vertical' mt={3} mb={3} />
+          <Divider orientation="vertical" mt={3} mb={3} />
         </>
       )}
-      
+
       <ControlButton
         tooltip={rtc.is_screen_shared ? 'Stop Sharing' : 'Share Screen'}
         active={rtc.is_screen_shared}
         disabled={!canVideo || rtc.is_share_locked}
         onClick={() => {
-          if (rtc.is_screen_shared)
-            rtc._mutators.screenshare.disable();
-          else
-            rtc._mutators.screenshare.enable();
+          if (rtc.is_screen_shared) rtc._mutators.screenshare.disable();
+          else rtc._mutators.screenshare.enable();
         }}
       >
         {!rtc.is_screen_shared && <IconScreenShare size={19} />}
@@ -147,8 +159,7 @@ export default function RtcControlBar() {
         buttonProps={{ loading: webcamLoading }}
         disabled={!canVideo || rtc.is_webcam_locked}
         onClick={async () => {
-          if (rtc.is_webcam_on)
-            rtc._mutators.webcam.disable();
+          if (rtc.is_webcam_on) rtc._mutators.webcam.disable();
           else {
             setWebcamLoading(true);
             await rtc._mutators.webcam.enable();
@@ -165,13 +176,9 @@ export default function RtcControlBar() {
         disabled={!canSpeak || rtc.is_mic_locked}
         onClick={() => {
           // Enable if not enabled first
-          if (!rtc.is_mic_enabled)
-            rtc._mutators.microphone.enable();
-            
-          else if (rtc.is_mic_muted)
-            rtc._mutators.microphone.unmute();
-          else
-            rtc._mutators.microphone.mute();
+          if (!rtc.is_mic_enabled) rtc._mutators.microphone.enable();
+          else if (rtc.is_mic_muted) rtc._mutators.microphone.unmute();
+          else rtc._mutators.microphone.mute();
         }}
       >
         {!rtc.is_mic_muted && <IconMicrophone size={20} />}
@@ -181,27 +188,22 @@ export default function RtcControlBar() {
       <ControlButton
         tooltip={rtc.is_deafened ? 'Undeafen' : 'Deafen'}
         onClick={() => {
-          if (rtc.is_deafened)
-            rtc._mutators.audio.undeafen();
-          else
-            rtc._mutators.audio.deafen();
+          if (rtc.is_deafened) rtc._mutators.audio.undeafen();
+          else rtc._mutators.audio.deafen();
         }}
       >
         {!rtc.is_deafened && <IconHeadphones size={20} />}
         {rtc.is_deafened && <IconHeadphonesOff size={20} />}
       </ControlButton>
 
-      <ControlButton
-        tooltip='Settings'
-        disabled
-      >
+      <ControlButton tooltip="Settings" disabled>
         <IconSettings size={20} />
       </ControlButton>
-      
-      <Divider orientation='vertical' mt={3} mb={3} />
+
+      <Divider orientation="vertical" mt={3} mb={3} />
 
       <ControlButton
-        tooltip='Leave'
+        tooltip="Leave"
         color={['red', 5]}
         onClick={() => rtc._mutators.disconnect()}
       >

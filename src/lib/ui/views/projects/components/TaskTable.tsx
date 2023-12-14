@@ -43,14 +43,13 @@ import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { merge } from 'lodash';
 
-
 ////////////////////////////////////////////////////////////
 const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
   return (
     <>
       <Checkbox
         {...props}
-        size='xs'
+        size="xs"
         styles={(theme) => ({
           input: {
             cursor: 'pointer',
@@ -61,10 +60,9 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
         })}
       />
     </>
-  )
+  );
 });
 CustomCheckbox.displayName = 'CustomTaskTableCheckbox';
-
 
 ////////////////////////////////////////////////////////////
 type TaskTableProps = {
@@ -90,7 +88,9 @@ type TaskTableProps = {
   /** The columns that should be shown */
   columns?: (keyof ExpandedTask)[];
   /** Column overrides */
-  columnOverrides?: Partial<Record<keyof ExpandedTask, TableColumn<ExpandedTask>>>;
+  columnOverrides?: Partial<
+    Record<keyof ExpandedTask, TableColumn<ExpandedTask>>
+  >;
   /** Custom action column */
   actionColumn?: TableColumn<ExpandedTask>;
   /** Indicates if the table should multi selectable */
@@ -114,7 +114,11 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
   const session = useSession();
 
   // Check if user can manage any task
-  const canManageAny = hasPermission(props.domain, board.id, 'can_manage_tasks');
+  const canManageAny = hasPermission(
+    props.domain,
+    board.id,
+    'can_manage_tasks',
+  );
 
   // The task currently being hovered
   const [hovered, setHovered] = useState<ExpandedTask | null>(null);
@@ -124,7 +128,15 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
 
   // Minimize times columns are reconstructed
   const columns = useMemo(() => {
-    const order = props.columns || ['priority', 'id', 'summary', 'status', 'assignee', 'due_date', 'tags'];
+    const order = props.columns || [
+      'priority',
+      'id',
+      'summary',
+      'status',
+      'assignee',
+      'due_date',
+      'tags',
+    ];
     const map = {
       priority: {
         name: 'Priority',
@@ -132,7 +144,12 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         grow: 0.5,
         width: '6rem',
         cell: (task: ExpandedTask) => (
-          <TaskPriorityIcon priority={task.priority} outerSize={24} innerSize={18} sx={{}} />
+          <TaskPriorityIcon
+            priority={task.priority}
+            outerSize={24}
+            innerSize={18}
+            sx={{}}
+          />
         ),
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) =>
@@ -151,36 +168,57 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         name: 'Summary',
         grow: 8,
         cell: (task: ExpandedTask) => (
-          <Group spacing={6} align='baseline'>
-            <Text span data-tag='allowRowEvents'>{task.summary}</Text>
+          <Group spacing={6} align="baseline">
+            <Text span data-tag="allowRowEvents">
+              {task.summary}
+            </Text>
             {task.subtasks && task.subtasks.length > 0 && (
               <Tooltip
-                label={`${task.subtasks.length} subtask${task.subtasks.length > 1 ? 's' : ''}`}
-                position='right'
+                label={`${task.subtasks.length} subtask${
+                  task.subtasks.length > 1 ? 's' : ''
+                }`}
+                position="right"
                 withArrow
                 sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
               >
-                <Group noWrap spacing={1} align='center' sx={(theme) => ({
-                  color: theme.colors.dark[2],
-                  cursor: 'default'
-                })}>
-                  <Text size='sm' data-tag='allowRowEvents'>{task.subtasks.length}</Text>
-                  <IconSubtask data-tag='allowRowEvents' size={15} style={{ marginTop: '1px' }} />
+                <Group
+                  noWrap
+                  spacing={1}
+                  align="center"
+                  sx={(theme) => ({
+                    color: theme.colors.dark[2],
+                    cursor: 'default',
+                  })}
+                >
+                  <Text size="sm" data-tag="allowRowEvents">
+                    {task.subtasks.length}
+                  </Text>
+                  <IconSubtask
+                    data-tag="allowRowEvents"
+                    size={15}
+                    style={{ marginTop: '1px' }}
+                  />
                 </Group>
               </Tooltip>
             )}
             {task.dependencies && task.dependencies.length > 0 && (
               <Tooltip
-                label={`${task.dependencies.length} dependenc${task.dependencies.length > 1 ? 'ies' : 'y'}`}
-                position='right'
+                label={`${task.dependencies.length} dependenc${
+                  task.dependencies.length > 1 ? 'ies' : 'y'
+                }`}
+                position="right"
                 withArrow
                 sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
               >
-                <Group spacing={1} align='center' sx={(theme) => ({
-                  color: theme.colors.dark[2],
-                  cursor: 'default'
-                })}>
-                  <Text size='sm'>{task.dependencies.length}</Text>
+                <Group
+                  spacing={1}
+                  align="center"
+                  sx={(theme) => ({
+                    color: theme.colors.dark[2],
+                    cursor: 'default',
+                  })}
+                >
+                  <Text size="sm">{task.dependencies.length}</Text>
                   <IconGitMerge size={15} style={{ marginTop: '1px' }} />
                 </Group>
               </Tooltip>
@@ -188,28 +226,37 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           </Group>
         ),
       },
-      status: props.statuses ? {
-        name: 'Status',
-        center: true,
-        grow: 2,
-        style: { fontWeight: 600, fontSize: 14 },
-        cell: (task: ExpandedTask) => (
-          <Text data-tag='allowRowEvents' sx={{
-            padding: '1px 13px 2px 11px',
-            width: 'fit-content',
-            maxWidth: 'calc(100% - 1.0rem)',
-            backgroundColor: props.statuses?.[task.status].color,
-            borderRadius: 3,
-            textOverflow: 'ellipsis',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-          }}>
-            {props.statuses?.[task.status].label}
-          </Text>
-        ),
-        sortable: true,
-        sortFunction: (a: ExpandedTask, b: ExpandedTask) => props.statuses ? props.statuses[a.status].index - props.statuses[b.status].index : 0,
-      } : undefined,
+      status: props.statuses
+        ? {
+            name: 'Status',
+            center: true,
+            grow: 2,
+            style: { fontWeight: 600, fontSize: 14 },
+            cell: (task: ExpandedTask) => (
+              <Text
+                data-tag="allowRowEvents"
+                sx={{
+                  padding: '1px 13px 2px 11px',
+                  width: 'fit-content',
+                  maxWidth: 'calc(100% - 1.0rem)',
+                  backgroundColor: props.statuses?.[task.status].color,
+                  borderRadius: 3,
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {props.statuses?.[task.status].label}
+              </Text>
+            ),
+            sortable: true,
+            sortFunction: (a: ExpandedTask, b: ExpandedTask) =>
+              props.statuses
+                ? props.statuses[a.status].index -
+                  props.statuses[b.status].index
+                : 0,
+          }
+        : undefined,
       assignee: {
         name: 'Assignee',
         center: true,
@@ -217,16 +264,23 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         cell: (task: ExpandedTask) =>
           task.assignee ? (
             <Box onClick={(ev) => ev.stopPropagation()}>
-              <MemberPopover member={task.assignee} domain={props.domain} tooltip={task.assignee.alias} tooltipProps={{ position: 'left', withArrow: true, openDelay: 500 }}>
-                <MemberAvatar
-                  member={task.assignee}
-                  size={32}
-                />
+              <MemberPopover
+                member={task.assignee}
+                domain={props.domain}
+                tooltip={task.assignee.alias}
+                tooltipProps={{
+                  position: 'left',
+                  withArrow: true,
+                  openDelay: 500,
+                }}
+              >
+                <MemberAvatar member={task.assignee} size={32} />
               </MemberPopover>
             </Box>
           ) : undefined,
         sortable: true,
-        sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
+        sortFunction: (a: ExpandedTask, b: ExpandedTask) =>
+          a.assignee?.alias.localeCompare(b.assignee?.alias || '') || -1,
       },
       due_date: {
         name: 'Due Date',
@@ -236,68 +290,86 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           task.due_date ? (
             <Tooltip
               label={moment(task.due_date).format('ll')}
-              position='right'
+              position="right"
               withArrow
-              sx={(theme) => ({ backgroundColor: theme.colors.dark[8], fontWeight: 400 })}
+              sx={(theme) => ({
+                backgroundColor: theme.colors.dark[8],
+                fontWeight: 400,
+              })}
             >
-              <Text sx={(theme) => ({
-                padding: '1px 11px 2px 11px',
-                backgroundColor: theme.colors.dark[4],
-                borderRadius: 15,
-                cursor: 'default',
-              })}>
+              <Text
+                sx={(theme) => ({
+                  padding: '1px 11px 2px 11px',
+                  backgroundColor: theme.colors.dark[4],
+                  borderRadius: 15,
+                  cursor: 'default',
+                })}
+              >
                 {moment(task.due_date).calendar({
                   sameDay: '[Today]',
                   nextDay: '[Tomorrow]',
                   nextWeek: 'dddd',
                   lastDay: '[Yesterday]',
                   lastWeek: 'l',
-                  sameElse: 'l'
+                  sameElse: 'l',
                 })}
               </Text>
             </Tooltip>
           ) : undefined,
         sortable: true,
-        sortFunction: (a: ExpandedTask, b: ExpandedTask) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime(),
+        sortFunction: (a: ExpandedTask, b: ExpandedTask) =>
+          new Date(a.due_date || 0).getTime() -
+          new Date(b.due_date || 0).getTime(),
       },
-      tags: props.tags ? {
-        name: 'Tags',
-        grow: 3,
-        cell: (task: ExpandedTask) => {
-          if (!props.tags || !task.tags || task.tags.length === 0) return;
+      tags: props.tags
+        ? {
+            name: 'Tags',
+            grow: 3,
+            cell: (task: ExpandedTask) => {
+              if (!props.tags || !task.tags || task.tags.length === 0) return;
 
-          // Prioritize tag group if grouping by tags
-          let tags: string[];
-          if (props.group && props.groupingField === 'tags')
-            tags = [props.group, ...task.tags.filter(x => x !== props.group).sort()];
-          else
-            tags = [...task.tags].sort();
+              // Prioritize tag group if grouping by tags
+              let tags: string[];
+              if (props.group && props.groupingField === 'tags')
+                tags = [
+                  props.group,
+                  ...task.tags.filter((x) => x !== props.group).sort(),
+                ];
+              else tags = [...task.tags].sort();
 
-          return (
-            <Group spacing={6} mb={task.assignee ? 0 : 5}>
-              {tags.map((id, i) => {
-                const tag = props.tags?.[id];
-                if (!tag) return;
+              return (
+                <Group spacing={6} mb={task.assignee ? 0 : 5}>
+                  {tags.map((id, i) => {
+                    const tag = props.tags?.[id];
+                    if (!tag) return;
 
-                return (
-                  <Box key={id} sx={{
-                    padding: '1px 11px 2px 11px',
-                    backgroundColor: tag.color,
-                    borderRadius: 15,
-                    cursor: 'default',
-                  }}>
-                    <Text size='xs' weight={500}>{tag.label}</Text>
-                  </Box>
-                );
-              })}
-            </Group>
-          );
-        },
-      } : undefined,
+                    return (
+                      <Box
+                        key={id}
+                        sx={{
+                          padding: '1px 11px 2px 11px',
+                          backgroundColor: tag.color,
+                          borderRadius: 15,
+                          cursor: 'default',
+                        }}
+                      >
+                        <Text size="xs" weight={500}>
+                          {tag.label}
+                        </Text>
+                      </Box>
+                    );
+                  })}
+                </Group>
+              );
+            },
+          }
+        : undefined,
     } as Partial<Record<keyof ExpandedTask, TableColumn<ExpandedTask>>>;
 
     // Create array
-    const cols = order.map(k => merge(map[k], props.columnOverrides?.[k] || {})).filter(x => x) as TableColumn<ExpandedTask>[];
+    const cols = order
+      .map((k) => merge(map[k], props.columnOverrides?.[k] || {}))
+      .filter((x) => x) as TableColumn<ExpandedTask>[];
 
     // Action column
     if (props.actionColumn) {
@@ -360,18 +432,22 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
     setSelected([]);
   }, [toggleCleared]);
 
-
   // Only display if tasks is array
   if (!Array.isArray(tasks)) return null;
 
   return (
     <ContextMenu.Trigger
-      context={{
-        task: hovered,
-        selected: selected,
-        onAction: onMenuAction,
-      } as TaskMenuContext}
-      disabled={(!hovered && !selected.length) || (!canManageAny && hovered?.assignee?.id !== session.profile_id)}
+      context={
+        {
+          task: hovered,
+          selected: selected,
+          onAction: onMenuAction,
+        } as TaskMenuContext
+      }
+      disabled={
+        (!hovered && !selected.length) ||
+        (!canManageAny && hovered?.assignee?.id !== session.profile_id)
+      }
       {...props.wrapperProps}
     >
       <DataTable
@@ -382,7 +458,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               borderRadius: '6px',
               backgroundColor: theme.colors.dark[8],
               color: theme.colors.dark[0],
-            }
+            },
           },
           tableWrapper: {
             style: {
@@ -398,7 +474,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               backgroundColor: 'transparent',
               color: theme.colors.dark[0],
               borderBottom: `1px solid ${theme.colors.dark[5]}`,
-            }
+            },
           },
           rows: {
             style: {
@@ -465,11 +541,14 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             },
           },
         }}
-        sortIcon={<IconChevronDown size={10} style={{ marginTop: '5px', marginLeft: '1px' }} />}
-
+        sortIcon={
+          <IconChevronDown
+            size={10}
+            style={{ marginTop: '5px', marginLeft: '1px' }}
+          />
+        }
         columns={columns}
         data={tasks}
-
         responsive={false}
         pointerOnHover
         highlightOnHover
@@ -484,22 +563,22 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         }}
         onRowMouseEnter={setHovered}
         onRowMouseLeave={(row) => {
-          if (hovered?.id === row.id)
-            setHovered(null);
+          if (hovered?.id === row.id) setHovered(null);
         }}
-
         pagination={tasks.length > 20}
         paginationPerPage={20}
         paginationComponentOptions={{
           noRowsPerPage: true,
         }}
-
-        noDataComponent={props.noDataOverride || 'There are no tasks to display'}
-
+        noDataComponent={
+          props.noDataOverride || 'There are no tasks to display'
+        }
         selectableRows={props.multiselectable !== false}
         // @ts-ignore
         selectableRowsComponent={CustomCheckbox}
-        selectableRowsComponentProps={{ indeterminate: (indeterminate: boolean) => indeterminate }}
+        selectableRowsComponentProps={{
+          indeterminate: (indeterminate: boolean) => indeterminate,
+        }}
         onSelectedRowsChange={({ selectedRows }) => setSelected(selectedRows)}
         clearSelectedRows={toggleCleared}
       />

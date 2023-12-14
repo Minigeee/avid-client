@@ -14,7 +14,6 @@ import {
 } from '@/lib/hooks';
 import { Label } from '@/lib/types';
 
-
 ////////////////////////////////////////////////////////////
 type ListViewProps = {
   board: BoardWrapper;
@@ -25,24 +24,29 @@ type ListViewProps = {
   filtered: NoGrouped | SingleGrouped;
   setFiltered: (filtered: NoGrouped | SingleGrouped) => any;
   grouper: GroupableFields | null;
-}
+};
 
 ////////////////////////////////////////////////////////////
-export default function ListView({ board, filtered, grouper, ...props }: ListViewProps) {
+export default function ListView({
+  board,
+  filtered,
+  grouper,
+  ...props
+}: ListViewProps) {
   // Currently expanded fields per group by view
   const [expanded, setExpanded] = useState<Record<string, string[]>>({});
   // Memo this so it doesn't change every render
   const groups = useMemo<string[]>(() => Object.keys(filtered), [filtered]);
 
-
   // Determine if user can create tasks
-  const creatable = hasPermission(props.domain, board.id, 'can_manage_tasks') || hasPermission(props.domain, board.id, 'can_manage_own_tasks');
+  const creatable =
+    hasPermission(props.domain, board.id, 'can_manage_tasks') ||
+    hasPermission(props.domain, board.id, 'can_manage_own_tasks');
 
   // Tag map
   const tagMap = useMemo<Record<string, Label>>(() => {
     const map: Record<string, Label> = {};
-    for (const tag of board.tags)
-      map[tag.id] = tag;
+    for (const tag of board.tags) map[tag.id] = tag;
     return map;
   }, [board.tags]);
 
@@ -55,7 +59,6 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
     }
     return map;
   }, [board.statuses]);
-
 
   return (
     <TaskContextMenu
@@ -71,7 +74,6 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
           groups={groups}
           expanded={expanded}
           setExpanded={setExpanded}
-
           component={(group) => (
             <TaskTable
               board={board}
@@ -87,7 +89,6 @@ export default function ListView({ board, filtered, grouper, ...props }: ListVie
               wrapperProps={{ mb: '2.5rem' }}
             />
           )}
-
           tagMap={tagMap}
           collection={props.collection}
           grouper={grouper}

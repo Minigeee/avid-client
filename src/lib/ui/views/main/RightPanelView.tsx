@@ -1,4 +1,14 @@
-import { ExoticComponent, RefObject, forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ExoticComponent,
+  RefObject,
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   Accordion,
@@ -13,20 +23,31 @@ import {
   Text,
   TextInput,
   Tooltip,
-  UnstyledButton
+  UnstyledButton,
 } from '@mantine/core';
 import { useDebouncedValue, useIntersection } from '@mantine/hooks';
-import { IconBell, IconCalendarTime, IconSearch, IconUsers } from '@tabler/icons-react';
+import {
+  IconBell,
+  IconCalendarTime,
+  IconSearch,
+  IconUsers,
+} from '@tabler/icons-react';
 
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 
 import config from '@/config';
-import { DomainWrapper, listMembers, listMembersLocal, useApp, useMemberQuery, useSession } from '@/lib/hooks';
+import {
+  DomainWrapper,
+  listMembers,
+  listMembersLocal,
+  useApp,
+  useMemberQuery,
+  useSession,
+} from '@/lib/hooks';
 import { ExpandedMember, RightPanelTab, Role } from '@/lib/types';
 
 import { range, throttle } from 'lodash';
 import MemberPopover from '../../components/MemberPopover';
-
 
 ////////////////////////////////////////////////////////////
 type MembersPageProps = {
@@ -46,8 +67,11 @@ type MembersPageProps = {
 function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
   const limit = config.app.member.query_limit;
   const numElems = props.total - props.page * limit;
-  
-  const { ref: pageRef, entry } = useIntersection({ root: props.containerRef.current, threshold: 0 });
+
+  const { ref: pageRef, entry } = useIntersection({
+    root: props.containerRef.current,
+    threshold: 0,
+  });
 
   const [intersecting, setIntersecting] = useState<boolean>(props.page === 0);
   const [isIntersecting] = useDebouncedValue(intersecting, 200);
@@ -57,30 +81,38 @@ function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
   }, [entry?.isIntersecting || false]);
 
   // Only load query if intersecting
-  const members = useMemberQuery(props.page === 0 && entry?.isIntersecting || isIntersecting ? props.domain_id : undefined, {
-    page: props.page,
-    online: props.online,
-    search: props.debouncedSearch,
-  });
-
+  const members = useMemberQuery(
+    (props.page === 0 && entry?.isIntersecting) || isIntersecting
+      ? props.domain_id
+      : undefined,
+    {
+      page: props.page,
+      online: props.online,
+      search: props.debouncedSearch,
+    },
+  );
 
   // Filter search results
   const filtered = useMemo(() => {
-    if (!isIntersecting || !props.search && members._exists)
+    if (!isIntersecting || (!props.search && members._exists))
       return members.data || [];
 
     if (!members._exists) {
       const limit = config.app.member.query_limit;
-      return listMembersLocal(props.domain_id, { search: props.search }).slice(props.page * limit, (props.page + 1) * limit);
+      return listMembersLocal(props.domain_id, { search: props.search }).slice(
+        props.page * limit,
+        (props.page + 1) * limit,
+      );
     }
 
     const search = props.search.toLocaleLowerCase();
-    return members.data.filter(x => x.alias.toLocaleLowerCase().indexOf(search) >= 0);
+    return members.data.filter(
+      (x) => x.alias.toLocaleLowerCase().indexOf(search) >= 0,
+    );
   }, [members.data, props.search]);
 
-
   if (!isIntersecting)
-    return (<div ref={pageRef} style={{ height: `${numElems * 2.6}rem` }} />);
+    return <div ref={pageRef} style={{ height: `${numElems * 2.6}rem` }} />;
   else {
     return (
       <Stack ref={pageRef} spacing={0}>
@@ -96,7 +128,6 @@ function MembersPage({ MemberListItem, ...props }: MembersPageProps) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////
 function MembersTab(props: RightPanelViewProps) {
   // Used for infinite scroll
@@ -108,80 +139,102 @@ function MembersTab(props: RightPanelViewProps) {
   const debouncedSearch = search ? debouncedSearchRaw : '';
 
   // Get member counts
-  const allMembers = useMemberQuery(props.domain.id, { search: debouncedSearch }); // Use all member query bc it will be used elsewhere (reduce query calls)
-  const online = useMemberQuery(props.domain.id, { online: true, search: debouncedSearch });
+  const allMembers = useMemberQuery(props.domain.id, {
+    search: debouncedSearch,
+  }); // Use all member query bc it will be used elsewhere (reduce query calls)
+  const online = useMemberQuery(props.domain.id, {
+    online: true,
+    search: debouncedSearch,
+  });
   const counts = useMemo(() => {
-    if (allMembers._exists && online._exists && search === debouncedSearch) return { total: allMembers.count, online: online.count };
+    if (allMembers._exists && online._exists && search === debouncedSearch)
+      return { total: allMembers.count, online: online.count };
 
     const filtered = listMembersLocal(props.domain.id, { search });
-    const onlineFiltered = filtered.filter(x => x.online);
+    const onlineFiltered = filtered.filter((x) => x.online);
     return {
       total: Math.max(filtered.length, allMembers.count || 0),
       online: Math.max(onlineFiltered.length, online.count || 0),
     };
   }, [allMembers.count, online.count, search]);
-  
-  const offline = { count: counts.total - counts.online };
 
+  const offline = { count: counts.total - counts.online };
 
   // Member item
   const MemberListItem = useMemo(() => {
-    const component = memo(forwardRef<HTMLDivElement, { member: ExpandedMember; online?: boolean }>(
-      ({ member, online, ...others }, ref) => {
-        let alias = member.alias?.replace(/<[^>]*>/g, '') || '';
-        if (search.length > 0) {
-          const idx = alias.toLocaleLowerCase().indexOf(search.toLocaleLowerCase());
-          if (idx >= 0)
-            alias = `${alias.slice(0, idx)}<b>${alias.slice(idx, idx + search.length)}</b>${alias.slice(idx + search.length)}`;
-        }
+    const component = memo(
+      forwardRef<HTMLDivElement, { member: ExpandedMember; online?: boolean }>(
+        ({ member, online, ...others }, ref) => {
+          let alias = member.alias?.replace(/<[^>]*>/g, '') || '';
+          if (search.length > 0) {
+            const idx = alias
+              .toLocaleLowerCase()
+              .indexOf(search.toLocaleLowerCase());
+            if (idx >= 0)
+              alias = `${alias.slice(0, idx)}<b>${alias.slice(
+                idx,
+                idx + search.length,
+              )}</b>${alias.slice(idx + search.length)}`;
+          }
 
-        return (
-          <MemberPopover domain={props.domain} member={member} popoverProps={{ position: 'left-start' }} withinPortal>
-            <UnstyledButton
-              sx={(theme) => ({
-                padding: '0rem 0.5rem',
-                borderRadius: theme.radius.sm,
-                '&:hover': {
-                  backgroundColor: theme.colors.dark[5],
-                },
-              })}
+          return (
+            <MemberPopover
+              domain={props.domain}
+              member={member}
+              popoverProps={{ position: 'left-start' }}
+              withinPortal
             >
-              <Group ref={ref} {...others} spacing={6} noWrap sx={{
-                height: '2.6rem',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                opacity: online ? undefined : 0.6,
-              }}>
-                <Indicator
-                  inline
-                  position='bottom-end'
-                  offset={4}
-                  size={12}
-                  color='teal'
-                  withBorder
-                  disabled={!online}
+              <UnstyledButton
+                sx={(theme) => ({
+                  padding: '0rem 0.5rem',
+                  borderRadius: theme.radius.sm,
+                  '&:hover': {
+                    backgroundColor: theme.colors.dark[5],
+                  },
+                })}
+              >
+                <Group
+                  ref={ref}
+                  {...others}
+                  spacing={6}
+                  noWrap
+                  sx={{
+                    height: '2.6rem',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    opacity: online ? undefined : 0.6,
+                  }}
                 >
-                  <MemberAvatar size={32} member={member} />
-                </Indicator>
-                <Text
-                  ml={6}
-                  size='sm'
-                  weight={search.length > 0 ? 400 : 600}
-                  sx={(theme) => ({ color: theme.colors.gray[4] })}
-                  dangerouslySetInnerHTML={{ __html: alias }}
-                />
-              </Group>
-            </UnstyledButton>
-          </MemberPopover>
-        );
-      }
-    ));
+                  <Indicator
+                    inline
+                    position="bottom-end"
+                    offset={4}
+                    size={12}
+                    color="teal"
+                    withBorder
+                    disabled={!online}
+                  >
+                    <MemberAvatar size={32} member={member} />
+                  </Indicator>
+                  <Text
+                    ml={6}
+                    size="sm"
+                    weight={search.length > 0 ? 400 : 600}
+                    sx={(theme) => ({ color: theme.colors.gray[4] })}
+                    dangerouslySetInnerHTML={{ __html: alias }}
+                  />
+                </Group>
+              </UnstyledButton>
+            </MemberPopover>
+          );
+        },
+      ),
+    );
     component.displayName = 'MemberListItem';
 
     return component;
   }, [search]);
-
 
   // Calculations
   const limit = config.app.member.query_limit;
@@ -190,23 +243,27 @@ function MembersTab(props: RightPanelViewProps) {
     offline: Math.ceil((offline.count || 0) / limit),
   };
 
-  
   return (
     <>
       <TextInput
         m={8}
-        placeholder='Search members'
+        placeholder="Search members"
         icon={<IconSearch size={18} />}
         value={search}
         onChange={(e) => setSearch(e.currentTarget.value)}
-        rightSection={search.length > 0 ? (
-          <CloseButton
-            onClick={() => setSearch('')}
-          />
-        ) : undefined}
+        rightSection={
+          search.length > 0 ? (
+            <CloseButton onClick={() => setSearch('')} />
+          ) : undefined
+        }
       />
 
-      <Divider sx={(theme) => ({ color: theme.colors.dark[5], borderColor: theme.colors.dark[5] })} />
+      <Divider
+        sx={(theme) => ({
+          color: theme.colors.dark[5],
+          borderColor: theme.colors.dark[5],
+        })}
+      />
 
       <ScrollArea p={8} ref={containerRef} sx={{ flexGrow: 1 }}>
         <Accordion
@@ -235,11 +292,11 @@ function MembersTab(props: RightPanelViewProps) {
             },
           })}
         >
-          <Accordion.Item value='online'>
+          <Accordion.Item value="online">
             <Accordion.Control>Online - {counts.online}</Accordion.Control>
             <Accordion.Panel>
               <Stack mb={16} spacing={0}>
-                {range(numPages.online).map(i => (
+                {range(numPages.online).map((i) => (
                   <MembersPage
                     key={i}
                     containerRef={containerRef}
@@ -256,11 +313,13 @@ function MembersTab(props: RightPanelViewProps) {
             </Accordion.Panel>
           </Accordion.Item>
 
-          <Accordion.Item value='offline'>
-            <Accordion.Control>Offline - {offline.count || 0}</Accordion.Control>
+          <Accordion.Item value="offline">
+            <Accordion.Control>
+              Offline - {offline.count || 0}
+            </Accordion.Control>
             <Accordion.Panel>
               <Stack mb={16} spacing={0}>
-                {range(numPages.offline).map(i => (
+                {range(numPages.offline).map((i) => (
                   <MembersPage
                     key={i}
                     containerRef={containerRef}
@@ -282,7 +341,6 @@ function MembersTab(props: RightPanelViewProps) {
   );
 }
 
-
 ////////////////////////////////////////////////////////////
 type RightPanelViewProps = {
   domain: DomainWrapper;
@@ -296,24 +354,33 @@ export default function RightPanelView(props: RightPanelViewProps) {
   const rpTab = app.right_panel_tab[props.domain.id] || 'members';
 
   return (
-    <Flex direction='column' sx={(theme) => ({
-      flexShrink: 0,
-      width: '16rem',
-      height: '100%',
-      backgroundColor: theme.colors.dark[6],
-    })}>
-      <Flex wrap='nowrap' align='center' sx={(theme) => ({
-        width: '100%',
-        height: '3.0rem',
-        paddingLeft: '0.25rem',
-        paddingRight: '0.375rem',
-        borderBottom: `1px solid ${theme.colors.dark[4]}`
-      })}>
+    <Flex
+      direction="column"
+      sx={(theme) => ({
+        flexShrink: 0,
+        width: '16rem',
+        height: '100%',
+        backgroundColor: theme.colors.dark[6],
+      })}
+    >
+      <Flex
+        wrap="nowrap"
+        align="center"
+        sx={(theme) => ({
+          width: '100%',
+          height: '3.0rem',
+          paddingLeft: '0.25rem',
+          paddingRight: '0.375rem',
+          borderBottom: `1px solid ${theme.colors.dark[4]}`,
+        })}
+      >
         <Tabs
           value={rpTab}
-          onTabChange={(value) => app._mutators.setRightPanelTab(value as RightPanelTab)}
-          variant='pills'
-          color='dark'
+          onTabChange={(value) =>
+            app._mutators.setRightPanelTab(value as RightPanelTab)
+          }
+          variant="pills"
+          color="dark"
           styles={(theme) => ({
             root: {
               flexGrow: 1,
@@ -339,26 +406,36 @@ export default function RightPanelView(props: RightPanelViewProps) {
           })}
         >
           <Tabs.List>
-            <Tooltip label='Members' withArrow>
-              <Tabs.Tab icon={<IconUsers size={18} />} value='members' />
+            <Tooltip label="Members" withArrow>
+              <Tabs.Tab icon={<IconUsers size={18} />} value="members" />
             </Tooltip>
-            <Tooltip label='Activity' withArrow>
-              <Tabs.Tab icon={<IconBell size={18} />} value='activity' disabled />
+            <Tooltip label="Activity" withArrow>
+              <Tabs.Tab
+                icon={<IconBell size={18} />}
+                value="activity"
+                disabled
+              />
             </Tooltip>
-            <Tooltip label='Upcoming' withArrow>
-              <Tabs.Tab icon={<IconCalendarTime size={18} />} value='upcoming' disabled />
+            <Tooltip label="Upcoming" withArrow>
+              <Tabs.Tab
+                icon={<IconCalendarTime size={18} />}
+                value="upcoming"
+                disabled
+              />
             </Tooltip>
           </Tabs.List>
         </Tabs>
 
         <CloseButton
-          size='lg'
+          size="lg"
           iconSize={20}
           onClick={() => app._mutators.setRightPanelOpened(false)}
-          sx={(theme) => ({ '&:hover': { backgroundColor: theme.colors.dark[5] } })}
+          sx={(theme) => ({
+            '&:hover': { backgroundColor: theme.colors.dark[5] },
+          })}
         />
       </Flex>
       <MembersTab {...props} />
     </Flex>
-  )
+  );
 }

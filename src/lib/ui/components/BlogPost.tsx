@@ -5,7 +5,6 @@ import { useChatStyles } from '@/lib/hooks';
 import hljs from 'highlight.js';
 import MarkdownIt from 'markdown-it';
 
-
 /** Markdown renderer */
 const _md = new MarkdownIt({
   linkify: true,
@@ -16,11 +15,11 @@ const _md = new MarkdownIt({
       try {
         const result = hljs.highlight(str, { language: lang }).value;
         return result;
-      } catch (__) { }
+      } catch (__) {}
     }
 
     return ''; // use external default escaping
-  }
+  },
 })
   .use(require('markdown-it-sub'))
   .use(require('markdown-it-sup'))
@@ -30,7 +29,6 @@ const _md = new MarkdownIt({
     delimiters: 'dollars',
   });
 
-  
 ////////////////////////////////////////////////////////////
 export type BlogPostProps = {
   post: string;
@@ -47,7 +45,6 @@ export default function BlogPost(props: BlogPostProps) {
   const rendered = useMemo(() => {
     return _md.render(props.post);
   }, [props.post]);
-
 
   return (
     <div

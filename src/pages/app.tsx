@@ -1,11 +1,7 @@
 import { NextRouter, useRouter } from 'next/router';
 import { useEffect } from 'react';
 
-import {
-  Center,
-  Loader,
-  ScrollArea,
-} from '@mantine/core';
+import { Center, Loader, ScrollArea } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 
 import { modals } from '@/lib/ui/modals';
@@ -19,14 +15,29 @@ import ConfirmModal from '@/lib/ui/modals/ConfirmModal';
 import config from '@/config';
 import AppProvider from '@/lib/contexts/app';
 import { RtcProvider } from '@/lib/contexts';
-import { setDomainDefault, setMemberQuery, setMembers, setProfileDefault, useProfile, useRtc, useSession } from '@/lib/hooks';
+import {
+  setDomainDefault,
+  setMemberQuery,
+  setMembers,
+  setProfileDefault,
+  useProfile,
+  useRtc,
+  useSession,
+} from '@/lib/hooks';
 import { connect, useRealtimeHandlers } from '@/lib/utility/realtime';
 import { query, sql } from '@/lib/db';
-import { Domain, ExpandedDomain, ExpandedMember, ExpandedProfile, Member, Profile, RemoteAppState } from '@/lib/types';
+import {
+  Domain,
+  ExpandedDomain,
+  ExpandedMember,
+  ExpandedProfile,
+  Member,
+  Profile,
+  RemoteAppState,
+} from '@/lib/types';
 import { GetServerSideProps } from 'next';
 import { refresh } from '@/lib/utility/authenticate';
 import { api } from '@/lib/api';
-
 
 ////////////////////////////////////////////////////////////
 function ScreenState({ router }: { router: NextRouter }) {
@@ -58,26 +69,23 @@ function ScreenState({ router }: { router: NextRouter }) {
   );
 }
 
-
 ////////////////////////////////////////////////////////////
 export default function App(props: AppProps) {
   const router = useRouter();
 
   const session = useSession();
   const profile = useProfile(session.profile_id);
-  
+
   // Initialization logic (auth, emotes)
   useEffect(() => {
     // Should be only client side
     if (typeof window === 'undefined') return;
 
     // Set initial profile
-    if (props.profile)
-      setProfileDefault(props.profile);
+    if (props.profile) setProfileDefault(props.profile);
 
     // Set initial domain
-    if (props.domain)
-      setDomainDefault(props.domain);
+    if (props.domain) setDomainDefault(props.domain);
 
     // Set initial members and domain
     if (props.app?.domain) {
@@ -85,8 +93,16 @@ export default function App(props: AppProps) {
 
       if (props.counts) {
         setMemberQuery(props.app.domain, { page: 0 }, props.counts.total);
-        setMemberQuery(props.app.domain, { page: 0, online: true }, props.counts.online);
-        setMemberQuery(props.app.domain, { page: 0, online: false }, props.counts.offline);
+        setMemberQuery(
+          props.app.domain,
+          { page: 0, online: true },
+          props.counts.online,
+        );
+        setMemberQuery(
+          props.app.domain,
+          { page: 0, online: false },
+          props.counts.offline,
+        );
       }
     }
 
@@ -97,12 +113,11 @@ export default function App(props: AppProps) {
         // Redirect to log in if refresh failed
         if (!success)
           // Redirect while keeping all query parameters
-          router.replace(`/login?redirect=${encodeURIComponent(router.asPath)}`);
+          router.replace(
+            `/login?redirect=${encodeURIComponent(router.asPath)}`,
+          );
       });
-    }
-
-    else
-      session._mutators.applyToken(props.token);
+    } else session._mutators.applyToken(props.token);
   }, []);
 
   // Realtime server
@@ -111,12 +126,11 @@ export default function App(props: AppProps) {
     connect(session);
   }, [session.token, session.profile_id]);
 
-
   // Loading screen
   if (!session._exists || (session.profile_id && !profile._exists)) {
     return (
       <Center style={{ height: '80vh' }}>
-        <Loader variant='bars' />
+        <Loader variant="bars" />
       </Center>
     );
   }
@@ -131,11 +145,14 @@ export default function App(props: AppProps) {
   }
 
   return (
-    <ErrorBoundary height='90vh'>
+    <ErrorBoundary height="90vh">
       <AppProvider initial={props.app}>
         <RtcProvider>
           <ConfirmModal>
-            <ModalsProvider modals={modals} modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}>
+            <ModalsProvider
+              modals={modals}
+              modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}
+            >
               <ScreenState router={router} />
             </ModalsProvider>
           </ConfirmModal>
@@ -145,50 +162,52 @@ export default function App(props: AppProps) {
   );
 }
 
-
 ////////////////////////////////////////////////////////////
 const MEMBER_SELECT_FIELDS = [
-	'in AS id',
-	'is_admin',
-	'is_owner',
-	'alias',
-	'roles',
-	'time_joined',
-	'in.profile_picture AS profile_picture',
-	'in.online AS online',
+  'in AS id',
+  'is_admin',
+  'is_owner',
+  'alias',
+  'roles',
+  'time_joined',
+  'in.profile_picture AS profile_picture',
+  'in.online AS online',
 ];
 
 ////////////////////////////////////////////////////////////
 function removeUndefined(obj: any): any {
-  if (obj === null)
-    return null;
+  if (obj === null) return null;
   else if (typeof obj === 'object')
-    if (Array.isArray(obj))
-      return obj;
-    
+    if (Array.isArray(obj)) return obj;
     else {
-        return Object.entries(obj)
-          .filter(([k, v]: [string, any]) => v !== undefined)
-          .reduce((r, [key, value]) => ({ ...r, [key]: removeUndefined(value) }), {});
-      }
-  else
-      return obj
+      return Object.entries(obj)
+        .filter(([k, v]: [string, any]) => v !== undefined)
+        .reduce(
+          (r, [key, value]) => ({ ...r, [key]: removeUndefined(value) }),
+          {},
+        );
     }
+  else return obj;
+}
 
 ////////////////////////////////////////////////////////////
-function recordKeys(map: Record<string, any> | undefined, table: string, transform?: (v: any) => any) {
-	if (!map) return undefined;
+function recordKeys(
+  map: Record<string, any> | undefined,
+  table: string,
+  transform?: (v: any) => any,
+) {
+  if (!map) return undefined;
 
-	const newMap: Record<string, any> = {};
-	for (const [k, v] of Object.entries(map))
-		newMap[`${table}:${k}`] = transform ? transform(v) : v;
-	return newMap;
+  const newMap: Record<string, any> = {};
+  for (const [k, v] of Object.entries(map))
+    newMap[`${table}:${k}`] = transform ? transform(v) : v;
+  return newMap;
 }
 
 ////////////////////////////////////////////////////////////
 type AppProps = {
-  profile?: ExpandedProfile,
-  domain?: ExpandedDomain,
+  profile?: ExpandedProfile;
+  domain?: ExpandedDomain;
   members?: ExpandedMember[];
   counts?: { total: number; online: number; offline: number };
   app?: RemoteAppState;
@@ -202,8 +221,8 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
     sql.let('$app', sql.select<RemoteAppState>('*', { from: }))
   ]); */
 
-	// Create new access token
-	const refreshResult = await refresh(ctx.req, ctx.res, false);
+  // Create new access token
+  const refreshResult = await refresh(ctx.req, ctx.res, false);
 
   // If not valid refresh, return no props
   if (!refreshResult) return { props: {} };
@@ -211,7 +230,8 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   // Get payload
   const token = refreshResult[0];
   const payload = refreshResult[1];
-  if (typeof token !== 'string' || typeof payload === 'string') return { props: {} };
+  if (typeof token !== 'string' || typeof payload === 'string')
+    return { props: {} };
 
   // Early return object
   const tokenRet: any = { props: { token } };
@@ -220,66 +240,94 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   const { profile_id } = payload;
   if (!profile_id) return tokenRet;
 
-
   // App state id
   const stateId = `app_states:${profile_id.split(':')[1]}`;
 
   // Get most data except domain (complex set of selects, so leave api to handle it)
-  const _1 = await query<[unknown, ExpandedProfile[], ExpandedMember[], ExpandedMember[], ExpandedMember[], ExpandedMember[], RemoteAppState]>(sql.multi([
-    // Get app state, used to find out which domain to fetch
-    sql.let('$app', sql.single(sql.select<RemoteAppState>('*', { from: stateId }))),
+  const _1 = await query<
+    [
+      unknown,
+      ExpandedProfile[],
+      ExpandedMember[],
+      ExpandedMember[],
+      ExpandedMember[],
+      ExpandedMember[],
+      RemoteAppState,
+    ]
+  >(
+    sql.multi([
+      // Get app state, used to find out which domain to fetch
+      sql.let(
+        '$app',
+        sql.single(sql.select<RemoteAppState>('*', { from: stateId })),
+      ),
 
-    // Get profile
-    sql.select<Profile>([
-      '*',
-      sql.wrap(sql.select<Domain>(
-        ['id', 'name', 'icon', 'time_created'],
-        { from: '->member_of->domains' }
-      ), { alias: 'domains' }),
-    ], { from: profile_id }),
+      // Get profile
+      sql.select<Profile>(
+        [
+          '*',
+          sql.wrap(
+            sql.select<Domain>(['id', 'name', 'icon', 'time_created'], {
+              from: '->member_of->domains',
+            }),
+            { alias: 'domains' },
+          ),
+        ],
+        { from: profile_id },
+      ),
 
-    // Get all members
-    sql.if({
-      cond: '$app.domain != NONE',
-      body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
-        from: `$app.domain<-member_of`,
-        limit: config.app.member.query_limit,
-        sort: [{ field: 'is_admin', order: 'DESC' }, { field: 'alias', mode: 'COLLATE' }],
+      // Get all members
+      sql.if({
+        cond: '$app.domain != NONE',
+        body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
+          from: `$app.domain<-member_of`,
+          limit: config.app.member.query_limit,
+          sort: [
+            { field: 'is_admin', order: 'DESC' },
+            { field: 'alias', mode: 'COLLATE' },
+          ],
+        }),
       }),
-    }),
-    // Get online members
-    sql.if({
-      cond: '$app.domain != NONE',
-      body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
-        from: `$app.domain<-member_of`,
-        where: 'in.online==true',
-        limit: config.app.member.query_limit,
-        sort: [{ field: 'is_admin', order: 'DESC' }, { field: 'alias', mode: 'COLLATE' }],
+      // Get online members
+      sql.if({
+        cond: '$app.domain != NONE',
+        body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
+          from: `$app.domain<-member_of`,
+          where: 'in.online==true',
+          limit: config.app.member.query_limit,
+          sort: [
+            { field: 'is_admin', order: 'DESC' },
+            { field: 'alias', mode: 'COLLATE' },
+          ],
+        }),
       }),
-    }),
-    // Get offline members
-    sql.if({
-      cond: '$app.domain != NONE',
-      body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
-        from: `$app.domain<-member_of`,
-        where: 'in.online!=true',
-        limit: config.app.member.query_limit,
-        sort: [{ field: 'is_admin', order: 'DESC' }, { field: 'alias', mode: 'COLLATE' }],
+      // Get offline members
+      sql.if({
+        cond: '$app.domain != NONE',
+        body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
+          from: `$app.domain<-member_of`,
+          where: 'in.online!=true',
+          limit: config.app.member.query_limit,
+          sort: [
+            { field: 'is_admin', order: 'DESC' },
+            { field: 'alias', mode: 'COLLATE' },
+          ],
+        }),
       }),
-    }),
-    // Get own member object
-    sql.if({
-      cond: '$app.domain != NONE',
-      body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
-        from: `$app.domain<-member_of`,
-        where: sql.match({ in: profile_id }),
+      // Get own member object
+      sql.if({
+        cond: '$app.domain != NONE',
+        body: sql.select<Member>(MEMBER_SELECT_FIELDS, {
+          from: `$app.domain<-member_of`,
+          where: sql.match({ in: profile_id }),
+        }),
       }),
-    }),
 
-    // Return app state
-    sql.return('$app'),
-
-  ]), { complete: true });
+      // Return app state
+      sql.return('$app'),
+    ]),
+    { complete: true },
+  );
   if (!_1) return tokenRet;
 
   const [_, profiles, members, online, offline, selfs, app] = _1;
@@ -287,19 +335,20 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   // Get domain
   let domain: ExpandedDomain | null = null;
   if (app?.domain) {
-    domain = await api('GET /domains/:domain_id', {
-      params: { domain_id: app.domain }
-    }, { session: { _exists: true, token } });
+    domain = await api(
+      'GET /domains/:domain_id',
+      {
+        params: { domain_id: app.domain },
+      },
+      { session: { _exists: true, token } },
+    );
   }
 
   // Members
   const memberMap: Record<string, ExpandedMember> = {};
-  for (const member of members || [])
-    memberMap[member.id] = member;
-  for (const member of online || [])
-    memberMap[member.id] = member;
-  for (const member of offline || [])
-    memberMap[member.id] = member;
+  for (const member of members || []) memberMap[member.id] = member;
+  for (const member of online || []) memberMap[member.id] = member;
+  for (const member of offline || []) memberMap[member.id] = member;
   for (const member of selfs || [])
     memberMap[member.id] = { ...member, online: true };
 
@@ -315,23 +364,34 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
 
   return {
     props: removeUndefined({
-      profile: profiles.length > 0 ? {
-				...profiles[0],
-				// TODO : Make domains draggable
-				domains: profiles[0].domains.sort((a: Domain, b: Domain) => new Date(a.time_created).getTime() - new Date(b.time_created).getTime()),
-			} : undefined,
+      profile:
+        profiles.length > 0
+          ? {
+              ...profiles[0],
+              // TODO : Make domains draggable
+              domains: profiles[0].domains.sort(
+                (a: Domain, b: Domain) =>
+                  new Date(a.time_created).getTime() -
+                  new Date(b.time_created).getTime(),
+              ),
+            }
+          : undefined,
       domain: domain || undefined,
       members: Object.values(memberMap),
       counts,
-      app: app ? {
-				...app,
-				channels: recordKeys(app.channels, 'domains'),
-				expansions: recordKeys(app.expansions, 'domains'),
-				last_accessed: recordKeys(app.last_accessed, 'domains', (v) => recordKeys(v, 'channels')),
-				pings: recordKeys(app.pings, 'channels'),
-				board_states: recordKeys(app.board_states, 'boards'),
-			} : undefined,
+      app: app
+        ? {
+            ...app,
+            channels: recordKeys(app.channels, 'domains'),
+            expansions: recordKeys(app.expansions, 'domains'),
+            last_accessed: recordKeys(app.last_accessed, 'domains', (v) =>
+              recordKeys(v, 'channels'),
+            ),
+            pings: recordKeys(app.pings, 'channels'),
+            board_states: recordKeys(app.board_states, 'boards'),
+          }
+        : undefined,
       token,
     }),
   };
-}
+};

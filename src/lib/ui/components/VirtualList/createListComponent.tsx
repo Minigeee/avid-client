@@ -18,10 +18,10 @@ type Direction = 'ltr' | 'rtl' | 'horizontal' | 'vertical';
 type Layout = 'horizontal' | 'vertical';
 
 type RenderComponentProps<T> = {
-  data: T,
-  index: number,
-  isScrolling?: boolean,
-  style: Object,
+  data: T;
+  index: number;
+  isScrolling?: boolean;
+  style: Object;
 };
 type RenderComponent<T> = React$ComponentType<$Shape<RenderComponentProps<T>>>;
 
@@ -43,64 +43,64 @@ type ScrollEvent = SyntheticEvent<HTMLDivElement>;
 type ItemStyleCache = { [index: number]: Object };
 
 type OuterProps = {
-  children: React$Node,
-  className: string | void,
-  onScroll: (e: ScrollEvent) => void,
+  children: React$Node;
+  className: string | void;
+  onScroll: (e: ScrollEvent) => void;
   style: {
-    [string]: mixed,
-  },
+    [string]: mixed;
+  };
 };
 
 type InnerProps = {
-  children: React$Node,
+  children: React$Node;
   style: {
-    [string]: mixed,
-  },
+    [string]: mixed;
+  };
 };
 
 export type Props<T> = {
-  children: RenderComponent<T>,
-  className?: string,
-  direction: Direction,
-  height: number | string,
-  initialScrollOffset?: number,
-  innerRef?: any,
-  innerElementType?: string | React$AbstractComponent<InnerProps, any>,
-  innerTagName?: string, // deprecated
-  itemCount: number,
-  itemData: T,
-  itemKey?: (index: number, data: T) => any,
-  itemSize: itemSize,
-  layout: Layout,
-  onItemsRendered?: onItemsRenderedCallback,
-  onScroll?: onScrollCallback,
-  outerRef?: any,
-  outerElementType?: string | React$AbstractComponent<OuterProps, any>,
-  outerTagName?: string, // deprecated
-  overscanCount: number,
+  children: RenderComponent<T>;
+  className?: string;
+  direction: Direction;
+  height: number | string;
+  initialScrollOffset?: number;
+  innerRef?: any;
+  innerElementType?: string | React$AbstractComponent<InnerProps, any>;
+  innerTagName?: string; // deprecated
+  itemCount: number;
+  itemData: T;
+  itemKey?: (index: number, data: T) => any;
+  itemSize: itemSize;
+  layout: Layout;
+  onItemsRendered?: onItemsRenderedCallback;
+  onScroll?: onScrollCallback;
+  outerRef?: any;
+  outerElementType?: string | React$AbstractComponent<OuterProps, any>;
+  outerTagName?: string; // deprecated
+  overscanCount: number;
   stickyIndices?: number[];
-  style?: Object,
-  useIsScrolling: boolean,
-  width: number | string,
+  style?: Object;
+  useIsScrolling: boolean;
+  width: number | string;
 };
 
 type State = {
-  instance: any,
-  isScrolling: boolean,
-  scrollDirection: ScrollDirection,
-  scrollOffset: number,
-  scrollUpdateWasRequested: boolean,
+  instance: any;
+  isScrolling: boolean;
+  scrollDirection: ScrollDirection;
+  scrollOffset: number;
+  scrollUpdateWasRequested: boolean;
 };
 
 type GetItemOffset = (
   props: Props<any>,
   index: number,
-  instanceProps: any
+  instanceProps: any,
 ) => number;
 type GetItemSize = (
   props: Props<any>,
   index: number,
-  instanceProps: any
+  instanceProps: any,
 ) => number;
 type GetEstimatedTotalSize = (props: Props<any>, instanceProps: any) => number;
 type GetOffsetForIndexAndAlignment = (
@@ -108,18 +108,18 @@ type GetOffsetForIndexAndAlignment = (
   index: number,
   align: ScrollToAlign,
   scrollOffset: number,
-  instanceProps: any
+  instanceProps: any,
 ) => number;
 type GetStartIndexForOffset = (
   props: Props<any>,
   offset: number,
-  instanceProps: any
+  instanceProps: any,
 ) => number;
 type GetStopIndexForStartIndex = (
   props: Props<any>,
   startIndex: number,
   scrollOffset: number,
-  instanceProps: any
+  instanceProps: any,
 ) => number;
 type InitInstanceProps = (props: Props<any>, instance: any) => any;
 type ValidateProps = (props: Props<any>) => void;
@@ -150,15 +150,15 @@ export default function createListComponent({
   shouldResetStyleCacheOnItemSizeChange,
   validateProps,
 }: {
-  getItemOffset: GetItemOffset,
-  getEstimatedTotalSize: GetEstimatedTotalSize,
-  getItemSize: GetItemSize,
-  getOffsetForIndexAndAlignment: GetOffsetForIndexAndAlignment,
-  getStartIndexForOffset: GetStartIndexForOffset,
-  getStopIndexForStartIndex: GetStopIndexForStartIndex,
-  initInstanceProps: InitInstanceProps,
-  shouldResetStyleCacheOnItemSizeChange: boolean,
-  validateProps: ValidateProps,
+  getItemOffset: GetItemOffset;
+  getEstimatedTotalSize: GetEstimatedTotalSize;
+  getItemSize: GetItemSize;
+  getOffsetForIndexAndAlignment: GetOffsetForIndexAndAlignment;
+  getStartIndexForOffset: GetStartIndexForOffset;
+  getStopIndexForStartIndex: GetStopIndexForStartIndex;
+  initInstanceProps: InitInstanceProps;
+  shouldResetStyleCacheOnItemSizeChange: boolean;
+  validateProps: ValidateProps;
 }) {
   return class List<T> extends PureComponent<Props<T>, State> {
     _instanceProps: any = initInstanceProps(this.props, this);
@@ -193,7 +193,7 @@ export default function createListComponent({
 
     static getDerivedStateFromProps(
       nextProps: Props<T>,
-      prevState: State
+      prevState: State,
     ): $Shape<State> | null {
       validateSharedProps(nextProps, prevState);
       validateProps(nextProps);
@@ -203,7 +203,7 @@ export default function createListComponent({
     scrollTo(scrollOffset: number): void {
       scrollOffset = Math.max(0, scrollOffset);
 
-      this.setState(prevState => {
+      this.setState((prevState) => {
         if (prevState.scrollOffset === scrollOffset) {
           return null;
         }
@@ -248,8 +248,8 @@ export default function createListComponent({
           align,
           scrollOffset,
           this._instanceProps,
-          scrollbarSize
-        )
+          scrollbarSize,
+        ),
       );
     }
 
@@ -346,7 +346,7 @@ export default function createListComponent({
 
       const items = [];
       if (itemCount > 0) {
-        let stickyIdx = -1
+        let stickyIdx = -1;
 
         // Get sticky index
         if (stickyIndices?.length) {
@@ -354,7 +354,10 @@ export default function createListComponent({
           assert(typeof itemSize === 'number');
 
           const { scrollOffset } = this.state;
-          const idx = Math.max(sortedIndex(stickyIndices, scrollOffset / itemSize + 1) - 1, 0);
+          const idx = Math.max(
+            sortedIndex(stickyIndices, scrollOffset / itemSize + 1) - 1,
+            0,
+          );
           stickyIdx = stickyIndices[idx];
         }
 
@@ -369,7 +372,7 @@ export default function createListComponent({
               index,
               isScrolling: useIsScrolling ? isScrolling : undefined,
               style: this._getItemStyle(index),
-            })
+            }),
           );
         }
 
@@ -381,8 +384,12 @@ export default function createListComponent({
               key: itemKey(stickyIdx, itemData),
               index: stickyIdx,
               isScrolling: useIsScrolling ? isScrolling : undefined,
-              style: { ...this._getItemStyle(stickyIdx), position: 'sticky', top: 0 },
-            })
+              style: {
+                ...this._getItemStyle(stickyIdx),
+                position: 'sticky',
+                top: 0,
+              },
+            }),
           );
         }
       }
@@ -391,7 +398,7 @@ export default function createListComponent({
       // So their actual sizes (if variable) are taken into consideration.
       const estimatedTotalSize = getEstimatedTotalSize(
         this.props,
-        this._instanceProps
+        this._instanceProps,
       );
 
       return createElement(
@@ -411,14 +418,18 @@ export default function createListComponent({
             ...style,
           },
         },
-        createElement(innerElementType || innerTagName || 'div', {
-          ref: innerRef,
-          style: {
-            height: isHorizontal ? '100%' : estimatedTotalSize,
-            pointerEvents: isScrolling ? 'none' : undefined,
-            width: isHorizontal ? estimatedTotalSize : '100%',
+        createElement(
+          innerElementType || innerTagName || 'div',
+          {
+            ref: innerRef,
+            style: {
+              height: isHorizontal ? '100%' : estimatedTotalSize,
+              pointerEvents: isScrolling ? 'none' : undefined,
+              width: isHorizontal ? estimatedTotalSize : '100%',
+            },
           },
-        }, ...items)
+          ...items,
+        ),
       );
     }
 
@@ -426,39 +437,39 @@ export default function createListComponent({
       overscanStartIndex: number,
       overscanStopIndex: number,
       visibleStartIndex: number,
-      visibleStopIndex: number
+      visibleStopIndex: number,
     ) => void;
     _callOnItemsRendered = memoizeOne(
       (
         overscanStartIndex: number,
         overscanStopIndex: number,
         visibleStartIndex: number,
-        visibleStopIndex: number
+        visibleStopIndex: number,
       ) =>
         this.props.onItemsRendered({
           overscanStartIndex,
           overscanStopIndex,
           visibleStartIndex,
           visibleStopIndex,
-        })
+        }),
     );
 
     _callOnScroll: (
       scrollDirection: ScrollDirection,
       scrollOffset: number,
-      scrollUpdateWasRequested: boolean
+      scrollUpdateWasRequested: boolean,
     ) => void;
     _callOnScroll = memoizeOne(
       (
         scrollDirection: ScrollDirection,
         scrollOffset: number,
-        scrollUpdateWasRequested: boolean
+        scrollUpdateWasRequested: boolean,
       ) =>
         this.props.onScroll({
           scrollDirection,
           scrollOffset,
           scrollUpdateWasRequested,
-        })
+        }),
     );
 
     _callPropsCallbacks() {
@@ -475,21 +486,18 @@ export default function createListComponent({
             overscanStartIndex,
             overscanStopIndex,
             visibleStartIndex,
-            visibleStopIndex
+            visibleStopIndex,
           );
         }
       }
 
       if (typeof this.props.onScroll === 'function') {
-        const {
-          scrollDirection,
-          scrollOffset,
-          scrollUpdateWasRequested,
-        } = this.state;
+        const { scrollDirection, scrollOffset, scrollUpdateWasRequested } =
+          this.state;
         this._callOnScroll(
           scrollDirection,
           scrollOffset,
-          scrollUpdateWasRequested
+          scrollUpdateWasRequested,
         );
       }
     }
@@ -505,7 +513,7 @@ export default function createListComponent({
       const itemStyleCache = this._getItemStyleCache(
         shouldResetStyleCacheOnItemSizeChange && itemSize,
         shouldResetStyleCacheOnItemSizeChange && layout,
-        shouldResetStyleCacheOnItemSizeChange && direction
+        shouldResetStyleCacheOnItemSizeChange && direction,
       );
 
       let style;
@@ -548,13 +556,13 @@ export default function createListComponent({
       const startIndex = getStartIndexForOffset(
         this.props,
         scrollOffset,
-        this._instanceProps
+        this._instanceProps,
       );
       const stopIndex = getStopIndexForStartIndex(
         this.props,
         startIndex,
         scrollOffset,
-        this._instanceProps
+        this._instanceProps,
       );
 
       // Overscan by one item in each direction so that tab/focus works.
@@ -578,7 +586,7 @@ export default function createListComponent({
 
     _onScrollHorizontal = (event: ScrollEvent): void => {
       const { clientWidth, scrollLeft, scrollWidth } = event.currentTarget;
-      this.setState(prevState => {
+      this.setState((prevState) => {
         if (prevState.scrollOffset === scrollLeft) {
           // Scroll position may have been updated by cDM/cDU,
           // In which case we don't need to trigger another render,
@@ -607,7 +615,7 @@ export default function createListComponent({
         // Prevent Safari's elastic scrolling from causing visual shaking when scrolling past bounds.
         scrollOffset = Math.max(
           0,
-          Math.min(scrollOffset, scrollWidth - clientWidth)
+          Math.min(scrollOffset, scrollWidth - clientWidth),
         );
 
         return {
@@ -622,7 +630,7 @@ export default function createListComponent({
 
     _onScrollVertical = (event: ScrollEvent): void => {
       const { clientHeight, scrollHeight, scrollTop } = event.currentTarget;
-      this.setState(prevState => {
+      this.setState((prevState) => {
         if (prevState.scrollOffset === scrollTop) {
           // Scroll position may have been updated by cDM/cDU,
           // In which case we don't need to trigger another render,
@@ -633,7 +641,7 @@ export default function createListComponent({
         // Prevent Safari's elastic scrolling from causing visual shaking when scrolling past bounds.
         const scrollOffset = Math.max(
           0,
-          Math.min(scrollTop, scrollHeight - clientHeight)
+          Math.min(scrollTop, scrollHeight - clientHeight),
         );
 
         return {
@@ -669,7 +677,7 @@ export default function createListComponent({
 
       this._resetIsScrollingTimeoutId = requestTimeout(
         this._resetIsScrolling,
-        IS_SCROLLING_DEBOUNCE_INTERVAL
+        IS_SCROLLING_DEBOUNCE_INTERVAL,
       );
     };
 
@@ -701,7 +709,7 @@ const validateSharedProps = (
     outerTagName,
     width,
   }: Props<any>,
-  { instance }: State
+  { instance }: State,
 ): void => {
   if (process.env.NODE_ENV !== 'production') {
     if (innerTagName != null || outerTagName != null) {
@@ -709,7 +717,7 @@ const validateSharedProps = (
         devWarningsTagName.add(instance);
         console.warn(
           'The innerTagName and outerTagName props have been deprecated. ' +
-            'Please use the innerElementType and outerElementType props instead.'
+            'Please use the innerElementType and outerElementType props instead.',
         );
       }
     }
@@ -724,7 +732,7 @@ const validateSharedProps = (
           devWarningsDirection.add(instance);
           console.warn(
             'The direction prop should be either "ltr" (default) or "rtl". ' +
-              'Please use the layout prop to specify "vertical" (default) or "horizontal" orientation.'
+              'Please use the layout prop to specify "vertical" (default) or "horizontal" orientation.',
           );
         }
         break;
@@ -736,7 +744,7 @@ const validateSharedProps = (
         throw Error(
           'An invalid "direction" prop has been specified. ' +
             'Value should be either "ltr" or "rtl". ' +
-            `"${direction}" was specified.`
+            `"${direction}" was specified.`,
         );
     }
 
@@ -749,7 +757,7 @@ const validateSharedProps = (
         throw Error(
           'An invalid "layout" prop has been specified. ' +
             'Value should be either "horizontal" or "vertical". ' +
-            `"${layout}" was specified.`
+            `"${layout}" was specified.`,
         );
     }
 
@@ -757,7 +765,7 @@ const validateSharedProps = (
       throw Error(
         'An invalid "children" prop has been specified. ' +
           'Value should be a React component. ' +
-          `"${children === null ? 'null' : typeof children}" was specified.`
+          `"${children === null ? 'null' : typeof children}" was specified.`,
       );
     }
 
@@ -765,13 +773,13 @@ const validateSharedProps = (
       throw Error(
         'An invalid "width" prop has been specified. ' +
           'Horizontal lists must specify a number for width. ' +
-          `"${width === null ? 'null' : typeof width}" was specified.`
+          `"${width === null ? 'null' : typeof width}" was specified.`,
       );
     } else if (!isHorizontal && typeof height !== 'number') {
       throw Error(
         'An invalid "height" prop has been specified. ' +
           'Vertical lists must specify a number for height. ' +
-          `"${height === null ? 'null' : typeof height}" was specified.`
+          `"${height === null ? 'null' : typeof height}" was specified.`,
       );
     }
   }

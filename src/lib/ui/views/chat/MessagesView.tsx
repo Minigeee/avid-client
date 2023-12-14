@@ -1,4 +1,19 @@
-import { ForwardedRef, Fragment, MutableRefObject, PropsWithChildren, Ref, RefObject, createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ForwardedRef,
+  Fragment,
+  MutableRefObject,
+  PropsWithChildren,
+  Ref,
+  RefObject,
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import Image from 'next/image';
 import assert from 'assert';
 
@@ -46,11 +61,12 @@ import ActionButton from '@/lib/ui/components/ActionButton';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import { Emoji, EmojiPicker } from '@/lib/ui/components/Emoji';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
-import RichTextEditor, { toMarkdown } from '@/lib/ui/components/rte/RichTextEditor';
+import RichTextEditor, {
+  toMarkdown,
+} from '@/lib/ui/components/rte/RichTextEditor';
 import { MessageContextMenu } from './components/MessageMenu';
 import MemberPopover from '../../components/MemberPopover';
 import SidePanelView from './SidePanelView';
-
 
 import config from '@/config';
 import { api } from '@/lib/api';
@@ -72,7 +88,15 @@ import {
   useSession,
   useTimeout,
 } from '@/lib/hooks';
-import { ExpandedMember, ExpandedMessage, FileAttachment, Member, Message, RawMessage, Role } from '@/lib/types';
+import {
+  ExpandedMember,
+  ExpandedMessage,
+  FileAttachment,
+  Member,
+  Message,
+  RawMessage,
+  Role,
+} from '@/lib/types';
 import { socket } from '@/lib/utility/realtime';
 import notification from '@/lib/utility/notification';
 
@@ -89,7 +113,6 @@ const MIN_IMAGE_WIDTH = 400;
 const MIN_IMAGE_HEIGHT = 400;
 const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 1000;
-
 
 ////////////////////////////////////////////////////////////
 type MessagesViewProps = {
@@ -108,7 +131,7 @@ type MessagesViewProps = {
   pb?: string;
   /** Gap between pfp and message */
   avatarGap?: 'sm' | 'md' | 'lg';
-}
+};
 
 /** Message viewport state */
 type MessageViewState = {
@@ -153,15 +176,18 @@ export type MessageViewContextState = {
     viewport: RefObject<HTMLDivElement>;
     /** Scroll to element ref */
     scroll_to: RefObject<HTMLDivElement>;
-  },
+  };
 
   /** Message viewport state */
   state: MessageViewState & {
     /** State setter */
-    _set: <K extends keyof MessageViewState>(key: K, value: MessageViewState[K]) => void;
+    _set: <K extends keyof MessageViewState>(
+      key: K,
+      value: MessageViewState[K],
+    ) => void;
     /** State setter for entire state */
     _setAll: (value: MessageViewState) => void;
-  },
+  };
 
   /** Viewport style options */
   style: {
@@ -173,27 +199,33 @@ export type MessageViewContextState = {
     avatarGap: 'sm' | 'md' | 'lg';
     /** Indicates if side panel should be opened */
     withSidePanel: boolean;
-  },
+  };
 };
 
 /** Message view context with loaded wrappers */
-export type LoadedMessageViewContextState = Omit<MessageViewContextState, 'sender' | 'messages'> & {
+export type LoadedMessageViewContextState = Omit<
+  MessageViewContextState,
+  'sender' | 'messages'
+> & {
   /** The sender member */
   sender: MemberWrapper;
   /** Grouped messages */
   messages: MessagesWrapper;
-}
+};
 
 /** Message view context */
 // @ts-ignore
 export const MessageViewContext = createContext<MessageViewContextState>();
 
-
 // Tracks last typing (hack)
 let _lastTyping: ExpandedMember | null = null;
 
 /** Message view context provider */
-function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesViewProps) {
+function useInitMessageViewContext({
+  domain,
+  channel_id,
+  ...props
+}: MessagesViewProps) {
   // Default styling
   const sidePadding = props.p || '2.0rem';
   const bottomPadding = props.pb || '1.8rem';
@@ -203,44 +235,50 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
   const app = useApp();
   const session = useSession();
   const sender = useMember(domain.id, session.profile_id);
-  const messages = useMessages(channel_id, domain, { thread_id: props.thread_id });
-  const groupedMessages = useGroupedMessages(messages.data || [], domain, sender);
+  const messages = useMessages(channel_id, domain, {
+    thread_id: props.thread_id,
+  });
+  const groupedMessages = useGroupedMessages(
+    messages.data || [],
+    domain,
+    sender,
+  );
 
   // Editor ref
   const editorRef = useRef<Editor>(null);
   // Scroll to
-  const { scrollIntoView, targetRef, scrollableRef } = useScrollIntoView<HTMLDivElement>({
-    duration: 500,
-  });
+  const { scrollIntoView, targetRef, scrollableRef } =
+    useScrollIntoView<HTMLDivElement>({
+      duration: 500,
+    });
 
   /** States */
-	const [state, setState] = useCachedState<Omit<MessageViewState, 'typing' | 'last_typing'>>(`${channel_id}.state`, {
+  const [state, setState] = useCachedState<
+    Omit<MessageViewState, 'typing' | 'last_typing'>
+  >(`${channel_id}.state`, {
     editing: null,
     replying_to: null,
     scroll_to: null,
     view_thread: null,
     viewing_thread: null,
     show_side_panel: true,
-	});
+  });
 
   const [typingIds, setTypingIds] = useState<string[]>([]);
   const typing = useMembers(domain.id, typingIds);
   const lastTyping = typing.data?.length ? typing.data[0] : _lastTyping;
-  
 
   // Updates last typing
   useEffect(() => {
-    if (typing._exists && typing.data.length > 0)
-      _lastTyping = typing.data[0];
+    if (typing._exists && typing.data.length > 0) _lastTyping = typing.data[0];
   }, [typing]);
-  
+
   // Refresh on stale data
   useEffect(() => {
     if (!app.stale[channel_id]) return;
 
     // Refresh data
-    if (messages._exists)
-      messages._refresh();
+    if (messages._exists) messages._refresh();
 
     // Reset stale flag
     app._mutators.setStale(channel_id, false);
@@ -254,12 +292,12 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     function onNewMessage(message: RawMessage) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || message.channel !== channel_id) return;
-  
+
       // Add message locally
       messages._mutators.addMessageLocal(message);
 
       // Remove from typing list
-      const idx = typingIds.findIndex(id => id === message.sender);
+      const idx = typingIds.findIndex((id) => id === message.sender);
       if (idx >= 0) {
         // Set list
         const copy = typingIds.slice();
@@ -272,7 +310,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
 
     return () => {
       socket().off('chat:message', onNewMessage);
-    }
+    };
   }, [channel_id, messages, typingIds]);
 
   // Edit message, delete message, reaction handler
@@ -280,13 +318,20 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     // Skip if thread view
     if (props.thread_id) return;
 
-    function onEditMessage(edit_channel_id: string, message_id: string, message: Partial<Message>) {
+    function onEditMessage(
+      edit_channel_id: string,
+      message_id: string,
+      message: Partial<Message>,
+    ) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || edit_channel_id !== channel_id) return;
 
       // Edit message locally
       assert(message.reply_to === undefined);
-      messages._mutators.editMessageLocal(message_id, message as Partial<RawMessage>);
+      messages._mutators.editMessageLocal(
+        message_id,
+        message as Partial<RawMessage>,
+      );
     }
 
     function onDeleteMessage(edit_channel_id: string, message_id: string) {
@@ -297,10 +342,15 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       messages._mutators.deleteMessageLocal(message_id);
     }
 
-    function onReactionChanges(p_channel_id: string, message_id: string, changes: Record<string, number>, removeAll: boolean) {
+    function onReactionChanges(
+      p_channel_id: string,
+      message_id: string,
+      changes: Record<string, number>,
+      removeAll: boolean,
+    ) {
       // Ignore if message isn't in this channel, it is handled by another handler
       if (!messages._exists || p_channel_id !== channel_id) return;
-  
+
       // Apply changes locally
       messages._mutators.applyReactionChanges(message_id, changes, removeAll);
     }
@@ -313,7 +363,7 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       socket().off('chat:edit-message', onEditMessage);
       socket().off('chat:delete-message', onDeleteMessage);
       socket().off('chat:reactions', onReactionChanges);
-    }
+    };
   }, [channel_id, messages]);
 
   // Displaying members that are typing
@@ -321,19 +371,21 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     // Skip if thread view
     if (props.thread_id) return;
 
-    function onChatTyping(profile_id: string, typing_channel_id: string, type: 'start' | 'stop') {
+    function onChatTyping(
+      profile_id: string,
+      typing_channel_id: string,
+      type: 'start' | 'stop',
+    ) {
       // Only care about members in this channel
       if (typing_channel_id !== channel_id) return;
 
       // Index of member in list
-      const idx = typingIds.findIndex(x => x === profile_id);
-      
+      const idx = typingIds.findIndex((x) => x === profile_id);
+
       // Different actions based on if user started or stopped
       if (type === 'start' && idx < 0) {
         setTypingIds([...typingIds, profile_id]);
-      }
-
-      else if (type === 'stop' && idx >= 0) {
+      } else if (type === 'stop' && idx >= 0) {
         // Set list
         const copy = typingIds.slice();
         copy.splice(idx, 1);
@@ -354,7 +406,6 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
     scrollIntoView({ alignment: 'center' });
     setState({ ...state, scroll_to: null });
   }, [state.scroll_to]);
-
 
   return {
     domain,
@@ -381,20 +432,21 @@ function useInitMessageViewContext({ domain, channel_id, ...props }: MessagesVie
       pb: bottomPadding,
       avatarGap: avatarGap,
       withSidePanel: props.withSidePanel !== false,
-    }
+    },
   } as MessageViewContextState;
 }
 
 /** Use message view context */
 function useMessageViewContext<Loaded extends boolean = false>() {
-  return useContext(MessageViewContext) as Loaded extends true ? LoadedMessageViewContextState : MessageViewContextState;
+  return useContext(MessageViewContext) as Loaded extends true
+    ? LoadedMessageViewContextState
+    : MessageViewContextState;
 }
-
 
 ////////////////////////////////////////////////////////////
 type MessageEditorProps = {
   msg: ExpandedMessageWithPing;
-}
+};
 
 ////////////////////////////////////////////////////////////
 function MessageEditor({ msg, ...props }: MessageEditorProps) {
@@ -403,14 +455,13 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
   const editorRef = useRef<Editor>(null);
 
   return (
-    <Stack maw='80ch' spacing='xs'>
+    <Stack maw="80ch" spacing="xs">
       <RichTextEditor
         editorRef={editorRef}
         domain={context.domain}
         value={msg.message}
         markdown
         autofocus
-
         onKey={(e) => {
           if (e.key === 'Escape') {
             context.state._set('editing', null);
@@ -421,20 +472,23 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
         }}
       />
 
-      <Group spacing='xs' position='right'>
+      <Group spacing="xs" position="right">
         <Button
-          variant='default'
+          variant="default"
           onClick={() => context.state._set('editing', null)}
         >
           Cancel
         </Button>
         <Button
-          variant='gradient'
+          variant="gradient"
           onClick={() => {
             if (!editorRef.current) return;
 
             // Edit message
-            context.messages._mutators.editMessage(msg.id, toMarkdown(editorRef.current));
+            context.messages._mutators.editMessage(
+              msg.id,
+              toMarkdown(editorRef.current),
+            );
             // Close
             context.state._set('editing', null);
           }}
@@ -443,9 +497,8 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
         </Button>
       </Group>
     </Stack>
-    );
+  );
 }
-
 
 ////////////////////////////////////////////////////////////
 type MessageGroupProps = {
@@ -460,14 +513,19 @@ type MessageGroupProps = {
   editing: string | null;
   p: string;
   avatarGap: 'sm' | 'md' | 'lg';
-  
-  setState: MutableRefObject<<K extends keyof MessageViewState>(key: K, value: MessageViewState[K]) => void>;
+
+  setState: MutableRefObject<
+    <K extends keyof MessageViewState>(
+      key: K,
+      value: MessageViewState[K],
+    ) => void
+  >;
   scrollToRef: RefObject<HTMLDivElement>;
   scrollTo: string | null;
 
   canSendReactions: boolean;
   mutators: MutableRefObject<MessageMutators | null>;
-}
+};
 
 ////////////////////////////////////////////////////////////
 type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
@@ -481,7 +539,10 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
   const addReactionBtnRef = useRef<HTMLButtonElement>(null);
 
   // Replied to message's sender
-  const repliedToSender = useMember(props.domain.id, msg.reply_to?.sender || undefined);
+  const repliedToSender = useMember(
+    props.domain.id,
+    msg.reply_to?.sender || undefined,
+  );
 
   // Tracks if message should be animated
   const [shouldAnimate, setShouldAnimate] = useState<boolean>(false);
@@ -490,7 +551,13 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
   const badges = useMemo(() => {
     // Create list of role ids, sort by role order
     const roleIds: string[] = msg.sender?.roles?.slice() || [];
-    roleIds.sort((a, b) => props.rolesMap[a] ? props.rolesMap[b] ? props.rolesMap[a].index - props.rolesMap[b].index : 1 : -1);
+    roleIds.sort((a, b) =>
+      props.rolesMap[a]
+        ? props.rolesMap[b]
+          ? props.rolesMap[a].index - props.rolesMap[b].index
+          : 1
+        : -1,
+    );
 
     const badges: JSX.Element[] = [];
     for (const id of roleIds) {
@@ -498,9 +565,11 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
       if (!role?.badge || role.show_badge === false) continue;
 
       badges.push(
-        <Tooltip label={role.label} position='top-start' withArrow>
-          <div style={{ cursor: 'default' }}><Emoji id={role.badge} size={14} /></div>
-        </Tooltip>
+        <Tooltip label={role.label} position="top-start" withArrow>
+          <div style={{ cursor: 'default' }}>
+            <Emoji id={role.badge} size={14} />
+          </div>
+        </Tooltip>,
       );
     }
 
@@ -516,33 +585,48 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
     }
   }, [props.scrollTo]);
 
-
   return (
     <motion.div
       animate={shouldAnimate ? { x: 0 } : undefined}
-      transition={shouldAnimate ? {
-        type: 'spring',
-        mass: 5,
-        stiffness: 2000,
-        velocity: 350,
-        damping: 20,
-        delay: 0.3,
-      } : undefined}
+      transition={
+        shouldAnimate
+          ? {
+              type: 'spring',
+              mass: 5,
+              stiffness: 2000,
+              velocity: 350,
+              damping: 20,
+              delay: 0.3,
+            }
+          : undefined
+      }
     >
       <ContextMenu.Trigger
-        ref={props.scrollTo && props.scrollTo === msg.id ? props.scrollToRef : undefined}
-        className='msg-body'
+        ref={
+          props.scrollTo && props.scrollTo === msg.id
+            ? props.scrollToRef
+            : undefined
+        }
+        className="msg-body"
         context={{ msg }}
         sx={(theme) => ({
           display: 'flex',
           gap: 0,
 
           padding: `0.25rem 0rem 0.25rem calc(${props.p} - 4px)`,
-          backgroundColor: props.hasPing ? '#2B293A' : props.viewing_thread === msg.thread?.id || shouldAnimate ? `${theme.colors.indigo[5]}10` : undefined,
+          backgroundColor: props.hasPing
+            ? '#2B293A'
+            : props.viewing_thread === msg.thread?.id || shouldAnimate
+              ? `${theme.colors.indigo[5]}10`
+              : undefined,
           transition: 'background-color 0.08s',
 
           '&:hover': {
-            backgroundColor: props.hasPing ? '#312D46' : props.viewing_thread === msg.thread?.id || shouldAnimate  ? `${theme.colors.indigo[5]}1A` : theme.colors.dark[6],
+            backgroundColor: props.hasPing
+              ? '#312D46'
+              : props.viewing_thread === msg.thread?.id || shouldAnimate
+                ? `${theme.colors.indigo[5]}1A`
+                : theme.colors.dark[6],
           },
 
           '&:first-child': {
@@ -560,7 +644,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             <MemberAvatar
               member={msg.sender}
               size={AVATAR_SIZE}
-              cursor='pointer'
+              cursor="pointer"
               sx={(theme) => ({
                 marginTop: '0.25rem',
                 marginRight: theme.spacing[props.avatarGap],
@@ -570,19 +654,32 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           </MemberPopover>
         )}
 
-        <Stack spacing={6} sx={(theme) => ({
-          flexGrow: 1,
-          marginLeft: props.idx !== 0 ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})` : undefined,
-        })}>
+        <Stack
+          spacing={6}
+          sx={(theme) => ({
+            flexGrow: 1,
+            marginLeft:
+              props.idx !== 0
+                ? `calc(${AVATAR_SIZE}px + ${theme.spacing[props.avatarGap]})`
+                : undefined,
+          })}
+        >
           {props.editing !== msg.id && (
             <>
               {props.idx === 0 && (
                 <div>
-                  <Group align='baseline' spacing={6}>
-
+                  <Group align="baseline" spacing={6}>
                     {msg.sender && typeof msg.sender !== 'string' && (
-                      <MemberPopover member={msg.sender} domain={props.domain} withinPortal>
-                        <Title order={6} color='gray' sx={{ cursor: 'pointer' }}>
+                      <MemberPopover
+                        member={msg.sender}
+                        domain={props.domain}
+                        withinPortal
+                      >
+                        <Title
+                          order={6}
+                          color="gray"
+                          sx={{ cursor: 'pointer' }}
+                        >
                           {msg.sender.alias}
                         </Title>
                       </MemberPopover>
@@ -594,8 +691,10 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       </Group>
                     )}
 
-                    <Text size={11} color='dimmed' ml={2}>
-                      {moment(msg.created_at).calendar(null, { lastWeek: 'dddd [at] LT' })}
+                    <Text size={11} color="dimmed" ml={2}>
+                      {moment(msg.created_at).calendar(null, {
+                        lastWeek: 'dddd [at] LT',
+                      })}
                     </Text>
                   </Group>
                 </div>
@@ -604,11 +703,11 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
               {(msg.reply_to || (msg.thread && props.thread_id !== '_')) && (
                 <Group
                   spacing={6}
-                  p='0.15rem 0.5rem 0.15rem 0.25rem'
-                  h='1.5rem'
-                  w='fit-content'
-                  maw='80ch'
-                  align='start'
+                  p="0.15rem 0.5rem 0.15rem 0.25rem"
+                  h="1.5rem"
+                  w="fit-content"
+                  maw="80ch"
+                  align="start"
                   sx={(theme) => ({
                     borderRadius: 3,
                     '&:hover': {
@@ -618,21 +717,27 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                   })}
                   onClick={() => {
                     if (msg.reply_to)
-                      props.setState.current?.('scroll_to', msg.reply_to.id || null);
+                      props.setState.current?.(
+                        'scroll_to',
+                        msg.reply_to.id || null,
+                      );
                     else if (msg.thread)
-                      props.setState.current?.('view_thread', msg.thread.id || null)
+                      props.setState.current?.(
+                        'view_thread',
+                        msg.thread.id || null,
+                      );
                   }}
                 >
                   <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
-                    <IconArrowForwardUp size={20} style={{ marginTop: '0.15rem' }} />
+                    <IconArrowForwardUp
+                      size={20}
+                      style={{ marginTop: '0.15rem' }}
+                    />
                   </Box>
 
                   {msg.reply_to && repliedToSender._exists && (
                     <>
-                      <MemberAvatar
-                        member={repliedToSender}
-                        size={20}
-                      />
+                      <MemberAvatar member={repliedToSender} size={20} />
                       <Text
                         size={12}
                         weight={600}
@@ -643,7 +748,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       <Text
                         size={11}
                         mt={1}
-                        mah='1.25rem'
+                        mah="1.25rem"
                         sx={(theme) => ({
                           maxWidth: '80ch',
                           overflow: 'hidden',
@@ -651,7 +756,9 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           color: `${theme.colors.dark[0]}C0`,
                         })}
                       >
-                        {msg.reply_to.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                        {msg.reply_to.message
+                          .replace(/<\/?[^>]+(>|$)/g, ' ')
+                          .replace(/<[^>]+>/g, '')}
                       </Text>
                     </>
                   )}
@@ -663,7 +770,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       <Text
                         size={11}
                         mt={1}
-                        mah='1.25rem'
+                        mah="1.25rem"
                         sx={(theme) => ({
                           maxWidth: '80ch',
                           overflow: 'hidden',
@@ -671,7 +778,9 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           color: `${theme.colors.dark[0]}C0`,
                         })}
                       >
-                        {msg.thread.name?.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, '')}
+                        {msg.thread.name
+                          ?.replace(/<\/?[^>]+(>|$)/g, ' ')
+                          .replace(/<[^>]+>/g, '')}
                       </Text>
                     </>
                   )}
@@ -683,29 +792,29 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                 dangerouslySetInnerHTML={{ __html: msg.message }}
               />
               {msg.edited && (
-                <Text size={10} color='dimmed' mt={-6}>{'(edited)'}</Text>
+                <Text size={10} color="dimmed" mt={-6}>
+                  {'(edited)'}
+                </Text>
               )}
             </>
           )}
-          {props.editing === msg.id && (
-            <MessageEditor msg={msg} />
-          )}
+          {props.editing === msg.id && <MessageEditor msg={msg} />}
 
           {msg.attachments?.map((attachment, attachment_idx) => {
             if (attachment.type === 'image') {
               if (!attachment.width || !attachment.height) return null;
 
               // Determine if width or height should be filled
-              let w = 0, h = 0;
+              let w = 0,
+                h = 0;
               if (attachment.width > attachment.height) {
                 // Wide image, fill height
                 h = MIN_IMAGE_HEIGHT;
-                w = h * attachment.width / attachment.height;
-              }
-              else {
+                w = (h * attachment.width) / attachment.height;
+              } else {
                 // Tall image, fill width
                 w = MIN_IMAGE_WIDTH;
-                h = w * attachment.height / attachment.width;
+                h = (w * attachment.height) / attachment.width;
               }
 
               // Scale image down if too large
@@ -737,65 +846,100 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           })}
 
           {msg.reactions && msg.reactions.length > 0 && (
-            <Group spacing={6} maw='80ch'>
+            <Group spacing={6} maw="80ch">
               {msg.reactions.map((reaction) => (
                 <Button
                   key={reaction.emoji}
-                  variant='default'
+                  variant="default"
                   disabled={!props.canSendReactions && !reaction.self}
-                  p='0rem 0.4rem'
-                  h='1.5625rem'
-                  styles={reaction.self ? (theme) => ({
-                    root: {
-                      background: theme.fn.linearGradient(0, `${theme.colors.violet[9]}50`, `${theme.colors.violet[6]}50`),
-                      border: `1px solid ${theme.colors.grape[8]}`,
-                    }
-                  }) : undefined}
+                  p="0rem 0.4rem"
+                  h="1.5625rem"
+                  styles={
+                    reaction.self
+                      ? (theme) => ({
+                          root: {
+                            background: theme.fn.linearGradient(
+                              0,
+                              `${theme.colors.violet[9]}50`,
+                              `${theme.colors.violet[6]}50`,
+                            ),
+                            border: `1px solid ${theme.colors.grape[8]}`,
+                          },
+                        })
+                      : undefined
+                  }
                   onClick={() => {
                     if (reaction.self)
                       // Remove reaction
-                      props.mutators.current?.removeReactions(msg.id, { emoji: reaction.emoji, self: true });
+                      props.mutators.current?.removeReactions(msg.id, {
+                        emoji: reaction.emoji,
+                        self: true,
+                      });
+                    // Add reaction
                     else
-                      // Add reaction
-                      props.mutators.current?.addReaction(msg.id, reaction.emoji);
+                      props.mutators.current?.addReaction(
+                        msg.id,
+                        reaction.emoji,
+                      );
                   }}
                 >
                   <Group spacing={6} noWrap>
                     <Emoji id={reaction.emoji} size={14} />
-                    <motion.div key={reaction.count} initial={{ y: -10 }} animate={{ y: 0 }}>
-                      <Text span size='xs' weight={600} sx={(theme) => ({ color: theme.colors.dark[0] })}>{reaction.count}</Text>
+                    <motion.div
+                      key={reaction.count}
+                      initial={{ y: -10 }}
+                      animate={{ y: 0 }}
+                    >
+                      <Text
+                        span
+                        size="xs"
+                        weight={600}
+                        sx={(theme) => ({ color: theme.colors.dark[0] })}
+                      >
+                        {reaction.count}
+                      </Text>
                     </motion.div>
                   </Group>
                 </Button>
               ))}
               {props.canSendReactions && (
-                <Popover position='right' withArrow>
-                  <Tooltip
-                    label='Add reaction'
-                    withArrow
-                  >
+                <Popover position="right" withArrow>
+                  <Tooltip label="Add reaction" withArrow>
                     <Popover.Target>
-                      <ActionIcon ref={addReactionBtnRef} variant='filled' size='1.5625rem' sx={(theme) => ({
-                        backgroundColor: theme.colors.dark[5],
-                        '&:hover': {
+                      <ActionIcon
+                        ref={addReactionBtnRef}
+                        variant="filled"
+                        size="1.5625rem"
+                        sx={(theme) => ({
                           backgroundColor: theme.colors.dark[5],
-                        },
-                      })}>
-                        <IconMoodPlus size='1rem' />
+                          '&:hover': {
+                            backgroundColor: theme.colors.dark[5],
+                          },
+                        })}
+                      >
+                        <IconMoodPlus size="1rem" />
                       </ActionIcon>
                     </Popover.Target>
                   </Tooltip>
 
-                  <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
-                    backgroundColor: theme.colors.dark[7],
-                    borderColor: theme.colors.dark[5],
-                    boxShadow: '0px 4px 16px #00000030',
-                  })}>
+                  <Popover.Dropdown
+                    p="0.75rem 1rem"
+                    sx={(theme) => ({
+                      backgroundColor: theme.colors.dark[7],
+                      borderColor: theme.colors.dark[5],
+                      boxShadow: '0px 4px 16px #00000030',
+                    })}
+                  >
                     <EmojiPicker
                       emojiSize={32}
                       onSelect={(emoji) => {
                         // Check if this emoji has already been used
-                        const reaction = msg.reactions?.find(x => x.self && (x.emoji === emoji.id || x.emoji === emoji.skins[0].native))
+                        const reaction = msg.reactions?.find(
+                          (x) =>
+                            x.self &&
+                            (x.emoji === emoji.id ||
+                              x.emoji === emoji.skins[0].native),
+                        );
 
                         // Add reaction
                         if (!reaction && emoji.skins.length > 0)
@@ -850,21 +994,24 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
 
   // Check if any message within group has a ping targetted towrads reader
   const hasPing = useMemo<boolean>(() => {
-    for (const m of msgs)
-      if (m.pinged) return true;
+    for (const m of msgs) if (m.pinged) return true;
     return false;
   }, [msgs]);
 
-
   return (
-    <Flex wrap='nowrap' sx={(theme) => ({
-      position: 'relative',
-      '&:hover': hasPing ? undefined : {
-        '.msg-border': {
-          background: theme.colors.indigo[5],
-        },
-      }
-    })}>
+    <Flex
+      wrap="nowrap"
+      sx={(theme) => ({
+        position: 'relative',
+        '&:hover': hasPing
+          ? undefined
+          : {
+              '.msg-border': {
+                background: theme.colors.indigo[5],
+              },
+            },
+      })}
+    >
       <Stack spacing={0} sx={{ flexGrow: 1 }}>
         {msgs.map((msg, i) => (
           <SingleMessage
@@ -877,40 +1024,51 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
         ))}
       </Stack>
 
-      <Box className='msg-border' sx={(theme) => ({
-        position: 'absolute',
-        flexShrink: 0,
-        width: 4,
-        height: '100%',
-        background:
-          hasPing ? theme.fn.linearGradient(0, theme.colors.violet[5], theme.colors.pink[5]) :
-            fromUser ? theme.colors.dark[5] : undefined,
-        transition: 'background 0.08s',
-        borderTopLeftRadius: 4,
-        borderBottomLeftRadius: 4,
-      })} />
+      <Box
+        className="msg-border"
+        sx={(theme) => ({
+          position: 'absolute',
+          flexShrink: 0,
+          width: 4,
+          height: '100%',
+          background: hasPing
+            ? theme.fn.linearGradient(
+                0,
+                theme.colors.violet[5],
+                theme.colors.pink[5],
+              )
+            : fromUser
+              ? theme.colors.dark[5]
+              : undefined,
+          transition: 'background 0.08s',
+          borderTopLeftRadius: 4,
+          borderBottomLeftRadius: 4,
+        })}
+      />
     </Flex>
   );
 }
 
 const MemoMessageGroup = memo(MessageGroup, (a, b) => {
   // Compare the user objects by their id property
-  return a.style === b.style &&
+  return (
+    a.style === b.style &&
     a.rolesMap === b.rolesMap &&
     a.sender === b.sender &&
     a.viewing_thread === b.viewing_thread &&
     a.editing === b.editing &&
     a.p === b.p &&
     a.scrollTo === b.scrollTo &&
-    a.msgs.length === b.msgs.length && a.msgs.every((x, i) => x === b.msgs[i]);
+    a.msgs.length === b.msgs.length &&
+    a.msgs.every((x, i) => x === b.msgs[i])
+  );
 });
-
 
 ////////////////////////////////////////////////////////////
 type MessagesViewportProps = {
   showScrollBottom?: boolean;
   setShowScrollBottom?: (show: boolean) => void;
-}
+};
 
 ////////////////////////////////////////////////////////////
 function MessagesViewport(props: MessagesViewportProps) {
@@ -919,7 +1077,9 @@ function MessagesViewport(props: MessagesViewportProps) {
   const { classes } = useChatStyles();
 
   // Ref to message mutators, so messages can call latest mutators without rerendering each time
-  const mutatorsRef = useRef<MessageMutators | null>(messages._exists ? messages._mutators : null);
+  const mutatorsRef = useRef<MessageMutators | null>(
+    messages._exists ? messages._mutators : null,
+  );
   // Holds viewport position relative to bottom of chat, used to maintain (or not) the position of scroll when messages change
   const viewportPos = useRef<number>(0);
   // Indicates whether or not scroll pos should be maintained (relative to bottom of chat)
@@ -941,20 +1101,30 @@ function MessagesViewport(props: MessagesViewportProps) {
     return map;
   }, [context.domain.roles]);
 
-
   // Calculate editing message to minimize memo component change
   const cachedProps = useMemo(() => {
     if (!messages._exists) return {};
-    const map: Record<string, {
-      editing: string | null;
-      scrollTo: string | null;
-    }> = {};
+    const map: Record<
+      string,
+      {
+        editing: string | null;
+        scrollTo: string | null;
+      }
+    > = {};
 
     for (const [day, groups] of Object.entries(grouped)) {
       for (let i = 0; i < groups.length; ++i) {
         map[`${day}.${i}`] = {
-          editing: context.state.editing && groups[i].findIndex(x => x.id === context.state.editing) >= 0 ? context.state.editing : null,
-          scrollTo: context.state.scroll_to && groups[i].findIndex(x => x.id === context.state.scroll_to) >= 0 ? context.state.scroll_to : null,
+          editing:
+            context.state.editing &&
+            groups[i].findIndex((x) => x.id === context.state.editing) >= 0
+              ? context.state.editing
+              : null,
+          scrollTo:
+            context.state.scroll_to &&
+            groups[i].findIndex((x) => x.id === context.state.scroll_to) >= 0
+              ? context.state.scroll_to
+              : null,
         };
       }
     }
@@ -968,37 +1138,40 @@ function MessagesViewport(props: MessagesViewportProps) {
     if (!viewport || !maintainPos) return;
 
     // Maintain position
-    viewport.scrollTo({ top: viewport.scrollHeight - viewport.clientHeight - viewportPos.current });
+    viewport.scrollTo({
+      top: viewport.scrollHeight - viewport.clientHeight - viewportPos.current,
+    });
   }, [messages, maintainPos]);
 
   // Called when scroll position changes
-  const onScrollPosChange = throttle((e: { x: number; y: number }) => {
-    const viewport = context.refs.viewport.current;
-    if (!viewport || !messages._exists) return;
+  const onScrollPosChange = throttle(
+    (e: { x: number; y: number }) => {
+      const viewport = context.refs.viewport.current;
+      if (!viewport || !messages._exists) return;
 
-    // Update viewport pos
-    viewportPos.current = viewport.scrollHeight - viewport.clientHeight - e.y;
-    if (viewportPos.current < 100 && !maintainPos)
-      setMaintainPos(true);
-    else if (viewportPos.current >= 100 && maintainPos)
-      setMaintainPos(false);
+      // Update viewport pos
+      viewportPos.current = viewport.scrollHeight - viewport.clientHeight - e.y;
+      if (viewportPos.current < 100 && !maintainPos) setMaintainPos(true);
+      else if (viewportPos.current >= 100 && maintainPos) setMaintainPos(false);
 
-    // Load more if approaching top
-    if (e.y < config.app.ui.load_next_treshold)
-      messages._next();
+      // Load more if approaching top
+      if (e.y < config.app.ui.load_next_treshold) messages._next();
 
-    // Show scroll to bottom button if getting far from bottom
-    if (e.y < viewport.scrollHeight - viewport.clientHeight - 100) {
-      if (!props.showScrollBottom)
-        props.setShowScrollBottom?.(true);
-    }
-    else if (props.showScrollBottom)
-      props.setShowScrollBottom?.(false);
-  }, 50, { leading: false });
-
+      // Show scroll to bottom button if getting far from bottom
+      if (e.y < viewport.scrollHeight - viewport.clientHeight - 100) {
+        if (!props.showScrollBottom) props.setShowScrollBottom?.(true);
+      } else if (props.showScrollBottom) props.setShowScrollBottom?.(false);
+    },
+    50,
+    { leading: false },
+  );
 
   // Determines if user can send reactions
-  const canSendReactions = hasPermission(context.domain, context.channel_id, 'can_send_reactions');
+  const canSendReactions = hasPermission(
+    context.domain,
+    context.channel_id,
+    'can_send_reactions',
+  );
 
   // TODO : Show messages skeleton
   if (!context.sender._exists || !messages._exists) return null;
@@ -1012,45 +1185,52 @@ function MessagesViewport(props: MessagesViewportProps) {
         styles={{
           viewport: {
             padding: `0rem ${context.style.p} 0rem 0rem`,
-          }
+          },
         }}
       >
         <MessageContextMenu context={context as LoadedMessageViewContextState}>
-          <Stack spacing='lg'>
-            {messages._exists && Object.entries(grouped).map(([day, grouped], i) => (
-              <Fragment key={day}>
-                <Divider
-                  label={moment(day).format('LL')}
-                  labelPosition='center'
-                  sx={(theme) => ({ marginLeft: context.style.p, color: theme.colors.dark[2] })}
-                />
-                {grouped.map((consec, j) => (
-                  <>
-                    <MemoMessageGroup
-                      key={j}
-                      domain={context.domain}
-                      msgs={consec}
-                      style={classes.typography}
-                      rolesMap={rolesMap}
-
-                      sender={context.sender as MemberWrapper}
-                      thread_id={context.style.withSidePanel ? context.thread_id : '_'}
-                      viewing_thread={context.style.withSidePanel ? context.state.viewing_thread : null}
-                      editing={cachedProps[`${day}.${j}`].editing}
-                      p={context.style.p}
-                      avatarGap={context.style.avatarGap}
-
-                      setState={setStateRef}
-                      scrollToRef={context.refs.scroll_to}
-                      scrollTo={cachedProps[`${day}.${j}`].scrollTo}
-
-                      canSendReactions={canSendReactions}
-                      mutators={mutatorsRef}
-                    />
-                  </>
-                ))}
-              </Fragment>
-            ))}
+          <Stack spacing="lg">
+            {messages._exists &&
+              Object.entries(grouped).map(([day, grouped], i) => (
+                <Fragment key={day}>
+                  <Divider
+                    label={moment(day).format('LL')}
+                    labelPosition="center"
+                    sx={(theme) => ({
+                      marginLeft: context.style.p,
+                      color: theme.colors.dark[2],
+                    })}
+                  />
+                  {grouped.map((consec, j) => (
+                    <>
+                      <MemoMessageGroup
+                        key={j}
+                        domain={context.domain}
+                        msgs={consec}
+                        style={classes.typography}
+                        rolesMap={rolesMap}
+                        sender={context.sender as MemberWrapper}
+                        thread_id={
+                          context.style.withSidePanel ? context.thread_id : '_'
+                        }
+                        viewing_thread={
+                          context.style.withSidePanel
+                            ? context.state.viewing_thread
+                            : null
+                        }
+                        editing={cachedProps[`${day}.${j}`].editing}
+                        p={context.style.p}
+                        avatarGap={context.style.avatarGap}
+                        setState={setStateRef}
+                        scrollToRef={context.refs.scroll_to}
+                        scrollTo={cachedProps[`${day}.${j}`].scrollTo}
+                        canSendReactions={canSendReactions}
+                        mutators={mutatorsRef}
+                      />
+                    </>
+                  ))}
+                </Fragment>
+              ))}
 
             <div style={{ height: '0.9rem' }} />
           </Stack>
@@ -1059,7 +1239,6 @@ function MessagesViewport(props: MessagesViewportProps) {
     </>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 type TextEditorProps = {
@@ -1074,7 +1253,7 @@ function TextEditor(props: TextEditorProps) {
   const context = useMessageViewContext();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Indicates if formatted editor should be used
   const [useFormattedEditor, setUseFormattedEditor] = useState<boolean>(false);
   // Indicates if emoji picker should be opened
@@ -1085,9 +1264,13 @@ function TextEditor(props: TextEditorProps) {
   // Timeout object used to detect typing
   const typingTimeout = useTimeout(() => {
     if (context.sender._exists)
-      socket().emit('chat:typing', context.sender.id, context.channel_id, 'stop');
+      socket().emit(
+        'chat:typing',
+        context.sender.id,
+        context.channel_id,
+        'stop',
+      );
   }, 2000);
-
 
   ////////////////////////////////////////////////////////////
   function onMessageSubmit() {
@@ -1098,55 +1281,61 @@ function TextEditor(props: TextEditorProps) {
     if (
       !editor ||
       (!editor.storage.characterCount.characters() && !attachments.length)
-    ) return;
+    )
+      return;
 
     // Add message
-    const handled = props.onSubmit(toMarkdown(editor), props.canSendAttachments ? attachments : []);
+    const handled = props.onSubmit(
+      toMarkdown(editor),
+      props.canSendAttachments ? attachments : [],
+    );
     if (!handled) return;
 
     // Clear input
     editor.commands.clearContent();
     setAttachments([]);
-    if (context.state.replying_to)
-      context.state._set('replying_to', null);
+    if (context.state.replying_to) context.state._set('replying_to', null);
 
     // Reset to default input box
     setUseFormattedEditor(false);
 
     // Reset typing timer
     typingTimeout.clear();
-  };
-
+  }
 
   return (
     <RichTextEditor
       editorRef={context.refs.editor}
       domain={context.domain}
-
       variant={useFormattedEditor ? 'full' : 'minimal'}
       placeholder={props.placeholder || 'Message'}
       markdown
       autofocus
       focusRing={false}
       maxCharacters={2048}
-      maxHeight='40ch'
-
+      maxHeight="40ch"
       fileInputRef={fileInputRef}
       attachments={attachments}
-      onAttachmentsChange={props.canSendAttachments ? setAttachments : () =>
-        notification.info(
-          'Attachment Permissions',
-          'You do not have permissions to send attachments in this channel'
-        )
+      onAttachmentsChange={
+        props.canSendAttachments
+          ? setAttachments
+          : () =>
+              notification.info(
+                'Attachment Permissions',
+                'You do not have permissions to send attachments in this channel',
+              )
       }
-
-      rightSection={(
+      rightSection={
         <Group spacing={2} mr={useFormattedEditor ? 2 : 3}>
           {props.canSendAttachments && (
             <ActionButton
-              tooltip='Add Attachment'
-              tooltipProps={{ position: 'top-end', withArrow: true, withinPortal: !useFormattedEditor }}
-              variant='transparent'
+              tooltip="Add Attachment"
+              tooltipProps={{
+                position: 'top-end',
+                withArrow: true,
+                withinPortal: !useFormattedEditor,
+              }}
+              variant="transparent"
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -1158,18 +1347,18 @@ function TextEditor(props: TextEditorProps) {
             opened={emojiPickerOpen}
             withinPortal
             withArrow
-            position='top-end'
+            position="top-end"
             onClose={() => setEmojiPickerOpen(false)}
           >
             <Tooltip
-              label='Emojis'
-              position='top-end'
+              label="Emojis"
+              position="top-end"
               withArrow
               withinPortal={!useFormattedEditor}
             >
               <Popover.Target>
                 <ActionIcon
-                  variant='transparent'
+                  variant="transparent"
                   sx={(theme) => ({ color: theme.colors.dark[1] })}
                   onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
                 >
@@ -1177,24 +1366,32 @@ function TextEditor(props: TextEditorProps) {
                 </ActionIcon>
               </Popover.Target>
             </Tooltip>
-            <Popover.Dropdown p='0.75rem 1rem' sx={(theme) => ({
-              backgroundColor: theme.colors.dark[7],
-              borderColor: theme.colors.dark[5],
-              boxShadow: '0px 4px 16px #00000030',
-            })}>
+            <Popover.Dropdown
+              p="0.75rem 1rem"
+              sx={(theme) => ({
+                backgroundColor: theme.colors.dark[7],
+                borderColor: theme.colors.dark[5],
+                boxShadow: '0px 4px 16px #00000030',
+              })}
+            >
               <EmojiPicker
                 emojiSize={32}
                 onSelect={(emoji) => {
                   const editor = context.refs.editor.current;
                   if (!editor) return;
-                  
+
                   // Add emoji
-                  editor.chain().focus().insertContent({
-                    type: 'emojis',
-                    attrs: {
-                      'emoji-id': emoji.id,
-                    },
-                  }).insertContent({ type: 'text', text: ' ' }).run();
+                  editor
+                    .chain()
+                    .focus()
+                    .insertContent({
+                      type: 'emojis',
+                      attrs: {
+                        'emoji-id': emoji.id,
+                      },
+                    })
+                    .insertContent({ type: 'text', text: ' ' })
+                    .run();
 
                   // Close picker
                   setEmojiPickerOpen(false);
@@ -1205,18 +1402,22 @@ function TextEditor(props: TextEditorProps) {
 
           {useFormattedEditor ? (
             <ActionButton
-              tooltip='Send'
+              tooltip="Send"
               tooltipProps={{ position: 'top-end', withArrow: true }}
-              variant='transparent'
+              variant="transparent"
               onClick={onMessageSubmit}
             >
               <IconSend size={20} />
             </ActionButton>
           ) : (
             <ActionButton
-              tooltip='Formatted Message'
-              tooltipProps={{ position: 'top-end', withArrow: true, withinPortal: !useFormattedEditor }}
-              variant='transparent'
+              tooltip="Formatted Message"
+              tooltipProps={{
+                position: 'top-end',
+                withArrow: true,
+                withinPortal: !useFormattedEditor,
+              }}
+              variant="transparent"
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => setUseFormattedEditor(true)}
             >
@@ -1224,19 +1425,21 @@ function TextEditor(props: TextEditorProps) {
             </ActionButton>
           )}
         </Group>
-      )}
-
+      }
       onSubmit={onMessageSubmit}
-
       typingTimeout={typingTimeout}
       onStartTyping={() => {
         if (context.sender._exists)
-          socket().emit('chat:typing', context.sender.id, context.channel_id, 'start');
+          socket().emit(
+            'chat:typing',
+            context.sender.id,
+            context.channel_id,
+            'start',
+          );
       }}
     />
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 export default function MessagesView(props: MessagesViewProps) {
@@ -1250,18 +1453,19 @@ export default function MessagesView(props: MessagesViewProps) {
   // Lagged flag, used to delay rendering message viewport until after editor is rendered (takes 1 rotation for editor to show)
   const [lagged, setLagged] = useState<boolean>(false);
 
-
   // Calculate reply message text
-  const replyToMsg = useMemo(() =>
-    context.state.replying_to?.message.replace(/<\/?[^>]+(>|$)/g, ' ').replace(/<[^>]+>/g, ''),
-    [context.state.replying_to]
+  const replyToMsg = useMemo(
+    () =>
+      context.state.replying_to?.message
+        .replace(/<\/?[^>]+(>|$)/g, ' ')
+        .replace(/<[^>]+>/g, ''),
+    [context.state.replying_to],
   );
 
   // Lagged flag
   useEffect(() => {
     setLagged(true);
   }, []);
-
 
   ////////////////////////////////////////////////////////////
   function scrollToBottom() {
@@ -1274,15 +1478,17 @@ export default function MessagesView(props: MessagesViewProps) {
 
   return (
     <MessageViewContext.Provider value={context}>
-      <Flex h='100%' align='stretch'>
-        <Box sx={(theme) => ({
-          flexGrow: 1,
-          display: 'flex',
-          position: 'relative',
-          flexFlow: 'column',
-          height: '100%',
-          backgroundColor: theme.colors.dark[7],
-        })}>
+      <Flex h="100%" align="stretch">
+        <Box
+          sx={(theme) => ({
+            flexGrow: 1,
+            display: 'flex',
+            position: 'relative',
+            flexFlow: 'column',
+            height: '100%',
+            backgroundColor: theme.colors.dark[7],
+          })}
+        >
           {/* Work around to broken justify-content: flex-end */}
           <div style={{ flexGrow: 1 }} />
           {lagged && sender._exists && messages._exists && (
@@ -1292,32 +1498,52 @@ export default function MessagesView(props: MessagesViewProps) {
             />
           )}
 
-          <Box sx={{
-            position: 'relative',
-            margin: `0rem ${context.style.p} ${context.style.pb} ${context.style.p}`,
-          }}>
-            <Transition mounted={context.state.typing.length > 0} transition='slide-up' duration={200}>
+          <Box
+            sx={{
+              position: 'relative',
+              margin: `0rem ${context.style.p} ${context.style.pb} ${context.style.p}`,
+            }}
+          >
+            <Transition
+              mounted={context.state.typing.length > 0}
+              transition="slide-up"
+              duration={200}
+            >
               {(styles) => (
-                <Group spacing={9} sx={(theme) => ({
-                  position: 'absolute',
-                  top: '-1.45rem',
-                  padding: '1px 0.5rem 1px 0.3rem',
-                  backgroundColor: `${theme.colors.dark[7]}bb`,
-                  borderRadius: 3,
-                  zIndex: 0,
-                })} style={styles}>
-                  <Loader variant='dots' size='xs' />
+                <Group
+                  spacing={9}
+                  sx={(theme) => ({
+                    position: 'absolute',
+                    top: '-1.45rem',
+                    padding: '1px 0.5rem 1px 0.3rem',
+                    backgroundColor: `${theme.colors.dark[7]}bb`,
+                    borderRadius: 3,
+                    zIndex: 0,
+                  })}
+                  style={styles}
+                >
+                  <Loader variant="dots" size="xs" />
                   <Text size={11.5}>
                     {context.state.typing.length <= 1 && (
-                      <><b>{context.state.last_typing?.alias}</b> is typing...</>
+                      <>
+                        <b>{context.state.last_typing?.alias}</b> is typing...
+                      </>
                     )}
                     {context.state.typing.length == 2 && (
-                      <><b>{context.state.typing[0].alias}</b> and <b>{context.state.typing[1].alias}</b> are typing...</>
+                      <>
+                        <b>{context.state.typing[0].alias}</b> and{' '}
+                        <b>{context.state.typing[1].alias}</b> are typing...
+                      </>
                     )}
                     {context.state.typing.length == 3 && (
-                      <><b>{context.state.typing[0].alias}</b>, <b>{context.state.typing[1].alias}</b>, and <b>{context.state.typing[2].alias}</b> are typing...</>
+                      <>
+                        <b>{context.state.typing[0].alias}</b>,{' '}
+                        <b>{context.state.typing[1].alias}</b>, and{' '}
+                        <b>{context.state.typing[2].alias}</b> are typing...
+                      </>
                     )}
-                    {context.state.typing.length > 3 && 'Several people are typing...'}
+                    {context.state.typing.length > 3 &&
+                      'Several people are typing...'}
                   </Text>
                 </Group>
               )}
@@ -1325,11 +1551,11 @@ export default function MessagesView(props: MessagesViewProps) {
 
             {showScrollBottom && (
               <ActionButton
-                tooltip='Scroll To Bottom'
+                tooltip="Scroll To Bottom"
                 tooltipProps={{ position: 'left', openDelay: 500 }}
-                variant='filled'
-                size='xl'
-                radius='xl'
+                variant="filled"
+                size="xl"
+                radius="xl"
                 sx={(theme) => ({
                   position: 'absolute',
                   top: '-3.75rem',
@@ -1347,10 +1573,10 @@ export default function MessagesView(props: MessagesViewProps) {
 
             {context.state.replying_to && (
               <Group
-                h='1.75rem'
-                p='0.15rem 0.5rem'
+                h="1.75rem"
+                p="0.15rem 0.5rem"
                 spacing={6}
-                align='start'
+                align="start"
                 sx={(theme) => ({
                   backgroundColor: theme.colors.dark[8],
                   borderTopLeftRadius: 3,
@@ -1363,21 +1589,17 @@ export default function MessagesView(props: MessagesViewProps) {
                   size={20}
                   sx={{ marginTop: '0.0625rem' }}
                 />
-                <Text
-                  size={12}
-                  weight={600}
-                  mt={2}
-                >
+                <Text size={12} weight={600} mt={2}>
                   {context.state.replying_to.sender?.alias}
                 </Text>
                 <Text
                   size={11}
                   mt={3}
-                  mah='1.25rem'
+                  mah="1.25rem"
                   sx={{
                     maxWidth: '80ch',
                     overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                    textOverflow: 'ellipsis',
                   }}
                 >
                   {replyToMsg}
@@ -1393,14 +1615,21 @@ export default function MessagesView(props: MessagesViewProps) {
               </Group>
             )}
 
-            {hasPermission(props.domain, props.channel_id, 'can_send_messages') && (
+            {hasPermission(
+              props.domain,
+              props.channel_id,
+              'can_send_messages',
+            ) && (
               <TextEditor
                 placeholder={props.placeholder}
-                canSendAttachments={hasPermission(props.domain, props.channel_id, 'can_send_attachments')}
+                canSendAttachments={hasPermission(
+                  props.domain,
+                  props.channel_id,
+                  'can_send_attachments',
+                )}
                 onSubmit={(message, attachments) => {
                   // If these don't exist, return false to indicate submit was not handled, don't clear input
-                  if (!messages._exists || !sender._exists)
-                    return false;
+                  if (!messages._exists || !sender._exists) return false;
 
                   // Send message
                   messages._mutators.addMessage(message, sender, {
@@ -1433,13 +1662,15 @@ export default function MessagesView(props: MessagesViewProps) {
         </Box>
 
         {props.withSidePanel !== false && context.state.show_side_panel && (
-          <Box sx={(theme) => ({
-            flexBasis: '25rem',
-            height: '100%',
-            /* position: 'relative',
+          <Box
+            sx={(theme) => ({
+              flexBasis: '25rem',
+              height: '100%',
+              /* position: 'relative',
             boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`, */
-            borderLeft: `1px solid ${theme.colors.dark[6]}`,
-          })}>
+              borderLeft: `1px solid ${theme.colors.dark[6]}`,
+            })}
+          >
             <SidePanelView
               channel_id={props.channel_id}
               domain={props.domain}

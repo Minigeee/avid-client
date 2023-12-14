@@ -1,4 +1,11 @@
-import { forwardRef, useEffect, useState, useImperativeHandle, useMemo, PropsWithChildren } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useState,
+  useImperativeHandle,
+  useMemo,
+  PropsWithChildren,
+} from 'react';
 
 import {
   Divider,
@@ -25,7 +32,6 @@ import { ExpandedMember, Role } from '@/lib/types';
 import { DomainWrapper, listMembers } from '@/lib/hooks';
 import { IconBadgeOff } from '@tabler/icons-react';
 
-
 ////////////////////////////////////////////////////////////
 type SuggestionType = {
   id: string;
@@ -35,8 +41,7 @@ type SuggestionType = {
   pfp?: string;
   /** Role badge if this is a role type */
   badge?: string;
-}
-
+};
 
 ////////////////////////////////////////////////////////////
 type PingMentionOptions = MentionOptions & {
@@ -68,31 +73,35 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
     return {
       session: this.options.session,
       domain: this.options.domain,
-      has_more_results: {'': true},
+      has_more_results: { '': true },
       members: [],
     };
   },
 
   onCreate() {
     // Get initial members list
-    listMembers(this.options.domain.id, {}, this.options.session)
-      .then(({ data }) => {
+    listMembers(this.options.domain.id, {}, this.options.session).then(
+      ({ data }) => {
         // Copy members array to storage
         this.storage.members = data;
 
         // Determine if more results are available by if query limit is reached
-        this.storage.has_more_results[''] = data.length >= config.app.member.query_limit;
-      });
+        this.storage.has_more_results[''] =
+          data.length >= config.app.member.query_limit;
+      },
+    );
   },
 
   renderHTML({ HTMLAttributes, node }) {
     const { attrs } = node;
-    
+
     // Construct attrs
     const finalAttrs: any = {
       ...HTMLAttributes,
       ['data-type']: 'pingMention',
-      class: `avid-highlight avid-${attrs['data-variant'] === 'member' ? 'mention-member' : 'mention-role'}`,
+      class: `avid-highlight avid-${
+        attrs['data-variant'] === 'member' ? 'mention-member' : 'mention-role'
+      }`,
     };
 
     return [
@@ -106,14 +115,22 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
   },
 });
 
-
 ////////////////////////////////////////////////////////////
-function SuggestionButton(props: PropsWithChildren & { index: number; selectedIndex: number; setSelectedIndex: (idx: number) => void; selectItem: (idx: number) => void; sx?: Sx }) {
+function SuggestionButton(
+  props: PropsWithChildren & {
+    index: number;
+    selectedIndex: number;
+    setSelectedIndex: (idx: number) => void;
+    selectItem: (idx: number) => void;
+    sx?: Sx;
+  },
+) {
   return (
     <UnstyledButton
       key={props.index}
       sx={(theme) => {
-        const merge = typeof props.sx === 'function' ? props.sx?.(theme) : (props.sx || {});
+        const merge =
+          typeof props.sx === 'function' ? props.sx?.(theme) : props.sx || {};
         const selected = props.selectedIndex === props.index;
         return {
           padding: '0.25rem 0.4rem 0.25rem 0.4rem',
@@ -136,74 +153,78 @@ function SuggestionButton(props: PropsWithChildren & { index: number; selectedIn
 }
 
 ////////////////////////////////////////////////////////////
-const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => {
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+const MentionList = forwardRef(
+  (props: SuggestionProps<SuggestionType>, ref) => {
+    const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-  const selectItem = (index: number) => {
-    const item = props.items[index]
+    const selectItem = (index: number) => {
+      const item = props.items[index];
 
-    if (item) {
-      props.command(item);
-    }
-  }
-
-  const upHandler = () => {
-    setSelectedIndex((selectedIndex + props.items.length - (selectedIndex < 0 ? 0 : 1)) % props.items.length);
-  }
-
-  const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props.items.length);
-  }
-
-  const enterHandler = () => {
-    if (selectedIndex >= 0)
-      selectItem(selectedIndex);
-  }
-
-  useEffect(() => setSelectedIndex(0), [props.items])
-
-  useImperativeHandle(ref, () => ({
-    onKeyDown: ({ event }: { event: any }) => {
-      if (event.key === 'ArrowUp') {
-        upHandler();
-        return true;
+      if (item) {
+        props.command(item);
       }
+    };
 
-      if (event.key === 'ArrowDown') {
-        downHandler();
-        return true;
-      }
+    const upHandler = () => {
+      setSelectedIndex(
+        (selectedIndex + props.items.length - (selectedIndex < 0 ? 0 : 1)) %
+          props.items.length,
+      );
+    };
 
-      if (event.key === 'Enter' || event.key === 'Tab') {
-        enterHandler();
-        return true;
-      }
+    const downHandler = () => {
+      setSelectedIndex((selectedIndex + 1) % props.items.length);
+    };
 
-      return false;
-    },
-  }));
-  
+    const enterHandler = () => {
+      if (selectedIndex >= 0) selectItem(selectedIndex);
+    };
 
-  const members = useMemo(() => {
-    return props.items.filter(x => x.type === 'member');
-  }, [props.items]);
-  
-  const roles = useMemo(() => {
-    return props.items.filter(x => x.type === 'role');
-  }, [props.items]);
+    useEffect(() => setSelectedIndex(0), [props.items]);
 
-  return (
-    <ScrollArea.Autosize mah='25ch'>
-      <Stack spacing={0} sx={(theme) => ({
-        padding: 3,
-        width: '15rem',
-        maxWidth: '100%',
-        backgroundColor: theme.colors.dark[5],
-        border: `1px solid ${theme.colors.dark[6]}`,
-        boxShadow: '0px 0px 10px #00000033',
-      })}>
-        {props.items.length
-          ? (
+    useImperativeHandle(ref, () => ({
+      onKeyDown: ({ event }: { event: any }) => {
+        if (event.key === 'ArrowUp') {
+          upHandler();
+          return true;
+        }
+
+        if (event.key === 'ArrowDown') {
+          downHandler();
+          return true;
+        }
+
+        if (event.key === 'Enter' || event.key === 'Tab') {
+          enterHandler();
+          return true;
+        }
+
+        return false;
+      },
+    }));
+
+    const members = useMemo(() => {
+      return props.items.filter((x) => x.type === 'member');
+    }, [props.items]);
+
+    const roles = useMemo(() => {
+      return props.items.filter((x) => x.type === 'role');
+    }, [props.items]);
+
+    return (
+      <ScrollArea.Autosize mah="25ch">
+        <Stack
+          spacing={0}
+          sx={(theme) => ({
+            padding: 3,
+            width: '15rem',
+            maxWidth: '100%',
+            backgroundColor: theme.colors.dark[5],
+            border: `1px solid ${theme.colors.dark[6]}`,
+            boxShadow: '0px 0px 10px #00000033',
+          })}
+        >
+          {props.items.length ? (
             <>
               {members.map((item, index) => (
                 <SuggestionButton
@@ -217,9 +238,7 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
                     member={{ alias: item.name, profile_picture: item.pfp }}
                     size={24}
                   />
-                  <Text size='sm'>
-                    {item.name}
-                  </Text>
+                  <Text size="sm">{item.name}</Text>
                 </SuggestionButton>
               ))}
 
@@ -238,10 +257,10 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
                     },
                   })}
                 >
-                  {item.badge && <Emoji id={item.badge} size='1rem' />}
-                  {!item.badge && <IconBadgeOff size='1.25rem' />}
+                  {item.badge && <Emoji id={item.badge} size="1rem" />}
+                  {!item.badge && <IconBadgeOff size="1.25rem" />}
                   <Text
-                    size='sm'
+                    size="sm"
                     weight={600}
                     sx={(theme) => ({
                       color: theme.colors.gray[4],
@@ -252,14 +271,17 @@ const MentionList = forwardRef((props: SuggestionProps<SuggestionType>, ref) => 
                 </SuggestionButton>
               ))}
             </>
-          ) : <Text size='sm' color='dimmed'>No results</Text>
-        }
-      </Stack>
-    </ScrollArea.Autosize>
-  )
-});
+          ) : (
+            <Text size="sm" color="dimmed">
+              No results
+            </Text>
+          )}
+        </Stack>
+      </ScrollArea.Autosize>
+    );
+  },
+);
 MentionList.displayName = 'MentionList';
-
 
 ////////////////////////////////////////////////////////////
 const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
@@ -270,52 +292,71 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
 
     // Filter members by name
     query = query.toLowerCase();
-    let filteredM = members.filter(x => x.alias.toLowerCase().includes(query));
+    let filteredM = members.filter((x) =>
+      x.alias.toLowerCase().includes(query),
+    );
 
     // Check if more members need to be requested
-    if (filteredM.length <= config.app.member.new_query_threshold && (query.length && storage.has_more_results[query.slice(0, -1)])) {
+    if (
+      filteredM.length <= config.app.member.new_query_threshold &&
+      query.length &&
+      storage.has_more_results[query.slice(0, -1)]
+    ) {
       // Request new search query
-      const { data: newMembers } = await listMembers(storage.domain.id, { search: query }, storage.session);
+      const { data: newMembers } = await listMembers(
+        storage.domain.id,
+        { search: query },
+        storage.session,
+      );
 
       // Merge members lists
       const memberMap: Record<string, ExpandedMember> = {};
-      for (const member of members)
-        memberMap[member.id] = member;
+      for (const member of members) memberMap[member.id] = member;
 
       // Add new members to list
       for (const member of newMembers) {
-        if (!memberMap[member.id])
-          members.push(member);
+        if (!memberMap[member.id]) members.push(member);
       }
 
       // Sort members array
       members.sort((a, b) => a.alias.localeCompare(b.alias));
 
       // Refilter and evaluate
-      filteredM = members.filter(x => x.alias.toLowerCase().includes(query.toLowerCase()));
+      filteredM = members.filter((x) =>
+        x.alias.toLowerCase().includes(query.toLowerCase()),
+      );
 
       // There are potentially more query results if the number of new members is equal to
       // the query limit (indicating the results are forcefully limited)
-      storage.has_more_results[query] = newMembers.length >= config.app.member.query_limit;
-    }
-    else {
+      storage.has_more_results[query] =
+        newMembers.length >= config.app.member.query_limit;
+    } else {
       // Update flag that indicates if there are potentially more results to see
-      storage.has_more_results[query] = storage.has_more_results[query.slice(0, -1)];
+      storage.has_more_results[query] =
+        storage.has_more_results[query.slice(0, -1)];
     }
 
     // Filter roles
     const defRole = storage.domain._default_role;
-    const filteredR = roles.filter(x => x.label.toLowerCase().startsWith(query)).sort((a, b) => a.id === defRole ? -1 : b.id === defRole ? 1 : a.label.localeCompare(b.label));
+    const filteredR = roles
+      .filter((x) => x.label.toLowerCase().startsWith(query))
+      .sort((a, b) =>
+        a.id === defRole
+          ? -1
+          : b.id === defRole
+            ? 1
+            : a.label.localeCompare(b.label),
+      );
 
     // Merge lists
     const filtered = [
-      ...filteredM.map(x => ({
+      ...filteredM.map((x) => ({
         type: 'member',
         id: x.id,
         name: x.alias,
         pfp: x.profile_picture,
       })),
-      ...filteredR.map(x => ({
+      ...filteredR.map((x) => ({
         type: 'role',
         id: x.id,
         name: x.label,
@@ -331,37 +372,43 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
     let popup: Instance<TippyProps>[];
 
     return {
-      onStart: props => {
+      onStart: (props) => {
         component = new ReactRenderer(MentionList, {
           props,
           editor: props.editor,
-        })
+        });
 
         if (!props.clientRect) {
-          return
+          return;
         }
 
         popup = tippy('body', {
-          getReferenceClientRect: () => props.clientRect ? props.clientRect() || new DOMRect() : new DOMRect(),
+          getReferenceClientRect: () =>
+            props.clientRect
+              ? props.clientRect() || new DOMRect()
+              : new DOMRect(),
           appendTo: () => document.body,
           content: component.element,
           showOnCreate: true,
           interactive: true,
           trigger: 'manual',
           placement: 'bottom-start',
-        })
+        });
       },
 
       onUpdate(props) {
-        component.updateProps(props)
+        component.updateProps(props);
 
         if (!props.clientRect) {
-          return
+          return;
         }
 
         popup[0].setProps({
-          getReferenceClientRect: () => props.clientRect ? props.clientRect() || new DOMRect() : new DOMRect(),
-        })
+          getReferenceClientRect: () =>
+            props.clientRect
+              ? props.clientRect() || new DOMRect()
+              : new DOMRect(),
+        });
       },
 
       onKeyDown(props) {
@@ -378,17 +425,17 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
         popup[0].destroy();
         component.destroy();
       },
-    }
+    };
   },
-  
+
   command: ({ editor, range, props }) => {
     // increase range.to by one when the next node is of type "text"
     // and starts with a space character
-    const nodeAfter = editor.view.state.selection.$to.nodeAfter
-    const overrideSpace = nodeAfter?.text?.includes(' ')
+    const nodeAfter = editor.view.state.selection.$to.nodeAfter;
+    const overrideSpace = nodeAfter?.text?.includes(' ');
 
     if (overrideSpace) {
-      range.to += 1
+      range.to += 1;
     }
 
     editor
@@ -408,15 +455,15 @@ const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
           text: ' ',
         },
       ])
-      .run()
+      .run();
 
-    window.getSelection()?.collapseToEnd()
+    window.getSelection()?.collapseToEnd();
   },
 };
-
 
 ////////////////////////////////////////////////////////////
 export default PingMention.configure({
   suggestion: MentionSuggestor,
-  renderLabel: ({ options, node }) => `${options.suggestion.char}${node.attrs['data-label']}`,
+  renderLabel: ({ options, node }) =>
+    `${options.suggestion.char}${node.attrs['data-label']}`,
 });
