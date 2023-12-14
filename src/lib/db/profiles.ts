@@ -1,6 +1,6 @@
 import { query, sql } from '@/lib/db/query';
 
-import { NoId, Profile, User } from '@/lib/types';
+import { NoId, Profile, RemoteAppState, User } from '@/lib/types';
 
 
 /** Profile data functions without session */
@@ -13,10 +13,10 @@ export const profiles = {
 	 */
 	create: async (user_id: string, username: string, make_current: boolean = false) => {
 		const statements = [
-			sql.let('$profile', sql.create<Profile>('profiles', {
+			sql.let('$profile', sql.single(sql.create<Profile>('profiles', {
 				username,
 				time_created: new Date().toISOString(),
-			})),
+			}))),
 			sql.relate('$profile', 'profile_of', user_id),
 			sql.select<Profile>(['id'], { from: '$profile' }),
 		];
@@ -30,10 +30,10 @@ export const profiles = {
 		}
 
 		// Execute query
-		const results = await query<Profile[]>(
+		const results = await query<Profile>(
 			sql.transaction(statements)
 		);
 
-		return results && results.length > 0 ? results[0].id : null;
+		return results?.id || null;
 	},
 };

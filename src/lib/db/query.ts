@@ -70,7 +70,7 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 			// Return if all results are ok
 			for (const result of results.data) {
 				if (result.status === 'ERR')
-					errors.push(result.detail);
+					errors.push(result.result);
 			}
 
 			if (errors.length === 0)
@@ -100,6 +100,7 @@ export async function query<T>(sql: string, options?: QueryOptions): Promise<T |
 	}
 
 	// Error occurred
+	console.error(errors)
 	throw new Error(errors[0]);
 }
 
@@ -262,76 +263,10 @@ function _json(x: any, doubleBackslash: boolean = false): string {
         return x;
 }
 
-function _fnstr(fn: any) {
-    const str = fn.toString();
-    const paramstr: string = str.match(/function[^\()]*\(([\s\S]*?)\)/)[1];
-    const bodystr: string = str.match(/function[^{]+\{([\s\S]*)\}$/)[1];
-	const lines = bodystr.split(/\r?\n/g).map(x => x.trim());
-
-    return {
-        params: paramstr ? paramstr.split(', ') : [],
-        body: lines.filter(x => !x.startsWith('//')).join(' '),
-    };
-}
-
-function _replace(str: string, v: string, replace: string) {
-    return str.replace(new RegExp(`(\\b(?<!\\w\\.))(${v})(\\b)`, 'g'), replace);
-}
-
 /** SQL commands in function form for ease of use and future proofing */
 export const sql = {
 	/** Used to escape a string from being surrounded by quotations */
 	$: (expr: string) => ({ __esc__: expr }),
-
-	/** Create string from function */
-	fn: <This extends object>(key: string, fn: (this: This, ...args: any[]) => any, hardcode?: Record<string, any>) => {
-		// If in production, use pregenerated function string
-		if (!config.dev_mode) {
-			// Function builder
-			const builder = config.db.fns[key];
-			assert(builder);
-
-			// Make all hardcodes the correct format
-			hardcode = hardcode || {};
-			for (const [k, v] of Object.entries(hardcode))
-				hardcode[k] = _json(v);
-
-			return { __esc__: builder(hardcode) };
-		}
-
-		else {
-			let { params, body } = _fnstr(fn);
-
-			// Replace parameters
-			for (let i = 0; i < params.length; ++i)
-				body = _replace(body, params[i], `arguments[${i}]`);
-
-			// Builtin objects
-			body = body.replace(/\(\d.+?new_Record\)/g, 'new Record');
-
-			// Replace hardcodes
-			let template = body;
-			for (const [k, v] of Object.entries(hardcode || {})) {
-				body = _replace(body, k, _json(v, false));
-				template = _replace(template, k, `\${${k}}`);
-			}
-
-			// TODO : Find out if there is a way to prevent build if a value doesn't match
-			template = `function(${params.map(x => `$${x}`).join(', ')}) {${template}}`;
-			{
-				const hardcodeStrs: Record<string, string> = {};
-				for (const k of Object.keys(hardcode || {}))
-					hardcodeStrs[k] = `\${${k}}`;
-				const currTemplate = config.db.fns[key]?.(hardcodeStrs);
-
-				if (!currTemplate || currTemplate !== template)
-					console.error(`ERROR | fn builders do not match: '${key}'`);
-			}
-
-			query(`UPDATE _fn:${key} SET value = '${template}'`, { root: true });
-			return { __esc__: `function(${params.map(x => `$${x}`).join(', ')}) {${body}}` };
-		}
-	},
 
 	/** Join a list of expressions with "and" */
 	and: (exprs: string[]) => exprs.map(x => `(${x.trim()})`).join('&&') + ' ',
@@ -349,6 +284,9 @@ export const sql = {
 
 	/** Return statement */
 	return: (expr: string) => `RETURN ${expr} `,
+
+	/** Select single element from array */
+	single: (expr: string, options?: { index?: number, append?: string }) => `(${expr.trim()})[${options?.index || 0}]${options?.append || ''} `,
 
 	/** Wrap statement in parantheses */
 	wrap: (expr: string, options?: { alias?: string, append?: string }) =>

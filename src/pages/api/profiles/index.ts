@@ -25,9 +25,9 @@ router
 			const id = await profiles.create(req.token.user_id, params.username, true);
 			
 			// Refresh session
-			const token = await refresh(req, res);
+			const refreshResults = await refresh(req, res);
 
-			res.status(200).json({ token, profile_id: id });
+			res.status(200).json({ token: refreshResults?.[0], profile_id: id });
 		}
 	)
 

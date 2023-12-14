@@ -227,7 +227,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   // Get most data except domain (complex set of selects, so leave api to handle it)
   const _1 = await query<[unknown, ExpandedProfile[], ExpandedMember[], ExpandedMember[], ExpandedMember[], ExpandedMember[], RemoteAppState]>(sql.multi([
     // Get app state, used to find out which domain to fetch
-    sql.let('$app', sql.select<RemoteAppState>('*', { from: stateId })),
+    sql.let('$app', sql.single(sql.select<RemoteAppState>('*', { from: stateId }))),
 
     // Get profile
     sql.select<Profile>([
@@ -286,7 +286,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
 
   // Get domain
   let domain: ExpandedDomain | null = null;
-  if (app.domain) {
+  if (app?.domain) {
     domain = await api('GET /domains/:domain_id', {
       params: { domain_id: app.domain }
     }, { session: { _exists: true, token } });

@@ -37,18 +37,18 @@ function factory(session?: SessionState) {
 		getByProvider: (provider_id: string, provider: AuthProviders, email: string | undefined, alpha_key: string) => {
 			return query<User>(sql.multi([
 				// Select user that matches provider info
-				sql.let('$user', sql.select('*', {
+				sql.let('$user', sql.single(sql.select('*', {
 					from: 'users',
 					where: sql.match({ provider_id, provider }),
-				})),
+				}))),
 		
 				// Check if the user exists, if not create one
 				sql.if({
 					cond: '$user',
-					body: '$user[0]',
+					body: '$user',
 				}, {
 					cond: `_system:${process.env.NODE_ENV}.alpha_key = '${alpha_key}'`,
-					body: sql.create('users', {
+					body: sql.single(sql.create('users', {
 						time_created: new Date().toISOString(),
 						provider_id,
 						provider,
@@ -57,7 +57,7 @@ function factory(session?: SessionState) {
 						current_profile: null,
 		
 						_id_key: uid(),
-					} as NoId<User>),
+					} as NoId<User>)),
 				}, {
 					body: 'null',
 				}),

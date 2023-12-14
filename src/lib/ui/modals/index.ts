@@ -68,6 +68,7 @@ export const openCreateDomain = (props: CreateDomainProps) => openContextModal({
 	modal: 'create-domain',
 	withCloseButton: false,
 	innerProps: props,
+	size: 'lg',
 	styles: (theme) => ({
 		body: { backgroundColor: theme.colors.dark[5] }
 	})

@@ -433,7 +433,7 @@ function GeneralTab({ domain, form, role, roleIdx, session, setSelectedRoleId }:
         </Group>
       </div>
 
-      {hasPermission(domain, role.id, 'can_delete_role') && (
+      {hasPermission(domain, role.id, 'can_delete_role') && role.id !== domain._default_role && (
         <>
           <Divider maw={config.app.ui.settings_maw} />
 
