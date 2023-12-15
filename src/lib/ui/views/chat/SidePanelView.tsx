@@ -63,6 +63,7 @@ import {
   hasPermission,
   makeMarkdownEnv,
   renderMessage,
+  useApp,
   useCachedState,
   useChatStyles,
   useMember,
@@ -681,6 +682,8 @@ type SidePanelViewProps = {
 
 ////////////////////////////////////////////////////////////
 export default function SidePanelView(props: SidePanelViewProps) {
+  const app = useApp();
+
   const [tab, setTab] = useCachedState<string | null>(
     `${props.channel_id}.side_tab`,
     'pinned',
@@ -742,7 +745,12 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <div style={{ flexGrow: 1 }} />
         <CloseButton
           size='md'
-          onClick={() => props.context.state._set('show_side_panel', false)}
+          onClick={() => {
+            props.context.state._set('show_side_panel', false);
+            app._mutators.setChatState(props.channel_id, {
+              side_panel_opened: false,
+            });
+          }}
         />
       </Tabs.List>
 

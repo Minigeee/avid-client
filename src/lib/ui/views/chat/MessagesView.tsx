@@ -261,7 +261,10 @@ function useInitMessageViewContext({
     scroll_to: null,
     view_thread: null,
     viewing_thread: null,
-    show_side_panel: true,
+    show_side_panel:
+      app.chat_states?.[channel_id]?.side_panel_opened === undefined
+        ? true
+        : app.chat_states[channel_id].side_panel_opened || false,
   });
 
   const [typingIds, setTypingIds] = useState<string[]>([]);
@@ -1444,6 +1447,7 @@ function TextEditor(props: TextEditorProps) {
 ////////////////////////////////////////////////////////////
 export default function MessagesView(props: MessagesViewProps) {
   // Data
+  const app = useApp();
   const context = useInitMessageViewContext(props);
   const { sender, messages } = context;
 
@@ -1654,7 +1658,12 @@ export default function MessagesView(props: MessagesViewProps) {
                 borderBottomRightRadius: 0,
                 borderColor: theme.colors.dark[5],
               })}
-              onClick={() => context.state._set('show_side_panel', true)}
+              onClick={() => {
+                context.state._set('show_side_panel', true);
+                app._mutators.setChatState(props.channel_id, {
+                  side_panel_opened: true,
+                });
+              }}
             >
               <IconChevronLeft />
             </ActionIcon>

@@ -19,6 +19,14 @@ export type RemoteAppState = {
   /** Indicates if the right side panel is opened */
   right_panel_opened?: boolean;
 
+  /** Chat room states */
+  chat_states?: Record<
+    string,
+    {
+      /** If the side panel is opened */
+      side_panel_opened?: boolean;
+    }
+  >;
   /** Current state for task boards */
   board_states?: Record<
     string,

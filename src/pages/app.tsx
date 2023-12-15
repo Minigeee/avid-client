@@ -388,6 +388,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
               recordKeys(v, 'channels'),
             ),
             pings: recordKeys(app.pings, 'channels'),
+            chat_states: recordKeys(app.chat_states, 'channels'),
             board_states: recordKeys(app.board_states, 'boards'),
           }
         : undefined,

@@ -171,6 +171,24 @@ function remoteMutators(
     },
 
     /**
+     * Set the chat state by merging
+     *
+     * @param channel_id The id of the chat state to save
+     * @param chatState The new board state values that should be set
+     */
+    setChatState: (
+      chat_id: string,
+      chatState: Partial<NonNullable<RemoteAppState['chat_states']>[string]>,
+    ) => {
+      const diff = {
+        chat_states: { [id(chat_id)]: chatState },
+      } as Partial<RemoteAppState>;
+      setState(merge({}, state, diff));
+
+      save(diff);
+    },
+
+    /**
      * Set the board state by merging
      *
      * @param board_id The id of the board state to save
