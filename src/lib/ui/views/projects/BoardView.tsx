@@ -974,7 +974,20 @@ export default function BoardView(props: BoardViewProps) {
             padding: '1.0rem 1.5rem 1.0rem 1.5rem',
           })}
         >
-          <Group noWrap spacing={3} align='center' mb={16}>
+          <Group
+            noWrap
+            spacing={3}
+            align='center'
+            sx={(theme) => ({
+              position: 'sticky',
+              top: 0,
+              margin: '0.0rem -0.5rem 1.0rem -1.5rem',
+              padding: '0.0rem 1.5rem 0.25rem 1.5rem',
+              backgroundColor: `${theme.colors.dark[7]}E0`,
+              backdropFilter: 'blur(6px)',
+              zIndex: 100,
+            })}
+          >
             <Select
               data={collectionSelections}
               itemComponent={GroupSelectItem}
@@ -1112,7 +1125,7 @@ export default function BoardView(props: BoardViewProps) {
           radius='xl'
           sx={(theme) => ({
             position: 'absolute',
-            top: '2.0rem',
+            top: '3.5rem',
             right: '2.5rem',
             backgroundColor: theme.colors.dark[8],
             '&:hover': {
