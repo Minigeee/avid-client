@@ -26,6 +26,7 @@ import { BoardWrapper, DomainWrapper, TasksWrapper } from '@/lib/hooks';
 import { ExpandedMember, ExpandedTask, Label } from '@/lib/types';
 import SearchBar from '@/lib/ui/components/SearchBar';
 import { useDebouncedValue } from '@mantine/hooks';
+import { PopoverSelectDropdown } from '@/lib/ui/components/PopoverSelect';
 
 ////////////////////////////////////////////////////////////
 interface TaskSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
@@ -155,106 +156,56 @@ export function TaskSelector(props: TaskSelectorProps) {
     props.task.dependencies,
   ]);
 
-  // Filtered tasks
-  const filtered = useMemo(() => {
-    let list: typeof options = [];
-    if (!debouncedSearch?.length) list = options;
-    else {
-      const terms = debouncedSearch.toLocaleLowerCase().split(/\s+/);
-      list = options.filter((x) => {
-        // Search filter
-        if (debouncedSearch && !x.sid.toString().includes(debouncedSearch)) {
-          const lcSummary = x.summary.toLocaleLowerCase();
+  return (
+    <PopoverSelectDropdown
+      data={options}
+      itemComponent={TaskSelectItem}
+      searchProps={{ placeholder: 'Search tasks' }}
+      onSelect={(task) => {
+        const id = task.value;
 
-          for (const term of terms) {
-            if (term.length > 0 && !lcSummary.includes(term)) return false;
-          }
+        // Perform update
+        if (props.shouldUpdate !== false && props.task.id) {
+          const update =
+            props.type === 'subtask'
+              ? { subtasks: (props.task.subtasks || []).concat([id]) }
+              : {
+                  dependencies: (props.task.dependencies || []).concat([id]),
+                };
+          props.tasks._mutators.updateTask(props.task.id, update, true);
         }
 
-        return true;
-      });
-    }
+        props.onSelect?.(id);
+      }}
+      appendComponent={
+        props.canCreateTask !== false ? (
+          <>
+            <Divider
+              label='or'
+              labelPosition='center'
+              labelProps={{ color: 'dimmed' }}
+            />
 
-    return list.map((task) => (
-      <UnstyledButton
-        key={task.sid}
-        sx={(theme) => ({
-          padding: '0.375rem 0.75rem',
-          borderRadius: theme.radius.sm,
-
-          '&:hover': {
-            background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
-          },
-        })}
-        onClick={() => {
-          const id = task.value;
-
-          // Perform update
-          if (props.shouldUpdate !== false && props.task.id) {
-            const update =
-              props.type === 'subtask'
-                ? { subtasks: (props.task.subtasks || []).concat([id]) }
-                : {
-                    dependencies: (props.task.dependencies || []).concat([id]),
-                  };
-            props.tasks._mutators.updateTask(props.task.id, update, true);
-          }
-
-          props.onSelect?.(id);
-        }}
-      >
-        <TaskSelectItem {...task} />
-      </UnstyledButton>
-    ));
-  }, [options, debouncedSearch]);
-
-  return (
-    <Stack spacing={0}>
-      <SearchBar value={search} onChange={setSearch} />
-      {options.length === 0 && (
-        <Center w={config.app.ui.short_input_width} h='5rem'>
-          <Text size='sm' color='dimmed'>
-            There are no tasks
-          </Text>
-        </Center>
-      )}
-      <ScrollArea.Autosize
-        w={config.app.ui.short_input_width}
-        mah='16rem'
-        mb={props.canCreateTask !== false ? 0 : 4}
-      >
-        <Stack spacing={0} mt={4}>
-          {filtered}
-        </Stack>
-      </ScrollArea.Autosize>
-
-      {props.canCreateTask !== false && (
-        <>
-          <Divider
-            label='or'
-            labelPosition='center'
-            labelProps={{ color: 'dimmed' }}
-            sx={{ margin: '0.5rem 0.0rem' }}
-          />
-
-          <Button
-            component={props.buttonComponent}
-            variant='gradient'
-            leftIcon={<IconPlus size={16} />}
-            onClick={() =>
-              openCreateTask({
-                board_id: props.board.id,
-                domain: props.domain,
-                type: props.type,
-                extra_task: props.task.id,
-                collection: props.task.collection || undefined,
-              })
-            }
-          >
-            Create Task
-          </Button>
-        </>
-      )}
-    </Stack>
+            <Button
+              component={props.buttonComponent}
+              variant='gradient'
+              leftIcon={<IconPlus size={16} />}
+              sx={{ margin: '0.5rem', width: 'stretch' }}
+              onClick={() =>
+                openCreateTask({
+                  board_id: props.board.id,
+                  domain: props.domain,
+                  type: props.type,
+                  extra_task: props.task.id,
+                  collection: props.task.collection || undefined,
+                })
+              }
+            >
+              Create Task
+            </Button>
+          </>
+        ) : undefined
+      }
+    />
   );
 }

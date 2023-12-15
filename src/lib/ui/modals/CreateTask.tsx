@@ -588,7 +588,7 @@ export function CreateTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
               type='subtask'
               domain={props.domain}
@@ -631,7 +631,7 @@ export function CreateTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
               type='dependency'
               domain={props.domain}
@@ -924,7 +924,7 @@ export function CreateTask({
                         Add subtask
                       </Button>
                     </Popover.Target>
-                    <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+                    <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
                       <TaskSelector
                         type='subtask'
                         domain={props.domain}
@@ -956,7 +956,7 @@ export function CreateTask({
                         Add dependency
                       </Button>
                     </Popover.Target>
-                    <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+                    <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
                       <TaskSelector
                         type='dependency'
                         domain={props.domain}
@@ -1319,7 +1319,7 @@ export function EditTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
               type='subtask'
               domain={props.domain}
@@ -1380,7 +1380,7 @@ export function EditTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
               type='dependency'
               domain={props.domain}
@@ -1494,7 +1494,8 @@ export function EditTask({
                               label='Add Subtask'
                               icon={<IconSubtask size={16} />}
                               dropdownProps={{
-                                p: '1.0rem',
+                                p: '0rem',
+                                miw: '20rem',
                                 sx: (theme) => ({
                                   borderColor: theme.colors.dark[4],
                                   boxShadow: '0px 0px 16px #00000030',
@@ -1520,7 +1521,8 @@ export function EditTask({
                               label='Add Dependency'
                               icon={<IconGitMerge size={16} />}
                               dropdownProps={{
-                                p: '1.0rem',
+                                p: '0rem',
+                                miw: '20rem',
                                 sx: (theme) => ({
                                   borderColor: theme.colors.dark[4],
                                   boxShadow: '0px 0px 16px #00000030',

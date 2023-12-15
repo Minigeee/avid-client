@@ -102,7 +102,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
     }
 
     return addable;
-  }, []);
+  }, [props.domain.roles, member.roles]);
 
   return (
     <>

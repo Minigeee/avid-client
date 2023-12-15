@@ -21,6 +21,7 @@ import {
   TextInput,
   TextInputProps,
   Title,
+  UnstyledButton,
 } from '@mantine/core';
 
 import { Emoji } from './Emoji';
@@ -32,26 +33,37 @@ import { DomainWrapper, hasPermission, useProfile } from '@/lib/hooks';
 import { IconSearch } from '@tabler/icons-react';
 
 ////////////////////////////////////////////////////////////
-export type PopoverSelect<T> = {
+export type PopoverSelectProps<T> = {
   children: (
     setOpened: (opened: boolean) => void,
     opened: boolean,
   ) => JSX.Element;
+  /** Data to display */
   data: T[];
-  itemComponent: ForwardRefExoticComponent<Role>;
+  /** The component that will be used to display an item (rendered inside a button) */
+  itemComponent: ForwardRefExoticComponent<T>;
+
+  /** Component that gets rendered after the search list in the popover */
+  appendComponent?: JSX.Element;
+  /** Props for the search bar */
   searchProps?: TextInputProps;
+  /** Props for the popover */
   popoverProps?: PopoverProps;
+  /** SHould the popover be rendered in a portal */
   withinPortal?: boolean;
+  /** The field that contains the item label that is used for searching (default `label`) */
   labelField?: string;
 
-  onSelect?: (item: T) => Promise<boolean | undefined | void>;
+  /** Function that gets called on item select */
+  onSelect?: (item: T) => boolean | undefined | void | Promise<boolean | undefined | void>;
 };
 
 ////////////////////////////////////////////////////////////
-export default function PopoverSelect<T>(props: PopoverSelect<T>) {
+export function PopoverSelectDropdown<T>(
+  props: Omit<PopoverSelectProps<T>, 'children'> & { setOpened?: (value: boolean) => void },
+) {
   const labelField = props.labelField || 'label';
 
-  const [opened, setOpened] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -65,6 +77,71 @@ export default function PopoverSelect<T>(props: PopoverSelect<T>) {
   }, [search, props.data]);
 
   return (
+    <>
+      <LoadingOverlay visible={loading} />
+
+      <TextInput
+        p='0.5rem'
+        {...props.searchProps}
+        icon={<IconSearch size={16} />}
+        value={search}
+        onChange={(e) => setSearch(e.currentTarget.value)}
+        rightSection={
+          search.length > 0 ? (
+            <CloseButton onClick={() => setSearch('')} />
+          ) : undefined
+        }
+        autoFocus
+      />
+
+      <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+
+      <ScrollArea.Autosize mah='30rem' p='0.5rem'>
+        <Stack spacing={0}>
+          {filtered.map((item: any, i) => (
+            <UnstyledButton
+              key={i}
+              p='0.35rem 0.6rem'
+              sx={(theme) => ({
+                borderRadius: theme.radius.sm,
+                cursor: 'pointer',
+
+                '&:hover': {
+                  backgroundColor: theme.colors.dark[5],
+                },
+              })}
+              onClick={async () => {
+                try {
+                  setLoading(true);
+
+                  // On select
+                  const success = await props.onSelect?.(item);
+
+                  // Close
+                  if (!props.onSelect || success !== false)
+                    props.setOpened?.(false);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              <props.itemComponent {...item} />
+            </UnstyledButton>
+          ))}
+        </Stack>
+      </ScrollArea.Autosize>
+
+      {props.appendComponent}
+    </>
+  );
+}
+
+
+////////////////////////////////////////////////////////////
+export default function PopoverSelect<T>(props: PopoverSelectProps<T>) {
+  const [opened, setOpened] = useState<boolean>(false);
+
+  return (
     <Popover
       {...props.popoverProps}
       opened={opened}
@@ -74,57 +151,7 @@ export default function PopoverSelect<T>(props: PopoverSelect<T>) {
       <Popover.Target>{props.children(setOpened, opened)}</Popover.Target>
 
       <Popover.Dropdown p={0} miw='16rem'>
-        <LoadingOverlay visible={loading} />
-
-        <TextInput
-          p='0.5rem'
-          {...props.searchProps}
-          icon={<IconSearch size={16} />}
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-          rightSection={
-            search.length > 0 ? (
-              <CloseButton onClick={() => setSearch('')} />
-            ) : undefined
-          }
-          autoFocus
-        />
-
-        <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
-
-        <ScrollArea.Autosize mah='30rem' p='0.5rem'>
-          <Stack spacing={0}>
-            {filtered.map((item: any, i) => (
-              <Box
-                key={i}
-                p='0.35rem 0.6rem'
-                sx={(theme) => ({
-                  borderRadius: theme.radius.sm,
-                  cursor: 'pointer',
-
-                  '&:hover': {
-                    backgroundColor: theme.colors.dark[5],
-                  },
-                })}
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-
-                    // On select
-                    const success = await props.onSelect?.(item);
-
-                    // Close
-                    if (!props.onSelect || success !== false) setOpened(false);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                <props.itemComponent {...item} />
-              </Box>
-            ))}
-          </Stack>
-        </ScrollArea.Autosize>
+        <PopoverSelectDropdown {...props} setOpened={setOpened} />
       </Popover.Dropdown>
     </Popover>
   );

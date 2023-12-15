@@ -357,7 +357,8 @@ function TaskMenuDropdown({
             label='Add subtask'
             icon={<IconSubtask size={16} />}
             dropdownProps={{
-              p: '1.0rem',
+              p: '0.0rem',
+              miw: '20rem',
               sx: (theme) => ({
                 boxShadow: '0px 0px 16px #00000030',
               }),
@@ -380,7 +381,8 @@ function TaskMenuDropdown({
             label='Add dependency'
             icon={<IconGitMerge size={16} />}
             dropdownProps={{
-              p: '1.0rem',
+              p: '0.0rem',
+              miw: '20rem',
               sx: (theme) => ({
                 boxShadow: '0px 0px 16px #00000030',
               }),
