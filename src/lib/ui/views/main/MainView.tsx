@@ -61,7 +61,7 @@ export default function MainView() {
       <ChannelsView channel_id={channel_id || ''} domain={domain} />
 
       <Flex
-        direction="column"
+        direction='column'
         sx={(theme) => ({
           flexGrow: 1,
           width: 0, // idk why this works
@@ -95,14 +95,14 @@ export default function MainView() {
             <>
               <RtcControlBar />
               {!app.right_panel_opened && (
-                <Divider orientation="vertical" m="0.5rem 0.0rem" />
+                <Divider orientation='vertical' m='0.5rem 0.0rem' />
               )}
             </>
           )}
 
           {!app.right_panel_opened && (
             <ActionButton
-              tooltip="Open Side Panel"
+              tooltip='Open Side Panel'
               hoverBg={(theme) => theme.colors.dark[6]}
               mr={4}
               onClick={() => app._mutators.setRightPanelOpened(true)}

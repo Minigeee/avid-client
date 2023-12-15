@@ -52,7 +52,7 @@ function ControlButton({
     ({ children }: PropsWithChildren) => (
       <Tooltip
         label={tooltip || ''}
-        position="top"
+        position='top'
         withArrow
         openDelay={500}
         sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
@@ -137,7 +137,7 @@ export default function RtcControlBar() {
             <IconArrowBackUp size={20} />
           </ControlButton>
 
-          <Divider orientation="vertical" mt={3} mb={3} />
+          <Divider orientation='vertical' mt={3} mb={3} />
         </>
       )}
 
@@ -196,14 +196,14 @@ export default function RtcControlBar() {
         {rtc.is_deafened && <IconHeadphonesOff size={20} />}
       </ControlButton>
 
-      <ControlButton tooltip="Settings" disabled>
+      <ControlButton tooltip='Settings' disabled>
         <IconSettings size={20} />
       </ControlButton>
 
-      <Divider orientation="vertical" mt={3} mb={3} />
+      <Divider orientation='vertical' mt={3} mb={3} />
 
       <ControlButton
-        tooltip="Leave"
+        tooltip='Leave'
         color={['red', 5]}
         onClick={() => rtc._mutators.disconnect()}
       >

@@ -92,7 +92,7 @@ const ThreadItem = forwardRef<HTMLDivElement, ThreadItemProps>(
         <Group noWrap>
           <div style={{ flexGrow: 1 }}>
             <Text weight={600}>{label}</Text>
-            <Text size="xs" color="dimmed">
+            <Text size='xs' color='dimmed'>
               Last active: {moment(last_active).fromNow()}
             </Text>
           </div>
@@ -190,7 +190,7 @@ function ThreadsTab(props: SidePanelViewProps) {
     <>
       {!threads._exists ||
         (threads.data.length > 0 && (
-          <Flex p="0.25rem 0.6rem" gap="0.5rem" align="end">
+          <Flex p='0.25rem 0.6rem' gap='0.5rem' align='end'>
             {!renaming && (
               <Select
                 value={thread}
@@ -234,8 +234,8 @@ function ThreadsTab(props: SidePanelViewProps) {
 
             {!renaming && canSetName && (
               <ActionButton
-                tooltip="Rename"
-                size="lg"
+                tooltip='Rename'
+                size='lg'
                 mb={2}
                 hoverBg={(theme) => theme.colors.dark[6]}
                 onClick={() => {
@@ -258,24 +258,24 @@ function ThreadsTab(props: SidePanelViewProps) {
             channel_id={props.channel_id}
             thread_id={thread}
             domain={props.domain}
-            p="1.2rem"
-            pb="1.8rem"
-            avatarGap="md"
+            p='1.2rem'
+            pb='1.8rem'
+            avatarGap='md'
             withSidePanel={false}
-            placeholder="Reply to thread"
+            placeholder='Reply to thread'
           />
         </Box>
       )}
       {!thread && (
-        <Center h="10rem">
+        <Center h='10rem'>
           <div>
-            <Text color="dimmed" align="center">
+            <Text color='dimmed' align='center'>
               {threads._exists && threads.data.length === 0
-                ? 'This section has no threads'
+                ? 'This page has no threads'
                 : 'No thread is selected'}
             </Text>
             {threads._exists && threads.data.length === 0 && (
-              <Text color="dimmed" size="sm">
+              <Text color='dimmed' size='sm'>
                 {'(Reply to a message to start a new thread)'}
               </Text>
             )}
@@ -299,7 +299,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
   const editorRef = useRef<Editor>(null);
 
   return (
-    <Stack maw="80ch" spacing="xs">
+    <Stack maw='80ch' spacing='xs'>
       <RichTextEditor
         editorRef={editorRef}
         domain={props.domain}
@@ -316,12 +316,12 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
         }}
       />
 
-      <Group spacing="xs" position="right">
-        <Button variant="default" onClick={props.onCancel}>
+      <Group spacing='xs' position='right'>
+        <Button variant='default' onClick={props.onCancel}>
           Cancel
         </Button>
         <Button
-          variant="gradient"
+          variant='gradient'
           onClick={() => {
             if (!editorRef.current) return;
 
@@ -432,7 +432,7 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
         boxShadow: '0px 0px 12px #00000030',
       })}
     >
-      <Group ref={ref} spacing="sm" w="100%" mb={6}>
+      <Group ref={ref} spacing='sm' w='100%' mb={6}>
         <MemberAvatar
           member={msg.sender}
           size={38}
@@ -444,7 +444,7 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
 
         <Box mt={2} sx={{ flexGrow: 1 }}>
           <Group spacing={6}>
-            <Title order={6} color="gray">
+            <Title order={6} color='gray'>
               {msg.sender && typeof msg.sender !== 'string'
                 ? msg.sender.alias
                 : ''}
@@ -456,7 +456,7 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
             />
           </Group>
 
-          <Text size={11} color="dimmed" ml={2}>
+          <Text size={11} color='dimmed' ml={2}>
             {moment(msg.created_at).calendar(null, {
               lastWeek: 'dddd [at] LT',
             })}
@@ -465,7 +465,7 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
 
         {props.canPinMessages && (
           <CloseButton
-            size="sm"
+            size='sm'
             iconSize={18}
             mt={2}
             sx={{ alignSelf: 'start' }}
@@ -493,7 +493,7 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
             dangerouslySetInnerHTML={{ __html: msg.message }}
           />
           {msg.edited && (
-            <Text size={10} color="dimmed" mt={-6}>
+            <Text size={10} color='dimmed' mt={-6}>
               {'(edited)'}
             </Text>
           )}
@@ -514,14 +514,14 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
       {attachments}
 
       {msg.reactions && msg.reactions.length > 0 && (
-        <Group spacing={6} maw="80ch">
+        <Group spacing={6} maw='80ch'>
           {msg.reactions.map((reaction) => (
             <Button
               key={reaction.emoji}
-              variant="default"
+              variant='default'
               disabled={!props.canSendReactions && !reaction.self}
-              p="0rem 0.4rem"
-              h="1.5625rem"
+              p='0rem 0.4rem'
+              h='1.5625rem'
               styles={
                 reaction.self
                   ? (theme) => ({
@@ -557,7 +557,7 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
                 >
                   <Text
                     span
-                    size="xs"
+                    size='xs'
                     weight={600}
                     sx={(theme) => ({ color: theme.colors.dark[0] })}
                   >
@@ -643,9 +643,9 @@ function PinnedTab(props: SidePanelViewProps) {
   );
 
   return (
-    <ScrollArea h="100%">
+    <ScrollArea h='100%'>
       <MessageContextMenu context={context as LoadedMessageViewContextState}>
-        <Stack p="0.5rem" spacing="sm">
+        <Stack p='0.5rem' spacing='sm'>
           {rendered.map((msg) => (
             <MemoPinnedMessage
               key={msg.id}
@@ -664,8 +664,8 @@ function PinnedTab(props: SidePanelViewProps) {
       </MessageContextMenu>
 
       {messages._exists && messages.data.length === 0 && (
-        <Center h="8rem">
-          <Text color="dimmed">This section has no pinned messages</Text>
+        <Center h='8rem'>
+          <Text color='dimmed'>This page has no pinned messages</Text>
         </Center>
       )}
     </ScrollArea>
@@ -701,8 +701,8 @@ export default function SidePanelView(props: SidePanelViewProps) {
     <Tabs
       value={tab}
       onTabChange={setTab}
-      variant="pills"
-      color="dark"
+      variant='pills'
+      color='dark'
       keepMounted={false}
       styles={(theme) => ({
         root: { height: '100%' },
@@ -732,22 +732,22 @@ export default function SidePanelView(props: SidePanelViewProps) {
       })}
     >
       <Tabs.List>
-        <Tabs.Tab value="pinned" icon={<IconPin size={16} />}>
+        <Tabs.Tab value='pinned' icon={<IconPin size={16} />}>
           Pinned
         </Tabs.Tab>
-        <Tabs.Tab value="threads" icon={<IconMessages size={16} />}>
+        <Tabs.Tab value='threads' icon={<IconMessages size={16} />}>
           Threads
         </Tabs.Tab>
 
         <div style={{ flexGrow: 1 }} />
         <CloseButton
-          size="md"
+          size='md'
           onClick={() => props.context.state._set('show_side_panel', false)}
         />
       </Tabs.List>
 
       <Tabs.Panel
-        value="pinned"
+        value='pinned'
         sx={{
           height: 'calc(100% - 2.9rem)',
         }}
@@ -755,7 +755,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <PinnedTab {...props} />
       </Tabs.Panel>
       <Tabs.Panel
-        value="threads"
+        value='threads'
         sx={{
           display: 'flex',
           flexDirection: 'column',

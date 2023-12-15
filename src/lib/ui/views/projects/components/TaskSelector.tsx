@@ -40,15 +40,15 @@ interface TaskSelectItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const TaskSelectItem = forwardRef<HTMLDivElement, TaskSelectItemProps>(
   ({ value, label, ...others }: TaskSelectItemProps, ref) => (
     <div ref={ref} {...others}>
-      <Flex gap="sm" wrap="nowrap">
+      <Flex gap='sm' wrap='nowrap'>
         <Box sx={{ flexGrow: 1 }}>
           <Group spacing={8}>
             <ColorSwatch size={16} color={others.status.color || ''} />
-            <Text size="sm" weight={600}>
+            <Text size='sm' weight={600}>
               {label}
             </Text>
           </Group>
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             {others.summary}
           </Text>
         </Box>
@@ -212,15 +212,15 @@ export function TaskSelector(props: TaskSelectorProps) {
     <Stack spacing={0}>
       <SearchBar value={search} onChange={setSearch} />
       {options.length === 0 && (
-        <Center w={config.app.ui.short_input_width} h="5rem">
-          <Text size="sm" color="dimmed">
+        <Center w={config.app.ui.short_input_width} h='5rem'>
+          <Text size='sm' color='dimmed'>
             There are no tasks
           </Text>
         </Center>
       )}
       <ScrollArea.Autosize
         w={config.app.ui.short_input_width}
-        mah="16rem"
+        mah='16rem'
         mb={props.canCreateTask !== false ? 0 : 4}
       >
         <Stack spacing={0} mt={4}>
@@ -231,15 +231,15 @@ export function TaskSelector(props: TaskSelectorProps) {
       {props.canCreateTask !== false && (
         <>
           <Divider
-            label="or"
-            labelPosition="center"
+            label='or'
+            labelPosition='center'
             labelProps={{ color: 'dimmed' }}
             sx={{ margin: '0.5rem 0.0rem' }}
           />
 
           <Button
             component={props.buttonComponent}
-            variant="gradient"
+            variant='gradient'
             leftIcon={<IconPlus size={16} />}
             onClick={() =>
               openCreateTask({

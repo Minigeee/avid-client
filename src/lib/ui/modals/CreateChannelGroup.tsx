@@ -59,8 +59,8 @@ export default function CreateChannelGroup({
     >
       <Stack>
         <TextInput
-          label="Group Name"
-          placeholder="New Group"
+          label='Group Name'
+          placeholder='New Group'
           icon={<IconFolder size={16} />}
           required
           withAsterisk={false}
@@ -68,13 +68,13 @@ export default function CreateChannelGroup({
           {...form.getInputProps('name')}
         />
 
-        <Flex wrap="nowrap" gap="1.0rem" mt={8}>
+        <Flex wrap='nowrap' gap='1.0rem' mt={8}>
           <Box sx={{ flexGrow: 1 }}>
-            <Text size="sm" mb={4}>
+            <Text size='sm' mb={4}>
               Allow <b>{'@everyone'}</b> to access this group
             </Text>
-            <Text size="xs" color="dimmed">
-              Enabling this will allow <b>@everyone</b> to access sections in
+            <Text size='xs' color='dimmed'>
+              Enabling this will allow <b>@everyone</b> to access pages within
               this group. For more precise access control, disable this and add
               custom permissions for the roles that should have access to this
               group.
@@ -86,11 +86,11 @@ export default function CreateChannelGroup({
           />
         </Flex>
 
-        <Group spacing="xs" position="right" mt={16}>
-          <Button variant="default" onClick={() => context.closeModal(id)}>
+        <Group spacing='xs' position='right' mt={16}>
+          <Button variant='default' onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             Create
           </Button>
         </Group>

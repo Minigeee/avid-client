@@ -145,8 +145,8 @@ export default function EventButton({
         </ContextMenu.Trigger>
       </Popover.Target>
 
-      <Popover.Dropdown miw="24rem" maw="36rem" p="0.875rem 1.0rem">
-        <Flex gap={6} wrap="nowrap" align="center">
+      <Popover.Dropdown miw='24rem' maw='36rem' p='0.875rem 1.0rem'>
+        <Flex gap={6} wrap='nowrap' align='center'>
           <ColorSwatch
             color={event.color || PRESET_COLORS.at(-1) || ''}
             size={20}
@@ -162,7 +162,7 @@ export default function EventButton({
           {calendar.editable && (
             <>
               <ActionButton
-                tooltip="Edit event"
+                tooltip='Edit event'
                 onClick={() => {
                   openCreateCalendarEvent({
                     domain: calendar.domain,
@@ -192,7 +192,7 @@ export default function EventButton({
               </ActionButton>
 
               <ActionButton
-                tooltip="Delete event"
+                tooltip='Delete event'
                 onClick={() => {
                   openConfirmModal({
                     title: 'Delete Event',
@@ -215,7 +215,7 @@ export default function EventButton({
           )}
 
           <CloseButton
-            size="md"
+            size='md'
             iconSize={18}
             sx={(theme) => ({
               '&:hover': { backgroundColor: theme.colors.dark[5] },
@@ -224,14 +224,14 @@ export default function EventButton({
           />
         </Flex>
 
-        <Text size="xs" color="dimmed" mt={4}>
+        <Text size='xs' color='dimmed' mt={4}>
           {timeText}
         </Text>
 
         {event.description && (
           <Text
             className={classes.typography}
-            size="sm"
+            size='sm'
             mt={12}
             dangerouslySetInnerHTML={{
               __html: event.description || '<em>Click to add description<em>',

@@ -208,10 +208,10 @@ function MembersTab(props: RightPanelViewProps) {
                 >
                   <Indicator
                     inline
-                    position="bottom-end"
+                    position='bottom-end'
                     offset={4}
                     size={12}
-                    color="teal"
+                    color='teal'
                     withBorder
                     disabled={!online}
                   >
@@ -219,7 +219,7 @@ function MembersTab(props: RightPanelViewProps) {
                   </Indicator>
                   <Text
                     ml={6}
-                    size="sm"
+                    size='sm'
                     weight={search.length > 0 ? 400 : 600}
                     sx={(theme) => ({ color: theme.colors.gray[4] })}
                     dangerouslySetInnerHTML={{ __html: alias }}
@@ -247,7 +247,7 @@ function MembersTab(props: RightPanelViewProps) {
     <>
       <TextInput
         m={8}
-        placeholder="Search members"
+        placeholder='Search members'
         icon={<IconSearch size={18} />}
         value={search}
         onChange={(e) => setSearch(e.currentTarget.value)}
@@ -292,7 +292,7 @@ function MembersTab(props: RightPanelViewProps) {
             },
           })}
         >
-          <Accordion.Item value="online">
+          <Accordion.Item value='online'>
             <Accordion.Control>Online - {counts.online}</Accordion.Control>
             <Accordion.Panel>
               <Stack mb={16} spacing={0}>
@@ -313,7 +313,7 @@ function MembersTab(props: RightPanelViewProps) {
             </Accordion.Panel>
           </Accordion.Item>
 
-          <Accordion.Item value="offline">
+          <Accordion.Item value='offline'>
             <Accordion.Control>
               Offline - {offline.count || 0}
             </Accordion.Control>
@@ -355,7 +355,7 @@ export default function RightPanelView(props: RightPanelViewProps) {
 
   return (
     <Flex
-      direction="column"
+      direction='column'
       sx={(theme) => ({
         flexShrink: 0,
         width: '16rem',
@@ -364,8 +364,8 @@ export default function RightPanelView(props: RightPanelViewProps) {
       })}
     >
       <Flex
-        wrap="nowrap"
-        align="center"
+        wrap='nowrap'
+        align='center'
         sx={(theme) => ({
           width: '100%',
           height: '3.0rem',
@@ -379,8 +379,8 @@ export default function RightPanelView(props: RightPanelViewProps) {
           onTabChange={(value) =>
             app._mutators.setRightPanelTab(value as RightPanelTab)
           }
-          variant="pills"
-          color="dark"
+          variant='pills'
+          color='dark'
           styles={(theme) => ({
             root: {
               flexGrow: 1,
@@ -406,20 +406,20 @@ export default function RightPanelView(props: RightPanelViewProps) {
           })}
         >
           <Tabs.List>
-            <Tooltip label="Members" withArrow>
-              <Tabs.Tab icon={<IconUsers size={18} />} value="members" />
+            <Tooltip label='Members' withArrow>
+              <Tabs.Tab icon={<IconUsers size={18} />} value='members' />
             </Tooltip>
-            <Tooltip label="Activity" withArrow>
+            <Tooltip label='Activity' withArrow>
               <Tabs.Tab
                 icon={<IconBell size={18} />}
-                value="activity"
+                value='activity'
                 disabled
               />
             </Tooltip>
-            <Tooltip label="Upcoming" withArrow>
+            <Tooltip label='Upcoming' withArrow>
               <Tabs.Tab
                 icon={<IconCalendarTime size={18} />}
-                value="upcoming"
+                value='upcoming'
                 disabled
               />
             </Tooltip>
@@ -427,7 +427,7 @@ export default function RightPanelView(props: RightPanelViewProps) {
         </Tabs>
 
         <CloseButton
-          size="lg"
+          size='lg'
           iconSize={20}
           onClick={() => app._mutators.setRightPanelOpened(false)}
           sx={(theme) => ({

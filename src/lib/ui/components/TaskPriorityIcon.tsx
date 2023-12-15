@@ -66,7 +66,7 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
     return (
       <ThemeIcon
         size={props.outerSize || 21}
-        radius="xl"
+        radius='xl'
         sx={(theme) => {
           // Get passed in sx
           let sx = {};
@@ -96,7 +96,7 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
       >
         <ThemeIcon
           size={props.outerSize || 21}
-          radius="xl"
+          radius='xl'
           sx={(theme) => ({
             backgroundColor: theme.colors.dark[4],
             color: priority.color,

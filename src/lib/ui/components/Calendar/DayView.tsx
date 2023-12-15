@@ -231,18 +231,18 @@ export default function DayView(props: DayViewProps) {
   }, [scrollAreaRef]);
 
   return (
-    <Flex direction="column" h={0} w="100%" mt={4} sx={{ flexGrow: 1 }}>
+    <Flex direction='column' h={0} w='100%' mt={4} sx={{ flexGrow: 1 }}>
       {/* Day label */}
       <Stack
         spacing={0}
-        align="center"
+        align='center'
         sx={(theme) => ({
           flex: '1 1 0px',
           paddingTop: '0.1rem',
           paddingBottom: '0.25rem',
         })}
       >
-        <Text color="dimmed">{start.format('ddd')}</Text>
+        <Text color='dimmed'>{start.format('ddd')}</Text>
         <Title order={3}>{start.format('D')}</Title>
       </Stack>
 
@@ -273,7 +273,7 @@ export default function DayView(props: DayViewProps) {
           <EventButton
             key={e.id + (e.repeat ? '-' + i : '')}
             event={e}
-            popoverPosition="bottom-start"
+            popoverPosition='bottom-start'
             sx={(theme) => ({
               position: 'absolute',
               display: 'block',
@@ -315,8 +315,8 @@ export default function DayView(props: DayViewProps) {
         viewportProps={{ style: { maxWidth: '100%' } }}
       >
         <Flex
-          w="100%"
-          maw="100%"
+          w='100%'
+          maw='100%'
           sx={{ position: 'relative' }}
           onMouseMove={(ev) => {
             dragDropDay.onMouseMove?.(ev);
@@ -324,7 +324,7 @@ export default function DayView(props: DayViewProps) {
           }}
         >
           <Stack
-            align="flex-end"
+            align='flex-end'
             sx={(theme) => ({
               width: props.style.timeGutter,
               paddingTop: `calc(${props.style.slotHeight} - ${theme.fontSizes.xs} / 2 - 0.0625rem)`,
@@ -335,9 +335,9 @@ export default function DayView(props: DayViewProps) {
             {range(23).map((i) => (
               <Text
                 key={i}
-                size="xs"
+                size='xs'
                 weight={600}
-                color="dimmed"
+                color='dimmed'
                 sx={{ lineHeight: 1 }}
               >
                 {moment(start)
@@ -388,13 +388,13 @@ export default function DayView(props: DayViewProps) {
                 };
               }}
             >
-              <Text color="dimmed" weight={600} size={11}>
+              <Text color='dimmed' weight={600} size={11}>
                 {draggedEventTimes.start.format('LT')} -{' '}
                 {draggedEventTimes.end?.format('LT')}
               </Text>
               <Text
                 weight={600}
-                maw="100%"
+                maw='100%'
                 sx={{
                   display: 'block',
                   overflow: 'hidden',

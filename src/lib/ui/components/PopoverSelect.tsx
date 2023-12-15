@@ -73,11 +73,11 @@ export default function PopoverSelect<T>(props: PopoverSelect<T>) {
     >
       <Popover.Target>{props.children(setOpened, opened)}</Popover.Target>
 
-      <Popover.Dropdown p={0} miw="16rem">
+      <Popover.Dropdown p={0} miw='16rem'>
         <LoadingOverlay visible={loading} />
 
         <TextInput
-          p="0.5rem"
+          p='0.5rem'
           {...props.searchProps}
           icon={<IconSearch size={16} />}
           value={search}
@@ -92,12 +92,12 @@ export default function PopoverSelect<T>(props: PopoverSelect<T>) {
 
         <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
 
-        <ScrollArea.Autosize mah="30rem" p="0.5rem">
+        <ScrollArea.Autosize mah='30rem' p='0.5rem'>
           <Stack spacing={0}>
             {filtered.map((item: any, i) => (
               <Box
                 key={i}
-                p="0.35rem 0.6rem"
+                p='0.35rem 0.6rem'
                 sx={(theme) => ({
                   borderRadius: theme.radius.sm,
                   cursor: 'pointer',

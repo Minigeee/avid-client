@@ -10,7 +10,8 @@
     "format": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\""
   },
   "prettier": {
-    "singleQuote": true
+    "singleQuote": true,
+    "jsxSingleQuote": true
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.329.0",

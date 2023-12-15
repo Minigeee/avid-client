@@ -139,7 +139,7 @@ export default function App(props: AppProps) {
             },
           }}
         >
-          <Notifications position="top-right" />
+          <Notifications position='top-right' />
           <SWRConfig
             value={{
               onError: swrHandler,

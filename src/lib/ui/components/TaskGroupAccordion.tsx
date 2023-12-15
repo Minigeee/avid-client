@@ -45,7 +45,7 @@ export default function TaskGroupAccordion({
             size={32}
           />
         )}
-        <Text weight={600} size="lg">
+        <Text weight={600} size='lg'>
           {(() => {
             if (grouper === 'tags')
               return group === '_'

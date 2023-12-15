@@ -103,8 +103,8 @@ function SingleChannel(props: SingleChannelProps) {
       {(provided, snapshot) => (
         <Flex
           ref={provided.innerRef}
-          wrap="nowrap"
-          align="stretch"
+          wrap='nowrap'
+          align='stretch'
           sx={(theme) => ({
             width: '100%',
             minHeight: '2.375rem',
@@ -143,10 +143,10 @@ function SingleChannel(props: SingleChannelProps) {
           />
 
           <Flex
-            className="btn-body"
-            direction="column"
-            justify="center"
-            p="0.25rem 0.25rem 0.25rem 0.75rem"
+            className='btn-body'
+            direction='column'
+            justify='center'
+            p='0.25rem 0.25rem 0.25rem 0.75rem'
             sx={(theme) => ({
               flexGrow: 1,
               backgroundColor:
@@ -157,11 +157,11 @@ function SingleChannel(props: SingleChannelProps) {
               transition: 'background-color 0.1s, color 0.1s',
             })}
           >
-            <Flex gap={12} align="center">
+            <Flex gap={12} align='center'>
               <ChannelIcon type={props.channel.type} size={18} />
 
               {!renaming && (
-                <Text size="sm" weight={600} sx={{ flexGrow: 1 }}>
+                <Text size='sm' weight={600} sx={{ flexGrow: 1 }}>
                   {props.channel.name}
                 </Text>
               )}
@@ -179,7 +179,7 @@ function SingleChannel(props: SingleChannelProps) {
                   })}
                 >
                   <TextInput
-                    size="xs"
+                    size='xs'
                     mt={0}
                     styles={(theme) => ({
                       wrapper: { marginTop: 0, maxWidth: '20ch' },
@@ -202,7 +202,7 @@ function SingleChannel(props: SingleChannelProps) {
               <Menu width={180} withinPortal onClose={() => setShowMenu(false)}>
                 <Menu.Target>
                   <ActionIcon
-                    className="dropdown"
+                    className='dropdown'
                     sx={(theme) => ({
                       visibility: showMenu ? 'visible' : 'hidden',
                       '&:hover': {
@@ -267,11 +267,11 @@ function SingleChannel(props: SingleChannelProps) {
                     <>
                       <Menu.Divider />
                       <Menu.Item
-                        color="red"
+                        color='red'
                         icon={<IconTrash size={16} />}
                         onClick={() => {
                           openConfirmModal({
-                            title: 'Delete Section',
+                            title: 'Delete Page',
                             content: (
                               <Text>
                                 Are you sure you want to delete{' '}
@@ -287,7 +287,7 @@ function SingleChannel(props: SingleChannelProps) {
                           });
                         }}
                       >
-                        Delete section
+                        Delete page
                       </Menu.Item>
                     </>
                   )}
@@ -297,8 +297,8 @@ function SingleChannel(props: SingleChannelProps) {
               {app.pings?.[props.channel.id] !== undefined &&
                 app.pings[props.channel.id] > 0 && (
                   <Text
-                    className="ping-indicator"
-                    size="xs"
+                    className='ping-indicator'
+                    size='xs'
                     weight={600}
                     inline
                     sx={(theme) => ({
@@ -431,7 +431,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                 })}
               >
                 <TextInput
-                  size="xs"
+                  size='xs'
                   mt={0}
                   styles={(theme) => ({
                     wrapper: { marginTop: 0, maxWidth: '20ch' },
@@ -459,9 +459,9 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               'can_manage_resources',
             ) && (
               <ActionButton
-                tooltip="Add Section"
+                tooltip='Add Page'
                 hoverBg={(theme) => theme.colors.dark[4]}
-                size="sm"
+                size='sm'
                 onClick={(e) => {
                   e.stopPropagation();
                   openCreateChannel({
@@ -483,7 +483,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               <Menu width={180} withinPortal>
                 <Menu.Target>
                   <ActionIcon
-                    size="sm"
+                    size='sm'
                     onClick={(e) => {
                       e.stopPropagation();
                     }}
@@ -537,7 +537,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                     <>
                       <Menu.Divider />
                       <Menu.Item
-                        color="red"
+                        color='red'
                         icon={<IconTrash size={16} />}
                         onClick={() => {
                           openConfirmModal({
@@ -553,7 +553,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                                 <p style={{ marginBlockEnd: 0 }}>
                                   Are you sure you want to delete{' '}
                                   <b>{props.group.name}</b> and the following
-                                  sections?
+                                  pages?
                                 </p>
                                 <ul
                                   style={{
@@ -602,7 +602,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
           {!snapshot.isDragging && opened && (
             <Droppable
               droppableId={props.group.id}
-              type="channel"
+              type='channel'
               isDropDisabled={
                 !(
                   hasPermission(props.domain, props.group.id, 'can_manage') ||
@@ -617,7 +617,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               {(provided) => (
                 <Stack
                   ref={provided.innerRef}
-                  mih="0.5rem"
+                  mih='0.5rem'
                   spacing={0}
                   {...provided.droppableProps}
                 >
@@ -662,7 +662,7 @@ type ChannelsViewProps = {
 export default function ChannelsView(props: ChannelsViewProps) {
   return (
     <Flex
-      direction="column"
+      direction='column'
       sx={(theme) => ({
         flexShrink: 0,
         width: '20rem',
@@ -680,32 +680,18 @@ export default function ChannelsView(props: ChannelsViewProps) {
         })}
       >
         <Title order={4} sx={{ flexGrow: 1 }}>
-          Sections
+          Groups
         </Title>
         <div style={{ flexGrow: 1 }} />
         {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
-          <Menu width="12rem">
-            <Menu.Target>
-              <ActionIcon sx={(theme) => ({ color: theme.colors.dark[1] })}>
-                <IconPlus size={18} />
-              </ActionIcon>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              <Menu.Item
-                icon={<IconFile size={18} />}
-                onClick={() => openCreateChannel({ domain: props.domain })}
-              >
-                New Section
-              </Menu.Item>
-              <Menu.Item
-                icon={<IconFolderPlus size={18} />}
-                onClick={() => openCreateChannelGroup({ domain: props.domain })}
-              >
-                New Group
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <Tooltip label='New Group' position='left' withArrow>
+            <ActionIcon
+              sx={(theme) => ({ color: theme.colors.dark[1] })}
+              onClick={() => openCreateChannelGroup({ domain: props.domain })}
+            >
+              <IconPlus size={18} />
+            </ActionIcon>
+          </Tooltip>
         )}
       </Group>
 
@@ -744,12 +730,12 @@ export default function ChannelsView(props: ChannelsViewProps) {
             }
           }}
         >
-          <Droppable droppableId={props.domain.id} type="group">
+          <Droppable droppableId={props.domain.id} type='group'>
             {(provided) => (
               <Stack
                 ref={provided.innerRef}
                 spacing={0}
-                p="0.5rem 0.25rem"
+                p='0.5rem 0.25rem'
                 {...provided.droppableProps}
               >
                 {props.domain.groups.map((group, group_idx) => (

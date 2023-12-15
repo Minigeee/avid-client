@@ -69,10 +69,10 @@ function AccountTab({ session, profile, ...props }: TabProps) {
   return (
     <>
       <ImageModal
-        subtext="Image must not exceed 2MB."
+        subtext='Image must not exceed 2MB.'
         maxSize={2 * 1024 ** 2}
         imgSize={config.upload.profile_picture.image_size}
-        size="md"
+        size='md'
         onUpload={(image, fname) => {
           if (image) profile._mutators.setPicture(image, fname);
         }}
@@ -82,7 +82,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
         <Title order={3}>Profile Picture</Title>
 
         <Group
-          spacing="xl"
+          spacing='xl'
           sx={(theme) => ({
             padding: '1.2rem',
             backgroundColor: theme.colors.dark[8],
@@ -90,17 +90,17 @@ function AccountTab({ session, profile, ...props }: TabProps) {
           })}
         >
           <ProfileAvatar profile={profile} size={120} />
-          <Stack spacing="sm">
-            <Group spacing="sm">
-              <Button variant="gradient" onClick={openImageModal}>
+          <Stack spacing='sm'>
+            <Group spacing='sm'>
+              <Button variant='gradient' onClick={openImageModal}>
                 {profile.profile_picture ? 'Change' : 'Upload'} Image
               </Button>
 
               {profile.profile_picture && (
                 <ActionButton
-                  tooltip="Remove Image"
+                  tooltip='Remove Image'
                   tooltipProps={{ position: 'right' }}
-                  size="lg"
+                  size='lg'
                   sx={(theme) => ({
                     color: theme.colors.dark[1],
                     '&:hover': {
@@ -128,7 +128,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
                 </ActionButton>
               )}
             </Group>
-            <Text size="xs" color="dimmed">
+            <Text size='xs' color='dimmed'>
               Profile pictures are resized to{' '}
               {config.upload.profile_picture.image_size.w}x
               {config.upload.profile_picture.image_size.h}
@@ -140,7 +140,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
         <Title order={3}>Account Settings</Title>
 
         <TextInput
-          label="Username"
+          label='Username'
           value={profile.username}
           disabled
           sx={{ width: config.app.ui.short_input_width }}
@@ -228,8 +228,8 @@ function RtcTab({ app, ...props }: TabProps) {
       <Title order={3}>Audio Settings</Title>
 
       <Select
-        label="Microphone"
-        placeholder="None"
+        label='Microphone'
+        placeholder='None'
         data={audioInputDevices}
         value={rtc.audio_input_device || 'default'}
         onChange={(value) =>
@@ -242,8 +242,8 @@ function RtcTab({ app, ...props }: TabProps) {
       <Title order={3}>Video Settings</Title>
 
       <Select
-        label="Camera"
-        placeholder="None"
+        label='Camera'
+        placeholder='None'
         data={videoInputDevices}
         value={rtc.video_options?.device_id || videoInputDevices.at(0)?.value}
         onChange={(value) =>
@@ -293,10 +293,10 @@ export default function UserSettings({
   const tabProps = { app, session, profile };
 
   return (
-    <Flex w="100%" h="100%">
+    <Flex w='100%' h='100%'>
       <Flex
-        h="100%"
-        direction="column"
+        h='100%'
+        direction='column'
         sx={(theme) => ({
           flexShrink: 0,
           backgroundColor: theme.colors.dark[6],
@@ -312,7 +312,7 @@ export default function UserSettings({
             sx: { flexGrow: 1 },
           }}
         />
-        <Text size="xs" color="dimmed" ml={6} mb={2}>
+        <Text size='xs' color='dimmed' ml={6} mb={2}>
           v{config.version.major}.{config.version.minor}.{config.version.patch}-
           {config.version.revision ? `r${config.version.revision}.` : ''}
           {config.version.metadata.join('+')}
@@ -320,15 +320,15 @@ export default function UserSettings({
       </Flex>
 
       <Flex
-        h="100%"
-        direction="column"
+        h='100%'
+        direction='column'
         sx={(theme) => ({
           flexGrow: 1,
           backgroundColor: theme.colors.dark[7],
         })}
       >
         <Flex
-          align="end"
+          align='end'
           mb={4}
           sx={(theme) => ({
             padding: '1.0rem 1.5rem',
@@ -338,7 +338,7 @@ export default function UserSettings({
           <Title order={2}>{tab?.label}</Title>
           <div style={{ flexGrow: 1 }} />
           <CloseButton
-            size="lg"
+            size='lg'
             iconSize={24}
             onClick={() => context.closeModal(id)}
           />

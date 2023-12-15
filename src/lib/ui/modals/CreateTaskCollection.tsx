@@ -79,33 +79,33 @@ export function CreateTaskCollection({
     >
       <Stack>
         {props.mode === 'objective' && (
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             An objective is a collection of tasks that contribute towards the
             completion of a certain objective. This objective can be a certain
             feature, a version release, a time period, a sprint, etc.
           </Text>
         )}
         {props.mode === 'collection' && (
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             A collection is a general set of tasks. It is useful for organizing
             tasks that don&apos;t belong in an objective into categories.
           </Text>
         )}
 
         <TextInput
-          label="Name"
-          placeholder="None"
+          label='Name'
+          placeholder='None'
           required
           data-autofocus
           {...form.getInputProps('name')}
         />
 
         <Box>
-          <Text size="sm" weight={600}>
+          <Text size='sm' weight={600}>
             Description
           </Text>
           {props.mode === 'objective' && (
-            <Text size="xs" color="dimmed" mb={5}>
+            <Text size='xs' color='dimmed' mb={5}>
               Use this area to write a description and goals for this objective
             </Text>
           )}
@@ -118,9 +118,9 @@ export function CreateTaskCollection({
         {props.mode === 'objective' && (
           <>
             <DatePickerInput
-              label="Start Date"
-              description="Assign an optional start date"
-              placeholder="None"
+              label='Start Date'
+              description='Assign an optional start date'
+              placeholder='None'
               icon={<IconCalendarEvent size={19} />}
               popoverProps={{ withinPortal: true }}
               clearable
@@ -130,7 +130,7 @@ export function CreateTaskCollection({
 
             <Box>
               <DatePickerInput
-                label="End Date"
+                label='End Date'
                 description={(() => {
                   if (!form.values.end_date || !form.values.start_date)
                     return 'Assign an optional end date';
@@ -144,7 +144,7 @@ export function CreateTaskCollection({
                     diff === 1 ? '' : 's'
                   }`;
                 })()}
-                placeholder="None"
+                placeholder='None'
                 icon={<IconCalendarEvent size={19} />}
                 popoverProps={{ withinPortal: true }}
                 clearable
@@ -152,8 +152,8 @@ export function CreateTaskCollection({
                 renderDay={(date) => {
                   return (
                     <Center
-                      w="100%"
-                      h="100%"
+                      w='100%'
+                      h='100%'
                       sx={(theme) => ({
                         border:
                           date.getTime() === form.values.start_date?.getTime()
@@ -172,7 +172,7 @@ export function CreateTaskCollection({
               {form.values.start_date && !form.values.end_date && (
                 <Group mt={6} spacing={6}>
                   <Button
-                    variant="outline"
+                    variant='outline'
                     onClick={() =>
                       form.setFieldValue(
                         'end_date',
@@ -183,7 +183,7 @@ export function CreateTaskCollection({
                     1 week
                   </Button>
                   <Button
-                    variant="outline"
+                    variant='outline'
                     onClick={() =>
                       form.setFieldValue(
                         'end_date',
@@ -194,7 +194,7 @@ export function CreateTaskCollection({
                     2 weeks
                   </Button>
                   <Button
-                    variant="outline"
+                    variant='outline'
                     onClick={() =>
                       form.setFieldValue(
                         'end_date',
@@ -212,11 +212,11 @@ export function CreateTaskCollection({
           </>
         )}
 
-        <Group spacing="xs" position="right" mt={16}>
-          <Button variant="default" onClick={() => context.closeModal(id)}>
+        <Group spacing='xs' position='right' mt={16}>
+          <Button variant='default' onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             Create
           </Button>
         </Group>
@@ -278,14 +278,14 @@ export function EditTaskCollection({
     >
       <Stack>
         <TextInput
-          label="Name"
-          placeholder="None"
+          label='Name'
+          placeholder='None'
           required
           {...form.getInputProps('name')}
         />
 
         <Box>
-          <Text size="sm" weight={600}>
+          <Text size='sm' weight={600}>
             Description
           </Text>
           <RichTextEditor
@@ -296,8 +296,8 @@ export function EditTaskCollection({
 
         <>
           <DatePickerInput
-            label="Start Date"
-            placeholder="None"
+            label='Start Date'
+            placeholder='None'
             icon={<IconCalendarEvent size={19} />}
             popoverProps={{ withinPortal: true }}
             clearable
@@ -307,7 +307,7 @@ export function EditTaskCollection({
 
           <Box>
             <DatePickerInput
-              label="End Date"
+              label='End Date'
               description={(() => {
                 if (!form.values.end_date || !form.values.start_date)
                   return undefined;
@@ -320,7 +320,7 @@ export function EditTaskCollection({
                   diff === 1 ? '' : 's'
                 }`;
               })()}
-              placeholder="None"
+              placeholder='None'
               icon={<IconCalendarEvent size={19} />}
               popoverProps={{ withinPortal: true }}
               clearable
@@ -328,8 +328,8 @@ export function EditTaskCollection({
               renderDay={(date) => {
                 return (
                   <Center
-                    w="100%"
-                    h="100%"
+                    w='100%'
+                    h='100%'
                     sx={(theme) => ({
                       border:
                         date.getTime() === form.values.start_date?.getTime()
@@ -348,7 +348,7 @@ export function EditTaskCollection({
             {form.values.start_date && !form.values.end_date && (
               <Group mt={6} spacing={6}>
                 <Button
-                  variant="outline"
+                  variant='outline'
                   onClick={() =>
                     form.setFieldValue(
                       'end_date',
@@ -359,7 +359,7 @@ export function EditTaskCollection({
                   1 week
                 </Button>
                 <Button
-                  variant="outline"
+                  variant='outline'
                   onClick={() =>
                     form.setFieldValue(
                       'end_date',
@@ -370,7 +370,7 @@ export function EditTaskCollection({
                   2 weeks
                 </Button>
                 <Button
-                  variant="outline"
+                  variant='outline'
                   onClick={() =>
                     form.setFieldValue(
                       'end_date',
@@ -385,9 +385,9 @@ export function EditTaskCollection({
           </Box>
         </>
 
-        <Group spacing="xs" mt={16}>
+        <Group spacing='xs' mt={16}>
           <Button
-            color="red"
+            color='red'
             leftIcon={<IconTrash size={18} />}
             onClick={() => {
               openConfirmModal({
@@ -397,7 +397,7 @@ export function EditTaskCollection({
                   <Text>
                     Are you sure you want to delete{' '}
                     <b>{props.collection.name}</b>?<br />
-                    <Text span size="sm" color="dimmed">
+                    <Text span size='sm' color='dimmed'>
                       All tasks in this{' '}
                       {isObjective ? 'objective' : 'collection'} will be moved
                       to <b>Backlog</b>.
@@ -418,10 +418,10 @@ export function EditTaskCollection({
           </Button>
           <div style={{ flexGrow: 1 }} />
 
-          <Button variant="default" onClick={() => context.closeModal(id)}>
+          <Button variant='default' onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             Save
           </Button>
         </Group>

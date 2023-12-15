@@ -126,8 +126,8 @@ export function SettingsModal(props: SettingsModalProps) {
     >
       <Flex
         ref={bodyRef}
-        w="100%"
-        h="100%"
+        w='100%'
+        h='100%'
         onMouseDown={(e) => e.stopPropagation()}
       >
         <SettingsMenu
@@ -145,15 +145,15 @@ export function SettingsModal(props: SettingsModalProps) {
         />
 
         <Flex
-          h="100%"
-          direction="column"
+          h='100%'
+          direction='column'
           sx={(theme) => ({
             flexGrow: 1,
             backgroundColor: theme.colors.dark[7],
           })}
         >
           <Flex
-            align="end"
+            align='end'
             mb={4}
             sx={(theme) => ({
               padding: '1.0rem 1.5rem',
@@ -163,7 +163,7 @@ export function SettingsModal(props: SettingsModalProps) {
             <Title order={2}>{tab?.label}</Title>
             <div style={{ flexGrow: 1 }} />
             <CloseButton
-              size="lg"
+              size='lg'
               iconSize={24}
               onClick={() => {
                 if (hasUnsavedChanges) setHighlightUnsaved(true);
@@ -247,7 +247,7 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
   return (
     <Transition
       mounted={context.bodyRef.current !== null && form.isDirty()}
-      transition="pop-bottom-right"
+      transition='pop-bottom-right'
       duration={200}
     >
       {(styles) => (
@@ -257,8 +257,8 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
         >
           <Group
             spacing={8}
-            w="30rem"
-            p="0.5rem 0.5rem 0.5rem 0.8rem"
+            w='30rem'
+            p='0.5rem 0.5rem 0.5rem 0.8rem'
             sx={(theme) => ({
               backgroundColor: theme.colors.dark[8],
               boxShadow: '0px 0px 12px #00000030',
@@ -270,12 +270,12 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
             })}
             style={styles}
           >
-            <IconAlertCircle size="1.5rem" />
+            <IconAlertCircle size='1.5rem' />
             <Text ml={4}>You have unsaved changes</Text>
             <div style={{ flexGrow: 1 }} />
 
             <Button
-              variant="default"
+              variant='default'
               onClick={() => {
                 form.setValues(props.initialValues);
                 form.resetDirty(props.initialValues);
@@ -285,7 +285,7 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
               Reset
             </Button>
             <Button
-              variant="gradient"
+              variant='gradient'
               loading={loading}
               onClick={async () => {
                 if (!props.onSave) return;

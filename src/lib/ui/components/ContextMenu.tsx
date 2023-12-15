@@ -94,7 +94,7 @@ export function ContextMenu(props: ContextMenuProps) {
           <Menu
             {...props}
             opened={state.opened}
-            position="bottom-start"
+            position='bottom-start'
             offset={-1}
             onChange={(opened) => {
               setState({ ...state, opened });

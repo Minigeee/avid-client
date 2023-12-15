@@ -73,13 +73,13 @@ export default function ImageModal(props: ImageModalProps) {
             mt={8}
           >
             <Group
-              position="center"
-              spacing="xl"
+              position='center'
+              spacing='xl'
               style={{ minHeight: rem(220), pointerEvents: 'none' }}
             >
               <Dropzone.Accept>
                 <IconUpload
-                  size="3.2rem"
+                  size='3.2rem'
                   strokeWidth={1.5}
                   color={
                     theme.colors[theme.primaryColor][
@@ -90,20 +90,20 @@ export default function ImageModal(props: ImageModalProps) {
               </Dropzone.Accept>
               <Dropzone.Reject>
                 <IconX
-                  size="3.2rem"
+                  size='3.2rem'
                   strokeWidth={1.5}
                   color={theme.colors.red[theme.colorScheme === 'dark' ? 4 : 6]}
                 />
               </Dropzone.Reject>
               <Dropzone.Idle>
-                <IconPhoto size="3.2rem" strokeWidth={1.5} />
+                <IconPhoto size='3.2rem' strokeWidth={1.5} />
               </Dropzone.Idle>
 
               <div>
-                <Text size="lg" inline>
+                <Text size='lg' inline>
                   {props.description || 'Drop image here or click to browse'}
                 </Text>
-                <Text size="sm" color="dimmed" inline mt={7}>
+                <Text size='sm' color='dimmed' inline mt={7}>
                   {props.subtext}
                 </Text>
               </div>
@@ -132,7 +132,7 @@ export default function ImageModal(props: ImageModalProps) {
                 }}
               />
 
-              <Text size="sm" weight={600} mt={8}>
+              <Text size='sm' weight={600} mt={8}>
                 Zoom
               </Text>
               <Slider
@@ -160,13 +160,13 @@ export default function ImageModal(props: ImageModalProps) {
           </Center>
         )}
 
-        <Group spacing="xs" position="right" mt={16}>
-          <Button variant="default" onClick={() => props._setOpened(false)}>
+        <Group spacing='xs' position='right' mt={16}>
+          <Button variant='default' onClick={() => props._setOpened(false)}>
             Cancel
           </Button>
           {files.length > 0 && (
             <Button
-              variant="gradient"
+              variant='gradient'
               loading={loading}
               onClick={() => {
                 if (!editorRef.current) return;

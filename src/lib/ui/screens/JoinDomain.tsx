@@ -93,10 +93,10 @@ export default function JoinDomain(props: Props) {
 
   ////////////////////////////////////////////////////////////
   return (
-    <Center h="60vh">
+    <Center h='60vh'>
       <Paper
         p={35}
-        shadow="lg"
+        shadow='lg'
         sx={(theme) => ({
           width: '50ch',
           maxWidth: '100%',
@@ -105,21 +105,21 @@ export default function JoinDomain(props: Props) {
       >
         <form onSubmit={form.onSubmit(onSubmit)}>
           <Stack>
-            <Stack align="center">
+            <Stack align='center'>
               <DomainAvatar
                 domain={domain as ExpandedDomain}
                 size={96}
-                color="#626771"
+                color='#626771'
                 sx={(theme) => ({
                   boxShadow: '0px 0px 16px #00000033',
                 })}
               />
 
               <div>
-                <Text size="xs" color="dimmed" align="center" mb={6}>
+                <Text size='xs' color='dimmed' align='center' mb={6}>
                   You have been invited to join
                 </Text>
-                <Title order={3} align="center">
+                <Title order={3} align='center'>
                   {domain.name}
                 </Title>
               </div>
@@ -133,7 +133,7 @@ export default function JoinDomain(props: Props) {
             /> */}
 
             <Space h={0} />
-            <Button variant="gradient" type="submit" loading={loading}>
+            <Button variant='gradient' type='submit' loading={loading}>
               Join
             </Button>
           </Stack>

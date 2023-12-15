@@ -71,7 +71,7 @@ function ConfirmModalImpl(
   return (
     <Modal
       title={props.title}
-      yOffset="30vh"
+      yOffset='30vh'
       {...props.modalProps}
       opened
       onClose={() => props.setProps(null)}
@@ -84,7 +84,7 @@ function ConfirmModalImpl(
 
         {props.typeToConfirm && (
           <Box>
-            <Text size="sm">
+            <Text size='sm'>
               {props.confirmText ||
                 'Please type the name to confirm this action.'}
             </Text>
@@ -92,9 +92,9 @@ function ConfirmModalImpl(
           </Box>
         )}
 
-        <Group spacing="xs" position="right" mt={16}>
+        <Group spacing='xs' position='right' mt={16}>
           <Button
-            variant="default"
+            variant='default'
             onClick={(e) => {
               props.onCancel?.();
               props.setProps(null);
@@ -103,7 +103,7 @@ function ConfirmModalImpl(
             {props.cancelLabel || 'Cancel'}
           </Button>
           <Button
-            color="red"
+            color='red'
             {...props.confirmProps}
             disabled={
               props.typeToConfirm !== undefined && text !== props.typeToConfirm

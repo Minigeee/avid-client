@@ -66,7 +66,7 @@ export function CalendarEventMenuDropdown(
       <Menu.Divider />
 
       <Menu.Item
-        color="red"
+        color='red'
         icon={<IconTrash size={16} />}
         onClick={() => {
           openConfirmModal({
@@ -93,7 +93,7 @@ export function CalendarEventMenuDropdown(
 ////////////////////////////////////////////////////////////
 export function CalendarEventContextMenu(props: PropsWithChildren) {
   return (
-    <ContextMenu width="14rem">
+    <ContextMenu width='14rem'>
       <ContextMenu.Dropdown dependencies={[]}>
         {(data) => <CalendarEventMenuDropdown {...data} />}
       </ContextMenu.Dropdown>

@@ -141,7 +141,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
         sx={{ position: 'relative', width: '100%', height: '100%' }}
       >
         {!display && (
-          <Stack align="center" spacing={8}>
+          <Stack align='center' spacing={8}>
             <MemberAvatar size={props.avatarSize} member={member} />
             <Text size={props.textSize} weight={600}>
               {member.alias}
@@ -195,7 +195,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
             rtcInfo.locked.share) && (
             <ProducerIcon
               participant={rtcInfo}
-              type="share"
+              type='share'
               rtc={rtc}
               canManage={canManage}
             />
@@ -204,7 +204,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
             rtcInfo.locked.video) && (
             <ProducerIcon
               participant={rtcInfo}
-              type="video"
+              type='video'
               rtc={rtc}
               canManage={canManage}
             />
@@ -213,7 +213,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
             rtcInfo.locked.audio) && (
             <ProducerIcon
               participant={rtcInfo}
-              type="audio"
+              type='audio'
               rtc={rtc}
               canManage={canManage}
             />
@@ -235,7 +235,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
             </Tooltip>
           )}
 
-          <Menu width="16rem" position="bottom-end" withArrow>
+          <Menu width='16rem' position='bottom-end' withArrow>
             <Menu.Target>
               <ActionIcon>
                 <IconDotsVertical size={20} />
@@ -331,10 +331,10 @@ function JoinScreen({
   }, [rtc.kicked, props.channel.data?.participants.length]);
 
   return (
-    <Center w="100%" h="100%">
+    <Center w='100%' h='100%'>
       <Stack
-        spacing="lg"
-        align="center"
+        spacing='lg'
+        align='center'
         sx={(theme) => ({
           padding: '2rem',
           width: '30rem',
@@ -344,19 +344,19 @@ function JoinScreen({
           boxShadow: '0px 6px 20px #00000030',
         })}
       >
-        <Stack spacing={0} align="center">
-          <Text size="sm" color="dimmed">
+        <Stack spacing={0} align='center'>
+          <Text size='sm' color='dimmed'>
             You are about to join
           </Text>
-          <Group align="center" spacing="sm">
-            <ChannelIcon type="rtc" size={24} />
+          <Group align='center' spacing='sm'>
+            <ChannelIcon type='rtc' size={24} />
             <Title order={3} mb={6}>
               {props.channel.name}
             </Title>
           </Group>
         </Stack>
 
-        <Stack spacing={6} align="center">
+        <Stack spacing={6} align='center'>
           {!participants.data?.length && (
             <>
               <Avatar
@@ -364,14 +364,14 @@ function JoinScreen({
                 radius={100}
                 sx={{ backgroundColor: '#333333' }}
               />
-              <Text size="xs" color="dimmed">
+              <Text size='xs' color='dimmed'>
                 There are no participants in this room
               </Text>
             </>
           )}
           {participants._exists && participants.data.length > 0 && (
             <>
-              <Avatar.Group spacing="md">
+              <Avatar.Group spacing='md'>
                 {participants.data.slice(0, 3).map((member, i) => (
                   <MemberAvatar
                     key={member.id}
@@ -396,7 +396,7 @@ function JoinScreen({
                   </Avatar>
                 )}
               </Avatar.Group>
-              <Text size="xs" color="dimmed">
+              <Text size='xs' color='dimmed'>
                 {participants.data.length} Participant
                 {participants.data.length > 1 ? 's' : ''}
               </Text>
@@ -406,7 +406,7 @@ function JoinScreen({
 
         {canJoin && (
           <>
-            <Group spacing="sm" mt={8}>
+            <Group spacing='sm' mt={8}>
               <Group spacing={6} mr={4}>
                 {webcamOn && <IconVideo size={20} />}
                 {!webcamOn && <IconVideoOff size={20} />}
@@ -443,8 +443,8 @@ function JoinScreen({
                 />
               </Group>
 
-              <Divider orientation="vertical" />
-              <Tooltip label="Settings" position="right" withArrow>
+              <Divider orientation='vertical' />
+              <Tooltip label='Settings' position='right' withArrow>
                 <ActionIcon onClick={() => openUserSettings({ tab: 'rtc' })}>
                   <IconSettings size={24} />
                 </ActionIcon>
@@ -452,9 +452,9 @@ function JoinScreen({
             </Group>
 
             <Button
-              variant="gradient"
+              variant='gradient'
               loading={loading}
-              w="8rem"
+              w='8rem'
               onClick={() => {
                 setLoading(true);
                 rtc._mutators
@@ -529,11 +529,11 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
   }, [participants.length]);
 
   return (
-    <Flex h="100%" align="stretch">
+    <Flex h='100%' align='stretch'>
       <Box sx={{ flexGrow: 1 }}>
         {!participants.length && (
-          <Center w="100%" h="100%">
-            <Stack align="center" spacing="xl">
+          <Center w='100%' h='100%'>
+            <Stack align='center' spacing='xl'>
               <Avatar
                 size={avatarSize}
                 radius={100}
@@ -545,11 +545,11 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
         )}
         {participants.length > 0 && (
           <RtcContextMenu domain={props.domain}>
-            <ScrollArea w="100%" h="100%">
+            <ScrollArea w='100%' h='100%'>
               <Flex
-                wrap="wrap"
-                justify="center"
-                mih="calc(100vh - 2.8rem - 2.8rem)" // This is taken from hardcoded values of header heights
+                wrap='wrap'
+                justify='center'
+                mih='calc(100vh - 2.8rem - 2.8rem)' // This is taken from hardcoded values of header heights
                 p={6}
                 sx={{ alignContent: 'center' }}
               >

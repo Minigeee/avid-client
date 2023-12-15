@@ -49,7 +49,7 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
     <>
       <Checkbox
         {...props}
-        size="xs"
+        size='xs'
         styles={(theme) => ({
           input: {
             cursor: 'pointer',
@@ -168,8 +168,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
         name: 'Summary',
         grow: 8,
         cell: (task: ExpandedTask) => (
-          <Group spacing={6} align="baseline">
-            <Text span data-tag="allowRowEvents">
+          <Group spacing={6} align='baseline'>
+            <Text span data-tag='allowRowEvents'>
               {task.summary}
             </Text>
             {task.subtasks && task.subtasks.length > 0 && (
@@ -177,24 +177,24 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                 label={`${task.subtasks.length} subtask${
                   task.subtasks.length > 1 ? 's' : ''
                 }`}
-                position="right"
+                position='right'
                 withArrow
                 sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
               >
                 <Group
                   noWrap
                   spacing={1}
-                  align="center"
+                  align='center'
                   sx={(theme) => ({
                     color: theme.colors.dark[2],
                     cursor: 'default',
                   })}
                 >
-                  <Text size="sm" data-tag="allowRowEvents">
+                  <Text size='sm' data-tag='allowRowEvents'>
                     {task.subtasks.length}
                   </Text>
                   <IconSubtask
-                    data-tag="allowRowEvents"
+                    data-tag='allowRowEvents'
                     size={15}
                     style={{ marginTop: '1px' }}
                   />
@@ -206,19 +206,19 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                 label={`${task.dependencies.length} dependenc${
                   task.dependencies.length > 1 ? 'ies' : 'y'
                 }`}
-                position="right"
+                position='right'
                 withArrow
                 sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
               >
                 <Group
                   spacing={1}
-                  align="center"
+                  align='center'
                   sx={(theme) => ({
                     color: theme.colors.dark[2],
                     cursor: 'default',
                   })}
                 >
-                  <Text size="sm">{task.dependencies.length}</Text>
+                  <Text size='sm'>{task.dependencies.length}</Text>
                   <IconGitMerge size={15} style={{ marginTop: '1px' }} />
                 </Group>
               </Tooltip>
@@ -234,7 +234,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             style: { fontWeight: 600, fontSize: 14 },
             cell: (task: ExpandedTask) => (
               <Text
-                data-tag="allowRowEvents"
+                data-tag='allowRowEvents'
                 sx={{
                   padding: '1px 13px 2px 11px',
                   width: 'fit-content',
@@ -290,7 +290,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
           task.due_date ? (
             <Tooltip
               label={moment(task.due_date).format('ll')}
-              position="right"
+              position='right'
               withArrow
               sx={(theme) => ({
                 backgroundColor: theme.colors.dark[8],
@@ -353,7 +353,7 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                           cursor: 'default',
                         }}
                       >
-                        <Text size="xs" weight={500}>
+                        <Text size='xs' weight={500}>
                           {tag.label}
                         </Text>
                       </Box>

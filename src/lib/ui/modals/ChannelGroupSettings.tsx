@@ -121,11 +121,11 @@ const RoleSelectItem = forwardRef<
   { label: string; badge: string }
 >(({ label, badge, ...others }, ref) => (
   <div ref={ref} {...others}>
-    <Group spacing="xs" noWrap>
-      <Box h="1.5rem" pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
-        {badge ? <Emoji id={badge} size="1rem" /> : <IconBadgeOff size={19} />}
+    <Group spacing='xs' noWrap>
+      <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+        {badge ? <Emoji id={badge} size='1rem' /> : <IconBadgeOff size={19} />}
       </Box>
-      <Text size="sm">{label}</Text>
+      <Text size='sm'>{label}</Text>
     </Group>
   </div>
 ));
@@ -149,7 +149,7 @@ function AddRolePopover(props: {
   return (
     <Popover
       opened={opened}
-      position="bottom"
+      position='bottom'
       withArrow
       onClose={() => setOpened(false)}
     >
@@ -163,7 +163,7 @@ function AddRolePopover(props: {
       {roles.length > 0 && props.type === 'empty' && (
         <Popover.Target>
           <Button
-            variant="default"
+            variant='default'
             leftIcon={<IconPlus size={18} />}
             onClick={() => setOpened(!opened)}
           >
@@ -178,7 +178,7 @@ function AddRolePopover(props: {
         }}
       >
         <Select
-          placeholder="Choose a role"
+          placeholder='Choose a role'
           data={roles}
           icon={<IconAt size={16} />}
           itemComponent={RoleSelectItem}
@@ -359,19 +359,19 @@ function PermissionsTab({
         name: 'Role',
         grow: 1,
         cell: (role: Role) => (
-          <Group spacing="xs">
+          <Group spacing='xs'>
             <Box
-              h="1.5rem"
+              h='1.5rem'
               pt={2}
               sx={(theme) => ({ color: theme.colors.dark[3] })}
             >
               {role.badge ? (
-                <Emoji id={role.badge} size="1rem" />
+                <Emoji id={role.badge} size='1rem' />
               ) : (
                 <IconBadgeOff size={19} />
               )}
             </Box>
-            <Text inline size="sm" weight={600}>
+            <Text inline size='sm' weight={600}>
               {role.label}
             </Text>
           </Group>
@@ -381,7 +381,7 @@ function PermissionsTab({
         name: (
           <AddRolePopover
             domain={domain}
-            type="table"
+            type='table'
             data={addableRoles}
             onSelect={(role_id) => {
               // Add new default permission set
@@ -400,7 +400,7 @@ function PermissionsTab({
         cell: (role: Role & { can_delete: boolean }) =>
           role.can_delete ? (
             <CloseButton
-              size="md"
+              size='md'
               iconSize={18}
               onClick={() => {
                 const copy = { ...form.values.permissions };
@@ -466,12 +466,12 @@ function PermissionsTab({
     <>
       <Box>
         <Title order={3}>Roles</Title>
-        <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
-          Customize the permissions each role has for this section group. Users
-          can only modify permissions for actions that they themselves can
-          perform. To prevent users from locking themselves out of being able to
-          modify a permission, it is recommended to give roles every permission
-          they should handle, even if that permission has been granted to{' '}
+        <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+          Customize the permissions each role has for this group. Users can only
+          modify permissions for actions that they themselves can perform. To
+          prevent users from locking themselves out of being able to modify a
+          permission, it is recommended to give roles every permission they
+          should handle, even if that permission has been granted to{' '}
           <b>@everyone</b>.
         </Text>
       </Box>
@@ -484,11 +484,11 @@ function PermissionsTab({
           maw: config.app.ui.settings_maw,
         }}
         emptyComponent={
-          <Stack align="center">
-            <Text weight={600}>This section group has no permissions</Text>
+          <Stack align='center'>
+            <Text weight={600}>This group has no permissions</Text>
             <AddRolePopover
               domain={domain}
-              type="empty"
+              type='empty'
               data={addableRoles}
               onSelect={(role_id) => {
                 // Add new default permission set
@@ -516,21 +516,21 @@ function PermissionsTab({
           <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
 
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
-              <IconFolder type="text" size={20} />
+            <Group spacing='xs' mb={4}>
+              <IconFolder type='text' size={20} />
               <Title order={4}>General Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
-              General permissions for sections and resources in this group.
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              General permissions for pages and resources in this group.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="View Group"
+            title='View Group'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to view this group and
-                the sections and resources within this group.
+                the pages and resources within this group.
               </>
             }
             switchProps={form.getInputProps(
@@ -541,11 +541,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Group"
+            title='Manage Group'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to manage group
-                settings, edit settings for existing sections within the group,
+                settings, edit settings for existing pages within the group,
                 and manage role access and permissions.
               </>
             }
@@ -557,7 +557,7 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Delete Group"
+            title='Delete Group'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to delete this group.
@@ -571,11 +571,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Sections"
+            title='Manage Pages'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and
-                delete sections within this group.
+                delete pages within this group.
               </>
             }
             switchProps={form.getInputProps(
@@ -588,21 +588,21 @@ function PermissionsTab({
 
           <Divider maw={config.app.ui.settings_maw} mt={16} />
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
-              <ChannelIcon type="text" size={20} />
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='text' size={20} />
               <Title order={4}>Chat Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
-              Permissions for text sections in this group.
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              Permissions for chat rooms in this group.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="Send Messages"
+            title='Send Messages'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to send messages in
-                chat sections.
+                chat rooms.
               </>
             }
             switchProps={form.getInputProps(
@@ -613,11 +613,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Send Attachments"
+            title='Send Attachments'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to send file
-                attachments in chat sections.
+                attachments in chat rooms.
               </>
             }
             switchProps={form.getInputProps(
@@ -628,11 +628,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Send Reactions"
+            title='Send Reactions'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to send emoji reactions
-                to messages in chat sections.
+                to messages in chat rooms.
               </>
             }
             switchProps={form.getInputProps(
@@ -643,12 +643,12 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Messages"
+            title='Manage Messages'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to delete messages and
                 remove reactions sent by other users, and pin messages in chat
-                sections.
+                rooms.
               </>
             }
             switchProps={form.getInputProps(
@@ -661,22 +661,22 @@ function PermissionsTab({
 
           <Divider maw={config.app.ui.settings_maw} mt={16} />
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
-              <ChannelIcon type="rtc" size={20} />
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='rtc' size={20} />
               <Title order={4}>Voice & Video Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
-              Permissions for voice & video sections in this group. Voice &
-              video sections will be referred to as RTC sections.
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
+              Permissions for voice & video rooms in this group. Voice &
+              video rooms will be referred to as RTC rooms.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="Broadcast Audio"
+            title='Broadcast Audio'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to broadcast audio
-                using their microphone in RTC sections.
+                using their microphone in RTC rooms.
               </>
             }
             switchProps={form.getInputProps(
@@ -687,11 +687,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Broadcast Video"
+            title='Broadcast Video'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to broadcast video
-                using their webcam or screenshare in RTC sections.
+                using their webcam or screenshare in RTC rooms.
               </>
             }
             switchProps={form.getInputProps(
@@ -702,11 +702,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Participants"
+            title='Manage Participants'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to manage other
-                participants in RTC sections. Users with this permission are
+                participants in RTC rooms. Users with this permission are
                 able to mute, deafen, force-stop video broadcasts, move, kick,
                 or ban other participants within an RTC channel.
               </>
@@ -721,17 +721,17 @@ function PermissionsTab({
 
           <Divider maw={config.app.ui.settings_maw} mt={16} />
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
-              <ChannelIcon type="board" size={19} />
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='board' size={19} />
               <Title order={4}>Board Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               Permissions for task boards in this group.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="Manage Tasks"
+            title='Manage Tasks'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and
@@ -746,7 +746,7 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Own Tasks"
+            title='Manage Own Tasks'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and
@@ -763,17 +763,17 @@ function PermissionsTab({
 
           <Divider maw={config.app.ui.settings_maw} mt={16} />
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
-              <ChannelIcon type="calendar" size={19} />
+            <Group spacing='xs' mb={4}>
+              <ChannelIcon type='calendar' size={19} />
               <Title order={4}>Calendar Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               Permissions for calendars in this group.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="Manage Calendar Events"
+            title='Manage Calendar Events'
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and
@@ -878,7 +878,7 @@ export default function ChannelGroupSettings({
       defaultTab={props.tab}
       close={() => context.closeModal(id)}
     >
-      <SettingsModal.Panel value="permissions">
+      <SettingsModal.Panel value='permissions'>
         <PermissionsTab {...tabProps} role={props.role} />
       </SettingsModal.Panel>
     </SettingsModal>

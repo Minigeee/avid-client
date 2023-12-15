@@ -67,7 +67,7 @@ export const openCreateCalendarEvent = (props: CreateCalendarEventProps) =>
 export const openCreateChannel = (props: CreateChannelProps) =>
   openContextModal({
     modal: 'create-channel',
-    title: 'New Section',
+    title: 'New Page',
     innerProps: props,
   });
 

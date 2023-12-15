@@ -26,19 +26,19 @@ export default function ErrorBoundary({
   return (
     <BaseErrorBoundary
       fallbackRender={({ error, resetErrorBoundary }) => (
-        <Center w="100%" h={props.height || '100%'}>
-          <Stack spacing="xl" align="center">
+        <Center w='100%' h={props.height || '100%'}>
+          <Stack spacing='xl' align='center'>
             <Box sx={(theme) => ({ color: theme.colors.dark[3] })}>
               <IconAlertHexagon size={64} strokeWidth={1.5} />
             </Box>
 
-            <Text align="center" maw="50ch">
+            <Text align='center' maw='50ch'>
               An error occurred, please try reloading again. If this issues
               keeps happening,{' '}
               <Text
                 inline
-                color="blue"
-                component="a"
+                color='blue'
+                component='a'
                 href={`mailto:${config.app.contact.email}`}
               >
                 contact us
@@ -46,8 +46,8 @@ export default function ErrorBoundary({
               or submit a{' '}
               <Text
                 inline
-                color="blue"
-                component="a"
+                color='blue'
+                component='a'
                 href={config.app.contact.feedback_form}
               >
                 bug report
@@ -57,7 +57,7 @@ export default function ErrorBoundary({
 
             {error && (
               <Code
-                w="90%"
+                w='90%'
                 sx={(theme) => ({
                   padding: '0.3rem 0.5rem',
                   backgroundColor: theme.colors.dark[6],
@@ -69,9 +69,9 @@ export default function ErrorBoundary({
             )}
 
             <Button
-              variant="gradient"
+              variant='gradient'
               leftIcon={<IconReload size={18} />}
-              w="20ch"
+              w='20ch'
               onClick={resetErrorBoundary}
             >
               Reload

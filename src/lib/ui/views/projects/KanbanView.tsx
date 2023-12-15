@@ -109,19 +109,19 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   label={`${task.subtasks.length} subtask${
                     task.subtasks.length > 1 ? 's' : ''
                   }`}
-                  position="right"
+                  position='right'
                   withArrow
                   sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
                 >
                   <Group
                     spacing={1}
-                    align="center"
+                    align='center'
                     sx={(theme) => ({
                       color: theme.colors.dark[2],
                       cursor: 'default',
                     })}
                   >
-                    <Text size="sm">{task.subtasks.length}</Text>
+                    <Text size='sm'>{task.subtasks.length}</Text>
                     <IconSubtask size={15} style={{ marginTop: '2px' }} />
                   </Group>
                 </Tooltip>
@@ -132,19 +132,19 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   label={`${task.dependencies.length} dependenc${
                     task.dependencies.length > 1 ? 'ies' : 'y'
                   }`}
-                  position="right"
+                  position='right'
                   withArrow
                   sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
                 >
                   <Group
                     spacing={1}
-                    align="center"
+                    align='center'
                     sx={(theme) => ({
                       color: theme.colors.dark[2],
                       cursor: 'default',
                     })}
                   >
-                    <Text size="sm">{task.dependencies.length}</Text>
+                    <Text size='sm'>{task.dependencies.length}</Text>
                     <IconGitMerge size={15} style={{ marginTop: '2px' }} />
                   </Group>
                 </Tooltip>
@@ -152,7 +152,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
             </Group>
 
             <Text
-              size="sm"
+              size='sm'
               sx={(theme) => ({
                 marginBottom: '0.4rem',
                 color: theme.colors.dark[0],
@@ -176,7 +176,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                         cursor: 'default',
                       }}
                     >
-                      <Text size="xs" weight={500}>
+                      <Text size='xs' weight={500}>
                         {tag.label}
                       </Text>
                     </Box>
@@ -190,12 +190,12 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
               {task.due_date && (
                 <Tooltip
                   label={moment(task.due_date).format('ll')}
-                  position="right"
+                  position='right'
                   withArrow
                   sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
                 >
                   <Text
-                    size="xs"
+                    size='xs'
                     sx={(theme) => ({
                       padding: '1px 8px',
                       backgroundColor: theme.colors.dark[4],
@@ -279,10 +279,10 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
       }}
     >
       {Object.values(board.statuses).map((status, i) => (
-        <Flex key={status.id} direction="column">
+        <Flex key={status.id} direction='column'>
           <Flex
-            gap="xs"
-            align="center"
+            gap='xs'
+            align='center'
             sx={(theme) => ({
               padding: '0.4rem 0.5rem 0.4rem 0.8rem',
               backgroundColor: theme.colors.dark[4],

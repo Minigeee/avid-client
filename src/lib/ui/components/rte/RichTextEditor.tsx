@@ -104,7 +104,7 @@ function EditorButton({ active, tooltip, ...props }: EditorButtonProps) {
   return (
     <Tooltip
       label={tooltip || ''}
-      position="top"
+      position='top'
       withArrow
       openDelay={500}
       sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
@@ -153,9 +153,9 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
 
   return (
     <Popover
-      width="40ch"
-      position="top"
-      shadow="lg"
+      width='40ch'
+      position='top'
+      shadow='lg'
       withinPortal
       withArrow
       trapFocus
@@ -168,10 +168,10 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
         </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown>
-        <Stack spacing="xs">
+        <Stack spacing='xs'>
           <TextInput
-            label="Title"
-            placeholder="Link title"
+            label='Title'
+            placeholder='Link title'
             value={title}
             onChange={(e) => setTitle(e.currentTarget.value)}
             onKeyDown={(e) => {
@@ -185,8 +185,8 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
             }}
           />
           <TextInput
-            label="Link"
-            placeholder="https://www.your-link.com"
+            label='Link'
+            placeholder='https://www.your-link.com'
             value={link}
             mb={5}
             onChange={(e) => {
@@ -204,7 +204,7 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
           />
           {editor?.isActive('link') && (
             <Button
-              variant="default"
+              variant='default'
               onClick={() => {
                 editor?.chain().focus().unsetLink().run();
 
@@ -217,7 +217,7 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
               Remove Link
             </Button>
           )}
-          <Button variant="gradient" onClick={onSubmit}>
+          <Button variant='gradient' onClick={onSubmit}>
             Insert Link
           </Button>
         </Stack>
@@ -580,10 +580,10 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                 })}
               />
               <CloseButton
-                variant="filled"
-                color="red"
-                size="sm"
-                radius="lg"
+                variant='filled'
+                color='red'
+                size='sm'
+                radius='lg'
                 sx={{
                   position: 'absolute',
                   top: -5,
@@ -649,7 +649,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       {props.attachments && props.onAttachmentsChange && (
         <input
           ref={props.fileInputRef}
-          type="file"
+          type='file'
           accept={IMAGE_MIME_TYPE.join(',')}
           onChange={(event) => {
             // Add all chosen files
@@ -669,76 +669,76 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         >
           <Group spacing={2}>
             <EditorButton
-              tooltip="Bold"
+              tooltip='Bold'
               active={editor?.isActive('bold')}
               onClick={() => editor.chain().focus().toggleBold().run()}
             >
               <IconBold size={18} />
             </EditorButton>
             <EditorButton
-              tooltip="Italic"
+              tooltip='Italic'
               active={editor?.isActive('italic')}
               onClick={() => editor.chain().focus().toggleItalic().run()}
             >
               <IconItalic size={18} />
             </EditorButton>
             <EditorButton
-              tooltip="Underline"
+              tooltip='Underline'
               active={editor?.isActive('underline')}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
             >
               <IconUnderline size={19} />
             </EditorButton>
             <EditorButton
-              tooltip="Strikethrough"
+              tooltip='Strikethrough'
               active={editor?.isActive('strike')}
               onClick={() => editor.chain().focus().toggleStrike().run()}
             >
               <IconStrikethrough size={18} />
             </EditorButton>
             <EditorButton
-              tooltip="Subscript"
+              tooltip='Subscript'
               active={editor?.isActive('subscript')}
               onClick={() => editor.chain().focus().toggleSubscript().run()}
             >
               <IconSubscript size={18} />
             </EditorButton>
             <EditorButton
-              tooltip="Superscript"
+              tooltip='Superscript'
               active={editor?.isActive('superscript')}
               onClick={() => editor.chain().focus().toggleSuperscript().run()}
             >
               <IconSuperscript size={18} />
             </EditorButton>
 
-            <Divider orientation="vertical" mt={3} mb={3} />
+            <Divider orientation='vertical' mt={3} mb={3} />
 
             <EditorButton
-              tooltip="Bullet List"
+              tooltip='Bullet List'
               active={editor?.isActive('bulletList')}
               onClick={() => editor.chain().focus().toggleBulletList().run()}
             >
               <IconList size={19} />
             </EditorButton>
             <EditorButton
-              tooltip="Ordered List"
+              tooltip='Ordered List'
               active={editor?.isActive('orderedList')}
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
             >
               <IconListNumbers size={19} />
             </EditorButton>
 
-            <Divider orientation="vertical" mt={3} mb={3} />
+            <Divider orientation='vertical' mt={3} mb={3} />
 
             <LinkInterface editor={editor} />
 
             {!props.markdown && (
               <>
-                <Divider orientation="vertical" mt={3} mb={3} />
+                <Divider orientation='vertical' mt={3} mb={3} />
 
                 <Popover
-                  position="top"
-                  shadow="lg"
+                  position='top'
+                  shadow='lg'
                   withinPortal
                   withArrow
                   trapFocus
@@ -767,8 +767,8 @@ export default function RichTextEditor(props: RichTextEditorProps) {
 
                 {editor.getAttributes('textStyle')?.color && (
                   <Tooltip
-                    label="Reset Color"
-                    position="top"
+                    label='Reset Color'
+                    position='top'
                     withArrow
                     openDelay={500}
                     sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
@@ -808,7 +808,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         </Group>
       )}
       <Flex
-        wrap="nowrap"
+        wrap='nowrap'
         gap={2}
         sx={(theme) => ({
           padding: 2,

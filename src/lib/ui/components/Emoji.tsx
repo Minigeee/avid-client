@@ -139,7 +139,7 @@ export function Emoji(props: EmojiProps) {
       : `https://cdn.jsdelivr.net/npm/emoji-datasource-${set}@14.0.0/img/${set}/sheets-256/64.png`;
 
   return (
-    <span data-type="emojis" emoji-id={id} data-emoji-set={set}>
+    <span data-type='emojis' emoji-id={id} data-emoji-set={set}>
       {imageSrc ? (
         <img
           style={{
@@ -220,7 +220,7 @@ const SkinSelectItem = forwardRef<
   ComponentPropsWithoutRef<'div'> & { label: string; color: string }
 >(({ label, color, ...others }, ref) => (
   <div ref={ref} {...others} title={label}>
-    <ColorSwatch color={color} size="1.2rem" />
+    <ColorSwatch color={color} size='1.2rem' />
   </div>
 ));
 SkinSelectItem.displayName = 'SkinSelectItem';
@@ -366,7 +366,7 @@ function EmojiPickerScrollArea({
       {props.searchPages.length > 0 && (
         <>
           <Text
-            size="md"
+            size='md'
             weight={600}
             sx={(theme) => ({
               position: 'sticky',
@@ -386,7 +386,7 @@ function EmojiPickerScrollArea({
         Object.entries(scrollInfo.categories).map(([category, pages]) => (
           <>
             <Text
-              size="md"
+              size='md'
               weight={600}
               sx={(theme) => ({
                 visibility:
@@ -559,7 +559,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
   }, [skin]);
 
   return (
-    <Stack spacing="sm" w="fit-content">
+    <Stack spacing='sm' w='fit-content'>
       <Box
         sx={(theme) => ({
           borderBottom: `1px solid ${theme.colors.dark[5]}`,
@@ -615,9 +615,9 @@ export function EmojiPicker(props: EmojiPickerProps) {
         />
       </Box>
 
-      <Flex wrap="nowrap" gap="xs">
+      <Flex wrap='nowrap' gap='xs'>
         <TextInput
-          placeholder="Search"
+          placeholder='Search'
           icon={<IconSearch size={18} />}
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
@@ -635,7 +635,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
           icon={
             <ColorSwatch
               color={SKIN_VALUES[parseInt(skin)].color}
-              size="1rem"
+              size='1rem'
             />
           }
           value={skin}
@@ -661,16 +661,16 @@ export function EmojiPicker(props: EmojiPickerProps) {
 
       <Divider />
 
-      <Group h="3rem">
+      <Group h='3rem'>
         {hovered && (
           <>
-            <Emoji id={hovered} skin={parseInt(skin) + 1} size="2rem" />
+            <Emoji id={hovered} skin={parseInt(skin) + 1} size='2rem' />
 
             <Stack spacing={0}>
-              <Text size="sm" weight={600}>
+              <Text size='sm' weight={600}>
                 {hoveredEmoji?.name}
               </Text>
-              <Text size="xs" color="dimmed">
+              <Text size='xs' color='dimmed'>
                 :{hovered}:
               </Text>
             </Stack>
@@ -678,8 +678,8 @@ export function EmojiPicker(props: EmojiPickerProps) {
         )}
         {!hovered && (
           <>
-            <Emoji id="grinning" skin={parseInt(skin) + 1} size="2rem" />
-            <Text size="md" weight={600} color="dimmed">
+            <Emoji id='grinning' skin={parseInt(skin) + 1} size='2rem' />
+            <Text size='md' weight={600} color='dimmed'>
               Pick an emoji...
             </Text>
           </>

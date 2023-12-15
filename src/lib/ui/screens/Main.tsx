@@ -79,11 +79,11 @@ function DomainButton(props: DomainButtonProps) {
       <Group>
         <DomainAvatar domain={props.domain} size={42} />
         <Box>
-          <Text size="md" weight={props.active ? 500 : 400}>
+          <Text size='md' weight={props.active ? 500 : 400}>
             {props.domain.name}
           </Text>
           {props.domain.quote && (
-            <Text size="xs" color="dimmed">
+            <Text size='xs' color='dimmed'>
               {props.domain.quote}
             </Text>
           )}
@@ -117,7 +117,7 @@ function PersonalButton(props: PersonalButtonProps) {
     >
       <Group>
         {props.icon}
-        <Text size="md">{props.title}</Text>
+        <Text size='md'>{props.title}</Text>
       </Group>
     </UnstyledButton>
   );
@@ -144,16 +144,16 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
       withCloseButton={false}
       padding={0}
     >
-      <Flex direction="column" h="100vh">
+      <Flex direction='column' h='100vh'>
         <Group
-          mih="10rem"
+          mih='10rem'
           sx={(theme) => ({
             position: 'relative',
             backgroundColor: theme.colors.dark[9],
           })}
         >
           <CloseButton
-            size="md"
+            size='md'
             sx={{
               position: 'absolute',
               top: '0.5rem',
@@ -172,20 +172,20 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           <ProfileAvatar profile={profile} size={64} />
           <Stack spacing={0}>
             <Title order={4}>{profile.username}</Title>
-            <Text size="sm" color="dimmed">
+            <Text size='sm' color='dimmed'>
               {session.email}
             </Text>
           </Stack>
 
           <div style={{ flexGrow: 1 }} />
-          <Menu position="bottom-end">
+          <Menu position='bottom-end'>
             <Menu.Target>
-              <ActionIcon size="lg">
+              <ActionIcon size='lg'>
                 <IconChevronDown />
               </ActionIcon>
             </Menu.Target>
 
-            <Menu.Dropdown miw="10rem">
+            <Menu.Dropdown miw='10rem'>
               <Menu.Item
                 icon={<IconEdit size={18} />}
                 onClick={() => {
@@ -200,7 +200,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
               <Menu.Item icon={<IconUserShare size={18} />}>
                 Switch profile
               </Menu.Item>
-              <Menu.Item icon={<IconLogout size={18} />} color="red">
+              <Menu.Item icon={<IconLogout size={18} />} color='red'>
                 Logout
               </Menu.Item>
             </Menu.Dropdown>
@@ -214,11 +214,11 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
             borderBottom: `1px solid ${theme.colors.dark[5]}`,
           })}
         >
-          <PersonalButton title="Messages" icon={<IconMessage2 size={22} />} />
-          <PersonalButton title="Calendar" icon={<IconCalendar size={22} />} />
+          <PersonalButton title='Messages' icon={<IconMessage2 size={22} />} />
+          <PersonalButton title='Calendar' icon={<IconCalendar size={22} />} />
         </Stack>
 
-        <Text size="sm" color="dimmed" weight={600} mt={8} ml={12}>
+        <Text size='sm' color='dimmed' weight={600} mt={8} ml={12}>
           Domains
         </Text>
         <ScrollArea sx={{ flexGrow: 1 }}>
@@ -248,14 +248,14 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
 
         <Group
           spacing={2}
-          p="0.5rem"
+          p='0.5rem'
           sx={(theme) => ({
             borderTop: `1px solid ${theme.colors.dark[5]}`,
           })}
         >
           <ActionButton
-            tooltip="Settings"
-            size="xl"
+            tooltip='Settings'
+            size='xl'
             hoverBg={(theme) => theme.colors.dark[6]}
             onClick={() => {
               onClose();
@@ -268,8 +268,8 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           <div style={{ flexGrow: 1 }} />
 
           <ActionButton
-            tooltip="New Domain"
-            size="xl"
+            tooltip='New Domain'
+            size='xl'
             hoverBg={(theme) => theme.colors.dark[6]}
             onClick={() => {
               if (profile._exists) {
@@ -331,7 +331,7 @@ function AppHeader({ app, domain }: AppHeaderProps) {
         })}
       >
         <ActionIcon
-          size="lg"
+          size='lg'
           sx={(theme) => ({
             marginRight: '0.75rem',
             color: theme.colors.dark[1],
@@ -348,7 +348,7 @@ function AppHeader({ app, domain }: AppHeaderProps) {
           {domain && <DomainAvatar domain={domain} size={32} />}
           <Title
             order={4}
-            size="1.25rem"
+            size='1.25rem'
             sx={{ lineHeight: 1, marginLeft: '0.125rem' }}
           >
             {domain?.name}
@@ -356,8 +356,8 @@ function AppHeader({ app, domain }: AppHeaderProps) {
 
           {domain && (
             <Menu
-              width="15rem"
-              position="bottom-start"
+              width='15rem'
+              position='bottom-start'
               styles={(theme) => ({
                 dropdown: {
                   backgroundColor: theme.colors.dark[7],
@@ -430,8 +430,8 @@ export default function Main(props: { visible: boolean }) {
 
   return (
     <Flex
-      w="100vw"
-      h="100vh"
+      w='100vw'
+      h='100vh'
       gap={0}
       sx={(theme) => ({
         backgroundColor: theme.colors.dark[8],
@@ -445,7 +445,7 @@ export default function Main(props: { visible: boolean }) {
       }}
     >
       <Flex
-        direction="column"
+        direction='column'
         sx={{
           flexGrow: 1,
           height: '100%',
@@ -454,7 +454,7 @@ export default function Main(props: { visible: boolean }) {
         <AppHeader app={app} domain={domain._exists ? domain : undefined} />
         {domain._exists && <MainView />}
         {app.domain && !app.domain.startsWith('domains') && (
-          <Center w="100%" h="100%">
+          <Center w='100%' h='100%'>
             <Text>Coming soon :&#41;</Text>
           </Center>
         )}

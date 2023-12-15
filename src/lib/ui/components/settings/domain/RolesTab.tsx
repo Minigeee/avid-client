@@ -142,9 +142,9 @@ function GroupPermissoinsExpandableRows({
       sx={(theme) => ({ backgroundColor: theme.colors.dark[7] })}
     >
       {data.channels.map((channel_id, idx) => (
-        <Group key={channel_id} spacing="xs" p="0.3rem 0.6rem">
+        <Group key={channel_id} spacing='xs' p='0.3rem 0.6rem'>
           <ChannelIcon type={domain.channels[channel_id].type} size={16} />
-          <Text inline size="sm" weight={600} mb={1} sx={{ flexGrow: 1 }}>
+          <Text inline size='sm' weight={600} mb={1} sx={{ flexGrow: 1 }}>
             {domain.channels[channel_id].name}
           </Text>
         </Group>
@@ -167,7 +167,7 @@ function AddGroupOverrideDropdown(props: {
   return (
     <Popover.Dropdown>
       <Select
-        placeholder="Choose a section group"
+        placeholder='Choose a  group'
         data={groups}
         icon={<IconFolder size={16} />}
         searchable
@@ -192,11 +192,11 @@ const RoleSelectItem = forwardRef<
   { label: string; badge: string }
 >(({ label, badge, ...others }, ref) => (
   <div ref={ref} {...others}>
-    <Group spacing="xs" noWrap>
-      <Box h="1.5rem" pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
-        {badge ? <Emoji id={badge} size="1rem" /> : <IconBadgeOff size={19} />}
+    <Group spacing='xs' noWrap>
+      <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+        {badge ? <Emoji id={badge} size='1rem' /> : <IconBadgeOff size={19} />}
       </Box>
-      <Text size="sm">{label}</Text>
+      <Text size='sm'>{label}</Text>
     </Group>
   </div>
 ));
@@ -220,7 +220,7 @@ function AddRolePopover(props: {
   return (
     <Popover
       opened={opened}
-      position="top"
+      position='top'
       withArrow
       onClose={() => setOpened(false)}
     >
@@ -234,11 +234,11 @@ function AddRolePopover(props: {
       {roles.length > 0 && props.type === 'empty' && (
         <Popover.Target>
           <Button
-            variant="default"
+            variant='default'
             leftIcon={<IconPlus size={18} />}
             onClick={() => setOpened(!opened)}
           >
-            Add Manager
+            Add Child Role
           </Button>
         </Popover.Target>
       )}
@@ -249,7 +249,7 @@ function AddRolePopover(props: {
         }}
       >
         <Select
-          placeholder="Choose a role"
+          placeholder='Choose a role'
           data={roles}
           icon={<IconAt size={16} />}
           itemComponent={RoleSelectItem}
@@ -279,7 +279,7 @@ function AddMemberPopover(props: {
   return (
     <Popover
       opened={opened}
-      position="top"
+      position='top'
       withArrow
       onClose={() => setOpened(false)}
     >
@@ -293,7 +293,7 @@ function AddMemberPopover(props: {
       {props.type === 'empty' && (
         <Popover.Target>
           <Button
-            variant="default"
+            variant='default'
             leftIcon={<IconPlus size={18} />}
             onClick={() => setOpened(!opened)}
           >
@@ -308,17 +308,17 @@ function AddMemberPopover(props: {
             domain_id={props.domain_id}
             value={values}
             onChange={setValues}
-            placeholder="Choose members"
+            placeholder='Choose members'
             exclude_role={props.role_id}
             icon={<IconUser size={18} />}
             clearable
-            dropdownPosition="top"
+            dropdownPosition='top'
             styles={{ value: { margin: '0.25rem 0.3rem 0.25rem 0.1rem' } }}
             w={config.app.ui.short_input_width}
           />
 
           <Button
-            variant="gradient"
+            variant='gradient'
             disabled={values.length === 0}
             onClick={() => {
               props.mutators.addRoles(
@@ -421,17 +421,17 @@ function GeneralTab({
   return (
     <Stack mt={20}>
       <TextInput
-        label="Name"
+        label='Name'
         disabled={!canManage}
         sx={{ width: config.app.ui.med_input_width }}
         {...form.getInputProps(`roles.${roleIdx}.label`)}
       />
 
       <div>
-        <Text size="sm" weight={600}>
+        <Text size='sm' weight={600}>
           Badge
         </Text>
-        <Text size="xs" color="dimmed" mb={6}>
+        <Text size='xs' color='dimmed' mb={6}>
           A role badge is an icon displayed next to a user&apos;s name in chat
         </Text>
 
@@ -447,9 +447,9 @@ function GeneralTab({
             })}
           >
             {role.badge ? (
-              <Emoji id={role.badge} size="2rem" />
+              <Emoji id={role.badge} size='2rem' />
             ) : (
-              <IconBadgeOff size="1.75rem" />
+              <IconBadgeOff size='1.75rem' />
             )}
           </Center>
 
@@ -462,7 +462,7 @@ function GeneralTab({
             <Popover.Target>
               <Button
                 disabled={!canManage}
-                variant="default"
+                variant='default'
                 ml={4}
                 mr={8}
                 onClick={() => setBadgePickerOpen(!badgePickerOpen)}
@@ -471,7 +471,7 @@ function GeneralTab({
               </Button>
             </Popover.Target>
             <Popover.Dropdown
-              p="0.75rem 1rem"
+              p='0.75rem 1rem'
               sx={(theme) => ({
                 backgroundColor: theme.colors.dark[7],
                 borderColor: theme.colors.dark[5],
@@ -508,7 +508,7 @@ function GeneralTab({
               </ActionButton>
 
               <CloseButton
-                size="md"
+                size='md'
                 onClick={() =>
                   form.setFieldValue(`roles.${roleIdx}.badge`, null)
                 }
@@ -524,9 +524,9 @@ function GeneralTab({
             <Divider maw={config.app.ui.settings_maw} />
 
             <Flex
-              align="center"
-              wrap="nowrap"
-              gap="1.0rem"
+              align='center'
+              wrap='nowrap'
+              gap='1.0rem'
               maw={config.app.ui.settings_maw}
               sx={(theme) => ({
                 padding: '0.75rem 1rem',
@@ -535,18 +535,18 @@ function GeneralTab({
               })}
             >
               <Box sx={{ flexGrow: 1 }}>
-                <Text size="sm" weight={600} mb={2}>
+                <Text size='sm' weight={600} mb={2}>
                   Delete this role
                 </Text>
-                <Text size="xs" color="dimmed">
+                <Text size='xs' color='dimmed'>
                   This action will be performed immediately and can not be
                   undone.
                 </Text>
               </Box>
 
               <Button
-                color="red"
-                variant="outline"
+                color='red'
+                variant='outline'
                 loading={loading}
                 onClick={async () => {
                   setLoading(true);
@@ -695,20 +695,20 @@ function ChildRolesTab({
         name: 'Role',
         grow: 1,
         cell: (child: Role) => (
-          <Group spacing="xs">
+          <Group spacing='xs'>
             <Box
-              data-tag="allowRowEvents"
-              h="1.5rem"
+              data-tag='allowRowEvents'
+              h='1.5rem'
               pt={2}
               sx={(theme) => ({ color: theme.colors.dark[3] })}
             >
               {child.badge ? (
-                <Emoji id={child.badge} size="1rem" />
+                <Emoji id={child.badge} size='1rem' />
               ) : (
                 <IconBadgeOff size={19} />
               )}
             </Box>
-            <Text data-tag="allowRowEvents" inline size="sm" weight={600}>
+            <Text data-tag='allowRowEvents' inline size='sm' weight={600}>
               {child.label}
             </Text>
           </Group>
@@ -718,7 +718,7 @@ function ChildRolesTab({
         name: (
           <AddRolePopover
             form={form}
-            type="table"
+            type='table'
             data={addableChildren}
             onSelect={(role_id) => {
               // Add to form value
@@ -740,7 +740,7 @@ function ChildRolesTab({
         cell: (child: Role & { can_delete: boolean }) =>
           child.can_delete ? (
             <CloseButton
-              size="md"
+              size='md'
               iconSize={18}
               onClick={() => {
                 const copy = { ...form.values.child_roles[role.id] };
@@ -807,7 +807,7 @@ function ChildRolesTab({
     <Stack mt={20}>
       <Box>
         <Title order={4}>Child Roles</Title>
-        <Text size="sm" color="dimmed">
+        <Text size='sm' color='dimmed'>
           Child roles are roles that <b>{`@${role.label}`}</b> has permissions
           over.
         </Text>
@@ -821,11 +821,11 @@ function ChildRolesTab({
         }}
         onRowClicked={(row) => setSelectedChildId(row.id)}
         emptyComponent={
-          <Stack align="center" spacing="sm">
+          <Stack align='center' spacing='sm'>
             <Text weight={600}>This role has no child roles</Text>
             <AddRolePopover
               form={form}
-              type="empty"
+              type='empty'
               data={addableChildren}
               onSelect={(role_id) => {
                 // Add to form value
@@ -856,18 +856,18 @@ function ChildRolesTab({
           <Divider maw={config.app.ui.settings_maw} />
 
           <Box mb={8}>
-            <Group spacing="xs" mb={4}>
+            <Group spacing='xs' mb={4}>
               <IconAt size={19} />
               <Title order={4}>Role Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed">
+            <Text size='sm' color='dimmed'>
               Permissions the parent role has over the{' '}
               <b>{`@${selectedChild.label}`}</b> role.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="Manage Role"
+            title='Manage Role'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to manage the role settings of{' '}
@@ -883,15 +883,15 @@ function ChildRolesTab({
           />
 
           <PermissionSetting
-            title="Manage Permissions"
+            title='Manage Permissions'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to manage the permissions of{' '}
                 <b>{`@${selectedChild.label}`}</b>. This permission is required
                 for members of <b>{`@${role.label}`}</b> to modify{' '}
                 <b>{`@${selectedChild.label}`}</b> permissions for any section
-                or resource, but they must be able to manage that section or
-                resource to modify its permissions.
+                or resource, but they must be able to manage that page to modify
+                its permissions.
               </>
             }
             switchProps={form.getInputProps(
@@ -902,7 +902,7 @@ function ChildRolesTab({
           />
 
           <PermissionSetting
-            title="Delete Role"
+            title='Delete Role'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to delete the{' '}
@@ -918,7 +918,7 @@ function ChildRolesTab({
           />
 
           <PermissionSetting
-            title="Assign Role"
+            title='Assign Role'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to assign and remove the{' '}
@@ -936,11 +936,11 @@ function ChildRolesTab({
 
           <Divider maw={config.app.ui.settings_maw} mt={16} />
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
+            <Group spacing='xs' mb={4}>
               <IconUser size={19} />
               <Title order={4}>Member Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               Permissions the parent has over members with the{' '}
               <b>{`@${selectedChild.label}`}</b> role. In order to perform any
               of the following actions, a user must have the corresponding
@@ -950,7 +950,7 @@ function ChildRolesTab({
           </Box>
 
           <PermissionSetting
-            title="Manage Alias"
+            title='Manage Alias'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to change the alias of members
@@ -965,7 +965,7 @@ function ChildRolesTab({
           />
 
           <PermissionSetting
-            title="Manage Roles"
+            title='Manage Roles'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to manage which roles are
@@ -982,7 +982,7 @@ function ChildRolesTab({
           />
 
           <PermissionSetting
-            title="Can Kick"
+            title='Can Kick'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to kick members with the{' '}
@@ -999,7 +999,7 @@ function ChildRolesTab({
           />
 
           <PermissionSetting
-            title="Can Ban"
+            title='Can Ban'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to ban members with the{' '}
@@ -1150,11 +1150,11 @@ function PermissionsTab({
         cell: (group: { can_view: boolean }) =>
           group.can_view ? (
             <Box sx={(theme) => ({ color: theme.colors.green[5] })}>
-              <IconCheck data-tag="allowRowEvents" size={20} />
+              <IconCheck data-tag='allowRowEvents' size={20} />
             </Box>
           ) : (
             <Box sx={(theme) => ({ color: theme.colors.red[5] })}>
-              <IconX data-tag="allowRowEvents" size={20} />
+              <IconX data-tag='allowRowEvents' size={20} />
             </Box>
           ),
       },
@@ -1165,11 +1165,11 @@ function PermissionsTab({
         cell: (group: { can_manage: boolean }) =>
           group.can_manage ? (
             <Box sx={(theme) => ({ color: theme.colors.green[5] })}>
-              <IconCheck data-tag="allowRowEvents" size={20} />
+              <IconCheck data-tag='allowRowEvents' size={20} />
             </Box>
           ) : (
             <Box sx={(theme) => ({ color: theme.colors.red[5] })}>
-              <IconX data-tag="allowRowEvents" size={20} />
+              <IconX data-tag='allowRowEvents' size={20} />
             </Box>
           ),
       },
@@ -1179,7 +1179,7 @@ function PermissionsTab({
     if (!isDefaultRole) {
       cols.push({
         name: (
-          <Popover position="top" withArrow>
+          <Popover position='top' withArrow>
             {_perms.can_set_role_permissions && addableGroups.length > 0 && (
               <Popover.Target>
                 <ActionIcon>
@@ -1208,17 +1208,17 @@ function PermissionsTab({
       {hasPermission(domain, domain.id, 'can_manage') && (
         <>
           <Box mb={8}>
-            <Group spacing="xs" mb={4}>
+            <Group spacing='xs' mb={4}>
               <IconBuildingCommunity size={19} />
               <Title order={4}>Domain Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed">
+            <Text size='sm' color='dimmed'>
               General permissions that apply to the domain.
             </Text>
           </Box>
 
           <PermissionSetting
-            title="Manage Domain"
+            title='Manage Domain'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to manage domain settings,
@@ -1234,7 +1234,7 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Invites"
+            title='Manage Invites'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to create, edit, and delete
@@ -1249,7 +1249,7 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Manage Extensions"
+            title='Manage Extensions'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to add and manage the
@@ -1264,11 +1264,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Create Section Groups"
+            title='Create Groups'
             description={
               <>
-                Allows <b>{`@${role.label}`}</b> to create and manage new
-                section groups in this domain.
+                Allows <b>{`@${role.label}`}</b> to create and manage new groups
+                in this domain.
               </>
             }
             switchProps={form.getInputProps(
@@ -1279,13 +1279,13 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title="Create Roles"
+            title='Create Roles'
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to create and manage new roles
                 within this domain. To enable more precise role management
                 capabilities, assign <b>{`@${role.label}`}</b> as a
-                &quot;Manager&quot; to the specific roles it should handle.
+                &quot;parent role&quot; to the specific roles it should handle.
               </>
             }
             switchProps={form.getInputProps(
@@ -1304,25 +1304,25 @@ function PermissionsTab({
         hasPermission(domain, role.id, 'can_manage')) && (
         <>
           <Box mb={12}>
-            <Group spacing="xs" mb={4}>
+            <Group spacing='xs' mb={4}>
               <IconFile size={20} />
-              <Title order={4}>Section Permissions</Title>
+              <Title order={4}>Group Permissions</Title>
             </Group>
-            <Text size="sm" color="dimmed" maw={config.app.ui.settings_maw}>
+            <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
               {/* TODO : Allow channels to be clickable (to modify channel permissions) */}
               {isDefaultRole && (
                 <>
-                  Permissions for <b>{'@everyone'}</b> for every section group.
+                  Permissions for <b>{`@${role.label}`}</b> for every group.
                   Click a group to modify its permissions.
                 </>
               )}
               {!isDefaultRole && (
                 <>
-                  Permission sets for section groups. Users can perform any
-                  given action if any of their assigned roles allow them to,
-                  which means that users may have additional capabilities
-                  granted by other roles even if <b>{`@${role.label}`}</b> does
-                  not explicitly allow those actions.
+                  Permission sets for groups. Users can perform any given action
+                  if any of their assigned roles allow them to, which means that
+                  users may have additional capabilities granted by other roles
+                  even if <b>{`@${role.label}`}</b> does not explicitly allow
+                  those actions.
                 </>
               )}
             </Text>
@@ -1346,16 +1346,16 @@ function PermissionsTab({
               });
             }}
             emptyComponent={
-              <Stack align="center" spacing="sm">
+              <Stack align='center' spacing='sm'>
                 <Text weight={600}>
                   This role has no extra permissions for any groups
                 </Text>
-                <Popover position="top" withArrow>
+                <Popover position='top' withArrow>
                   {_perms.can_set_role_permissions &&
                     addableGroups.length > 0 && (
                       <Popover.Target>
                         <Button
-                          variant="default"
+                          variant='default'
                           leftIcon={<IconPlus size={18} />}
                         >
                           Add Permissions
@@ -1428,7 +1428,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
         cell: (member: ExpandedMember) => (
           <Group noWrap>
             <MemberAvatar size={28} member={member} />
-            <Text data-tag="allowRowEvents" inline size="sm">
+            <Text data-tag='allowRowEvents' inline size='sm'>
               {member.alias}
             </Text>
           </Group>
@@ -1440,7 +1440,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
       cols.push({
         name: members._exists ? (
           <AddMemberPopover
-            type="table"
+            type='table'
             domain_id={domain.id}
             role_id={role.id}
             mutators={memberMutators}
@@ -1450,7 +1450,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
         right: true,
         cell: (member: ExpandedMember) => (
           <CloseButton
-            size="md"
+            size='md'
             iconSize={18}
             onClick={() => {
               openConfirmModal({
@@ -1482,7 +1482,7 @@ function MembersTab({ domain, role, session }: SubtabProps) {
 
       <Box>
         <TextInput
-          placeholder="Search"
+          placeholder='Search'
           icon={<IconSearch size={18} />}
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
@@ -1508,10 +1508,10 @@ function MembersTab({ domain, role, session }: SubtabProps) {
               maw: config.app.ui.settings_maw,
             }}
             emptyComponent={
-              <Stack align="center" spacing="sm">
+              <Stack align='center' spacing='sm'>
                 <Text weight={600}>This role has no members</Text>
                 <AddMemberPopover
-                  type="empty"
+                  type='empty'
                   domain_id={domain.id}
                   role_id={role.id}
                   mutators={memberMutators}
@@ -1622,35 +1622,35 @@ function RoleSettingsTabs(props: RoleSettingsTabsProps) {
     <Tabs
       value={activeTab}
       onTabChange={setActiveTab}
-      variant="outline"
+      variant='outline'
       keepMounted={false}
     >
       <Tabs.List>
-        <Tabs.Tab value="general">General</Tabs.Tab>
+        <Tabs.Tab value='general'>General</Tabs.Tab>
         {canManageResources && (
-          <Tabs.Tab value="permissions">Permissions</Tabs.Tab>
+          <Tabs.Tab value='permissions'>Permissions</Tabs.Tab>
         )}
-        {canManageRoles && <Tabs.Tab value="child-roles">Child Roles</Tabs.Tab>}
-        <Tabs.Tab value="members">Members</Tabs.Tab>
+        {canManageRoles && <Tabs.Tab value='child-roles'>Child Roles</Tabs.Tab>}
+        <Tabs.Tab value='members'>Members</Tabs.Tab>
       </Tabs.List>
 
-      <Tabs.Panel value="general">
+      <Tabs.Panel value='general'>
         <GeneralTab {...props} role={role} />
       </Tabs.Panel>
 
       {roleAcl._exists && canManageResources && (
-        <Tabs.Panel value="permissions">
+        <Tabs.Panel value='permissions'>
           <PermissionsTab {...props} role={role} roleAcl={roleAcl} />
         </Tabs.Panel>
       )}
 
       {roleAcl._exists && canManageRoles && (
-        <Tabs.Panel value="child-roles">
+        <Tabs.Panel value='child-roles'>
           <ChildRolesTab {...props} role={role} roleAcl={roleAcl} />
         </Tabs.Panel>
       )}
 
-      <Tabs.Panel value="members">
+      <Tabs.Panel value='members'>
         <MembersTab {...props} role={role} />
       </Tabs.Panel>
     </Tabs>
@@ -1745,7 +1745,7 @@ export function RolesTab({ ...props }: TabProps) {
 
   return (
     <>
-      <Text size="sm" color="dimmed" maw="100ch">
+      <Text size='sm' color='dimmed' maw='100ch'>
         Roles are labels that can be assigned to members to indicate their
         designated position or responsibilities. Each role has a customizable
         set of permissions for precise control over their actions and access
@@ -1754,19 +1754,19 @@ export function RolesTab({ ...props }: TabProps) {
 
       <Box>
         <Title order={3}>Roles</Title>
-        <Text size="sm" color="dimmed">
+        <Text size='sm' color='dimmed'>
           Role tags and badges will be displayed in the order they appear in
           this list.
         </Text>
-        <Text size={11} color="dimmed">
+        <Text size={11} color='dimmed'>
           {'(Drag and drop items to reorder roles)'}
         </Text>
       </Box>
 
       <Box>
-        <Group maw={config.app.ui.settings_maw} align="end" spacing="xs" mb={8}>
+        <Group maw={config.app.ui.settings_maw} align='end' spacing='xs' mb={8}>
           <TextInput
-            placeholder="Search"
+            placeholder='Search'
             icon={<IconSearch size={18} />}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
@@ -1780,7 +1780,7 @@ export function RolesTab({ ...props }: TabProps) {
 
           {hasPermission(domain, domain.id, 'can_create_roles') && (
             <Button
-              variant="gradient"
+              variant='gradient'
               loading={newRoleLoading}
               onClick={async () => {
                 try {
@@ -1844,8 +1844,8 @@ export function RolesTab({ ...props }: TabProps) {
                       <PortalAwareItem snapshot={snapshot}>
                         <Box
                           ref={provided.innerRef}
-                          w="100%"
-                          p="0.4rem 0.6rem"
+                          w='100%'
+                          p='0.4rem 0.6rem'
                           sx={(theme) => ({
                             backgroundColor:
                               selectedRoleId === role.id || snapshot.isDragging
@@ -1869,14 +1869,14 @@ export function RolesTab({ ...props }: TabProps) {
                           }}
                         >
                           <Group
-                            spacing="xs"
+                            spacing='xs'
                             sx={(theme) => ({
                               '.tabler-icon': { color: theme.colors.dark[3] },
                             })}
                           >
                             <div style={{ height: '1.5rem' }}>
                               {role.badge ? (
-                                <Emoji id={role.badge} size="1rem" />
+                                <Emoji id={role.badge} size='1rem' />
                               ) : (
                                 <IconBadgeOff
                                   size={19}
@@ -1884,7 +1884,7 @@ export function RolesTab({ ...props }: TabProps) {
                                 />
                               )}
                             </div>
-                            <Text inline size="sm" weight={600}>
+                            <Text inline size='sm' weight={600}>
                               {role.label}
                             </Text>
 

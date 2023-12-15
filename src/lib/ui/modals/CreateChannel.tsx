@@ -81,15 +81,15 @@ const TypeSelectItem = forwardRef<HTMLDivElement, TypeSelectItemProps>(
         <ChannelIcon type={value} size={20} />
 
         <div>
-          <Text size="sm" weight={500}>
+          <Text size='sm' weight={500}>
             {label}
           </Text>
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             {description}
           </Text>
           {disabled && (
             <Text
-              size="xs"
+              size='xs'
               mt={6}
               sx={(theme) => ({ color: theme.colors.dark[0] })}
             >
@@ -186,8 +186,8 @@ export default function CreateChannel({
     <form onSubmit={form.onSubmit(submit)}>
       <Stack>
         <TextInput
-          label="Section Name"
-          placeholder="New Section"
+          label='Name'
+          placeholder='New Page'
           icon={<IconFile size={16} />}
           required
           withAsterisk={false}
@@ -195,11 +195,11 @@ export default function CreateChannel({
           {...form.getInputProps('name')}
         />
         <Select
-          label="Section Type"
+          label='Type'
           data={CHANNEL_TYPES}
           icon={<ChannelIcon type={form.values.type} size={16} />}
           itemComponent={TypeSelectItem}
-          maxDropdownHeight={300}
+          maxDropdownHeight={500}
           withinPortal
           styles={(theme) => ({
             input: {
@@ -211,7 +211,7 @@ export default function CreateChannel({
 
         {!props.group_id && (
           <Select
-            label="Group"
+            label='Group'
             data={groups}
             icon={<IconFolder size={16} />}
             withinPortal
@@ -224,8 +224,8 @@ export default function CreateChannel({
         {form.values.type === 'rtc' && (
           <>
             <NumberInput
-              label="Max Participants"
-              description="The maximum allowed number of concurrent participants"
+              label='Max Participants'
+              description='The maximum allowed number of concurrent participants'
               required
               withAsterisk={false}
               min={2}
@@ -238,9 +238,9 @@ export default function CreateChannel({
         {form.values.type === 'board' && (
           <>
             <TextInput
-              label="Board Prefix"
-              description="A short prefix used to generate IDs for tasks (max 5 characters)"
-              placeholder="PRFX"
+              label='Board Prefix'
+              description='A short prefix used to generate IDs for tasks (max 5 characters)'
+              placeholder='PRFX'
               required
               withAsterisk={false}
               {...form.getInputProps('board_prefix')}
@@ -255,11 +255,11 @@ export default function CreateChannel({
           </>
         )}
 
-        <Group spacing="xs" position="right" mt={16}>
-          <Button variant="default" onClick={() => context.closeModal(id)}>
+        <Group spacing='xs' position='right' mt={16}>
+          <Button variant='default' onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             Create
           </Button>
         </Group>

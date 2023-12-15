@@ -643,7 +643,7 @@ function WeekRow(props: WeekRowProps) {
 
   return (
     <Flex
-      w="100%"
+      w='100%'
       sx={{
         flex: '1 1 0px',
         position: 'relative',
@@ -726,9 +726,9 @@ function WeekRow(props: WeekRowProps) {
               },
             })}
           >
-            <Group position="right" p="0.125rem" h="2rem">
+            <Group position='right' p='0.125rem' h='2rem'>
               <ActionIcon
-                size="md"
+                size='md'
                 sx={(theme) => ({
                   color: inRange ? undefined : theme.colors.dark[3],
                   userSelect: 'none',
@@ -741,7 +741,7 @@ function WeekRow(props: WeekRowProps) {
 
             <Stack
               spacing={0}
-              p="0 0.25rem"
+              p='0 0.25rem'
               sx={{
                 position: 'relative',
                 top: `${dayOffsets[date.day()] * 1.75}rem`,
@@ -789,17 +789,17 @@ function WeekRow(props: WeekRowProps) {
                       : undefined
                   }
                 >
-                  <Group spacing={6} noWrap maw="100%">
+                  <Group spacing={6} noWrap maw='100%'>
                     <ColorSwatch
                       color={e.color || props.style.colors.event}
                       size={14}
                       sx={{ flexShrink: 0 }}
                     />
-                    <Text weight={600} size="sm">
+                    <Text weight={600} size='sm'>
                       {moment(e.start).format('LT')}
                     </Text>
                     <Text
-                      size="sm"
+                      size='sm'
                       weight={400}
                       sx={{
                         flexGrow: 1,
@@ -1009,9 +1009,9 @@ export default function MonthView(props: MonthViewProps) {
   return (
     <Flex
       ref={containerRef}
-      direction="column"
+      direction='column'
       h={0}
-      w="100%"
+      w='100%'
       sx={{ flexGrow: 1, position: 'relative' }}
       onMouseMove={(ev) => {
         dragDropDay.onMouseMove?.(ev);
@@ -1019,11 +1019,11 @@ export default function MonthView(props: MonthViewProps) {
         dragCreate.onMouseMove?.(ev);
       }}
     >
-      <Flex w="100%" sx={{ height: props.style.monthHeaderHeight }}>
+      <Flex w='100%' sx={{ height: props.style.monthHeaderHeight }}>
         {range(7).map((day_i) => (
           <Text
             key={day_i}
-            align="center"
+            align='center'
             weight={600}
             pt={3}
             sx={(theme) => ({
@@ -1132,17 +1132,17 @@ export default function MonthView(props: MonthViewProps) {
             };
           }}
         >
-          <Group spacing={6} noWrap maw="100%">
+          <Group spacing={6} noWrap maw='100%'>
             <ColorSwatch
               color={dragDropDay.event.color || props.style.colors.event}
               size={14}
               sx={{ flexShrink: 0 }}
             />
-            <Text weight={600} size="sm">
+            <Text weight={600} size='sm'>
               {moment(dragDropDay.event.start).format('LT')}
             </Text>
             <Text
-              size="sm"
+              size='sm'
               weight={400}
               sx={{
                 flexGrow: 1,

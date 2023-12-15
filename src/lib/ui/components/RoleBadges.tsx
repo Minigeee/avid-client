@@ -28,7 +28,7 @@ export function useRoleBadges(
       badges[role.id] = {
         index: i,
         badge: (
-          <Tooltip label={role.label} position="top-start" withArrow>
+          <Tooltip label={role.label} position='top-start' withArrow>
             <div style={{ cursor: props?.cursor || 'default' }}>
               <Emoji id={role.badge} size={props?.size || 14} />
             </div>

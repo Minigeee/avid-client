@@ -31,7 +31,7 @@ export function error(
     showNotification({
       title,
       message: (
-        <Stack spacing="xs">
+        <Stack spacing='xs'>
           <Text>{message}</Text>
           {error && (
             <Code

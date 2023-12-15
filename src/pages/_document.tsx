@@ -10,17 +10,17 @@ export default class _Document extends Document {
     return (
       <Html>
         <Head>
-          <meta name="robots" content="noindex" />
+          <meta name='robots' content='noindex' />
 
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel='preconnect' href='https://fonts.googleapis.com' />
           <link
-            rel="preconnect"
-            href="https://fonts.gstatic.com"
-            crossOrigin=""
+            rel='preconnect'
+            href='https://fonts.gstatic.com'
+            crossOrigin=''
           />
           <link
-            href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap"
-            rel="stylesheet"
+            href='https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'
+            rel='stylesheet'
           />
         </Head>
         <body>

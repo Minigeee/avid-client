@@ -13,7 +13,7 @@ export type SearchBarProps = Omit<TextInputProps, 'onChange'> & {
 export default function SearchBar(props: SearchBarProps) {
   return (
     <TextInput
-      placeholder="Search"
+      placeholder='Search'
       icon={<IconSearch size={18} />}
       {...props}
       onChange={(e) => props.onChange(e.currentTarget.value)}

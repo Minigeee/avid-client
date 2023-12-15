@@ -212,7 +212,7 @@ const MentionList = forwardRef(
     }, [props.items]);
 
     return (
-      <ScrollArea.Autosize mah="25ch">
+      <ScrollArea.Autosize mah='25ch'>
         <Stack
           spacing={0}
           sx={(theme) => ({
@@ -238,7 +238,7 @@ const MentionList = forwardRef(
                     member={{ alias: item.name, profile_picture: item.pfp }}
                     size={24}
                   />
-                  <Text size="sm">{item.name}</Text>
+                  <Text size='sm'>{item.name}</Text>
                 </SuggestionButton>
               ))}
 
@@ -257,10 +257,10 @@ const MentionList = forwardRef(
                     },
                   })}
                 >
-                  {item.badge && <Emoji id={item.badge} size="1rem" />}
-                  {!item.badge && <IconBadgeOff size="1.25rem" />}
+                  {item.badge && <Emoji id={item.badge} size='1rem' />}
+                  {!item.badge && <IconBadgeOff size='1.25rem' />}
                   <Text
-                    size="sm"
+                    size='sm'
                     weight={600}
                     sx={(theme) => ({
                       color: theme.colors.gray[4],
@@ -272,7 +272,7 @@ const MentionList = forwardRef(
               ))}
             </>
           ) : (
-            <Text size="sm" color="dimmed">
+            <Text size='sm' color='dimmed'>
               No results
             </Text>
           )}

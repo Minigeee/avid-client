@@ -140,22 +140,22 @@ const EmojiSuggestionList = forwardRef(
                   onClick={() => selectItem(i)}
                   onMouseEnter={() => setSelectedIndex(-1)}
                 >
-                  <Group noWrap spacing={8} m="0.25rem 0.4rem">
-                    <Emoji id={emoji.id} size="1rem" />
-                    <Text size="sm" weight="600">
+                  <Group noWrap spacing={8} m='0.25rem 0.4rem'>
+                    <Emoji id={emoji.id} size='1rem' />
+                    <Text size='sm' weight='600'>
                       :{emoji.id}:
                     </Text>
                   </Group>
                 </UnstyledButton>
               ))}
               {props.items.length >= MAX_ROWS && (
-                <Text m="0.25rem" size="xs" color="dimmed">
+                <Text m='0.25rem' size='xs' color='dimmed'>
                   Continue typing to view more...
                 </Text>
               )}
             </>
           ) : (
-            <Text size="sm" color="dimmed">
+            <Text size='sm' color='dimmed'>
               No results
             </Text>
           )}

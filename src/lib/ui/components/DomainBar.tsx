@@ -59,8 +59,8 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
   }, [icon, domain.icon, domain.name]);
 
   return (
-    <Group spacing={0} position="right">
-      <Transition mounted={active} transition="slide-right" duration={180}>
+    <Group spacing={0} position='right'>
+      <Transition mounted={active} transition='slide-right' duration={180}>
         {(styles) => (
           <Box
             style={styles}
@@ -80,7 +80,7 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
       </Transition>
       <Tooltip
         label={domain.name}
-        position="right"
+        position='right'
         transitionProps={{ transition: 'fade' }}
         withArrow
         withinPortal
@@ -135,7 +135,7 @@ export default function DomainBar() {
 
   ////////////////////////////////////////////////////////////
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction='column' h='100%'>
       <ScrollArea sx={{ flexGrow: 1 }}>
         <Stack spacing={0} sx={{ marginTop: '0.18rem' }}>
           {PERSONAL_TABS.map((tab, i) => (
@@ -167,8 +167,8 @@ export default function DomainBar() {
       <Divider sx={{ margin: '0.25rem 0.5rem 0.25rem calc(0.5rem + 4px)' }} />
 
       <Tooltip
-        label="New Domain"
-        position="right"
+        label='New Domain'
+        position='right'
         transitionProps={{ transition: 'fade' }}
         withArrow
         withinPortal
@@ -205,8 +205,8 @@ export default function DomainBar() {
       </Tooltip>
 
       <Tooltip
-        label="Settings"
-        position="right"
+        label='Settings'
+        position='right'
         transitionProps={{ transition: 'fade' }}
         withArrow
         withinPortal

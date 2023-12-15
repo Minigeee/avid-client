@@ -106,9 +106,9 @@ interface PriorityItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const PrioritySelectItem = forwardRef<HTMLDivElement, PriorityItemProps>(
   ({ value, label, ...others }: PriorityItemProps, ref) => (
     <div ref={ref} {...others}>
-      <Group spacing="sm" noWrap>
+      <Group spacing='sm' noWrap>
         <TaskPriorityIcon priority={value} tooltip={false} />
-        <Text size="sm">{label}</Text>
+        <Text size='sm'>{label}</Text>
       </Group>
     </div>
   ),
@@ -126,9 +126,9 @@ interface StatusItemProps extends React.ComponentPropsWithoutRef<'div'> {
 const StatusSelectItem = forwardRef<HTMLDivElement, StatusItemProps>(
   ({ label, color, ...others }: StatusItemProps, ref) => (
     <div ref={ref} {...others}>
-      <Group spacing="sm" noWrap>
+      <Group spacing='sm' noWrap>
         <ColorSwatch color={color} size={18} />
-        <Text size="sm">{label}</Text>
+        <Text size='sm'>{label}</Text>
       </Group>
     </div>
   ),
@@ -154,7 +154,7 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
           borderRadius: 15,
         }}
       >
-        <Text size="xs" weight={500}>
+        <Text size='xs' weight={500}>
           {label}
         </Text>
       </Box>
@@ -185,7 +185,7 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
     return (
       <div {...others}>
         <Popover
-          position="top"
+          position='top'
           withinPortal
           withArrow
           onClose={() => {
@@ -200,14 +200,14 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
                 borderRadius: 15,
               }}
             >
-              <Group spacing={2} align="end">
-                <Text size="xs" weight={500}>
+              <Group spacing={2} align='end'>
+                <Text size='xs' weight={500}>
                   {label}
                 </Text>
                 <CloseButton
                   size={16}
                   iconSize={12.5}
-                  variant="transparent"
+                  variant='transparent'
                   tabIndex={-1}
                   onMouseDown={onRemove}
                 />
@@ -237,9 +237,9 @@ function DueDatePicker(props: DatePickerInputProps) {
       {...props}
       popoverProps={{ withinPortal: true }}
       label={
-        <Group spacing={6} align="baseline">
+        <Group spacing={6} align='baseline'>
           Due Date
-          <Text color="dimmed" size="sm">
+          <Text color='dimmed' size='sm'>
             {(() => {
               if (!props.value) return '';
               const today = new Date();
@@ -284,12 +284,12 @@ const CollectionSelectItem = forwardRef<
 
     return (
       <div ref={ref} {...others}>
-        <Group spacing={8} align="center">
+        <Group spacing={8} align='center'>
           {current && <IconStarFilled size={16} />}
           <Text weight={600}>{name}</Text>
         </Group>
         {(start_date || end_date) && (
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             {start_date ? moment(start_date).format('l') : ''} -{' '}
             {end_date ? moment(end_date).format('l') : ''}
           </Text>
@@ -582,7 +582,7 @@ export function CreateTask({
     if (!board._exists || !tasks._exists) return;
     return {
       name: (
-        <Popover withArrow withinPortal shadow="lg" position="top">
+        <Popover withArrow withinPortal shadow='lg' position='top'>
           <Popover.Target>
             <ActionIcon ref={subtaskAddBtnRef}>
               <IconPlus size={19} />
@@ -590,7 +590,7 @@ export function CreateTask({
           </Popover.Target>
           <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
-              type="subtask"
+              type='subtask'
               domain={props.domain}
               board={board}
               tasks={tasks}
@@ -606,7 +606,7 @@ export function CreateTask({
       ),
       cell: (subtask: ExpandedTask) => (
         <CloseButton
-          size="md"
+          size='md'
           onClick={() => {
             form.setFieldValue(
               'subtasks',
@@ -625,7 +625,7 @@ export function CreateTask({
     if (!board._exists || !tasks._exists) return;
     return {
       name: (
-        <Popover withArrow withinPortal shadow="lg" position="top">
+        <Popover withArrow withinPortal shadow='lg' position='top'>
           <Popover.Target>
             <ActionIcon ref={depAddBtnRef}>
               <IconPlus size={19} />
@@ -633,7 +633,7 @@ export function CreateTask({
           </Popover.Target>
           <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
-              type="dependency"
+              type='dependency'
               domain={props.domain}
               board={board}
               tasks={tasks}
@@ -647,7 +647,7 @@ export function CreateTask({
       ),
       cell: (dependency: ExpandedTask) => (
         <CloseButton
-          size="md"
+          size='md'
           onClick={() => {
             form.setFieldValue(
               'dependencies',
@@ -727,15 +727,15 @@ export function CreateTask({
     <form onSubmit={form.onSubmit(submit)}>
       <Stack>
         <TextInput
-          label="Summary"
-          placeholder="Short task summary"
+          label='Summary'
+          placeholder='Short task summary'
           required
           data-autofocus
           {...form.getInputProps('summary')}
         />
 
         <Box>
-          <Text size="sm" weight={600} sx={{ marginBottom: 5 }}>
+          <Text size='sm' weight={600} sx={{ marginBottom: 5 }}>
             Description
           </Text>
           <RichTextEditor
@@ -767,7 +767,7 @@ export function CreateTask({
                 ? 'Select the parent task for this task'
                 : 'Select the task that is dependent on the completion of this task'
             }
-            placeholder="Select a task"
+            placeholder='Select a task'
             board={board}
             tasks={tasks}
             exclude_ids={relationExcludeIds}
@@ -779,7 +779,7 @@ export function CreateTask({
         <Divider />
 
         <Select
-          label="Status"
+          label='Status'
           data={board.statuses.map((x) => ({ value: x.id, ...x }))}
           icon={
             <ColorSwatch
@@ -794,8 +794,8 @@ export function CreateTask({
         />
 
         <Select
-          label="Priority"
-          placeholder="None"
+          label='Priority'
+          placeholder='None'
           data={[
             { value: 'critical', label: 'Critical' },
             { value: 'high', label: 'High' },
@@ -819,8 +819,8 @@ export function CreateTask({
 
         <MemberInput
           domain_id={props.domain.id}
-          label="Assignee"
-          placeholder="Start typing to get a list of users"
+          label='Assignee'
+          placeholder='Start typing to get a list of users'
           clearable
           disabled={!canManageAny}
           sx={{ maxWidth: config.app.ui.med_input_width }}
@@ -828,7 +828,7 @@ export function CreateTask({
         />
 
         <DueDatePicker
-          placeholder="None"
+          placeholder='None'
           icon={<IconCalendarEvent size={19} />}
           clearable
           sx={{ maxWidth: config.app.ui.med_input_width }}
@@ -838,9 +838,9 @@ export function CreateTask({
         <Divider />
 
         <Select
-          label="Collection"
-          description="Assign a task collection or objective"
-          placeholder="None"
+          label='Collection'
+          description='Assign a task collection or objective'
+          placeholder='None'
           data={collectionSelections}
           itemComponent={CollectionSelectItem}
           sx={{ maxWidth: config.app.ui.med_input_width }}
@@ -848,9 +848,9 @@ export function CreateTask({
         />
 
         <MultiSelect
-          label="Tags"
-          description="Tags can be used to categorize tasks for easier searching and filtering. Click a tag to change its color"
-          placeholder="Start typing to get a list of available tags or create a new one"
+          label='Tags'
+          description='Tags can be used to categorize tasks for easier searching and filtering. Click a tag to change its color'
+          placeholder='Start typing to get a list of available tags or create a new one'
           searchable
           clearable
           creatable
@@ -865,7 +865,7 @@ export function CreateTask({
                   borderRadius: 15,
                 }}
               >
-                <Text size="xs" weight={500}>
+                <Text size='xs' weight={500}>
                   {query}
                 </Text>
               </Box>
@@ -914,11 +914,11 @@ export function CreateTask({
               !form.values.dependencies?.length) && (
               <Group>
                 {!form.values.subtasks?.length && (
-                  <Popover withArrow withinPortal shadow="lg" position="top">
+                  <Popover withArrow withinPortal shadow='lg' position='top'>
                     <Popover.Target>
                       <Button
                         ref={subtaskAddBtnRef}
-                        variant="default"
+                        variant='default'
                         leftIcon={<IconSubtask size={16} />}
                       >
                         Add subtask
@@ -926,7 +926,7 @@ export function CreateTask({
                     </Popover.Target>
                     <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
                       <TaskSelector
-                        type="subtask"
+                        type='subtask'
                         domain={props.domain}
                         board={board}
                         tasks={tasks}
@@ -946,11 +946,11 @@ export function CreateTask({
                 )}
 
                 {!form.values.dependencies?.length && (
-                  <Popover withArrow withinPortal shadow="lg" position="top">
+                  <Popover withArrow withinPortal shadow='lg' position='top'>
                     <Popover.Target>
                       <Button
                         ref={depAddBtnRef}
-                        variant="default"
+                        variant='default'
                         leftIcon={<IconGitMerge size={16} />}
                       >
                         Add dependency
@@ -958,7 +958,7 @@ export function CreateTask({
                     </Popover.Target>
                     <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
                       <TaskSelector
-                        type="dependency"
+                        type='dependency'
                         domain={props.domain}
                         board={board}
                         tasks={tasks}
@@ -987,7 +987,7 @@ export function CreateTask({
             >
               {form.values.subtasks && form.values.subtasks.length > 0 && (
                 <Box>
-                  <Text size="sm" weight={600} mb={6}>
+                  <Text size='sm' weight={600} mb={6}>
                     Subtasks
                   </Text>
                   <TaskTable
@@ -1001,8 +1001,8 @@ export function CreateTask({
                     actionColumn={subtaskActionCol}
                     creatable={false}
                     multiselectable={false}
-                    headerHeight="3rem"
-                    rowHeight="2.75rem"
+                    headerHeight='3rem'
+                    rowHeight='2.75rem'
                   />
                 </Box>
               )}
@@ -1010,7 +1010,7 @@ export function CreateTask({
               {form.values.dependencies &&
                 form.values.dependencies.length > 0 && (
                   <Box>
-                    <Text size="sm" weight={600} mb={6}>
+                    <Text size='sm' weight={600} mb={6}>
                       Dependencies
                     </Text>
                     <TaskTable
@@ -1024,8 +1024,8 @@ export function CreateTask({
                       actionColumn={depActionCol}
                       creatable={false}
                       multiselectable={false}
-                      headerHeight="3rem"
-                      rowHeight="2.75rem"
+                      headerHeight='3rem'
+                      rowHeight='2.75rem'
                     />
                   </Box>
                 )}
@@ -1033,11 +1033,11 @@ export function CreateTask({
           </Stack>
         )}
 
-        <Group spacing="xs" position="right">
-          <Button variant="default" onClick={() => context.closeModal(id)}>
+        <Group spacing='xs' position='right'>
+          <Button variant='default' onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             Create
           </Button>
         </Group>
@@ -1095,13 +1095,13 @@ function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
     <Menu>
       <Tooltip
         label={props.tooltip(tasks.length)}
-        position="right"
+        position='right'
         withArrow
         sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
       >
         <Menu.Target>
           <ActionIcon sx={(theme) => ({ color: theme.colors.dark[2] })}>
-            <Text span size="sm">
+            <Text span size='sm'>
               {tasks.length}
             </Text>
             {props.icon}
@@ -1109,7 +1109,7 @@ function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
         </Menu.Target>
       </Tooltip>
 
-      <Menu.Dropdown miw="15rem" maw="20rem">
+      <Menu.Dropdown miw='15rem' maw='20rem'>
         {tasks.map((t) => (
           <Menu.Item
             key={t.id}
@@ -1122,18 +1122,18 @@ function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
               });
             }}
           >
-            <Flex gap="sm" wrap="nowrap">
+            <Flex gap='sm' wrap='nowrap'>
               <Box sx={{ flexGrow: 1 }}>
                 <Group spacing={8}>
                   <ColorSwatch
                     size={16}
                     color={props.statusMap[t.status].color || ''}
                   />
-                  <Text size="sm" weight={600}>
+                  <Text size='sm' weight={600}>
                     {props.board_prefix}-{t.sid}
                   </Text>
                 </Group>
-                <Text size="xs" color="dimmed">
+                <Text size='xs' color='dimmed'>
                   {t.summary}
                 </Text>
               </Box>
@@ -1313,7 +1313,7 @@ export function EditTask({
     if (!board._exists || !tasks._exists || !editable) return;
     return {
       name: (
-        <Popover withArrow withinPortal shadow="lg">
+        <Popover withArrow withinPortal shadow='lg'>
           <Popover.Target>
             <ActionIcon ref={subtaskAddBtnRef}>
               <IconPlus size={19} />
@@ -1321,7 +1321,7 @@ export function EditTask({
           </Popover.Target>
           <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
-              type="subtask"
+              type='subtask'
               domain={props.domain}
               board={board}
               tasks={tasks}
@@ -1333,7 +1333,7 @@ export function EditTask({
       ),
       cell: (subtask: ExpandedTask) => (
         <CloseButton
-          size="md"
+          size='md'
           onClick={() =>
             openConfirmModal({
               title: 'Remove Subtask',
@@ -1374,7 +1374,7 @@ export function EditTask({
     if (!board._exists || !tasks._exists || !editable) return;
     return {
       name: (
-        <Popover withArrow withinPortal shadow="lg">
+        <Popover withArrow withinPortal shadow='lg'>
           <Popover.Target>
             <ActionIcon ref={depAddBtnRef}>
               <IconPlus size={19} />
@@ -1382,7 +1382,7 @@ export function EditTask({
           </Popover.Target>
           <Popover.Dropdown onKeyDown={(e) => e.stopPropagation()}>
             <TaskSelector
-              type="dependency"
+              type='dependency'
               domain={props.domain}
               board={board}
               tasks={tasks}
@@ -1394,7 +1394,7 @@ export function EditTask({
       ),
       cell: (dependency: ExpandedTask) => (
         <CloseButton
-          size="md"
+          size='md'
           onClick={() =>
             openConfirmModal({
               title: 'Remove Dependency',
@@ -1436,16 +1436,16 @@ export function EditTask({
 
   return (
     <Stack>
-      <Grid gutter="xl">
+      <Grid gutter='xl'>
         <Grid.Col span={8}>
-          <Stack spacing="1.75rem">
+          <Stack spacing='1.75rem'>
             <Box>
               {!inEditMode.summary && (
-                <Group spacing="xs" noWrap>
+                <Group spacing='xs' noWrap>
                   <Box sx={(sx) => ({ ...textEditStyle(sx), flexGrow: 1 })}>
                     <Tooltip
-                      label="Click to edit"
-                      position="left"
+                      label='Click to edit'
+                      position='left'
                       openDelay={500}
                       withArrow
                       disabled={!editable}
@@ -1471,14 +1471,14 @@ export function EditTask({
 
                   {editable && (
                     <SubmenuProvider
-                      shadow="lg"
-                      width="15rem"
-                      position="bottom-end"
+                      shadow='lg'
+                      width='15rem'
+                      position='bottom-end'
                       withinPortal
                     >
                       <Menu.Target>
                         <ActionIcon
-                          size="lg"
+                          size='lg'
                           radius={3}
                           sx={(theme) => ({ color: theme.colors.dark[1] })}
                         >
@@ -1490,8 +1490,8 @@ export function EditTask({
                         {tasks._exists && (
                           <>
                             <Submenu
-                              id="add-subtask"
-                              label="Add Subtask"
+                              id='add-subtask'
+                              label='Add Subtask'
                               icon={<IconSubtask size={16} />}
                               dropdownProps={{
                                 p: '1.0rem',
@@ -1502,7 +1502,7 @@ export function EditTask({
                               }}
                             >
                               <TaskSelector
-                                type="subtask"
+                                type='subtask'
                                 domain={props.domain}
                                 board={board}
                                 tasks={tasks}
@@ -1516,8 +1516,8 @@ export function EditTask({
                             </Submenu>
 
                             <Submenu
-                              id="add-dependency"
-                              label="Add Dependency"
+                              id='add-dependency'
+                              label='Add Dependency'
                               icon={<IconGitMerge size={16} />}
                               dropdownProps={{
                                 p: '1.0rem',
@@ -1528,7 +1528,7 @@ export function EditTask({
                               }}
                             >
                               <TaskSelector
-                                type="dependency"
+                                type='dependency'
                                 domain={props.domain}
                                 board={board}
                                 tasks={tasks}
@@ -1546,7 +1546,7 @@ export function EditTask({
                         <Menu.Divider />
 
                         <Menu.Item
-                          color="red"
+                          color='red'
                           icon={<IconTrash size={16} />}
                           onClick={() => {
                             openConfirmModal({
@@ -1578,7 +1578,7 @@ export function EditTask({
               )}
               {inEditMode.summary && (
                 <TextInput
-                  placeholder="Short task summary"
+                  placeholder='Short task summary'
                   autoFocus
                   {...form.getInputProps('summary')}
                   onBlur={() => {
@@ -1635,13 +1635,13 @@ export function EditTask({
             </Box>
 
             <Stack spacing={5}>
-              <Text size="sm" weight={600}>
+              <Text size='sm' weight={600}>
                 Description
               </Text>
               {!inEditMode.description && (
                 <Tooltip
-                  label="Click to edit"
-                  position="left"
+                  label='Click to edit'
+                  position='left'
                   openDelay={500}
                   withArrow
                   disabled={!editable}
@@ -1649,7 +1649,7 @@ export function EditTask({
                 >
                   <Text
                     className={classes.typography}
-                    size="sm"
+                    size='sm'
                     sx={textEditStyle}
                     onClick={
                       editable
@@ -1676,9 +1676,9 @@ export function EditTask({
                     autofocus
                     {...form.getInputProps('description')}
                   />
-                  <Group spacing="xs" position="right" mt={6}>
+                  <Group spacing='xs' position='right' mt={6}>
                     <Button
-                      variant="default"
+                      variant='default'
                       onClick={() => {
                         form.setFieldValue('description', prevDesc);
                         setInEditMode({ ...inEditMode, description: false });
@@ -1687,7 +1687,7 @@ export function EditTask({
                       Cancel
                     </Button>
                     <Button
-                      variant="gradient"
+                      variant='gradient'
                       onClick={() => {
                         onFieldChange({ description: form.values.description });
                         setInEditMode({ ...inEditMode, description: false });
@@ -1713,7 +1713,7 @@ export function EditTask({
                     }
                   >
                     <Box>
-                      <Text size="sm" weight={600} mb={6}>
+                      <Text size='sm' weight={600} mb={6}>
                         Subtasks
                       </Text>
                       <TaskTable
@@ -1728,8 +1728,8 @@ export function EditTask({
                         actionColumn={subtaskActionCol}
                         creatable={false}
                         multiselectable={false}
-                        headerHeight="3rem"
-                        rowHeight="2.75rem"
+                        headerHeight='3rem'
+                        rowHeight='2.75rem'
                       />
                     </Box>
                   </TaskContextMenu>
@@ -1748,7 +1748,7 @@ export function EditTask({
                     }
                   >
                     <Box>
-                      <Text size="sm" weight={600} mb={6}>
+                      <Text size='sm' weight={600} mb={6}>
                         Dependencies
                       </Text>
                       <TaskTable
@@ -1763,8 +1763,8 @@ export function EditTask({
                         actionColumn={depActionCol}
                         creatable={false}
                         multiselectable={false}
-                        headerHeight="3rem"
-                        rowHeight="2.75rem"
+                        headerHeight='3rem'
+                        rowHeight='2.75rem'
                       />
                     </Box>
                   </TaskContextMenu>
@@ -1774,8 +1774,8 @@ export function EditTask({
 
             {editable && (
               <MultiSelect
-                label="Tags"
-                placeholder="Start typing to get a list of available tags or create a new one"
+                label='Tags'
+                placeholder='Start typing to get a list of available tags or create a new one'
                 searchable
                 clearable
                 creatable
@@ -1791,7 +1791,7 @@ export function EditTask({
                         borderRadius: 15,
                       }}
                     >
-                      <Text size="xs" weight={500}>
+                      <Text size='xs' weight={500}>
                         {query}
                       </Text>
                     </Box>
@@ -1854,7 +1854,7 @@ export function EditTask({
             )}
             {!editable && task.tags && task.tags.length > 0 && (
               <div>
-                <Text size="sm" weight={600} mb={9}>
+                <Text size='sm' weight={600} mb={9}>
                   Tags
                 </Text>
 
@@ -1873,7 +1873,7 @@ export function EditTask({
                           cursor: 'default',
                         }}
                       >
-                        <Text size="xs" weight={500}>
+                        <Text size='xs' weight={500}>
                           {tag.label}
                         </Text>
                       </Box>
@@ -1892,7 +1892,7 @@ export function EditTask({
         >
           <Stack>
             <Select
-              label="Status"
+              label='Status'
               data={board.statuses.map((x) => ({ value: x.id, ...x }))}
               icon={
                 <ColorSwatch
@@ -1914,8 +1914,8 @@ export function EditTask({
             />
 
             <Select
-              label="Priority"
-              placeholder="None"
+              label='Priority'
+              placeholder='None'
               data={[
                 { value: 'critical', label: 'Critical' },
                 { value: 'high', label: 'High' },
@@ -1944,8 +1944,8 @@ export function EditTask({
 
             <MemberInput
               domain_id={props.domain.id}
-              label="Assignee"
-              placeholder="Start typing to get a list of users"
+              label='Assignee'
+              placeholder='Start typing to get a list of users'
               clearable
               withinPortal
               disabled={!canManageAny}
@@ -1957,7 +1957,7 @@ export function EditTask({
             />
 
             <DueDatePicker
-              placeholder="None"
+              placeholder='None'
               icon={<IconCalendarEvent size={19} />}
               clearable
               disabled={!editable}
@@ -1969,8 +1969,8 @@ export function EditTask({
             />
 
             <Select
-              label="Collection"
-              placeholder="None"
+              label='Collection'
+              placeholder='None'
               withinPortal
               data={collectionSelections}
               itemComponent={CollectionSelectItem}
@@ -1985,8 +1985,8 @@ export function EditTask({
           </Stack>
         </Grid.Col>
       </Grid>
-      <Group spacing="xs" position="right">
-        <Button variant="default" onClick={() => context.closeModal(id)}>
+      <Group spacing='xs' position='right'>
+        <Button variant='default' onClick={() => context.closeModal(id)}>
           Close
         </Button>
       </Group>

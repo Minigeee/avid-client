@@ -43,21 +43,21 @@ import {
 const RoleSelectItem = forwardRef<HTMLDivElement, Role>(
   ({ label, badge, ...others }, ref) => (
     <div ref={ref} {...others}>
-      <Group spacing="xs" noWrap>
+      <Group spacing='xs' noWrap>
         {badge ? (
-          <Box h="1.5rem" sx={(theme) => ({ color: theme.colors.dark[3] })}>
-            <Emoji id={badge} size="1rem" />
+          <Box h='1.5rem' sx={(theme) => ({ color: theme.colors.dark[3] })}>
+            <Emoji id={badge} size='1rem' />
           </Box>
         ) : (
           <Box
-            h="1.5rem"
+            h='1.5rem'
             pt={2}
             sx={(theme) => ({ color: theme.colors.dark[3] })}
           >
             <IconBadgeOff size={19} />
           </Box>
         )}
-        <Text size="sm">{label}</Text>
+        <Text size='sm'>{label}</Text>
       </Group>
     </div>
   ),
@@ -107,18 +107,18 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
   return (
     <>
       <Group
-        spacing="sm"
-        p="1.0rem 1.25rem"
+        spacing='sm'
+        p='1.0rem 1.25rem'
         sx={(theme) => ({
           borderBottom: `1px solid ${theme.colors.dark[5]}`,
         })}
       >
         <Indicator
           inline
-          position="bottom-end"
+          position='bottom-end'
           offset={6}
           size={12}
-          color="teal"
+          color='teal'
           withBorder
           disabled={!member.online}
         >
@@ -135,13 +135,13 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
         </Box>
       </Group>
 
-      <Stack p="1.0rem 1.25rem" spacing="sm">
+      <Stack p='1.0rem 1.25rem' spacing='sm'>
         <Box>
           <Group mb={2} spacing={8}>
             <IconUser size={16} />
             <Title order={6}>Member Since</Title>
           </Group>
-          <Text size="sm">{moment(member.time_joined).format('LL')}</Text>
+          <Text size='sm'>{moment(member.time_joined).format('LL')}</Text>
         </Box>
 
         {profile._exists && (
@@ -150,7 +150,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
               <IconCake size={16} />
               <Title order={6}>Profile Created</Title>
             </Group>
-            <Text size="sm">{moment(profile.time_created).format('LL')}</Text>
+            <Text size='sm'>{moment(profile.time_created).format('LL')}</Text>
           </Box>
         )}
 
@@ -179,16 +179,16 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
                     borderRadius: 15,
                   })}
                 >
-                  <Group spacing={4} align="center" h="100%" mt={-1}>
+                  <Group spacing={4} align='center' h='100%' mt={-1}>
                     {role.badge && <Emoji id={role.badge} size={12} />}
-                    <Text size="xs" weight={500}>
+                    <Text size='xs' weight={500}>
                       {role.label}
                     </Text>
                     {canManageRole && (
                       <CloseButton
                         size={16}
                         iconSize={14}
-                        variant="transparent"
+                        variant='transparent'
                         tabIndex={-1}
                         mt={2}
                         onClick={() =>
@@ -233,8 +233,8 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
               >
                 {(setOpened, opened) => (
                   <ActionIcon
-                    size="sm"
-                    radius="lg"
+                    size='sm'
+                    radius='lg'
                     sx={(theme) => ({
                       backgroundColor: theme.colors.dark[5],
                     })}
@@ -266,9 +266,9 @@ export type MemberPopoverProps = PropsWithChildren & {
 export default function MemberPopover(props: MemberPopoverProps) {
   return (
     <Popover
-      radius="sm"
-      width="18rem"
-      position="bottom-start"
+      radius='sm'
+      width='18rem'
+      position='bottom-start'
       zIndex={199}
       {...props.popoverProps}
       withinPortal={props.withinPortal}

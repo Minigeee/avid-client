@@ -93,13 +93,13 @@ export default function CreateDomain({
       })}
     >
       <Stack ref={stackRef} m={20}>
-        <Title order={3} align="center">
+        <Title order={3} align='center'>
           Create New Domain
         </Title>
 
         <TextInput
-          label="Domain Name"
-          placeholder="New Domain"
+          label='Domain Name'
+          placeholder='New Domain'
           required
           withAsterisk={false}
           data-autofocus
@@ -107,7 +107,7 @@ export default function CreateDomain({
         />
 
         <Box>
-          <Text size="sm" weight={600} mb={6}>
+          <Text size='sm' weight={600} mb={6}>
             Domain Icon
           </Text>
 
@@ -118,15 +118,15 @@ export default function CreateDomain({
               accept={IMAGE_MIME_TYPE}
               maxSize={2 * 1024 ** 2}
             >
-              <Center mih="10rem">
+              <Center mih='10rem'>
                 <Stack
-                  align="center"
+                  align='center'
                   spacing={8}
                   style={{ pointerEvents: 'none' }}
                 >
                   <Dropzone.Accept>
                     <IconUpload
-                      size="3.2rem"
+                      size='3.2rem'
                       strokeWidth={1.5}
                       color={
                         theme.colors[theme.primaryColor][
@@ -137,7 +137,7 @@ export default function CreateDomain({
                   </Dropzone.Accept>
                   <Dropzone.Reject>
                     <IconX
-                      size="3.2rem"
+                      size='3.2rem'
                       strokeWidth={1.5}
                       color={
                         theme.colors.red[theme.colorScheme === 'dark' ? 4 : 6]
@@ -145,13 +145,13 @@ export default function CreateDomain({
                     />
                   </Dropzone.Reject>
                   <Dropzone.Idle>
-                    <IconPhoto size="3.2rem" strokeWidth={1.5} />
+                    <IconPhoto size='3.2rem' strokeWidth={1.5} />
                   </Dropzone.Idle>
 
-                  <Text size="md" inline mt={16}>
+                  <Text size='md' inline mt={16}>
                     Drop image here or click to browse
                   </Text>
-                  <Text size="sm" color="dimmed" inline>
+                  <Text size='sm' color='dimmed' inline>
                     Image must not exceed 2MB
                   </Text>
                 </Stack>
@@ -174,7 +174,7 @@ export default function CreateDomain({
                 style={{ width: stackW, height: stackW }}
               />
 
-              <Text size="xs" weight={600} mt={4}>
+              <Text size='xs' weight={600} mt={4}>
                 Zoom
               </Text>
               <Slider
@@ -202,7 +202,7 @@ export default function CreateDomain({
           )}
         </Box>
 
-        <Button variant="gradient" type="submit" loading={loading} mt={16}>
+        <Button variant='gradient' type='submit' loading={loading} mt={16}>
           Create
         </Button>
       </Stack>

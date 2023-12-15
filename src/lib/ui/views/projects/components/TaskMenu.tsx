@@ -181,8 +181,8 @@ function TaskMenuDropdown({
 
       {props.collection && board.collections.length > 1 && (
         <ContextMenu.Submenu
-          id="move-to"
-          label="Move to"
+          id='move-to'
+          label='Move to'
           icon={<IconFolderSymlink size={16} />}
           dropdownProps={{
             sx: { minWidth: '15rem' },
@@ -201,15 +201,15 @@ function TaskMenuDropdown({
                 onClick={updateHandler({ collection: c.id })}
               >
                 <Stack spacing={6}>
-                  <Group spacing={8} align="center">
+                  <Group spacing={8} align='center'>
                     {current && <IconStarFilled size={16} />}
-                    <Text inline weight={600} size="sm">
+                    <Text inline weight={600} size='sm'>
                       {c.name}
                     </Text>
                   </Group>
 
                   {(c.start_date || c.end_date) && (
-                    <Text inline size="xs" color="dimmed">
+                    <Text inline size='xs' color='dimmed'>
                       {c.start_date ? moment(c.start_date).format('l') : ''} -{' '}
                       {c.end_date ? moment(c.end_date).format('l') : ''}
                     </Text>
@@ -223,8 +223,8 @@ function TaskMenuDropdown({
 
       {props.domain && canManageAny && (
         <ContextMenu.Submenu
-          id="assign-to"
-          label="Assign to"
+          id='assign-to'
+          label='Assign to'
           icon={<IconUserPlus size={16} />}
           dropdownProps={{
             p: 16,
@@ -233,16 +233,16 @@ function TaskMenuDropdown({
         >
           <MemberInput
             domain_id={props.domain.id}
-            placeholder="Start typing to get a list of users"
+            placeholder='Start typing to get a list of users'
             clearable
             withinPortal
-            dropdownPosition="top"
+            dropdownPosition='top'
             value={assignee}
             onChange={setAssignee}
           />
 
           <Button
-            variant="gradient"
+            variant='gradient'
             fullWidth
             disabled={
               origAssignee !== undefined && assignee?.id === origAssignee?.id
@@ -258,8 +258,8 @@ function TaskMenuDropdown({
       )}
 
       <ContextMenu.Submenu
-        id="change-priority"
-        label="Change priority"
+        id='change-priority'
+        label='Change priority'
         icon={<IconArrowsSort size={16} />}
         dropdownProps={{
           sx: { minWidth: '10rem' },
@@ -326,8 +326,8 @@ function TaskMenuDropdown({
           )}
 
           <ContextMenu.Submenu
-            id="change-status"
-            label="Change status"
+            id='change-status'
+            label='Change status'
             icon={<IconStatusChange size={16} />}
             dropdownProps={{
               sx: { minWidth: '10rem' },
@@ -353,8 +353,8 @@ function TaskMenuDropdown({
           <Menu.Divider />
 
           <ContextMenu.Submenu
-            id="add-subtask"
-            label="Add subtask"
+            id='add-subtask'
+            label='Add subtask'
             icon={<IconSubtask size={16} />}
             dropdownProps={{
               p: '1.0rem',
@@ -364,7 +364,7 @@ function TaskMenuDropdown({
             }}
           >
             <TaskSelector
-              type="subtask"
+              type='subtask'
               domain={props.domain}
               board={board}
               tasks={props.tasks}
@@ -376,8 +376,8 @@ function TaskMenuDropdown({
           </ContextMenu.Submenu>
 
           <ContextMenu.Submenu
-            id="add-dependency"
-            label="Add dependency"
+            id='add-dependency'
+            label='Add dependency'
             icon={<IconGitMerge size={16} />}
             dropdownProps={{
               p: '1.0rem',
@@ -387,7 +387,7 @@ function TaskMenuDropdown({
             }}
           >
             <TaskSelector
-              type="dependency"
+              type='dependency'
               domain={props.domain}
               board={board}
               tasks={props.tasks}
@@ -404,7 +404,7 @@ function TaskMenuDropdown({
 
       {task && props.relation?.type === 'subtask' && (
         <Menu.Item
-          color="red"
+          color='red'
           icon={<IconTrash size={16} />}
           onClick={() => {
             openConfirmModal({
@@ -444,7 +444,7 @@ function TaskMenuDropdown({
 
       {task && props.relation?.type === 'dependency' && (
         <Menu.Item
-          color="red"
+          color='red'
           icon={<IconTrash size={16} />}
           onClick={() => {
             openConfirmModal({
@@ -483,7 +483,7 @@ function TaskMenuDropdown({
       )}
 
       <Menu.Item
-        color="red"
+        color='red'
         icon={<IconTrash size={16} />}
         onClick={() => {
           openConfirmModal({
@@ -517,7 +517,7 @@ function TaskMenuDropdown({
 ////////////////////////////////////////////////////////////
 export function TaskContextMenu(props: TaskMenuProps) {
   return (
-    <ContextMenu width="15rem">
+    <ContextMenu width='15rem'>
       <ContextMenu.Dropdown
         dependencies={[
           props.board,

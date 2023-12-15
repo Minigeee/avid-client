@@ -187,8 +187,8 @@ export default function SidePanelView(props: SidePanelViewProps) {
                   ref={ref}
                   {...others}
                   gap={6}
-                  wrap="nowrap"
-                  align="center"
+                  wrap='nowrap'
+                  align='center'
                   sx={{
                     height: '2.6rem',
                     overflow: 'hidden',
@@ -199,7 +199,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
                   <MemberAvatar size={32} member={member} />
                   <Text
                     ml={6}
-                    size="sm"
+                    size='sm'
                     weight={search.length > 0 ? 400 : 600}
                     sx={(theme) => ({
                       flexGrow: 1,
@@ -214,7 +214,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
                         rtcInfo.locked.share) && (
                         <ProducerIcon
                           participant={rtcInfo}
-                          type="share"
+                          type='share'
                           rtc={rtc}
                           canManage={canManage}
                         />
@@ -223,7 +223,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
                         rtcInfo.locked.video) && (
                         <ProducerIcon
                           participant={rtcInfo}
-                          type="video"
+                          type='video'
                           rtc={rtc}
                           canManage={canManage}
                         />
@@ -232,7 +232,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
                         rtcInfo.locked.audio) && (
                         <ProducerIcon
                           participant={rtcInfo}
-                          type="audio"
+                          type='audio'
                           rtc={rtc}
                           canManage={canManage}
                         />
@@ -277,8 +277,8 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <Tabs
           value={tab}
           onTabChange={setTab}
-          variant="pills"
-          color="dark"
+          variant='pills'
+          color='dark'
           styles={(theme) => ({
             tab: {
               color: theme.colors.dark[1],
@@ -298,10 +298,10 @@ export default function SidePanelView(props: SidePanelViewProps) {
           })}
         >
           <Tabs.List>
-            <Tabs.Tab value="chat" icon={<IconMessage size={16} />}>
+            <Tabs.Tab value='chat' icon={<IconMessage size={16} />}>
               Chat
             </Tabs.Tab>
-            <Tabs.Tab value="participants" icon={<IconUsers size={16} />}>
+            <Tabs.Tab value='participants' icon={<IconUsers size={16} />}>
               Participants
             </Tabs.Tab>
           </Tabs.List>
@@ -318,9 +318,9 @@ export default function SidePanelView(props: SidePanelViewProps) {
           <MessagesView
             channel_id={props.channel_id}
             domain={props.domain}
-            p="1.2rem"
-            pb="1.5rem"
-            avatarGap="md"
+            p='1.2rem'
+            pb='1.5rem'
+            avatarGap='md'
             withSidePanel={false}
           />
         </Box>
@@ -330,7 +330,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <>
           <TextInput
             m={8}
-            placeholder="Search participants"
+            placeholder='Search participants'
             icon={<IconSearch size={18} />}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}

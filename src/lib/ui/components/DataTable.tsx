@@ -34,7 +34,7 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
     <>
       <Checkbox
         {...props}
-        size="xs"
+        size='xs'
         styles={(theme) => ({
           input: {
             cursor: 'pointer',

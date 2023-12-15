@@ -100,8 +100,8 @@ function BoardTab({ channel, ...props }: TabProps) {
   return (
     <>
       <TextInput
-        label="Board Prefix"
-        placeholder="PRFX"
+        label='Board Prefix'
+        placeholder='PRFX'
         sx={{ width: config.app.ui.short_input_width }}
         {...form.getInputProps('prefix')}
         onChange={(e) => {
@@ -168,7 +168,7 @@ export default function ChannelGroupSettings({
       defaultTab={props.tab}
       close={() => context.closeModal(id)}
     >
-      <SettingsModal.Panel value="type">
+      <SettingsModal.Panel value='type'>
         {props.channel.type === 'board' && <BoardTab {...tabProps} />}
       </SettingsModal.Panel>
     </SettingsModal>

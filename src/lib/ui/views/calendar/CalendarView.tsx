@@ -131,7 +131,7 @@ export default function CalendarView(props: CalendarViewProps) {
   }, [events]);
 
   return (
-    <Box h="100%" p="1.25rem">
+    <Box h='100%' p='1.25rem'>
       <Calendar
         domain={props.domain}
         events={events.data || []}

@@ -113,7 +113,7 @@ export default function HeaderView(props: HeaderViewProps) {
         </Title>
         <div style={{ flexGrow: 1 }} />
         {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
-          <Menu width="12rem">
+          <Menu width='12rem'>
             <Menu.Target>
               <ActionIcon>
                 <IconPlus size={18} color={theme.colors.dark[1]} />
@@ -178,8 +178,8 @@ export default function HeaderView(props: HeaderViewProps) {
             onTabChange={(value) =>
               app._mutators.setRightPanelTab(value as RightPanelTab)
             }
-            variant="pills"
-            color="dark"
+            variant='pills'
+            color='dark'
             styles={(theme) => ({
               root: {
                 flexGrow: 1,
@@ -205,20 +205,20 @@ export default function HeaderView(props: HeaderViewProps) {
             })}
           >
             <Tabs.List>
-              <Tooltip label="Members" withArrow>
-                <Tabs.Tab icon={<IconUsers size={18} />} value="members" />
+              <Tooltip label='Members' withArrow>
+                <Tabs.Tab icon={<IconUsers size={18} />} value='members' />
               </Tooltip>
-              <Tooltip label="Activity" withArrow>
+              <Tooltip label='Activity' withArrow>
                 <Tabs.Tab
                   icon={<IconBell size={18} />}
-                  value="activity"
+                  value='activity'
                   disabled
                 />
               </Tooltip>
-              <Tooltip label="Upcoming" withArrow>
+              <Tooltip label='Upcoming' withArrow>
                 <Tabs.Tab
                   icon={<IconCalendarTime size={18} />}
-                  value="upcoming"
+                  value='upcoming'
                   disabled
                 />
               </Tooltip>
@@ -226,7 +226,7 @@ export default function HeaderView(props: HeaderViewProps) {
           </Tabs>
 
           <CloseButton
-            size="lg"
+            size='lg'
             iconSize={20}
             onClick={() => app._mutators.setRightPanelOpened(false)}
           />
@@ -242,7 +242,7 @@ export default function HeaderView(props: HeaderViewProps) {
           })}
         >
           <ActionButton
-            tooltip="Open Panel"
+            tooltip='Open Panel'
             onClick={() => app._mutators.setRightPanelOpened(true)}
           >
             <IconArrowBarLeft size={18} />

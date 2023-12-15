@@ -77,11 +77,11 @@ export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
 
       {!rtc.is_deafened && participant.audio && (
         <Flex
-          wrap="nowrap"
+          wrap='nowrap'
           gap={12}
-          align="center"
-          m="0.1rem 0.6rem"
-          mb="0.4rem"
+          align='center'
+          m='0.1rem 0.6rem'
+          mb='0.4rem'
         >
           <ActionIcon
             onClick={() => {
@@ -179,7 +179,7 @@ export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
 
           <Menu.Item
             icon={<IconUserX size={17} />}
-            color="red"
+            color='red'
             onClick={() => {
               openConfirmModal({
                 title: 'Kick Participant',
@@ -208,7 +208,7 @@ export function RtcMenuDropdown({ member, ...props }: RtcMenuDropdownProps) {
 ////////////////////////////////////////////////////////////
 export function RtcContextMenu(props: RtcMenuProps) {
   return (
-    <ContextMenu width="16rem">
+    <ContextMenu width='16rem'>
       <ContextMenu.Dropdown dependencies={[props.domain._permissions]}>
         {(context: RtcMenuContext) => (
           <RtcMenuDropdown domain={props.domain} {...context} />

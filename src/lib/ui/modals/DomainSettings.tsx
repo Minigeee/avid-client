@@ -40,10 +40,10 @@ function GeneralTab({ domain, ...props }: TabProps) {
   return (
     <>
       <ImageModal
-        subtext="Image must not exceed 2MB."
+        subtext='Image must not exceed 2MB.'
         maxSize={2 * 1024 ** 2}
         imgSize={config.upload.profile_picture.image_size}
-        size="md"
+        size='md'
         onUpload={async (image, fname) => {
           if (image) {
             await domain._mutators.setIcon(image, fname);
@@ -57,7 +57,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
       <Title order={3}>Domain Icon</Title>
 
       <Group
-        spacing="xl"
+        spacing='xl'
         sx={(theme) => ({
           padding: '1.2rem',
           backgroundColor: theme.colors.dark[8],
@@ -65,17 +65,17 @@ function GeneralTab({ domain, ...props }: TabProps) {
         })}
       >
         <DomainAvatar domain={domain} size={120} />
-        <Stack spacing="sm">
-          <Group spacing="sm">
-            <Button variant="gradient" onClick={openImageModal}>
+        <Stack spacing='sm'>
+          <Group spacing='sm'>
+            <Button variant='gradient' onClick={openImageModal}>
               {domain.icon ? 'Change' : 'Upload'} Image
             </Button>
 
             {domain.icon && (
               <ActionButton
-                tooltip="Remove Image"
+                tooltip='Remove Image'
                 tooltipProps={{ position: 'right' }}
-                size="lg"
+                size='lg'
                 sx={(theme) => ({
                   color: theme.colors.dark[1],
                   '&:hover': {
@@ -106,7 +106,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
               </ActionButton>
             )}
           </Group>
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             Domain icons are resized to{' '}
             {config.upload.profile_picture.image_size.w}x
             {config.upload.profile_picture.image_size.h}
@@ -118,7 +118,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
       <Title order={3}>Domain Settings</Title>
 
       <TextInput
-        label="Domain Name"
+        label='Domain Name'
         value={domain.name}
         disabled
         sx={{ width: config.app.ui.short_input_width }}
@@ -165,10 +165,10 @@ export default function DomainSettings({
       defaultTab={props.tab}
       close={() => context.closeModal(id)}
     >
-      <SettingsModal.Panel value="general">
+      <SettingsModal.Panel value='general'>
         <GeneralTab {...tabProps} />
       </SettingsModal.Panel>
-      <SettingsModal.Panel value="roles">
+      <SettingsModal.Panel value='roles'>
         <RolesTab {...tabProps} />
       </SettingsModal.Panel>
     </SettingsModal>

@@ -73,7 +73,7 @@ export function MessageMenuDropdown({
     deleteSection.push(
       <Menu.Item
         icon={<IconMoodMinus size={16} />}
-        color="red"
+        color='red'
         onClick={() => {
           // Delete own reactions
           context.messages._mutators.removeReactions(msg.id, { self: true });
@@ -92,7 +92,7 @@ export function MessageMenuDropdown({
     deleteSection.push(
       <Menu.Item
         icon={<IconMoodX size={16} />}
-        color="red"
+        color='red'
         onClick={() => {
           openConfirmModal({
             title: 'Remove All Reactions',
@@ -122,7 +122,7 @@ export function MessageMenuDropdown({
     deleteSection.push(
       <Menu.Item
         icon={<IconTrash size={16} />}
-        color="red"
+        color='red'
         onClick={() => {
           openConfirmModal({
             title: 'Delete Message',
@@ -178,10 +178,10 @@ export function MessageMenuDropdown({
         'can_send_reactions',
       ) && (
         <ContextMenu.Submenu
-          id="add-reaction"
-          label="Add reaction"
+          id='add-reaction'
+          label='Add reaction'
           icon={<IconMoodPlus size={16} />}
-          position="right"
+          position='right'
           noScroll
         >
           <EmojiPicker
@@ -292,7 +292,7 @@ export function MessageMenuDropdown({
 ////////////////////////////////////////////////////////////
 export function MessageContextMenu(props: MessageMenuProps) {
   return (
-    <ContextMenu width="14rem">
+    <ContextMenu width='14rem'>
       <ContextMenu.Dropdown
         dependencies={[
           props.context.messages,

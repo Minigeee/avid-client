@@ -172,14 +172,14 @@ export default function Calendar(props: CalendarProps) {
         onDeleteEvent: onDeleteEventRef,
       }}
     >
-      <Flex direction="column" w="100%" h="100%">
+      <Flex direction='column' w='100%' h='100%'>
         <SimpleGrid pb={12} cols={3}>
           <Group spacing={2}>
             {props.editable && (
               <>
                 <Button
-                  variant="gradient"
-                  size="xs"
+                  variant='gradient'
+                  size='xs'
                   leftIcon={<IconPlus size={16} />}
                   onClick={() => {
                     // Nearest hour
@@ -200,13 +200,13 @@ export default function Calendar(props: CalendarProps) {
                 >
                   Create
                 </Button>
-                <Divider orientation="vertical" ml={10} mr={10} />
+                <Divider orientation='vertical' ml={10} mr={10} />
               </>
             )}
 
             <Button
-              size="xs"
-              variant="default"
+              size='xs'
+              variant='default'
               mr={6}
               onClick={() => setTime(moment())}
             >
@@ -239,7 +239,7 @@ export default function Calendar(props: CalendarProps) {
 
             {props.withRefresh && (
               <ActionButton
-                tooltip="Refresh"
+                tooltip='Refresh'
                 tooltipProps={{ position: 'right' }}
                 hoverBg={(theme) => theme.colors.dark[6]}
                 ml={2}
@@ -250,14 +250,14 @@ export default function Calendar(props: CalendarProps) {
             )}
           </Group>
 
-          <Title order={3} align="center" sx={{ alignSelf: 'center' }}>
+          <Title order={3} align='center' sx={{ alignSelf: 'center' }}>
             {title}
           </Title>
 
           <Button.Group sx={{ justifySelf: 'flex-end' }}>
             <Button
-              size="xs"
-              variant="default"
+              size='xs'
+              variant='default'
               sx={(theme) => ({
                 backgroundColor:
                   view === 'month' ? theme.colors.dark[5] : undefined,
@@ -267,8 +267,8 @@ export default function Calendar(props: CalendarProps) {
               Month
             </Button>
             <Button
-              size="xs"
-              variant="default"
+              size='xs'
+              variant='default'
               sx={(theme) => ({
                 backgroundColor:
                   view === 'week' ? theme.colors.dark[5] : undefined,
@@ -278,8 +278,8 @@ export default function Calendar(props: CalendarProps) {
               Week
             </Button>
             <Button
-              size="xs"
-              variant="default"
+              size='xs'
+              variant='default'
               sx={(theme) => ({
                 backgroundColor:
                   view === 'day' ? theme.colors.dark[5] : undefined,

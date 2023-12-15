@@ -211,13 +211,13 @@ function MultiMemberInputValue({
         })}
       >
         <MemberAvatar size={20} member={member} />
-        <Text size="xs" ml={2}>
+        <Text size='xs' ml={2}>
           {label}
         </Text>
 
         <CloseButton
           onMouseDown={onRemove}
-          variant="transparent"
+          variant='transparent'
           size={22}
           iconSize={14}
           tabIndex={-1}

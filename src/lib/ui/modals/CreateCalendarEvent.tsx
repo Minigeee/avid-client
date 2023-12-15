@@ -125,16 +125,16 @@ export default function CreateCalendarEvent({
     return [
       <ActionIcon
         key={0}
-        variant="subtle"
-        color="gray"
+        variant='subtle'
+        color='gray'
         onClick={() => startTimeRef.current?.showPicker()}
       >
         <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
       </ActionIcon>,
       <ActionIcon
         key={1}
-        variant="subtle"
-        color="gray"
+        variant='subtle'
+        color='gray'
         onClick={() => endTimeRef.current?.showPicker()}
       >
         <IconClock style={{ width: '1rem', height: '1rem' }} stroke={1.5} />
@@ -180,7 +180,7 @@ export default function CreateCalendarEvent({
       return (
         <ActionIcon
           key={i}
-          size="lg"
+          size='lg'
           sx={(theme) => ({
             backgroundColor: selected ? theme.colors.indigo[5] : undefined,
             fontSize: 14,
@@ -255,8 +255,8 @@ export default function CreateCalendarEvent({
     <form onSubmit={form.onSubmit(onSubmit)}>
       <Stack>
         <TextInput
-          label="Title"
-          placeholder="New Event"
+          label='Title'
+          placeholder='New Event'
           required
           withAsterisk={false}
           data-autofocus
@@ -265,13 +265,13 @@ export default function CreateCalendarEvent({
         />
 
         <Box>
-          <Text size="sm" weight={600}>
+          <Text size='sm' weight={600}>
             Time{' '}
-            <Text color="dimmed" span>
+            <Text color='dimmed' span>
               {`(${durationText})`}
             </Text>
           </Text>
-          <Group align="start" spacing="sm">
+          <Group align='start' spacing='sm'>
             <DatePickerInput
               sx={{ minWidth: '12rem' }}
               value={form.values.start}
@@ -374,7 +374,7 @@ export default function CreateCalendarEvent({
 
           <Group mt={8}>
             <Checkbox
-              label="All Day"
+              label='All Day'
               {...form.getInputProps('all_day', { type: 'checkbox' })}
               onChange={(e) => {
                 const checked = e.currentTarget.checked;
@@ -394,7 +394,7 @@ export default function CreateCalendarEvent({
             />
 
             <Checkbox
-              label="Repeat"
+              label='Repeat'
               checked={repeat}
               onChange={(e) => setRepeat(e.currentTarget.checked)}
             />
@@ -402,7 +402,7 @@ export default function CreateCalendarEvent({
         </Box>
 
         <ColorInput
-          label="Color"
+          label='Color'
           swatches={PRESET_COLORS}
           swatchesPerRow={7}
           dropdownZIndex={303}
@@ -415,10 +415,10 @@ export default function CreateCalendarEvent({
             <Divider />
 
             <Box>
-              <Text size="sm" weight={600}>
+              <Text size='sm' weight={600}>
                 Repeat Every
               </Text>
-              <Group spacing="sm">
+              <Group spacing='sm'>
                 <NumberInput
                   {...form.getInputProps('repeat.interval')}
                   sx={{ maxWidth: '6rem' }}
@@ -432,19 +432,19 @@ export default function CreateCalendarEvent({
 
             {form.values.repeat?.interval_type === 'week' && (
               <Box>
-                <Text size="sm" weight={600}>
+                <Text size='sm' weight={600}>
                   Repeat On
                 </Text>
 
-                <Group mt={6} spacing="xs">
+                <Group mt={6} spacing='xs'>
                   {weekRepeatButtons}
                 </Group>
               </Box>
             )}
 
             <DatePickerInput
-              label="End On"
-              placeholder="Never"
+              label='End On'
+              placeholder='Never'
               clearable
               {...form.getInputProps('repeat.end_on')}
               sx={{ maxWidth: '15rem' }}
@@ -455,7 +455,7 @@ export default function CreateCalendarEvent({
         <Divider />
 
         <Box>
-          <Text size="sm" weight={600} sx={{ marginBottom: 5 }}>
+          <Text size='sm' weight={600} sx={{ marginBottom: 5 }}>
             Description
           </Text>
           <RichTextEditor
@@ -464,11 +464,11 @@ export default function CreateCalendarEvent({
           />
         </Box>
 
-        <Group spacing="xs" position="right" mt={16}>
-          <Button variant="default" onClick={() => context.closeModal(id)}>
+        <Group spacing='xs' position='right' mt={16}>
+          <Button variant='default' onClick={() => context.closeModal(id)}>
             Cancel
           </Button>
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             {mode === 'create' ? 'Create' : 'Save'}
           </Button>
         </Group>

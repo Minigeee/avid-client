@@ -426,12 +426,12 @@ function TabView({
   );
 
   return (
-    <Stack spacing="xs" pb={64}>
-      <Group align="end">
+    <Stack spacing='xs' pb={64}>
+      <Group align='end'>
         <Select
           data={groupingOptions}
-          label="Group By"
-          placeholder="None"
+          label='Group By'
+          placeholder='None'
           clearable
           value={grouper}
           onChange={(value: GroupableFields | null) => {
@@ -441,8 +441,8 @@ function TabView({
 
         <TaskTagsSelector
           data={Object.values(board.tags).map((x) => ({ value: x.id, ...x }))}
-          placeholder="Filter by tags"
-          label="Tags"
+          placeholder='Filter by tags'
+          label='Tags'
           icon={<IconTag size={16} />}
           value={filterTags}
           onChange={setFilterTags}
@@ -451,7 +451,7 @@ function TabView({
         {(hasPermission(props.domain, board.id, 'can_manage_tasks') ||
           hasPermission(props.domain, board.id, 'can_manage_own_tasks')) && (
           <Button
-            variant="gradient"
+            variant='gradient'
             onClick={() => {
               openCreateTask({
                 board_id: board.id,
@@ -466,7 +466,7 @@ function TabView({
 
         {refreshEnabled && (
           <ActionButton
-            tooltip="Refresh"
+            tooltip='Refresh'
             mb={4}
             onClick={() => {
               // Refresh data
@@ -489,10 +489,10 @@ function TabView({
         )}
       </Group>
 
-      <Group align="end" mb={28}>
+      <Group align='end' mb={28}>
         <TextInput
-          label="Search"
-          placeholder="Search"
+          label='Search'
+          placeholder='Search'
           icon={<IconSearch size={18} />}
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
@@ -506,7 +506,7 @@ function TabView({
 
         {assignees.length > 0 && (
           <Box>
-            <Text size="sm" weight={600} mb={6}>
+            <Text size='sm' weight={600} mb={6}>
               Assignees
             </Text>
             <Group spacing={8}>
@@ -570,7 +570,7 @@ function TabView({
                     <Menu.Target>
                       <Avatar
                         size={38}
-                        radius="xl"
+                        radius='xl'
                         sx={(theme) => ({
                           cursor: 'pointer',
                           backgroundColor: theme.colors.gray[7],
@@ -661,12 +661,12 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
 
     return (
       <div ref={ref} {...others}>
-        <Group spacing={8} align="center">
+        <Group spacing={8} align='center'>
           {current && <IconStarFilled size={16} />}
           <Text weight={600}>{label}</Text>
         </Group>
         {(start_date || end_date) && (
-          <Text size="xs" color="dimmed">
+          <Text size='xs' color='dimmed'>
             {start_date ? moment(start_date).format('l') : ''} -{' '}
             {end_date ? moment(end_date).format('l') : ''}
           </Text>
@@ -696,7 +696,7 @@ function BoardTabs(props: Omit<TabViewProps, 'type'>) {
 
   return (
     <Tabs
-      variant="outline"
+      variant='outline'
       mt={32}
       value={view}
       onTabChange={onTabChange}
@@ -707,18 +707,18 @@ function BoardTabs(props: Omit<TabViewProps, 'type'>) {
       })}
     >
       <Tabs.List>
-        <Tabs.Tab value="kanban" icon={<IconLayoutKanban size={19} />}>
+        <Tabs.Tab value='kanban' icon={<IconLayoutKanban size={19} />}>
           Kanban
         </Tabs.Tab>
-        <Tabs.Tab value="list" icon={<IconListDetails size={18} />}>
+        <Tabs.Tab value='list' icon={<IconListDetails size={18} />}>
           List
         </Tabs.Tab>
       </Tabs.List>
 
-      <Tabs.Panel value="kanban" mt={16}>
+      <Tabs.Panel value='kanban' mt={16}>
         <TabView key={props.collection} {...props} type={'kanban'} />
       </Tabs.Panel>
-      <Tabs.Panel value="list" mt={16}>
+      <Tabs.Panel value='list' mt={16}>
         <TabView key={props.collection} {...props} type={'list'} />
       </Tabs.Panel>
     </Tabs>
@@ -904,7 +904,7 @@ export default function BoardView(props: BoardViewProps) {
                 The collection you are viewing has been deleted by another user.
                 Would you like to display these changes now or later?
               </Text>
-              <Text size="sm" color="dimmed">
+              <Text size='sm' color='dimmed'>
                 {
                   '(You can use the refresh button to display these changes later)'
                 }
@@ -974,12 +974,12 @@ export default function BoardView(props: BoardViewProps) {
             padding: '1.0rem 1.5rem 1.0rem 1.5rem',
           })}
         >
-          <Group noWrap spacing={3} align="center" mb={16}>
+          <Group noWrap spacing={3} align='center' mb={16}>
             <Select
               data={collectionSelections}
               itemComponent={GroupSelectItem}
               rightSection={<IconChevronDown size={24} />}
-              size="md"
+              size='md'
               styles={(theme) => ({
                 input: {
                   paddingTop: 0,
@@ -1003,7 +1003,7 @@ export default function BoardView(props: BoardViewProps) {
               <>
                 {collection && (
                   <ActionIcon
-                    size="lg"
+                    size='lg'
                     mt={4}
                     ml={8}
                     onClick={() =>
@@ -1019,9 +1019,9 @@ export default function BoardView(props: BoardViewProps) {
                     <IconPencil />
                   </ActionIcon>
                 )}
-                <Menu width="20ch" position="bottom-start">
+                <Menu width='20ch' position='bottom-start'>
                   <Menu.Target>
-                    <ActionIcon size="lg" mt={4}>
+                    <ActionIcon size='lg' mt={4}>
                       <IconPlus />
                     </ActionIcon>
                   </Menu.Target>
@@ -1060,7 +1060,7 @@ export default function BoardView(props: BoardViewProps) {
             <div style={{ flexGrow: 1 }} />
             {collection && (collection.start_date || collection.end_date) && (
               <>
-                <Text size="sm" color="dimmed" weight={600} align="right">
+                <Text size='sm' color='dimmed' weight={600} align='right'>
                   {timeText}
                 </Text>
                 <Box
@@ -1079,7 +1079,7 @@ export default function BoardView(props: BoardViewProps) {
             <>
               <Text
                 className={classes.typography}
-                size="md"
+                size='md'
                 mt={8}
                 sx={{ maxWidth: '100ch' }}
                 dangerouslySetInnerHTML={{
@@ -1105,11 +1105,11 @@ export default function BoardView(props: BoardViewProps) {
 
       {showScrollTop && (
         <ActionButton
-          tooltip="Scroll To Top"
+          tooltip='Scroll To Top'
           tooltipProps={{ position: 'left', openDelay: 500 }}
-          variant="filled"
-          size="xl"
-          radius="xl"
+          variant='filled'
+          size='xl'
+          radius='xl'
           sx={(theme) => ({
             position: 'absolute',
             top: '2.0rem',

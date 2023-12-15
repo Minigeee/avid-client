@@ -455,7 +455,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
   const editorRef = useRef<Editor>(null);
 
   return (
-    <Stack maw="80ch" spacing="xs">
+    <Stack maw='80ch' spacing='xs'>
       <RichTextEditor
         editorRef={editorRef}
         domain={context.domain}
@@ -472,15 +472,15 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
         }}
       />
 
-      <Group spacing="xs" position="right">
+      <Group spacing='xs' position='right'>
         <Button
-          variant="default"
+          variant='default'
           onClick={() => context.state._set('editing', null)}
         >
           Cancel
         </Button>
         <Button
-          variant="gradient"
+          variant='gradient'
           onClick={() => {
             if (!editorRef.current) return;
 
@@ -565,7 +565,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
       if (!role?.badge || role.show_badge === false) continue;
 
       badges.push(
-        <Tooltip label={role.label} position="top-start" withArrow>
+        <Tooltip label={role.label} position='top-start' withArrow>
           <div style={{ cursor: 'default' }}>
             <Emoji id={role.badge} size={14} />
           </div>
@@ -607,7 +607,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             ? props.scrollToRef
             : undefined
         }
-        className="msg-body"
+        className='msg-body'
         context={{ msg }}
         sx={(theme) => ({
           display: 'flex',
@@ -644,7 +644,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             <MemberAvatar
               member={msg.sender}
               size={AVATAR_SIZE}
-              cursor="pointer"
+              cursor='pointer'
               sx={(theme) => ({
                 marginTop: '0.25rem',
                 marginRight: theme.spacing[props.avatarGap],
@@ -668,7 +668,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
             <>
               {props.idx === 0 && (
                 <div>
-                  <Group align="baseline" spacing={6}>
+                  <Group align='baseline' spacing={6}>
                     {msg.sender && typeof msg.sender !== 'string' && (
                       <MemberPopover
                         member={msg.sender}
@@ -677,7 +677,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       >
                         <Title
                           order={6}
-                          color="gray"
+                          color='gray'
                           sx={{ cursor: 'pointer' }}
                         >
                           {msg.sender.alias}
@@ -691,7 +691,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       </Group>
                     )}
 
-                    <Text size={11} color="dimmed" ml={2}>
+                    <Text size={11} color='dimmed' ml={2}>
                       {moment(msg.created_at).calendar(null, {
                         lastWeek: 'dddd [at] LT',
                       })}
@@ -703,11 +703,11 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
               {(msg.reply_to || (msg.thread && props.thread_id !== '_')) && (
                 <Group
                   spacing={6}
-                  p="0.15rem 0.5rem 0.15rem 0.25rem"
-                  h="1.5rem"
-                  w="fit-content"
-                  maw="80ch"
-                  align="start"
+                  p='0.15rem 0.5rem 0.15rem 0.25rem'
+                  h='1.5rem'
+                  w='fit-content'
+                  maw='80ch'
+                  align='start'
                   sx={(theme) => ({
                     borderRadius: 3,
                     '&:hover': {
@@ -748,7 +748,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       <Text
                         size={11}
                         mt={1}
-                        mah="1.25rem"
+                        mah='1.25rem'
                         sx={(theme) => ({
                           maxWidth: '80ch',
                           overflow: 'hidden',
@@ -770,7 +770,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       <Text
                         size={11}
                         mt={1}
-                        mah="1.25rem"
+                        mah='1.25rem'
                         sx={(theme) => ({
                           maxWidth: '80ch',
                           overflow: 'hidden',
@@ -792,7 +792,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                 dangerouslySetInnerHTML={{ __html: msg.message }}
               />
               {msg.edited && (
-                <Text size={10} color="dimmed" mt={-6}>
+                <Text size={10} color='dimmed' mt={-6}>
                   {'(edited)'}
                 </Text>
               )}
@@ -846,14 +846,14 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           })}
 
           {msg.reactions && msg.reactions.length > 0 && (
-            <Group spacing={6} maw="80ch">
+            <Group spacing={6} maw='80ch'>
               {msg.reactions.map((reaction) => (
                 <Button
                   key={reaction.emoji}
-                  variant="default"
+                  variant='default'
                   disabled={!props.canSendReactions && !reaction.self}
-                  p="0rem 0.4rem"
-                  h="1.5625rem"
+                  p='0rem 0.4rem'
+                  h='1.5625rem'
                   styles={
                     reaction.self
                       ? (theme) => ({
@@ -892,7 +892,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                     >
                       <Text
                         span
-                        size="xs"
+                        size='xs'
                         weight={600}
                         sx={(theme) => ({ color: theme.colors.dark[0] })}
                       >
@@ -903,13 +903,13 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                 </Button>
               ))}
               {props.canSendReactions && (
-                <Popover position="right" withArrow>
-                  <Tooltip label="Add reaction" withArrow>
+                <Popover position='right' withArrow>
+                  <Tooltip label='Add reaction' withArrow>
                     <Popover.Target>
                       <ActionIcon
                         ref={addReactionBtnRef}
-                        variant="filled"
-                        size="1.5625rem"
+                        variant='filled'
+                        size='1.5625rem'
                         sx={(theme) => ({
                           backgroundColor: theme.colors.dark[5],
                           '&:hover': {
@@ -917,13 +917,13 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           },
                         })}
                       >
-                        <IconMoodPlus size="1rem" />
+                        <IconMoodPlus size='1rem' />
                       </ActionIcon>
                     </Popover.Target>
                   </Tooltip>
 
                   <Popover.Dropdown
-                    p="0.75rem 1rem"
+                    p='0.75rem 1rem'
                     sx={(theme) => ({
                       backgroundColor: theme.colors.dark[7],
                       borderColor: theme.colors.dark[5],
@@ -1000,7 +1000,7 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
 
   return (
     <Flex
-      wrap="nowrap"
+      wrap='nowrap'
       sx={(theme) => ({
         position: 'relative',
         '&:hover': hasPing
@@ -1025,7 +1025,7 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
       </Stack>
 
       <Box
-        className="msg-border"
+        className='msg-border'
         sx={(theme) => ({
           position: 'absolute',
           flexShrink: 0,
@@ -1189,13 +1189,13 @@ function MessagesViewport(props: MessagesViewportProps) {
         }}
       >
         <MessageContextMenu context={context as LoadedMessageViewContextState}>
-          <Stack spacing="lg">
+          <Stack spacing='lg'>
             {messages._exists &&
               Object.entries(grouped).map(([day, grouped], i) => (
                 <Fragment key={day}>
                   <Divider
                     label={moment(day).format('LL')}
-                    labelPosition="center"
+                    labelPosition='center'
                     sx={(theme) => ({
                       marginLeft: context.style.p,
                       color: theme.colors.dark[2],
@@ -1313,7 +1313,7 @@ function TextEditor(props: TextEditorProps) {
       autofocus
       focusRing={false}
       maxCharacters={2048}
-      maxHeight="40ch"
+      maxHeight='40ch'
       fileInputRef={fileInputRef}
       attachments={attachments}
       onAttachmentsChange={
@@ -1329,13 +1329,13 @@ function TextEditor(props: TextEditorProps) {
         <Group spacing={2} mr={useFormattedEditor ? 2 : 3}>
           {props.canSendAttachments && (
             <ActionButton
-              tooltip="Add Attachment"
+              tooltip='Add Attachment'
               tooltipProps={{
                 position: 'top-end',
                 withArrow: true,
                 withinPortal: !useFormattedEditor,
               }}
-              variant="transparent"
+              variant='transparent'
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -1347,18 +1347,18 @@ function TextEditor(props: TextEditorProps) {
             opened={emojiPickerOpen}
             withinPortal
             withArrow
-            position="top-end"
+            position='top-end'
             onClose={() => setEmojiPickerOpen(false)}
           >
             <Tooltip
-              label="Emojis"
-              position="top-end"
+              label='Emojis'
+              position='top-end'
               withArrow
               withinPortal={!useFormattedEditor}
             >
               <Popover.Target>
                 <ActionIcon
-                  variant="transparent"
+                  variant='transparent'
                   sx={(theme) => ({ color: theme.colors.dark[1] })}
                   onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
                 >
@@ -1367,7 +1367,7 @@ function TextEditor(props: TextEditorProps) {
               </Popover.Target>
             </Tooltip>
             <Popover.Dropdown
-              p="0.75rem 1rem"
+              p='0.75rem 1rem'
               sx={(theme) => ({
                 backgroundColor: theme.colors.dark[7],
                 borderColor: theme.colors.dark[5],
@@ -1402,22 +1402,22 @@ function TextEditor(props: TextEditorProps) {
 
           {useFormattedEditor ? (
             <ActionButton
-              tooltip="Send"
+              tooltip='Send'
               tooltipProps={{ position: 'top-end', withArrow: true }}
-              variant="transparent"
+              variant='transparent'
               onClick={onMessageSubmit}
             >
               <IconSend size={20} />
             </ActionButton>
           ) : (
             <ActionButton
-              tooltip="Formatted Message"
+              tooltip='Formatted Message'
               tooltipProps={{
                 position: 'top-end',
                 withArrow: true,
                 withinPortal: !useFormattedEditor,
               }}
-              variant="transparent"
+              variant='transparent'
               sx={(theme) => ({ color: theme.colors.dark[1] })}
               onClick={() => setUseFormattedEditor(true)}
             >
@@ -1478,7 +1478,7 @@ export default function MessagesView(props: MessagesViewProps) {
 
   return (
     <MessageViewContext.Provider value={context}>
-      <Flex h="100%" align="stretch">
+      <Flex h='100%' align='stretch'>
         <Box
           sx={(theme) => ({
             flexGrow: 1,
@@ -1506,7 +1506,7 @@ export default function MessagesView(props: MessagesViewProps) {
           >
             <Transition
               mounted={context.state.typing.length > 0}
-              transition="slide-up"
+              transition='slide-up'
               duration={200}
             >
               {(styles) => (
@@ -1522,7 +1522,7 @@ export default function MessagesView(props: MessagesViewProps) {
                   })}
                   style={styles}
                 >
-                  <Loader variant="dots" size="xs" />
+                  <Loader variant='dots' size='xs' />
                   <Text size={11.5}>
                     {context.state.typing.length <= 1 && (
                       <>
@@ -1551,11 +1551,11 @@ export default function MessagesView(props: MessagesViewProps) {
 
             {showScrollBottom && (
               <ActionButton
-                tooltip="Scroll To Bottom"
+                tooltip='Scroll To Bottom'
                 tooltipProps={{ position: 'left', openDelay: 500 }}
-                variant="filled"
-                size="xl"
-                radius="xl"
+                variant='filled'
+                size='xl'
+                radius='xl'
                 sx={(theme) => ({
                   position: 'absolute',
                   top: '-3.75rem',
@@ -1573,10 +1573,10 @@ export default function MessagesView(props: MessagesViewProps) {
 
             {context.state.replying_to && (
               <Group
-                h="1.75rem"
-                p="0.15rem 0.5rem"
+                h='1.75rem'
+                p='0.15rem 0.5rem'
                 spacing={6}
-                align="start"
+                align='start'
                 sx={(theme) => ({
                   backgroundColor: theme.colors.dark[8],
                   borderTopLeftRadius: 3,
@@ -1595,7 +1595,7 @@ export default function MessagesView(props: MessagesViewProps) {
                 <Text
                   size={11}
                   mt={3}
-                  mah="1.25rem"
+                  mah='1.25rem'
                   sx={{
                     maxWidth: '80ch',
                     overflow: 'hidden',

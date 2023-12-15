@@ -130,7 +130,7 @@ export default function App(props: AppProps) {
   if (!session._exists || (session.profile_id && !profile._exists)) {
     return (
       <Center style={{ height: '80vh' }}>
-        <Loader variant="bars" />
+        <Loader variant='bars' />
       </Center>
     );
   }
@@ -145,7 +145,7 @@ export default function App(props: AppProps) {
   }
 
   return (
-    <ErrorBoundary height="90vh">
+    <ErrorBoundary height='90vh'>
       <AppProvider initial={props.app}>
         <RtcProvider>
           <ConfirmModal>

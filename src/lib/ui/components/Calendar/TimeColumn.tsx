@@ -255,7 +255,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
       {range(24).map((i) => (
         <Box
           key={i}
-          w="100%"
+          w='100%'
           h={slotHeight}
           sx={(theme) => ({
             backgroundColor: props.day.isSame(now, 'date')
@@ -329,12 +329,12 @@ function TimeColumnImpl(props: TimeColumnProps) {
               : undefined
           }
         >
-          <Text color="dimmed" weight={600} size={11}>
+          <Text color='dimmed' weight={600} size={11}>
             {e.start.format('LT')} - {e.end.format('LT')}
           </Text>
           <Text
             weight={600}
-            maw="100%"
+            maw='100%'
             sx={{
               display: 'block',
               overflow: 'hidden',

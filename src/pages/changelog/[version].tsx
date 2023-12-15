@@ -15,7 +15,7 @@ type BlogProps = {
 ////////////////////////////////////////////////////////////
 export default function Roadmap({ post }: BlogProps) {
   return (
-    <ScrollArea w="100vw" h="100vh">
+    <ScrollArea w='100vw' h='100vh'>
       <Center>
         <Box
           sx={(theme) => ({
@@ -25,7 +25,7 @@ export default function Roadmap({ post }: BlogProps) {
             boxShadow: `0px 0px 15px #00000030`,
           })}
         >
-          <BlogPost post={post} width="65ch" />
+          <BlogPost post={post} width='65ch' />
         </Box>
       </Center>
     </ScrollArea>

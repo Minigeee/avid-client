@@ -476,7 +476,7 @@ export default function WeekView(props: WeekViewProps) {
   // WIP : Make calendar texts unhighlightable: all event button texts, month date label texts
 
   return (
-    <Flex direction="column" h={0} w="100%" mt={8} sx={{ flexGrow: 1 }}>
+    <Flex direction='column' h={0} w='100%' mt={8} sx={{ flexGrow: 1 }}>
       {/* Day labels */}
       <Flex ml={props.style.timeGutter}>
         {range(7).map((i) => {
@@ -503,8 +503,8 @@ export default function WeekView(props: WeekViewProps) {
               })}
               onClick={() => props.setDay(moment(start).add(i, 'day'))}
             >
-              <Stack spacing={0} align="center">
-                <Text color="dimmed">{date.format('ddd')}</Text>
+              <Stack spacing={0} align='center'>
+                <Text color='dimmed'>{date.format('ddd')}</Text>
                 <Title order={3}>{date.format('D')}</Title>
               </Stack>
             </UnstyledButton>
@@ -548,7 +548,7 @@ export default function WeekView(props: WeekViewProps) {
           <EventButton
             key={e.id + (e.repeat ? '-' + i : '')}
             event={e}
-            popoverPosition="bottom-start"
+            popoverPosition='bottom-start'
             sx={(theme) => ({
               position: 'absolute',
               display: 'block',
@@ -644,7 +644,7 @@ export default function WeekView(props: WeekViewProps) {
 
       <ScrollArea viewportRef={scrollAreaRef} sx={{ flexGrow: 1 }}>
         <Flex
-          w="100%"
+          w='100%'
           sx={{ position: 'relative' }}
           onMouseMove={(ev) => {
             dragDropDay.onMouseMove?.(ev);
@@ -654,7 +654,7 @@ export default function WeekView(props: WeekViewProps) {
           }}
         >
           <Stack
-            align="flex-end"
+            align='flex-end'
             sx={(theme) => ({
               width: props.style.timeGutter,
               paddingTop: `calc(${props.style.slotHeight} - ${theme.fontSizes.xs} / 2 - 0.0625rem)`,
@@ -665,9 +665,9 @@ export default function WeekView(props: WeekViewProps) {
             {range(23).map((i) => (
               <Text
                 key={i}
-                size="xs"
+                size='xs'
                 weight={600}
-                color="dimmed"
+                color='dimmed'
                 sx={{ lineHeight: 1 }}
               >
                 {moment({ hours: i + 1 }).format('LT')}
@@ -723,13 +723,13 @@ export default function WeekView(props: WeekViewProps) {
                 };
               }}
             >
-              <Text color="dimmed" weight={600} size={11}>
+              <Text color='dimmed' weight={600} size={11}>
                 {draggedEventTimes.start.format('LT')} -{' '}
                 {draggedEventTimes.end?.format('LT')}
               </Text>
               <Text
                 weight={600}
-                maw="100%"
+                maw='100%'
                 sx={{
                   display: 'block',
                   overflow: 'hidden',

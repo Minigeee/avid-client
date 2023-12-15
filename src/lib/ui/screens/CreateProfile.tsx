@@ -45,7 +45,7 @@ export default function CreateProfile(props: Props) {
   return (
     <Paper
       p={35}
-      shadow="lg"
+      shadow='lg'
       sx={(theme) => ({
         width: '50ch',
         maxWidth: '100%',
@@ -54,18 +54,18 @@ export default function CreateProfile(props: Props) {
     >
       <form onSubmit={form.onSubmit(onSubmit)}>
         <Stack>
-          <Title order={3} align="center">
+          <Title order={3} align='center'>
             {props.title || 'Create New Profile'}
           </Title>
           <TextInput
-            label="Username"
-            placeholder="None"
+            label='Username'
+            placeholder='None'
             data-autofocus
             {...form.getInputProps('username')}
           />
 
           <Space h={0} />
-          <Button variant="gradient" type="submit" loading={loading}>
+          <Button variant='gradient' type='submit' loading={loading}>
             Create
           </Button>
         </Stack>

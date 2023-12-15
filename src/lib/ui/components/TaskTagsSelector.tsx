@@ -30,7 +30,7 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
           borderRadius: 15,
         }}
       >
-        <Text size="xs" weight={500}>
+        <Text size='xs' weight={500}>
           {label}
         </Text>
       </Box>
@@ -56,14 +56,14 @@ function TagSelectValue({
           borderRadius: 15,
         }}
       >
-        <Group spacing={2} align="end">
-          <Text size="xs" weight={500}>
+        <Group spacing={2} align='end'>
+          <Text size='xs' weight={500}>
             {label}
           </Text>
           <CloseButton
             size={16}
             iconSize={12.5}
-            variant="transparent"
+            variant='transparent'
             tabIndex={-1}
             onMouseDown={onRemove}
           />
