@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import assert from 'assert';
 
 import {
   ActionIcon,
@@ -7,6 +8,7 @@ import {
   Divider,
   Flex,
   Group,
+  Radio,
   ScrollArea,
   SimpleGrid,
   Stack,
@@ -25,18 +27,26 @@ import {
 import { openCreateCalendarEvent } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 
-import { CalendarStyle, OnDeleteEvent, OnEditEvent, OnNewEvent } from './types';
+import {
+  CalendarStyle,
+  MomentCalendarEvent,
+  OnDeleteEvent,
+  OnEditEvent,
+  OnEditEventInternal,
+  OnNewEvent,
+} from './types';
 import { CalendarContext } from './hooks';
 import DayView from './DayView';
 import MonthView from './MonthView';
 import WeekView from './WeekView';
+import { CalendarEventContextMenu } from './EventMenu';
+import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
 import { CalendarEvent, DeepPartial } from '@/lib/types';
 import { DomainWrapper } from '@/lib/hooks';
 
 import moment, { Moment } from 'moment';
 import { merge, range } from 'lodash';
-import { CalendarEventContextMenu } from './EventMenu';
 
 ////////////////////////////////////////////////////////////
 export type CalendarView = 'month' | 'week' | 'day' | 'resource';
@@ -89,10 +99,207 @@ export default function Calendar(props: CalendarProps) {
     [],
   );
 
+  const { open: openConfirmModal } = useConfirmModal();
+  const confirmChoiceRef = useRef<string>('');
+
+  // Function that gets called when event is editted
+  const onEditEventInternal = useCallback(
+    ((newEvent, origEvent) => {
+      if (!props.onEditEvent) return;
+
+      // If user confirm is true, the user will be asked for confirmation and update shouldn't happen yet
+      let userConfirm = false;
+
+      // If repeated event and changed days
+      if (origEvent.repeat && (newEvent.start || newEvent.end)) {
+        // The time of the repeat event was changed, need to ask user to change only this
+        // event, or if all events need to be changed
+        userConfirm = true;
+
+        // Reset user choice
+        confirmChoiceRef.current = 'this';
+
+        // Ask user
+        openConfirmModal({
+          title: 'Edit Repeating Event',
+          content: (
+            <Radio.Group
+              defaultValue='this'
+              onChange={(value) => (confirmChoiceRef.current = value)}
+            >
+              <Stack spacing='sm' mt={8}>
+                <Radio value='this' label='Only this event' />
+                <Radio value='all' label='All events' />
+              </Stack>
+            </Radio.Group>
+          ),
+          confirmLabel: 'Save',
+          confirmProps: { variant: 'gradient' },
+          onConfirm: () => {
+            // The new start and end dates of the event
+            const newStart = newEvent.start || origEvent.start;
+            const newEnd =
+              newEvent.end || origEvent.end || moment(newStart).add(1, 'hour');
+
+            // Get base event (only one in events list)
+            const baseEvent =
+              props.events.find((x) => x.id === origEvent.id) || origEvent;
+
+            // Handle case where all events requested for change
+            if (confirmChoiceRef.current === 'all') {
+              // Handle case where event switches days (and not in week mode: week mode only switches hours, then modifies the week day array)
+              if (
+                newStart.dayOfYear() !== origEvent.start.dayOfYear() &&
+                origEvent.repeat?.interval_type !== 'week'
+              ) {
+                // Get diff in days
+                const diff = newStart.dayOfYear() - origEvent.start.dayOfYear();
+
+                // Calc new start and end times
+                const start = moment(baseEvent.start)
+                  .add(diff, 'days')
+                  .startOf('day')
+                  .add({ h: newStart.hours(), m: newStart.minutes() });
+                const end = moment(start).add({
+                  m: newEnd.diff(newStart, 'minutes'),
+                });
+
+                // Apply new times
+                newEvent.start = start;
+                newEvent.end = end;
+              } else {
+                // The repeat event is in week mode, or the time only changes within the original day
+
+                // Change base event only
+                const start = moment(baseEvent.start)
+                  .startOf('day')
+                  .add({ h: newStart.hours(), m: newStart.minutes() });
+                const end = moment(start).add({
+                  m: newEnd.diff(newStart, 'minutes'),
+                });
+
+                // Apply new times
+                newEvent.start = start;
+                newEvent.end = end;
+
+                // Handle changing the week day array for week repeat event
+                if (newStart.dayOfYear() !== origEvent.start.dayOfYear()) {
+                  const remDay = origEvent.start.day();
+                  newEvent.repeat = {
+                    ...newEvent.repeat,
+                    week_repeat_days: [
+                      ...(
+                        newEvent.repeat?.week_repeat_days ||
+                        origEvent.repeat?.week_repeat_days ||
+                        []
+                      ).filter((x) => x !== remDay),
+                      newStart.day(),
+                    ],
+                  } as CalendarEvent['repeat'];
+                }
+              }
+
+              // Edit event
+              props.onEditEvent?.(origEvent.id, {
+                ...newEvent,
+                start: newEvent.start?.toISOString(),
+                end: newEvent.end?.toISOString(),
+              });
+            } else {
+              // Normal update, but with override
+              props.onEditEvent?.(
+                origEvent.id,
+                {
+                  ...newEvent,
+                  start: newEvent.start?.toISOString(),
+                  end: newEvent.end?.toISOString(),
+                },
+                origEvent.start.toISOString(),
+              );
+            }
+          },
+        });
+      }
+
+      // Edit event
+      if (!userConfirm) {
+        props.onEditEvent(origEvent.id, {
+          ...newEvent,
+          start: newEvent.start?.toISOString(),
+          end: newEvent.end?.toISOString(),
+        });
+      }
+    }) as OnEditEventInternal,
+    [props.onEditEvent],
+  );
+
+  // Internal on delete callback
+  const onDeleteEventInternal = useCallback(
+    (event: CalendarEvent | MomentCalendarEvent) => {
+      let userConfirm = false;
+
+      // If repeated event, ask user if delete one or all
+      if (event.repeat) {
+        // The time of the repeat event was changed, need to ask user to change only this
+        // event, or if all events need to be changed
+        userConfirm = true;
+
+        // Reset user choice
+        confirmChoiceRef.current = 'this';
+
+        // Ask user
+        openConfirmModal({
+          title: 'Delete Repeating Event',
+          content: (
+            <Radio.Group
+              defaultValue='this'
+              onChange={(value) => (confirmChoiceRef.current = value)}
+            >
+              <Stack spacing='sm' mt={8}>
+                <Radio value='this' label='Only this event' />
+                <Radio value='all' label='All events' />
+              </Stack>
+            </Radio.Group>
+          ),
+          confirmLabel: 'Delete',
+          onConfirm: () => {
+            // Delete base event
+            props.onDeleteEvent?.(
+              event.id,
+              confirmChoiceRef.current === 'this'
+                ? typeof event.start === 'string'
+                  ? event.start
+                  : event.start.toISOString()
+                : undefined,
+            );
+          },
+        });
+      }
+
+      // Edit event
+      if (!userConfirm) {
+        openConfirmModal({
+          title: 'Delete Event',
+          content: (
+            <Text>
+              Are you sure you want to delete <b>{event.title}</b>?
+            </Text>
+          ),
+          confirmLabel: 'Delete',
+          onConfirm: () => {
+            // Delete event
+            props.onDeleteEvent?.(event.id);
+          },
+        });
+      }
+    },
+    [props.onDeleteEvent],
+  );
+
   // Callback refs
   const onNewEventRef = useRef(props.onNewEvent);
-  const onEditEventRef = useRef(props.onEditEvent);
-  const onDeleteEventRef = useRef(props.onDeleteEvent);
+  const onEditEventRef = useRef(onEditEventInternal);
+  const onDeleteEventRef = useRef(onDeleteEventInternal);
 
   // Time the calendar should display
   const [time, setTimeImpl] = useState<Moment>(moment());
@@ -104,9 +311,9 @@ export default function Calendar(props: CalendarProps) {
   // Update refs on function change
   useEffect(() => {
     onNewEventRef.current = props.onNewEvent;
-    onEditEventRef.current = props.onEditEvent;
-    onDeleteEventRef.current = props.onDeleteEvent;
-  }, [props.onNewEvent, props.onEditEvent, props.onDeleteEvent]);
+    onEditEventRef.current = onEditEventInternal;
+    onDeleteEventRef.current = onDeleteEventInternal;
+  }, [props.onNewEvent, onEditEventInternal, onDeleteEventInternal]);
 
   // Set time wrapper func
   const setTime = useCallback(
@@ -152,7 +359,8 @@ export default function Calendar(props: CalendarProps) {
         },
 
         onSubmit: async (event) => {
-          console.log('on submit', event);
+          assert(event.start);
+          // @ts-ignore
           await props.onNewEvent?.(event);
         },
       });
@@ -193,6 +401,8 @@ export default function Calendar(props: CalendarProps) {
                       },
 
                       onSubmit: async (event) => {
+                        assert(event.start);
+                        // @ts-ignore
                         await props.onNewEvent?.(event);
                       },
                     });
@@ -303,7 +513,6 @@ export default function Calendar(props: CalendarProps) {
                 setView('day');
               }}
               onNewEventRequest={onNewEventRequest}
-              onEventChange={props.onEditEvent}
             />
           )}
 
@@ -318,7 +527,6 @@ export default function Calendar(props: CalendarProps) {
                 setView('day');
               }}
               onNewEventRequest={onNewEventRequest}
-              onEventChange={props.onEditEvent}
             />
           )}
 
@@ -329,7 +537,6 @@ export default function Calendar(props: CalendarProps) {
               editable={props.editable !== false}
               style={styles}
               onNewEventRequest={onNewEventRequest}
-              onEventChange={props.onEditEvent}
             />
           )}
         </CalendarEventContextMenu>

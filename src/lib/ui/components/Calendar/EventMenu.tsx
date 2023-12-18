@@ -10,8 +10,9 @@ import { ContextMenu } from '@/lib/ui/components/ContextMenu';
 import { CalendarEvent } from '@/lib/types';
 import { diff } from '@/lib/utility';
 
-import { isNil, omitBy } from 'lodash';
+import { isNil, omitBy, pickBy } from 'lodash';
 import { useCalendarContext } from './hooks';
+import moment from 'moment';
 
 ////////////////////////////////////////////////////////////
 export type CalendarEventContext = {
@@ -42,20 +43,21 @@ export function CalendarEventMenuDropdown(
             event: props.event,
 
             onSubmit: async (updated) => {
-              // Get event diff
-              let d = diff(event, updated);
-              const remRepeat = d?.repeat === null;
-              d = omitBy(d, isNil);
-
-              // Add repeat null for remove
-              if (remRepeat)
-                // @ts-ignore
-                d.repeat = null;
-
-              if (Object.keys(d).length === 0) return;
+              if (Object.keys(updated).length === 0) return;
 
               // Update callback
-              calendar.onEditEvent.current?.(props.event.id, d);
+              calendar.onEditEvent.current?.(
+                {
+                  ...updated,
+                  start: moment(updated.start),
+                  end: moment(updated.end),
+                },
+                {
+                  ...props.event,
+                  start: moment(props.event.start),
+                  end: moment(props.event.end),
+                },
+              );
             },
           });
         }}
@@ -69,19 +71,7 @@ export function CalendarEventMenuDropdown(
         color='red'
         icon={<IconTrash size={16} />}
         onClick={() => {
-          openConfirmModal({
-            title: 'Delete Event',
-            content: (
-              <Text>
-                Are you sure you want to delete <b>{props.event.title}</b>?
-              </Text>
-            ),
-            confirmLabel: 'Delete',
-            onConfirm: () => {
-              // Delete event
-              calendar.onDeleteEvent.current?.(props.event.id);
-            },
-          });
+          calendar.onDeleteEvent.current?.(props.event);
         }}
       >
         Delete event

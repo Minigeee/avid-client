@@ -16,36 +16,42 @@ export function hasRepeatEvent(day: Moment, event: CalendarEvent) {
     day.isSameOrAfter(estart, 'day') &&
     (!event.repeat.end_on || day.isSameOrBefore(event.repeat.end_on))
   ) {
-    for (const t of times) {
-      let contains = false;
+    // Repeat info
+    const { interval, interval_type } = event.repeat;
 
-      if (event.repeat.interval_type === 'day')
-        contains =
-          day.diff(moment(t).startOf('day'), 'days') % event.repeat.interval ===
-          0;
+    let contains = false;
+    let numCheck = 0;
+
+    for (const t of times) {
+      // Diff in terms of interval type
+      let diff =
+        moment(day)
+          .startOf(interval_type)
+          .diff(moment(t).startOf(interval_type), interval_type) % interval;
+
+      if (event.repeat.interval_type === 'day') contains = diff === 0;
       else if (event.repeat.interval_type === 'week')
         contains =
-          moment(day).startOf('week').diff(moment(t).startOf('week'), 'weeks') %
-            event.repeat.interval ===
-            0 &&
+          diff === 0 &&
           event.repeat.week_repeat_days !== undefined &&
           event.repeat.week_repeat_days.indexOf(day.day()) >= 0;
       else if (event.repeat.interval_type === 'month')
-        contains =
-          moment(day)
-            .startOf('month')
-            .diff(moment(t).startOf('month'), 'months') %
-            event.repeat.interval ===
-            0 && day.date() === t.date();
+        contains = diff === 0 && day.date() === t.date();
       else
         contains =
-          moment(day).startOf('year').diff(moment(t).startOf('year'), 'years') %
-            event.repeat.interval ===
-            0 &&
-          day.month() === t.month() &&
-          day.date() === t.date();
+          diff === 0 && day.month() === t.month() && day.date() === t.date();
 
-      if (contains) return true;
+      if (contains) break;
+      numCheck += 1;
+    }
+
+    // Check if this event is overridden
+    if (contains) {
+      const startDayBefore = times.length === 2 && numCheck > 0;
+      const start = moment(day).subtract(startDayBefore ? 1 : 0, 'days');
+
+      // Return true if not overridden
+      return !event.repeat.overrides || event.repeat.overrides.findIndex(x => moment(x).isSame(start, 'day')) < 0;
     }
   }
 
@@ -106,7 +112,16 @@ export function getAllRepeatEvents(
     end: Moment;
   })[] = [];
   const addEvent = (time: Moment) => {
-    if (time.isBefore(latestStart) || time.isAfter(earliestEnd)) return;
+    if (
+      time.isBefore(latestStart) ||
+      time.isAfter(earliestEnd) ||
+      (event.repeat?.overrides &&
+        event.repeat.overrides.findIndex((x) =>
+          moment(x).isSame(time, 'day'),
+        ) >= 0)
+    )
+      return;
+      
     events.push({
       ...event,
       start: moment(time),

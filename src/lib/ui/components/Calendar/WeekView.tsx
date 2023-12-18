@@ -25,7 +25,7 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { useDragCreate, useDraggableGridEvents } from './hooks';
+import { useCalendarContext, useDragCreate, useDraggableGridEvents } from './hooks';
 import { CalendarStyle, MomentCalendarEvent } from './types';
 
 import moment, { Moment } from 'moment';
@@ -189,13 +189,12 @@ export type WeekViewProps = {
     start: Moment,
     initial?: { duration?: number; all_day?: boolean },
   ) => void;
-  /** Called when an event changes */
-  onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
 export default function WeekView(props: WeekViewProps) {
   const theme = useMantineTheme();
+  const calendar = useCalendarContext();
 
   // Scroll area
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -213,7 +212,7 @@ export default function WeekView(props: WeekViewProps) {
       resizing?: boolean,
     ) => {
       // Get original event
-      const origEvent = props.events.find((x) => x.id === e.id) || e;
+      const origEvent = e;
       let start: Moment, end: Moment;
 
       // Calculate new times
@@ -223,9 +222,11 @@ export default function WeekView(props: WeekViewProps) {
         start = estart;
         end = moment(start).startOf('day').add({ h: gridPos.y });
       } else {
+        // Event duration
         const duration = origEvent.end
           ? moment(origEvent.end).diff(estart)
           : moment({ h: 1 }).unix();
+
         start = moment(props.time)
           .startOf('week')
           .add(gridPos.x, 'days')
@@ -245,12 +246,9 @@ export default function WeekView(props: WeekViewProps) {
       }
 
       // User callback
-      props.onEventChange?.(e.id, {
-        start: start.toISOString(),
-        end: end.toISOString(),
-      });
+      calendar.onEditEvent.current?.({ start, end }, origEvent);
     },
-    [props.time, props.onEventChange],
+    [props.time],
   );
 
   // Drag drop for day events

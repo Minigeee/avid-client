@@ -79,38 +79,77 @@ function mutators(
      *
      * @param event_id The id of the event to update
      * @param event The new event data to set
-     * @param optimistic Determines if the updated data should be applied optmistically
+     * @param options.override For repeated events (only), the date string that should get overriden
+     * @param options.optimistic Determines if the updated data should be applied optmistically
      * @returns The new list of calendar events
      */
     updateEvent: (
       event_id: string,
       event: Partial<CalendarEvent>,
-      optimistic: boolean = false,
+      options?: {
+        override?: string;
+        optimistic?: boolean;
+      },
     ) =>
       mutate(
         swrErrorWrapper(
           async (events: CalendarEvent[]) => {
-            // Create calendar event
-            const results = await api(
-              'PATCH /calendar_events/:event_id',
-              {
-                params: { event_id },
-                body: event,
-              },
-              { session },
-            );
-            const sanitized = _sanitize(results);
+            let sanitized: CalendarEvent;
+
+            // Find original event
+            const copy = events.slice();
+            const idx = copy.findIndex((x) => x.id === event_id);
+
+            // Update calendar event
+            if (!copy[idx].repeat || options?.override === undefined) {
+              // Standard update
+              const results = await api(
+                'PATCH /calendar_events/:event_id',
+                {
+                  params: { event_id },
+                  body: event,
+                },
+                { session },
+              );
+              sanitized = _sanitize(results);
+            } else {
+              // Override update
+              const results = await api(
+                'POST /calendar_events/:event_id/overrides',
+                {
+                  params: { event_id },
+                  body: {
+                    mode: 'edit',
+                    date: options.override || copy[idx].start,
+                    ...event,
+                  },
+                },
+                { session },
+              );
+              sanitized = _sanitize(results.base);
+
+              // There should be a new event
+              assert(results.new);
+
+              // Add new event
+              const newSanitized = _sanitize(results.new);
+              _cache[channel_id][newSanitized.id] = newSanitized;
+              if (!options?.optimistic) {
+                const newIdx = copy.findIndex(
+                  (x) => x.id === `${event_id}:override`,
+                );
+                copy[newIdx] = newSanitized;
+              } else copy.push(newSanitized);
+            }
 
             // Update cache
             _cache[channel_id][sanitized.id] = sanitized;
 
             // Update within list
-            const copy = events.slice();
-            const idx = copy.findIndex((x) => x.id === event_id);
             copy[idx] = sanitized;
 
             // Update individual hook
-            if (!optimistic)
+            if (!options?.optimistic)
               _mutate(
                 event_id,
                 (old: CalendarEvent | undefined) => ({ ...old, ...sanitized }),
@@ -122,7 +161,7 @@ function mutators(
           { message: 'An error occurred while modifying calendar event' },
         ),
         {
-          optimisticData: optimistic
+          optimisticData: options?.optimistic
             ? (events) => {
                 if (!events) return [];
 
@@ -131,7 +170,33 @@ function mutators(
                 if (idx < 0) return events;
 
                 const copy = events.slice();
-                copy[idx] = _sanitize(merge({}, copy[idx], event));
+                const override =
+                  copy[idx].repeat && options?.override !== undefined;
+                copy[idx] = _sanitize(
+                  merge(
+                    {},
+                    copy[idx],
+                    override
+                      ? event
+                      : {
+                          repeat: {
+                            overrides: [
+                              ...(copy[idx].repeat?.overrides || []),
+                              options.override,
+                            ],
+                          },
+                        },
+                  ),
+                );
+
+                // Add new override event
+                if (override)
+                  copy.push({
+                    ...copy[idx],
+                    ...event,
+                    id: `${event_id}:override`,
+                    repeat: null,
+                  });
 
                 // Optimistic update for individual hook
                 _mutate(
@@ -154,33 +219,92 @@ function mutators(
      * Remove a calendar event from its calendar channel
      *
      * @param event_id The id of the event to remove
+     * @param override For repeated events (only), the date string that should get overriden
      * @returns The new events list
      */
-    removeEvent: (event_id: string) =>
+    removeEvent: (event_id: string, override?: string) =>
       mutate(
         swrErrorWrapper(
           async (events: CalendarEvent[]) => {
-            // Remove from db
-            await api(
-              'DELETE /calendar_events/:event_id',
-              {
-                params: { event_id },
-              },
-              { session },
-            );
+            if (!override) {
+              // Remove from db
+              await api(
+                'DELETE /calendar_events/:event_id',
+                {
+                  params: { event_id },
+                },
+                { session },
+              );
 
-            // Remove from cache
-            delete _cache[channel_id][event_id];
+              // Remove from cache
+              delete _cache[channel_id][event_id];
 
-            // Remove from list
-            return events.filter((x) => x.id !== event_id);
+              // Remove from list
+              return events.filter((x) => x.id !== event_id);
+            } else {
+              // Override repeated event
+              const results = await api(
+                'POST /calendar_events/:event_id/overrides',
+                {
+                  params: { event_id },
+                  body: {
+                    mode: 'delete',
+                    date: override || new Date().toISOString(),
+                  },
+                },
+                { session },
+              );
+              const sanitized = _sanitize(results.base);
+
+              // Update cache
+              _cache[channel_id][sanitized.id] = sanitized;
+
+              // Update within list
+              const copy = events.slice();
+              const idx = copy.findIndex((x) => x.id === event_id);
+              copy[idx] = sanitized;
+
+              return copy;
+            }
           },
           { message: 'An error occurred while removing calendar event' },
         ),
         {
           optimisticData: (events) => {
             if (!events) return [];
-            return events.filter((x) => x.id !== event_id);
+
+            if (!override) {
+              return events.filter((x) => x.id !== event_id);
+            } else {
+              // Find index
+              const idx = events.findIndex((x) => x.id === event_id);
+              if (idx < 0) return events;
+
+              // Change override list
+              const copy = events.slice();
+              copy[idx] = _sanitize(
+                merge({}, copy[idx], {
+                  repeat: {
+                    overrides: [
+                      ...(copy[idx].repeat?.overrides || []),
+                      override,
+                    ],
+                  },
+                }),
+              );
+
+              // Optimistic update for individual hook
+              _mutate(
+                event_id,
+                (old: CalendarEvent | undefined) => ({
+                  ...old,
+                  ...copy[idx],
+                }),
+                { revalidate: false },
+              );
+
+              return copy;
+            }
           },
           revalidate: false,
         },

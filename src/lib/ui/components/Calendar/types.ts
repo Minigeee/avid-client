@@ -39,9 +39,18 @@ export type OnNewEvent = (
 export type OnEditEvent = (
   event_id: string,
   event: Partial<Omit<CalendarEvent, 'id' | 'time_created' | 'channel'>>,
+  override?: string,
 ) => void | Promise<void>;
 /** Callback for delete event callback function */
-export type OnDeleteEvent = (event_id: string) => void | Promise<void>;
+export type OnDeleteEvent = (event_id: string, override?: string) => void | Promise<void>;
+
+/** Callback for edit event callback function */
+export type OnEditEventInternal = (
+  newEvent: Partial<MomentCalendarEvent>,
+  origEvent: MomentCalendarEvent,
+) => void | Promise<void>;
+/** Callback for delete event callback function */
+export type OnDeleteEventInternal = (event: CalendarEvent | MomentCalendarEvent) => void | Promise<void>;
 
 /** Holds calendar state */
 export type CalendarState = {
@@ -58,7 +67,7 @@ export type CalendarState = {
   /** Ref to new event callback */
   onNewEvent: MutableRefObject<OnNewEvent | undefined>;
   /** Ref to edit event callback */
-  onEditEvent: MutableRefObject<OnEditEvent | undefined>;
+  onEditEvent: MutableRefObject<OnEditEventInternal | undefined>;
   /** Ref to edit event callback */
-  onDeleteEvent: MutableRefObject<OnDeleteEvent | undefined>;
+  onDeleteEvent: MutableRefObject<OnDeleteEventInternal | undefined>;
 };

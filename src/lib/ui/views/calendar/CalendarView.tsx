@@ -80,42 +80,22 @@ export default function CalendarView(props: CalendarViewProps) {
 
   // Called on event edit
   const onEditEvent = useCallback<OnEditEvent>(
-    (event_id, event) => {
+    (event_id, event, override) => {
       if (!events._exists) return;
 
-      // If time changed for a repeated event, only change the hours & mins
-      const orig = events.data.find((e) => e.id === event_id);
-      if (orig && orig.repeat && (!orig.all_day || event.all_day === false)) {
-        if (event.start) {
-          const estart = moment(event.start);
-          event.start = moment(orig.start)
-            .startOf('day')
-            .add({ h: estart.hours(), m: estart.minutes() })
-            .toISOString();
-        }
-
-        if (event.end) {
-          const eend = moment(event.end);
-          event.end = moment(orig.end)
-            .startOf('day')
-            .add({ h: eend.hours(), m: eend.minutes() })
-            .toISOString();
-        }
-      }
-
       // Update event
-      events._mutators.updateEvent(event_id, event, true);
+      events._mutators.updateEvent(event_id, event, { optimistic: true, override });
     },
     [events],
   );
 
   // Called on event delete
   const onDeleteEvent = useCallback<OnDeleteEvent>(
-    (event_id) => {
+    (event_id, override) => {
       if (!events._exists) return;
 
       // Delete event
-      events._mutators.removeEvent(event_id);
+      events._mutators.removeEvent(event_id, override);
     },
     [events],
   );

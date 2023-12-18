@@ -16,7 +16,7 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { useDragCreate, useDraggableGridEvents } from './hooks';
+import { useCalendarContext, useDragCreate, useDraggableGridEvents } from './hooks';
 import { CalendarStyle, MomentCalendarEvent } from './types';
 
 import moment, { Moment } from 'moment';
@@ -41,12 +41,12 @@ export type DayViewProps = {
     start: Moment,
     initial?: { duration?: number; all_day?: boolean },
   ) => void;
-  /** Called when an event changes */
-  onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
 export default function DayView(props: DayViewProps) {
+  const calendar = useCalendarContext();
+
   // Scroll area
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -81,12 +81,9 @@ export default function DayView(props: DayViewProps) {
       }
 
       // User callback
-      props.onEventChange?.(e.id, {
-        start: start.toISOString(),
-        end: end.toISOString(),
-      });
+      calendar.onEditEvent.current?.({ start, end }, e);
     },
-    [props.time, props.onEventChange],
+    [props.time],
   );
 
   // Drag drop for day events

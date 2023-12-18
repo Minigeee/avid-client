@@ -70,7 +70,7 @@ export function diff<B extends any>(
       // Return entire array if it is diff
       if (
         origObj.length !== newObj.length ||
-        origObj.findIndex((x, i) => x !== newObj[i]) < 0
+        origObj.findIndex((x, i) => x !== newObj[i]) >= 0
       )
         return newObj;
     } else if (typeof origObj === 'object') {

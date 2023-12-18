@@ -29,6 +29,9 @@ export type CalendarEvent = {
     end_on?: string;
     /** Days to repeat if in `week` mode, list of days of the week 0 = Sunday */
     week_repeat_days?: number[];
+
+    /** List of days where this repeated event should not displayed on */
+    overrides?: string[] | null;
   } | null;
 };
 

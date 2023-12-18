@@ -56,7 +56,7 @@ import {
 import { diff } from '@/lib/utility';
 
 import moment, { Moment } from 'moment';
-import { isNil, omitBy } from 'lodash';
+import { isNil, omitBy, pickBy } from 'lodash';
 
 import { ContextMenu } from '../ContextMenu';
 
@@ -170,20 +170,21 @@ export default function EventButton({
                     event,
 
                     onSubmit: async (updated) => {
-                      // Get event diff
-                      let d = diff(event, updated);
-                      const remRepeat = d?.repeat === null;
-                      d = omitBy(d, isNil);
-
-                      // Add repeat null for remove
-                      if (remRepeat)
-                        // @ts-ignore
-                        d.repeat = null;
-
-                      if (Object.keys(d).length === 0) return;
+                      if (Object.keys(updated).length === 0) return;
 
                       // Update callback
-                      calendar.onEditEvent.current?.(baseEvent.id, d);
+                      calendar.onEditEvent.current?.(
+                        {
+                          ...updated,
+                          start: updated.start ? moment(updated.start) : undefined,
+                          end: updated.end ? moment(updated.end) : undefined,
+                        },
+                        {
+                          ...baseEvent,
+                          start: moment(baseEvent.start),
+                          end: moment(baseEvent.end),
+                        },
+                      );
                     },
                   });
                 }}
@@ -194,19 +195,7 @@ export default function EventButton({
               <ActionButton
                 tooltip='Delete event'
                 onClick={() => {
-                  openConfirmModal({
-                    title: 'Delete Event',
-                    content: (
-                      <Text>
-                        Are you sure you want to delete <b>{event.title}</b>?
-                      </Text>
-                    ),
-                    confirmLabel: 'Delete',
-                    onConfirm: () => {
-                      // Delete event
-                      calendar.onDeleteEvent.current?.(baseEvent.id);
-                    },
-                  });
+                  calendar.onDeleteEvent.current?.(baseEvent);
                 }}
               >
                 <IconTrash size={16} />

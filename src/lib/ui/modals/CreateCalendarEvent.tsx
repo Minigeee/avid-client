@@ -2,6 +2,7 @@ import {
   ComponentPropsWithoutRef,
   forwardRef,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -31,16 +32,12 @@ import PRESET_COLORS from '@/lib/ui/components/PresetColors';
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
 
 import config from '@/config';
-import { DomainWrapper } from '@/lib/hooks';
-import {
-  CalendarEvent,
-  ChannelData,
-  ChannelOptions,
-  ChannelTypes,
-} from '@/lib/types';
+import { DomainWrapper, useCalendarEvent } from '@/lib/hooks';
+import { CalendarEvent } from '@/lib/types';
 
 import moment from 'moment';
-import { range } from 'lodash';
+import { pick, pickBy, range } from 'lodash';
+import { diff } from '@/lib/utility';
 
 ////////////////////////////////////////////////////////////
 export type CreateCalendarEventProps = {
@@ -54,7 +51,7 @@ export type CreateCalendarEventProps = {
 
   /** Called when event is created */
   onSubmit: (
-    event: Omit<CalendarEvent, 'id' | 'time_created' | 'channel'>,
+    event: Partial<CalendarEvent>,
     mode: 'create' | 'edit',
   ) => Promise<void>;
 };
@@ -65,6 +62,9 @@ export default function CreateCalendarEvent({
   id,
   innerProps: props,
 }: ContextModalProps<CreateCalendarEventProps>) {
+  // Get original event if in edit mode
+  const remEvent = useCalendarEvent(props.mode === 'edit' && props.event?.id ? props.event.id : undefined);
+
   const mode = props.mode || 'create';
   const form = useForm({
     initialValues: {
@@ -81,9 +81,9 @@ export default function CreateCalendarEvent({
 
       repeat: props.event?.repeat
         ? {
-            ...props.event.repeat,
-            end_on: props.event.repeat.end_on
-              ? new Date(props.event.repeat.end_on)
+            ...props.event?.repeat,
+            end_on: props.event?.repeat.end_on
+              ? new Date(props.event?.repeat.end_on)
               : undefined,
           }
         : ({
@@ -107,7 +107,7 @@ export default function CreateCalendarEvent({
   const [loading, setLoading] = useState<boolean>(false);
   // Determines if repeating event mode
   const [repeat, setRepeatImpl] = useState<boolean>(
-    props.event?.repeat !== undefined && props.event?.repeat !== null,
+    props.event?.repeat !== undefined && props.event.repeat !== null,
   );
   const setRepeat = useCallback((value: boolean) => {
     if (value) {
@@ -119,6 +119,14 @@ export default function CreateCalendarEvent({
 
     setRepeatImpl(value);
   }, []);
+
+
+  // Set modal description
+  useEffect(() => {
+    if (!remEvent._exists) return;
+    form.setFieldValue('description', remEvent.description || '');
+    form.resetDirty();
+  }, [remEvent.description]);
 
   // Picker elements for start/end time inputs
   const pickerControls = useMemo(() => {
@@ -214,31 +222,77 @@ export default function CreateCalendarEvent({
       setLoading(true);
 
       try {
-        // Callback
-        await props.onSubmit(
-          {
-            title: values.title,
-            start: values.start.toISOString(),
-            end: values.end.toISOString(),
-            all_day: values.all_day,
-            color: values.color,
-            description: values.description || undefined,
+        // Create new event
+        const newEvent = {
+          title: values.title,
+          start: values.start.toISOString(),
+          end: values.end.toISOString(),
+          all_day: values.all_day,
+          color: values.color,
+          description: values.description || undefined,
 
-            repeat:
-              repeat && values.repeat
-                ? {
-                    interval: values.repeat.interval,
-                    interval_type: values.repeat.interval_type,
-                    end_on: values.repeat.end_on?.toISOString() || undefined,
-                    week_repeat_days:
-                      values.repeat.interval_type === 'week'
-                        ? values.repeat.week_repeat_days
-                        : undefined,
-                  }
-                : undefined,
-          },
-          mode,
-        );
+          repeat:
+            repeat && values.repeat
+              ? {
+                  interval: values.repeat.interval,
+                  interval_type: values.repeat.interval_type,
+                  end_on: values.repeat.end_on?.toISOString() || undefined,
+                  week_repeat_days:
+                    values.repeat.interval_type === 'week'
+                      ? values.repeat.week_repeat_days
+                      : undefined,
+                }
+              : undefined,
+        };
+
+        // Callback
+        if (props.mode === 'edit') {
+          const orig = pick(remEvent._exists ? remEvent : props.event, [
+            'all_day',
+            'color',
+            'description',
+            'end',
+            'repeat',
+            'start',
+            'title',
+          ] as (keyof CalendarEvent)[]);
+
+          const d = diff(
+            {
+              ...orig,
+              start: moment(orig.start).unix(),
+              end: moment(orig.end).unix(),
+            },
+            {
+              ...newEvent,
+              start: moment(newEvent.start).unix(),
+              end: moment(newEvent.end).unix(),
+            },
+          );
+          console.log(
+            {
+              ...orig,
+              start: moment(orig.start).unix(),
+              end: moment(orig.end).unix(),
+            },
+            {
+              ...newEvent,
+              start: moment(newEvent.start).unix(),
+              end: moment(newEvent.end).unix(),
+            }, d);
+
+          await props.onSubmit(
+            {
+              ...d,
+              start: d?.start !== undefined ? newEvent.start : undefined,
+              end: d?.end !== undefined ? newEvent.end : undefined,
+            },
+            mode,
+          );
+        } else {
+          await props.onSubmit(newEvent, mode);
+        }
+        
 
         // Close modal
         context.closeModal(id);
@@ -248,7 +302,7 @@ export default function CreateCalendarEvent({
         setLoading(false);
       }
     },
-    [props.onSubmit, repeat],
+    [props.onSubmit, repeat, remEvent],
   );
 
   return (

@@ -145,6 +145,16 @@ export type ApiSchema = {
     params: ['event_id'];
   };
 
+  'POST /calendar_events/:event_id/overrides': {
+    params: ['event_id'];
+    body: {
+      mode: 'edit' | 'delete';
+      date: string;
+    } & Partial<Omit<CalendarEvent, 'time_created' | 'channel' | 'id' | 'repeat'>>;
+    return: { base: CalendarEvent, new?: CalendarEvent };
+  };
+
+
   /** Channel groups */
   'GET /channel_groups': {
     query: {

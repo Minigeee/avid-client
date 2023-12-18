@@ -112,7 +112,7 @@ export function useDraggableGridEvents(props: UseDraggableEventsProps) {
       const unitX = (scrollArea.clientWidth - props.timeGutter) / cols;
       const unitY = (scrollArea.scrollHeight - header) / rows;
       const gridX = resizing
-        ? draggedEvent.start.day()
+        ? Math.min(draggedEvent.start.day(), cols - 1)
         : Math.max(
             0,
             Math.min(Math.floor((left - props.timeGutter) / unitX), cols - 1),

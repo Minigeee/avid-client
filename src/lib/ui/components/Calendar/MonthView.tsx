@@ -26,7 +26,7 @@ import EventButton from './EventButton';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { useDraggableGridEvents } from './hooks';
+import { useCalendarContext, useDraggableGridEvents } from './hooks';
 import { CalendarStyle, MomentCalendarEvent } from './types';
 
 import moment, { Moment } from 'moment';
@@ -897,12 +897,12 @@ export type MonthViewProps = {
     start: Moment,
     initial?: { duration?: number; all_day?: boolean },
   ) => void;
-  /** Called when an event changes */
-  onEventChange?: (id: string, event: Partial<CalendarEvent>) => void;
 };
 
 ////////////////////////////////////////////////////////////
 export default function MonthView(props: MonthViewProps) {
+  const calendar = useCalendarContext();
+
   // Container for month
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -942,12 +942,9 @@ export default function MonthView(props: MonthViewProps) {
       const newEnd = moment(newStart).add(duration);
 
       // User callback
-      props.onEventChange?.(e.id, {
-        start: newStart.toISOString(),
-        end: newEnd.toISOString(),
-      });
+      calendar.onEditEvent.current?.({ start: newStart, end: newEnd }, e);
     },
-    [start, props.onEventChange],
+    [start],
   );
 
   // Drag drop for day events
