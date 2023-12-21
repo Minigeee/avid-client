@@ -764,7 +764,7 @@ export default function WeekView(props: WeekViewProps) {
               borderLeft: `1px solid ${props.style.colors.cellBorder}`,
               borderBottom: `1px solid ${props.style.colors.cellBorder}`,
               minHeight: '1.25rem',
-              height: `calc(${numAllDayRows * 1.75}rem + 1px)`,
+              height: `calc(${(numAllDayRows > 0 ? numAllDayRows : newMultidayEventObj ? 1 : 0) * 1.75}rem + 1px)`,
             }}
           />
         ))}
