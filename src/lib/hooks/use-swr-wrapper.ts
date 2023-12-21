@@ -147,15 +147,16 @@ export function useSwrWrapper<
       _next: infinite
         ? (n) => {
             const pageSize = (options as { pageSize: number }).pageSize;
-            // @ts-ignore
             const isLoadingMore =
               response.isLoading ||
+              // @ts-ignore
               (response.size > 0 &&
                 response.data &&
+                // @ts-ignore
                 !response.data[response.size - 1]);
 
-            // @ts-ignore
             if (
+              // @ts-ignore
               response.data[response.data.length - 1].length >= pageSize &&
               !isLoadingMore
             )

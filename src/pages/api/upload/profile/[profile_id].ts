@@ -22,6 +22,7 @@ router
     // @ts-ignore
     expressWrapper(
       upload(
+        // @ts-ignore
         (req: Express.Request<>, file) => {
           // Generate key
           const id = uid();

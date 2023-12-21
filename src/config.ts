@@ -16,7 +16,7 @@ const config = {
     /** Minor version number */
     minor: 2,
     /** Patch version number */
-    patch: 1,
+    patch: 2,
     /** Revision number */
     revision: 0,
     /** Build metadata */
