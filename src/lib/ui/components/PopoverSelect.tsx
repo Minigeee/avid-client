@@ -16,6 +16,7 @@ import {
   Popover,
   PopoverProps,
   ScrollArea,
+  ScrollAreaAutosizeProps,
   Stack,
   Text,
   TextInput,
@@ -49,10 +50,12 @@ export type PopoverSelectProps<T> = {
   searchProps?: TextInputProps;
   /** Props for the popover */
   popoverProps?: PopoverProps;
+  /** Props for scroll area */
+  scrollAreaProps?: ScrollAreaAutosizeProps;
   /** SHould the popover be rendered in a portal */
   withinPortal?: boolean;
-  /** The field that contains the item label that is used for searching (default `label`) */
-  labelField?: string;
+  /** Custom filter function */
+  filter?: (search: string, value: T) => boolean;
 
   /** Function that gets called on item select */
   onSelect?: (item: T) => boolean | undefined | void | Promise<boolean | undefined | void>;
@@ -62,18 +65,17 @@ export type PopoverSelectProps<T> = {
 export function PopoverSelectDropdown<T>(
   props: Omit<PopoverSelectProps<T>, 'children'> & { setOpened?: (value: boolean) => void },
 ) {
-  const labelField = props.labelField || 'label';
-
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
   const filtered = useMemo(() => {
     if (search.length === 0) return props.data;
 
+    // FIlter function
     const lc = search.toLocaleLowerCase();
-    return props.data.filter(
-      (x: any) => x[labelField].toLocaleLowerCase().indexOf(lc) >= 0,
-    );
+    const filter = props.filter ? ((x: T) => props.filter?.(lc, x)) : ((x: any) => (x.label.toLocaleLowerCase().indexOf(lc) >= 0));
+
+    return props.data.filter(filter);
   }, [search, props.data]);
 
   return (
@@ -96,12 +98,13 @@ export function PopoverSelectDropdown<T>(
 
       <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
 
-      <ScrollArea.Autosize mah='30rem' p='0.5rem'>
+      <ScrollArea.Autosize mah='30rem' p='0.5rem' {...props.scrollAreaProps}>
         <Stack spacing={0}>
           {filtered.map((item: any, i) => (
             <UnstyledButton
               key={i}
               p='0.35rem 0.6rem'
+              maw='20rem'
               sx={(theme) => ({
                 borderRadius: theme.radius.sm,
                 cursor: 'pointer',

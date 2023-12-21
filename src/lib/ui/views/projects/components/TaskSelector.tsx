@@ -121,11 +121,6 @@ type TaskSelectorProps = {
 
 ////////////////////////////////////////////////////////////
 export function TaskSelector(props: TaskSelectorProps) {
-  // Task searcher
-  const [search, setSearch] = useState<string>('');
-  // Debounced search value
-  const [debouncedSearch] = useDebouncedValue(search, 200, { leading: true });
-
   // Available tasks
   const options = useMemo(() => {
     // Status map
@@ -161,6 +156,12 @@ export function TaskSelector(props: TaskSelectorProps) {
       data={options}
       itemComponent={TaskSelectItem}
       searchProps={{ placeholder: 'Search tasks' }}
+      scrollAreaProps={{ mah: '15rem' }}
+
+      filter={(search, task) =>
+        task.summary.toLocaleLowerCase().indexOf(search) >= 0 ||
+        task.sid.toString().indexOf(search) >= 0
+      }
       onSelect={(task) => {
         const id = task.value;
 
