@@ -104,15 +104,19 @@ function tasksMutators(
 
             // Create new updated task list
             const copy = tasks.slice();
-            const index = copy.findIndex((x) => x.id === task_id);
-            copy[index] = _sanitize({
+            const idx = copy.findIndex((x) => x.id === task_id);
+            copy[idx] = _sanitize({
               ...results,
               assignee: task.assignee,
             });
 
             // Mutate task hook
             if (!optimistic)
-              _mutate(task_id, copy[index], { revalidate: false });
+              _mutate(
+                task_id,
+                (old: ExpandedTask | undefined) => ({ ...old, ...copy[idx] }),
+                { revalidate: false },
+              );
 
             return copy;
           },
@@ -131,7 +135,11 @@ function tasksMutators(
                 copy[idx] = _sanitize({ ...copy[idx], ...task });
 
                 // Optimistic update for single hook
-                _mutate(task_id, copy[idx], { revalidate: false });
+                _mutate(
+                  task_id,
+                  (old: ExpandedTask | undefined) => ({ ...old, ...copy[idx] }),
+                  { revalidate: false },
+                );
 
                 return copy;
               }
@@ -187,7 +195,11 @@ function tasksMutators(
 
             // Mutate task hooks
             for (const [id, x] of Object.entries(updatedTasks))
-              _mutate(id, x, { revalidate: false });
+              _mutate(
+                id,
+                (old: ExpandedTask | undefined) => ({ ...old, ...x }),
+                { revalidate: false },
+              );
 
             // Create new updated task list
             const newList = tasks.map((x) => updatedTasks[x.id] || x);
