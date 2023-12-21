@@ -25,7 +25,11 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { useCalendarContext, useDragCreate, useDraggableGridEvents } from './hooks';
+import {
+  useCalendarContext,
+  useDragCreate,
+  useDraggableGridEvents,
+} from './hooks';
 import { CalendarStyle, MomentCalendarEvent } from './types';
 
 import moment, { Moment } from 'moment';
@@ -171,6 +175,147 @@ function useDraggableMultidayWeek(props: UseDraggableMultidayWeekProps) {
 }
 
 ////////////////////////////////////////////////////////////
+export type UseDragCreateMultidayProps = {
+  /** Used to calculate grid */
+  containerRef: RefObject<HTMLDivElement>;
+  /** Size of time gutter (px) */
+  gutterSize: number;
+  /** Number of cols in grid */
+  cols: number;
+
+  /** Called when mouse let go */
+  onCreate?: (start: { x: number }, duration: number) => void;
+};
+
+////////////////////////////////////////////////////////////
+export function useDragCreateMultiday(props: UseDragCreateMultidayProps) {
+  // Starting x pos in grid coords
+  const [startX, setStartX] = useState<number | null>(null);
+  const [newEvent, setNewEvent] = useState<MomentCalendarEvent | null>(null);
+  // Dragged position
+  const [eventRect, setEventRect] = useState<{
+    x: number;
+    w: number;
+    has_prev: boolean;
+    has_next: boolean;
+  } | null>(null);
+
+  // Tracks current dragged event's grid position
+  const gridPos = useRef<{ x: number; duration: number } | null>(null);
+
+  // Called when drag starts in column
+  const onDragStart = useCallback(
+    (offsetX: number) => {
+      // Snap start x to grid
+      let gridX = 0;
+
+      const container = props.containerRef.current;
+      if (container) {
+        const unitX = (container.clientWidth - props.gutterSize) / props.cols;
+        gridX = Math.max(
+          0,
+          Math.min(
+            Math.floor((offsetX - props.gutterSize) / unitX),
+            props.cols - 1,
+          ),
+        );
+      }
+
+      setStartX(gridX);
+    },
+    [props.gutterSize],
+  );
+
+  // Called on mouse move (only when col being dragged)
+  const onMouseMove = useMemo(() => {
+    const container = props.containerRef.current;
+    if (!container || startX === null) return undefined;
+
+    const cols = props.cols || 7;
+
+    return ((e) => {
+      // Calculate position relative to scroll area
+      const rect = container.getBoundingClientRect();
+      const left = e.clientX - rect.x - props.gutterSize;
+
+      // Snap to grid
+      const unitX = (rect.width - props.gutterSize) / cols;
+      const gridX = Math.max(0, Math.min(Math.floor(left / unitX), cols - 1));
+
+      // Start end days
+      const day1 = startX;
+      const day2 = gridX;
+
+      const start = Math.min(day1, day2);
+      const end = Math.max(day1, day2);
+      const duration = end - start + 1;
+
+      if (!eventRect || gridPos.current?.duration !== duration) {
+        const startC = start;
+        const endC = end;
+
+        // List of event rects
+        const rect = {
+          x: startC,
+          w: duration,
+        };
+
+        // Set temp event
+        setNewEvent({
+          id: '__temp__',
+          channel: '',
+          title: 'New Event',
+          start: moment(),
+          end: moment(),
+          time_created: '',
+        });
+
+        // Convert rects to pixels
+        setEventRect({
+          x: rect.x * unitX + props.gutterSize,
+          w: rect.w * unitX,
+          has_prev: false,
+          has_next: false,
+        });
+
+        // Update grid pos
+        gridPos.current = { x: startC, duration };
+      }
+    }) as MouseEventHandler<HTMLDivElement>;
+  }, [eventRect, startX]);
+
+  // Called on mouse up event
+  useEffect(() => {
+    function onMouseUp() {
+      // Callback
+      if (gridPos.current) {
+        props.onCreate?.({ x: gridPos.current.x }, gridPos.current.duration);
+      }
+
+      setStartX(null);
+      setEventRect(null);
+      setNewEvent(null);
+      gridPos.current = null;
+    }
+
+    if (startX !== null) {
+      window.addEventListener('mouseup', onMouseUp);
+
+      return () => {
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+    }
+  }, [startX]);
+
+  return {
+    onDragStart,
+    onMouseMove,
+    event: newEvent,
+    rect: eventRect,
+  };
+}
+
+////////////////////////////////////////////////////////////
 export type WeekViewProps = {
   /** A date within the week that should be displayed */
   time: Moment;
@@ -200,6 +345,8 @@ export default function WeekView(props: WeekViewProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   // Multiday view
   const multidayViewRef = useRef<HTMLDivElement>(null);
+  // Used to track if multiday drag state
+  const multidayDragStateRef = useRef<'up' | 'down' | 'dragging'>('up');
 
   // The start of the week
   const start = useMemo(() => moment(props.time).startOf('week'), [props.time]);
@@ -283,6 +430,19 @@ export default function WeekView(props: WeekViewProps) {
     },
   });
 
+  // Drag create events
+  const dragCreateMultiday = useDragCreateMultiday({
+    gutterSize: props.style.timeGutter,
+    containerRef: multidayViewRef,
+    cols: 7,
+    onCreate: (startIdx, duration) => {
+      props.onNewEventRequest?.(moment(start).add(startIdx.x, 'days'), {
+        duration: 24 * duration - 1,
+        all_day: true,
+      });
+    },
+  });
+
   // Update dragged event times
   const draggedEventTimes = useMemo(() => {
     if (dragCreate.event) return dragCreate.event;
@@ -320,6 +480,10 @@ export default function WeekView(props: WeekViewProps) {
 
   const newEventObj = dragCreate.event || dragDropDay.event;
   const newEventRect = dragCreate.rect || dragDropDay.rect;
+
+  const newMultidayEventObj =
+    dragCreateMultiday.event || dragDropMultiday.event;
+  const newMultidayEventRect = dragCreateMultiday.rect || dragDropMultiday.rect;
 
   // Prefilter events that are in this week
   const events = useMemo(() => {
@@ -474,7 +638,17 @@ export default function WeekView(props: WeekViewProps) {
   // WIP : Make calendar texts unhighlightable: all event button texts, month date label texts
 
   return (
-    <Flex direction='column' h={0} w='100%' mt={8} sx={{ flexGrow: 1 }}>
+    <Flex
+      direction='column'
+      h={0}
+      w='100%'
+      mt={8}
+      sx={{ flexGrow: 1 }}
+      onMouseMove={(ev) => {
+        dragCreateMultiday.onMouseMove?.(ev);
+        dragDropMultiday.onMouseMove?.(ev);
+      }}
+    >
       {/* Day labels */}
       <Flex ml={props.style.timeGutter}>
         {range(7).map((i) => {
@@ -494,6 +668,7 @@ export default function WeekView(props: WeekViewProps) {
                 borderBottomRightRadius: isToday ? 0 : theme.radius.sm,
                 backgroundColor: isToday ? theme.colors.dark[6] : undefined,
                 transition: 'background-color 0.18s',
+                userSelect: 'none',
 
                 '&:hover': {
                   backgroundColor: theme.colors.dark[isToday ? 5 : 6],
@@ -514,7 +689,59 @@ export default function WeekView(props: WeekViewProps) {
       <Flex
         ref={multidayViewRef}
         sx={{ position: 'relative' }}
-        onMouseMove={dragDropMultiday.onMouseMove}
+        onMouseDown={
+          props.editable
+            ? (ev) => {
+                // Only LMB
+                if (ev.button !== 0) return;
+
+                // Down
+                multidayDragStateRef.current = 'down';
+              }
+            : undefined
+        }
+        onMouseUp={
+          props.editable
+            ? (ev) => {
+                // Quit if not mouse down
+                if (multidayDragStateRef.current !== 'down') return;
+
+                // Reset to up
+                multidayDragStateRef.current = 'up';
+
+                const rect = ev.currentTarget.getBoundingClientRect();
+                const unitX = (rect.width - props.style.timeGutter) / 7;
+
+                props.onNewEventRequest?.(
+                  moment(start).add(
+                    Math.floor(
+                      (ev.pageX - rect.x - props.style.timeGutter) / unitX,
+                    ),
+                    'days',
+                  ),
+                  {
+                    duration: 23,
+                    all_day: true,
+                  },
+                );
+              }
+            : undefined
+        }
+        onMouseMove={
+          props.editable
+            ? (ev) => {
+                // Quit if not mouse down
+                if (multidayDragStateRef.current !== 'down') return;
+
+                // Dragging
+                multidayDragStateRef.current = 'dragging';
+
+                const rect = ev.currentTarget.getBoundingClientRect();
+                dragCreateMultiday.onDragStart(ev.pageX - rect.x);
+              }
+            : undefined
+        }
+        draggable={false}
       >
         <Box
           sx={{
@@ -561,7 +788,7 @@ export default function WeekView(props: WeekViewProps) {
                 props.style.timeGutter
               }px) + ${props.style.timeGutter + 1}px)`,
               cursor: 'pointer',
-              opacity: dragDropMultiday.event?.id === e.id ? 0.6 : undefined,
+              opacity: newMultidayEventObj?.id === e.id ? 0.6 : undefined,
 
               padding: '0.125rem 0.4rem',
               paddingLeft: '0.75rem',
@@ -583,6 +810,7 @@ export default function WeekView(props: WeekViewProps) {
             draggable
             onDragStart={(ev) => {
               ev.preventDefault();
+              ev.stopPropagation();
 
               const rect = ev.currentTarget.getBoundingClientRect();
               const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
@@ -590,52 +818,54 @@ export default function WeekView(props: WeekViewProps) {
               // console.log('drag', offset);
               dragDropMultiday.onDragStart(e, offset);
             }}
+            onMouseDown={(ev) => ev.stopPropagation()}
           >
             {e.title}
           </EventButton>
         ))}
 
-        {dragDropMultiday.event && dragDropMultiday.rect && (
+        {newMultidayEventObj && newMultidayEventRect && (
           <Box
             sx={(theme) => ({
               position: 'absolute',
               display: 'block',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              width: dragDropMultiday.rect?.w,
+              width: newMultidayEventRect?.w,
               height: '1.625rem',
               top: 0,
-              left: dragDropMultiday.rect?.x,
+              left: newMultidayEventRect?.x,
               boxShadow: `0px 0px 16px #00000030`,
               cursor: 'grab',
+              userSelect: 'none',
 
               padding: '0.125rem 0.4rem',
               paddingLeft: '0.75rem',
-              background: dragDropMultiday.rect?.has_prev
+              background: newMultidayEventRect?.has_prev
                 ? `color-mix(in srgb, ${
-                    dragDropMultiday.event?.color || props.style.colors.event
+                    newMultidayEventObj?.color || props.style.colors.event
                   } 20%, ${theme.colors.dark[7]})`
                 : `linear-gradient(to right, ${
-                    dragDropMultiday.event?.color || props.style.colors.event
+                    newMultidayEventObj?.color || props.style.colors.event
                   } 0.25rem, color-mix(in srgb, ${
-                    dragDropMultiday.event?.color || props.style.colors.event
+                    newMultidayEventObj?.color || props.style.colors.event
                   } 20%, ${theme.colors.dark[7]}) 0)`,
               fontSize: theme.fontSizes.sm,
-              borderTopLeftRadius: dragDropMultiday.rect?.has_prev
+              borderTopLeftRadius: newMultidayEventRect?.has_prev
                 ? 0
                 : theme.radius.sm,
-              borderBottomLeftRadius: dragDropMultiday.rect?.has_prev
+              borderBottomLeftRadius: newMultidayEventRect?.has_prev
                 ? 0
                 : theme.radius.sm,
-              borderTopRightRadius: dragDropMultiday.rect?.has_next
+              borderTopRightRadius: newMultidayEventRect?.has_next
                 ? 0
                 : theme.radius.sm,
-              borderBottomRightRadius: dragDropMultiday.rect?.has_next
+              borderBottomRightRadius: newMultidayEventRect?.has_next
                 ? 0
                 : theme.radius.sm,
             })}
           >
-            {dragDropMultiday.event.title}
+            {newMultidayEventObj.title}
           </Box>
         )}
       </Flex>
@@ -666,7 +896,7 @@ export default function WeekView(props: WeekViewProps) {
                 size='xs'
                 weight={600}
                 color='dimmed'
-                sx={{ lineHeight: 1 }}
+                sx={{ lineHeight: 1, userSelect: 'none' }}
               >
                 {moment({ hours: i + 1 }).format('LT')}
               </Text>

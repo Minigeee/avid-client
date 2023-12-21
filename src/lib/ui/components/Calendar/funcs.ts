@@ -71,6 +71,7 @@ export function getAllRepeatEvents(
   mode: 'week' | 'day' = 'week',
 ) {
   if (!event.repeat) return [];
+  // console.log(event)
   assert(event.repeat.interval && event.repeat.interval >= 1);
 
   // Times

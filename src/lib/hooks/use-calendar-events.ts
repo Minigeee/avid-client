@@ -176,16 +176,17 @@ function mutators(
                   merge(
                     {},
                     copy[idx],
+                    event,
                     override
-                      ? event
-                      : {
+                      ? {
                           repeat: {
                             overrides: [
                               ...(copy[idx].repeat?.overrides || []),
                               options.override,
                             ],
                           },
-                        },
+                        }
+                      : {},
                   ),
                 );
 
