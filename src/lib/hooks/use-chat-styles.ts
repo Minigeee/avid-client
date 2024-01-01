@@ -30,7 +30,8 @@ export const useChatStyles = (options?: {
           fontFamily: theme.fontFamilyMonospace,
 
           padding: '0.2em 0.35em',
-          backgroundColor: theme.colors.dark[8],
+          background: theme.other.elements.md_code,
+          color: theme.other.elements.md_code_text,
           borderRadius: 3,
         },
 
@@ -48,7 +49,8 @@ export const useChatStyles = (options?: {
         tabSize: '4ch',
 
         padding: '0.5em 0.5em',
-        backgroundColor: theme.colors.dark[8],
+        background: theme.other.elements.md_code,
+        color: theme.other.elements.md_code_text,
         borderRadius: 4,
 
         '&:not(:last-child)': {
@@ -97,8 +99,8 @@ export const useChatStyles = (options?: {
           padding: '0.5em 0.9em',
           textAlign: 'left',
           fontWeight: 600,
-          borderBottom: `2px solid ${theme.colors.dark[4]}80`,
-          backgroundColor: `${theme.colors.dark[8]}80`,
+          borderBottom: `2px solid ${theme.other.elements.md_table_border}`,
+          background: theme.other.elements.md_table_header,
 
           '&:first-of-type': { borderTopLeftRadius: 3 },
           '&:last-of-type': { borderTopRightRadius: 3 },
@@ -106,7 +108,7 @@ export const useChatStyles = (options?: {
 
         td: {
           padding: '0.4em 0.9em',
-          borderBottom: `1px solid ${theme.colors.dark[4]}`,
+          borderBottom: `1px solid ${theme.other.elements.md_table_border}`,
         },
 
         '&:not(:last-child)': {
@@ -117,7 +119,7 @@ export const useChatStyles = (options?: {
       blockquote: {
         margin: 0,
         padding: '0.5em 0em 0.5em 2ch',
-        borderLeft: `4px solid ${theme.colors.dark[4]}`,
+        borderLeft: `4px solid ${theme.other.elements.md_table_border}`,
 
         '&:not(:last-child)': {
           marginBlockEnd: '0.8em',
@@ -126,7 +128,7 @@ export const useChatStyles = (options?: {
 
       mark: {
         padding: '0.05em 0.25em',
-        backgroundColor: theme.colors.yellow[3],
+        background: theme.colors.yellow[3],
         borderRadius: 3,
       },
 
@@ -183,8 +185,8 @@ export const useChatStyles = (options?: {
         marginBlockEnd: '0.6em',
         height: 1,
         borderWidth: 0,
-        color: theme.colors.dark[3],
-        backgroundColor: theme.colors.dark[3],
+        color: theme.other.elements.md_divider,
+        background: theme.other.elements.md_divider,
       },
 
       img: {
@@ -195,7 +197,8 @@ export const useChatStyles = (options?: {
         margin: 0,
 
         padding: '0.5em 0.5em',
-        backgroundColor: theme.colors.dark[8],
+        background: theme.other.elements.md_code,
+        color: theme.other.elements.md_code_text,
         borderRadius: 4,
       },
 
@@ -205,7 +208,8 @@ export const useChatStyles = (options?: {
         width: '100%',
 
         padding: '0em 0.6em',
-        backgroundColor: theme.colors.dark[8],
+        background: theme.other.elements.md_code,
+        color: theme.other.elements.md_code_text,
         borderRadius: 4,
 
         fontSize: 15 * scale,
@@ -222,14 +226,14 @@ export const useChatStyles = (options?: {
       },
 
       '.avid-mention-member': {
-        backgroundColor: theme.colors.gray[8],
-        color: theme.colors.dark[0],
+        background: theme.other.elements.md_ping_member,
+        color: theme.other.elements.md_ping_member_text,
         fontWeight: 600,
       },
 
       '.avid-mention-role': {
-        backgroundColor: theme.colors.gray[7],
-        color: theme.colors.dark[0],
+        background: theme.other.elements.md_ping_role,
+        color: theme.other.elements.md_ping_role_text,
         fontWeight: 600,
       },
     },

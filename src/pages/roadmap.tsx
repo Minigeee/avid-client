@@ -20,7 +20,7 @@ export default function Roadmap({ post }: BlogProps) {
           sx={(theme) => ({
             padding: '3.5rem 3.0rem',
             maxWidth: '100vw',
-            backgroundColor: theme.colors.dark[6],
+            background: theme.colors.dark[6],
             boxShadow: `0px 0px 15px #00000030`,
           })}
         >

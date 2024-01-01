@@ -147,12 +147,13 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
   ({ label, color, ...others }: TagItemProps, ref) => (
     <div ref={ref} {...others}>
       <Box
-        sx={{
+        sx={(theme) => ({
           width: 'fit-content',
           padding: '1px 11px 2px 11px',
-          backgroundColor: color,
+          background: color,
+          color: theme.colors.dark[0],
           borderRadius: 15,
-        }}
+        })}
       >
         <Text size='xs' weight={500}>
           {label}
@@ -194,11 +195,12 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
         >
           <Popover.Target>
             <UnstyledButton
-              sx={{
+              sx={(theme) => ({
                 padding: '1px 5px 2px 11px',
-                backgroundColor: tagColor || color,
+                background: tagColor || color,
+                color: theme.colors.dark[0],
                 borderRadius: 15,
-              }}
+              })}
             >
               <Group spacing={2} align='end'>
                 <Text size='xs' weight={500}>
@@ -588,7 +590,11 @@ export function CreateTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown
+            p={0}
+            miw='20rem'
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <TaskSelector
               type='subtask'
               domain={props.domain}
@@ -613,6 +619,11 @@ export function CreateTask({
               form.values.subtasks?.filter((x) => x !== subtask.id),
             );
           }}
+          sx={(theme) => ({
+            '&:hover': {
+              background: theme.other.colors.panel_hover,
+            },
+          })}
         />
       ),
       width: '4rem',
@@ -631,7 +642,11 @@ export function CreateTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown
+            p={0}
+            miw='20rem'
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <TaskSelector
               type='dependency'
               domain={props.domain}
@@ -654,6 +669,11 @@ export function CreateTask({
               form.values.dependencies?.filter((x) => x !== dependency.id),
             );
           }}
+          sx={(theme) => ({
+            '&:hover': {
+              background: theme.other.colors.panel_hover,
+            },
+          })}
         />
       ),
       width: '4rem',
@@ -861,7 +881,7 @@ export function CreateTask({
                 sx={{
                   width: 'fit-content',
                   padding: '1px 11px 2px 11px',
-                  backgroundColor: config.app.board.default_tag_color,
+                  background: config.app.board.default_tag_color,
                   borderRadius: 15,
                 }}
               >
@@ -924,7 +944,11 @@ export function CreateTask({
                         Add subtask
                       </Button>
                     </Popover.Target>
-                    <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
+                    <Popover.Dropdown
+                      p={0}
+                      miw='20rem'
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <TaskSelector
                         type='subtask'
                         domain={props.domain}
@@ -956,7 +980,11 @@ export function CreateTask({
                         Add dependency
                       </Button>
                     </Popover.Target>
-                    <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
+                    <Popover.Dropdown
+                      p={0}
+                      miw='20rem'
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <TaskSelector
                         type='dependency'
                         domain={props.domain}
@@ -1093,14 +1121,11 @@ type TaskDropdownProps = {
 function TaskDropdown({ tasks, ...props }: TaskDropdownProps) {
   return (
     <Menu>
-      <Tooltip
-        label={props.tooltip(tasks.length)}
-        position='right'
-        withArrow
-        sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
-      >
+      <Tooltip label={props.tooltip(tasks.length)} position='right' withArrow>
         <Menu.Target>
-          <ActionIcon sx={(theme) => ({ color: theme.colors.dark[2] })}>
+          <ActionIcon
+            sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
+          >
             <Text span size='sm'>
               {tasks.length}
             </Text>
@@ -1191,7 +1216,7 @@ export function EditTask({
     borderRadius: 3,
     '&:hover': editable
       ? {
-          backgroundColor: theme.colors.dark[6],
+          background: theme.other.colors.page_hover,
         }
       : undefined,
   });
@@ -1319,7 +1344,11 @@ export function EditTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown
+            p={0}
+            miw='20rem'
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <TaskSelector
               type='subtask'
               domain={props.domain}
@@ -1334,6 +1363,11 @@ export function EditTask({
       cell: (subtask: ExpandedTask) => (
         <CloseButton
           size='md'
+          sx={(theme) => ({
+            '&:hover': {
+              background: theme.other.colors.panel_hover,
+            },
+          })}
           onClick={() =>
             openConfirmModal({
               title: 'Remove Subtask',
@@ -1380,7 +1414,11 @@ export function EditTask({
               <IconPlus size={19} />
             </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown p={0} miw='20rem' onKeyDown={(e) => e.stopPropagation()}>
+          <Popover.Dropdown
+            p={0}
+            miw='20rem'
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <TaskSelector
               type='dependency'
               domain={props.domain}
@@ -1395,6 +1433,11 @@ export function EditTask({
       cell: (dependency: ExpandedTask) => (
         <CloseButton
           size='md'
+          sx={(theme) => ({
+            '&:hover': {
+              background: theme.other.colors.panel_hover,
+            },
+          })}
           onClick={() =>
             openConfirmModal({
               title: 'Remove Dependency',
@@ -1449,9 +1492,6 @@ export function EditTask({
                       openDelay={500}
                       withArrow
                       disabled={!editable}
-                      sx={(theme) => ({
-                        backgroundColor: theme.colors.dark[9],
-                      })}
                     >
                       <Title
                         order={3}
@@ -1480,7 +1520,9 @@ export function EditTask({
                         <ActionIcon
                           size='lg'
                           radius={3}
-                          sx={(theme) => ({ color: theme.colors.dark[1] })}
+                          sx={(theme) => ({
+                            color: theme.other.colors.page_dimmed,
+                          })}
                         >
                           <IconDotsVertical size={20} />
                         </ActionIcon>
@@ -1496,10 +1538,6 @@ export function EditTask({
                               dropdownProps={{
                                 p: '0rem',
                                 miw: '20rem',
-                                sx: (theme) => ({
-                                  borderColor: theme.colors.dark[4],
-                                  boxShadow: '0px 0px 16px #00000030',
-                                }),
                               }}
                             >
                               <TaskSelector
@@ -1523,10 +1561,6 @@ export function EditTask({
                               dropdownProps={{
                                 p: '0rem',
                                 miw: '20rem',
-                                sx: (theme) => ({
-                                  borderColor: theme.colors.dark[4],
-                                  boxShadow: '0px 0px 16px #00000030',
-                                }),
                               }}
                             >
                               <TaskSelector
@@ -1647,7 +1681,6 @@ export function EditTask({
                   openDelay={500}
                   withArrow
                   disabled={!editable}
-                  sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
                 >
                   <Text
                     className={classes.typography}
@@ -1789,7 +1822,7 @@ export function EditTask({
                       sx={{
                         width: 'fit-content',
                         padding: '1px 11px 2px 11px',
-                        backgroundColor: config.app.board.default_tag_color,
+                        background: config.app.board.default_tag_color,
                         borderRadius: 15,
                       }}
                     >
@@ -1870,7 +1903,7 @@ export function EditTask({
                         key={id}
                         sx={{
                           padding: '1px 11px 2px 11px',
-                          backgroundColor: tag.color,
+                          background: tag.color,
                           borderRadius: 15,
                           cursor: 'default',
                         }}
@@ -1890,7 +1923,9 @@ export function EditTask({
           span={4}
           pl={16}
           pb={16}
-          sx={(theme) => ({ borderLeft: `1px solid ${theme.colors.dark[5]}` })}
+          sx={(theme) => ({
+            borderLeft: `1px solid ${theme.other.colors.page_border}`,
+          })}
         >
           <Stack>
             <Select

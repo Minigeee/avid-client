@@ -122,7 +122,11 @@ const RoleSelectItem = forwardRef<
 >(({ label, badge, ...others }, ref) => (
   <div ref={ref} {...others}>
     <Group spacing='xs' noWrap>
-      <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+      <Box
+        h='1.5rem'
+        pt={2}
+        sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
+      >
         {badge ? <Emoji id={badge} size='1rem' /> : <IconBadgeOff size={19} />}
       </Box>
       <Text size='sm'>{label}</Text>
@@ -363,7 +367,9 @@ function PermissionsTab({
             <Box
               h='1.5rem'
               pt={2}
-              sx={(theme) => ({ color: theme.colors.dark[3] })}
+              sx={(theme) => ({
+                color: theme.other.elements.data_table_dimmed,
+              })}
             >
               {role.badge ? (
                 <Emoji id={role.badge} size='1rem' />
@@ -506,14 +512,14 @@ function PermissionsTab({
         rowStyles={[
           {
             when: (row) => row.id === selectedRoleId,
-            style: { backgroundColor: theme.colors.dark[6] },
+            style: { background: theme.other.elements.data_table_hover },
           },
         ]}
       />
 
       {selectedRole && (
         <>
-          <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+          <Divider />
 
           <Box mb={12}>
             <Group spacing='xs' mb={4}>
@@ -545,8 +551,8 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to manage group
-                settings, edit settings for existing pages within the group,
-                and manage role access and permissions.
+                settings, edit settings for existing pages within the group, and
+                manage role access and permissions.
               </>
             }
             switchProps={form.getInputProps(
@@ -666,8 +672,8 @@ function PermissionsTab({
               <Title order={4}>Voice & Video Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-              Permissions for voice & video rooms in this group. Voice &
-              video rooms will be referred to as RTC rooms.
+              Permissions for voice & video rooms in this group. Voice & video
+              rooms will be referred to as RTC rooms.
             </Text>
           </Box>
 
@@ -706,9 +712,9 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to manage other
-                participants in RTC rooms. Users with this permission are
-                able to mute, deafen, force-stop video broadcasts, move, kick,
-                or ban other participants within an RTC channel.
+                participants in RTC rooms. Users with this permission are able
+                to mute, deafen, force-stop video broadcasts, move, kick, or ban
+                other participants within an RTC channel.
               </>
             }
             switchProps={form.getInputProps(

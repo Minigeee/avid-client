@@ -26,7 +26,7 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
         sx={{
           width: 'fit-content',
           padding: '1px 11px 2px 11px',
-          backgroundColor: color,
+          background: color,
           borderRadius: 15,
         }}
       >
@@ -52,7 +52,7 @@ function TagSelectValue({
       <UnstyledButton
         sx={{
           padding: '1px 5px 2px 11px',
-          backgroundColor: color,
+          background: color,
           borderRadius: 15,
         }}
       >

@@ -114,7 +114,9 @@ function SingleChannel(props: SingleChannelProps) {
               ? '0px 0px 10px #00000033'
               : undefined,
             '&:hover': {
-              '.btn-body': { backgroundColor: theme.colors.dark[5] },
+              '.btn-body': {
+                background: theme.other.elements.channels_panel_hover,
+              },
               '.dropdown': { visibility: 'visible' },
               '.ping-indicator': { display: 'none' },
             },
@@ -133,11 +135,7 @@ function SingleChannel(props: SingleChannelProps) {
               flexShrink: 0,
               flexBasis: '0.25rem',
               background: props.selected
-                ? theme.fn.linearGradient(
-                    0,
-                    theme.colors.violet[5],
-                    theme.colors.pink[5],
-                  )
+                ? theme.other.elements.channels_panel_highlight
                 : undefined,
             })}
           />
@@ -149,12 +147,15 @@ function SingleChannel(props: SingleChannelProps) {
             p='0.25rem 0.25rem 0.25rem 0.75rem'
             sx={(theme) => ({
               flexGrow: 1,
-              backgroundColor:
+              background:
                 props.selected || snapshot.isDragging
-                  ? theme.colors.dark[5]
-                  : theme.colors.dark[6],
-              color: theme.colors.dark[seen && !props.selected ? 2 : 0],
-              transition: 'background-color 0.1s, color 0.1s',
+                  ? theme.other.elements.channels_panel_hover
+                  : undefined,
+              color:
+                seen && !props.selected
+                  ? theme.other.elements.channels_panel_dimmed
+                  : theme.other.elements.channels_panel_text,
+              transition: 'background 0.1s, color 0.1s',
             })}
           >
             <Flex gap={12} align='center'>
@@ -206,7 +207,8 @@ function SingleChannel(props: SingleChannelProps) {
                     sx={(theme) => ({
                       visibility: showMenu ? 'visible' : 'hidden',
                       '&:hover': {
-                        backgroundColor: theme.colors.dark[4],
+                        background:
+                          theme.other.elements.channels_panel_double_hover,
                       },
                     })}
                     onClick={
@@ -305,7 +307,7 @@ function SingleChannel(props: SingleChannelProps) {
                       display: showMenu ? 'none' : undefined,
                       padding: '0.15rem 0.3rem 0.25rem 0.3rem',
                       marginRight: '0.4rem',
-                      backgroundColor: theme.colors.red[5],
+                      background: theme.colors.red[5],
                       color: theme.colors.dark[0],
                       borderRadius: '1.0rem',
                     })}
@@ -317,7 +319,11 @@ function SingleChannel(props: SingleChannelProps) {
 
             {participants._exists && participants.data.length > 0 && (
               <Group spacing={4} mb={4} pl={3}>
-                <Box sx={(theme) => ({ color: theme.colors.dark[3] })}>
+                <Box
+                  sx={(theme) => ({
+                    color: theme.other.elements.channels_panel_dimmed,
+                  })}
+                >
                   <IconCornerDownRight size={20} />
                 </Box>
 
@@ -388,18 +394,16 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               width: '100%',
               padding: `0.25rem 0.25rem 0.25rem 0.5rem`,
               borderRadius: theme.radius.sm,
-              backgroundColor: snapshot.isDragging
-                ? theme.colors.dark[5]
-                : theme.colors.dark[6],
+              background: snapshot.isDragging
+                ? theme.other.elements.channels_panel_hover
+                : undefined,
               boxShadow: snapshot.isDragging
                 ? '0px 0px 10px #00000033'
                 : undefined,
-              transition: 'background-color 0.1s',
+              color: theme.other.elements.channels_panel_dimmed,
+              transition: 'background 0.1s',
               '&:hover': {
-                backgroundColor: theme.colors.dark[5],
-              },
-              '.tabler-icon': {
-                color: theme.colors.dark[1],
+                background: theme.other.elements.channels_panel_hover,
               },
             })}
             onClick={() => setOpened(!opened)}
@@ -412,7 +416,9 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                 size={13}
                 weight={600}
                 ml={4}
-                sx={(theme) => ({ color: theme.colors.dark[1] })}
+                sx={(theme) => ({
+                  color: theme.other.elements.channels_panel_text,
+                })}
               >
                 {props.group.name}
               </Text>
@@ -460,8 +466,13 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
             ) && (
               <ActionButton
                 tooltip='Add Page'
-                hoverBg={(theme) => theme.colors.dark[4]}
                 size='sm'
+                sx={(theme) => ({
+                  '&:hover': {
+                    background:
+                      theme.other.elements.channels_panel_double_hover,
+                  },
+                })}
                 onClick={(e) => {
                   e.stopPropagation();
                   openCreateChannel({
@@ -488,7 +499,10 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                       e.stopPropagation();
                     }}
                     sx={(theme) => ({
-                      '&:hover': { backgroundColor: theme.colors.dark[4] },
+                      '&:hover': {
+                        background:
+                          theme.other.elements.channels_panel_double_hover,
+                      },
                     })}
                   >
                     <IconDotsVertical size={14} />
@@ -667,7 +681,7 @@ export default function ChannelsView(props: ChannelsViewProps) {
         flexShrink: 0,
         width: '20rem',
         height: '100%',
-        backgroundColor: theme.colors.dark[6],
+        background: theme.other.elements.channels_panel,
       })}
     >
       <Group
@@ -676,17 +690,27 @@ export default function ChannelsView(props: ChannelsViewProps) {
           height: '3.0rem',
           paddingLeft: '1.0rem',
           paddingRight: '0.5rem',
-          borderBottom: `1px solid ${theme.colors.dark[4]}`,
+          borderBottom: `1px solid ${theme.other.elements.channels_panel_border}`,
         })}
       >
-        <Title order={4} sx={{ flexGrow: 1 }}>
+        <Title
+          order={4}
+          sx={(theme) => ({
+            flexGrow: 1,
+            color: theme.other.elements.channels_panel_text,
+          })}
+        >
           Groups
         </Title>
         <div style={{ flexGrow: 1 }} />
         {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
           <Tooltip label='New Group' position='left' withArrow>
             <ActionIcon
-              sx={(theme) => ({ color: theme.colors.dark[1] })}
+              sx={(theme) => ({
+                '&:hover': {
+                  background: theme.other.elements.channels_panel_hover,
+                },
+              })}
               onClick={() => openCreateChannelGroup({ domain: props.domain })}
             >
               <IconPlus size={18} />

@@ -140,7 +140,7 @@ export function SettingsModal(props: SettingsModalProps) {
           scrollAreaProps={{
             w: '30ch',
             pt: 10,
-            sx: (theme) => ({ backgroundColor: theme.colors.dark[6] }),
+            sx: (theme) => ({ background: theme.other.elements.settings_tabs }),
           }}
         />
 
@@ -149,7 +149,8 @@ export function SettingsModal(props: SettingsModalProps) {
           direction='column'
           sx={(theme) => ({
             flexGrow: 1,
-            backgroundColor: theme.colors.dark[7],
+            background: theme.other.elements.settings,
+            color: theme.other.elements.settings_text,
           })}
         >
           <Flex
@@ -157,7 +158,7 @@ export function SettingsModal(props: SettingsModalProps) {
             mb={4}
             sx={(theme) => ({
               padding: '1.0rem 1.5rem',
-              borderBottom: `1px solid ${theme.colors.dark[5]}`,
+              borderBottom: `1px solid ${theme.other.elements.settings_border}`,
             })}
           >
             <Title order={2}>{tab?.label}</Title>
@@ -165,6 +166,12 @@ export function SettingsModal(props: SettingsModalProps) {
             <CloseButton
               size='lg'
               iconSize={24}
+              sx={(theme) => ({
+                color: theme.other.elements.settings_dimmed,
+                '&:hover': {
+                  background: theme.other.elements.settings_hover,
+                },
+              })}
               onClick={() => {
                 if (hasUnsavedChanges) setHighlightUnsaved(true);
                 else props.close();
@@ -260,13 +267,17 @@ export function UnsavedChanges<T>({ form, ...props }: UnsavedChangesProps<T>) {
             w='30rem'
             p='0.5rem 0.5rem 0.5rem 0.8rem'
             sx={(theme) => ({
-              backgroundColor: theme.colors.dark[8],
-              boxShadow: '0px 0px 12px #00000030',
+              background: theme.other.elements.settings_panel,
+              color: theme.other.elements.settings_panel_text,
+              boxShadow: theme.shadows.sm,
               borderRadius: theme.radius.sm,
               border: `1px solid ${
                 context.highlightUnsaved ? theme.colors.red[5] : 'transparent'
               }`,
-              '.tabler-icon': { color: theme.colors.dark[4], marginBottom: 1 },
+              '.tabler-icon': {
+                color: theme.other.elements.settings_panel_dimmed,
+                marginBottom: 1,
+              },
             })}
             style={styles}
           >

@@ -76,7 +76,7 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
           }
 
           return {
-            backgroundColor: theme.colors.dark[4],
+            background: theme.other.colors.document,
             color: priority.color,
             ...sx,
           };
@@ -92,13 +92,12 @@ export default function TaskPriorityIcon(props: TaskPriorityIconProps) {
         position={props.tooltipPos || 'left'}
         withArrow
         withinPortal
-        sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
       >
         <ThemeIcon
           size={props.outerSize || 21}
           radius='xl'
           sx={(theme) => ({
-            backgroundColor: theme.colors.dark[4],
+            background: theme.other.colors.document,
             color: priority.color,
             cursor: 'default',
           })}

@@ -666,12 +666,16 @@ export default function WeekView(props: WeekViewProps) {
                 borderTopLeftRadius: theme.radius.sm,
                 borderBottomLeftRadius: isToday ? 0 : theme.radius.sm,
                 borderBottomRightRadius: isToday ? 0 : theme.radius.sm,
-                backgroundColor: isToday ? theme.colors.dark[6] : undefined,
-                transition: 'background-color 0.18s',
+                background: isToday
+                  ? theme.other.elements.calendar_today
+                  : undefined,
+                transition: 'background 0.18s',
                 userSelect: 'none',
 
                 '&:hover': {
-                  backgroundColor: theme.colors.dark[isToday ? 5 : 6],
+                  background: isToday
+                    ? theme.other.elements.calendar_today_hover
+                    : theme.other.elements.calendar_hover,
                 },
               })}
               onClick={() => props.setDay(moment(start).add(i, 'day'))}
@@ -756,15 +760,19 @@ export default function WeekView(props: WeekViewProps) {
             key={i}
             sx={{
               flex: '1 1 0px',
-              backgroundColor: moment(start)
-                .add(i, 'day')
-                .isSame(moment(), 'date')
-                ? theme.colors.dark[6]
+              background: moment(start).add(i, 'day').isSame(moment(), 'date')
+                ? theme.other.elements.calendar_today
                 : undefined,
               borderLeft: `1px solid ${props.style.colors.cellBorder}`,
               borderBottom: `1px solid ${props.style.colors.cellBorder}`,
               minHeight: '1.25rem',
-              height: `calc(${(numAllDayRows > 0 ? numAllDayRows : newMultidayEventObj ? 1 : 0) * 1.75}rem + 1px)`,
+              height: `calc(${
+                (numAllDayRows > 0
+                  ? numAllDayRows
+                  : newMultidayEventObj
+                    ? 1
+                    : 0) * 1.75
+              }rem + 1px)`,
             }}
           />
         ))}
@@ -795,12 +803,13 @@ export default function WeekView(props: WeekViewProps) {
               background: e.has_prev
                 ? `color-mix(in srgb, ${
                     e.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]})`
+                  } 20%, ${theme.other.elements.calendar_block_event})`
                 : `linear-gradient(to right, ${
                     e.color || props.style.colors.event
                   } 0.25rem, color-mix(in srgb, ${
                     e.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]}) 0)`,
+                  } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+              color: theme.other.elements.calendar_block_event_text,
               fontSize: theme.fontSizes.sm,
               borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
               borderBottomLeftRadius: e.has_prev ? 0 : theme.radius.sm,
@@ -835,7 +844,7 @@ export default function WeekView(props: WeekViewProps) {
               height: '1.625rem',
               top: 0,
               left: newMultidayEventRect?.x,
-              boxShadow: `0px 0px 16px #00000030`,
+              boxShadow: theme.other.elements.calendar_block_event_shadow,
               cursor: 'grab',
               userSelect: 'none',
 
@@ -844,12 +853,13 @@ export default function WeekView(props: WeekViewProps) {
               background: newMultidayEventRect?.has_prev
                 ? `color-mix(in srgb, ${
                     newMultidayEventObj?.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]})`
+                  } 20%, ${theme.other.elements.calendar_block_event})`
                 : `linear-gradient(to right, ${
                     newMultidayEventObj?.color || props.style.colors.event
                   } 0.25rem, color-mix(in srgb, ${
                     newMultidayEventObj?.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]}) 0)`,
+                  } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+              color: theme.other.elements.calendar_block_event_text,
               fontSize: theme.fontSizes.sm,
               borderTopLeftRadius: newMultidayEventRect?.has_prev
                 ? 0
@@ -933,7 +943,7 @@ export default function WeekView(props: WeekViewProps) {
                   height: newEventRect.h,
                   top: newEventRect.y,
                   left: newEventRect.x,
-                  boxShadow: `0px 0px 16px #00000030`,
+                  boxShadow: theme.other.elements.calendar_block_event_shadow,
                   cursor: 'grab',
                   userSelect: 'none',
 
@@ -945,7 +955,8 @@ export default function WeekView(props: WeekViewProps) {
                     newEventObj.color || theme.colors.gray[6]
                   } 0.25rem, color-mix(in srgb, ${
                     newEventObj.color || theme.colors.gray[6]
-                  } 20%, ${theme.colors.dark[7]}) 0)`,
+                  } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+                  color: theme.other.elements.calendar_block_event_text,
                   fontSize: theme.fontSizes.sm,
                   borderRadius: theme.radius.sm,
                 };

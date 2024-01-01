@@ -88,11 +88,7 @@ const TypeSelectItem = forwardRef<HTMLDivElement, TypeSelectItemProps>(
             {description}
           </Text>
           {disabled && (
-            <Text
-              size='xs'
-              mt={6}
-              sx={(theme) => ({ color: theme.colors.dark[0] })}
-            >
+            <Text size='xs' mt={6}>
               Please enable the <b>{group}</b> extension to use this channel
               type
             </Text>

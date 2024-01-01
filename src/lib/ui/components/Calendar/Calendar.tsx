@@ -87,8 +87,8 @@ export default function Calendar(props: CalendarProps) {
       merge({}, props.styles, {
         colors: {
           event: theme.colors.gray[6],
-          cellBorder: theme.colors.dark[5],
-          timeIndicator: theme.colors.indigo[4],
+          cellBorder: theme.other.elements.calendar_border,
+          timeIndicator: theme.other.elements.calendar_time_indicator,
         },
         timeGutter: 60,
         monthHeaderHeight: 32,
@@ -451,7 +451,6 @@ export default function Calendar(props: CalendarProps) {
               <ActionButton
                 tooltip='Refresh'
                 tooltipProps={{ position: 'right' }}
-                hoverBg={(theme) => theme.colors.dark[6]}
                 ml={2}
                 onClick={props.onRefresh}
               >
@@ -469,8 +468,16 @@ export default function Calendar(props: CalendarProps) {
               size='xs'
               variant='default'
               sx={(theme) => ({
-                backgroundColor:
-                  view === 'month' ? theme.colors.dark[5] : undefined,
+                background:
+                  view === 'month'
+                    ? theme.other.elements.calendar_active
+                    : undefined,
+                '&:hover': {
+                  background:
+                    view === 'month'
+                      ? theme.other.elements.calendar_active
+                      : theme.other.elements.calendar_hover,
+                },
               })}
               onClick={() => setView('month')}
             >
@@ -480,8 +487,16 @@ export default function Calendar(props: CalendarProps) {
               size='xs'
               variant='default'
               sx={(theme) => ({
-                backgroundColor:
-                  view === 'week' ? theme.colors.dark[5] : undefined,
+                background:
+                  view === 'week'
+                    ? theme.other.elements.calendar_active
+                    : undefined,
+                '&:hover': {
+                  background:
+                    view === 'week'
+                      ? theme.other.elements.calendar_active
+                      : theme.other.elements.calendar_hover,
+                },
               })}
               onClick={() => setView('week')}
             >
@@ -491,8 +506,16 @@ export default function Calendar(props: CalendarProps) {
               size='xs'
               variant='default'
               sx={(theme) => ({
-                backgroundColor:
-                  view === 'day' ? theme.colors.dark[5] : undefined,
+                background:
+                  view === 'day'
+                    ? theme.other.elements.calendar_active
+                    : undefined,
+                '&:hover': {
+                  background:
+                    view === 'day'
+                      ? theme.other.elements.calendar_active
+                      : theme.other.elements.calendar_hover,
+                },
               })}
               onClick={() => setView('day')}
             >

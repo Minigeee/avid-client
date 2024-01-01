@@ -117,9 +117,9 @@ const EmojiSuggestionList = forwardRef(
         mah={200}
         sx={(theme) => ({
           maxWidth: '100%',
-          backgroundColor: theme.colors.dark[5],
-          border: `1px solid ${theme.colors.dark[6]}`,
-          boxShadow: '0px 0px 16px #00000033',
+          background: theme.other.colors.page,
+          border: `1px solid ${theme.other.colors.page_border}`,
+          boxShadow: theme.shadows.sm,
         })}
       >
         <Stack spacing={0} p={4}>
@@ -130,11 +130,13 @@ const EmojiSuggestionList = forwardRef(
                   key={emoji.id}
                   ref={i === 0 ? itemRef : undefined}
                   sx={(theme) => ({
-                    backgroundColor:
-                      theme.colors.dark[selectedIndex === i ? 4 : 5],
+                    background:
+                      selectedIndex === i
+                        ? theme.other.colors.page_hover
+                        : undefined,
                     borderRadius: theme.radius.sm,
                     '&:hover': {
-                      backgroundColor: theme.colors.dark[4],
+                      background: theme.other.colors.page_hover,
                     },
                   })}
                   onClick={() => selectItem(i)}

@@ -179,7 +179,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
                   width: '100%',
                   borderRadius: theme.radius.sm,
                   '&:hover': {
-                    backgroundColor: theme.colors.dark[6],
+                    background: theme.other.colors.page_hover,
                   },
                 })}
               >
@@ -203,7 +203,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
                     weight={search.length > 0 ? 400 : 600}
                     sx={(theme) => ({
                       flexGrow: 1,
-                      color: theme.colors.gray[4],
+                      color: theme.other.elements.member_name,
                     })}
                     dangerouslySetInnerHTML={{ __html: alias }}
                   />
@@ -271,7 +271,7 @@ export default function SidePanelView(props: SidePanelViewProps) {
           height: '2.9rem',
           paddingTop: '0.2rem',
           paddingLeft: '0.3rem',
-          borderBottom: `1px solid ${theme.colors.dark[6]}`,
+          borderBottom: `1px solid ${theme.other.colors.page_border}`,
         })}
       >
         <Tabs
@@ -281,17 +281,18 @@ export default function SidePanelView(props: SidePanelViewProps) {
           color='dark'
           styles={(theme) => ({
             tab: {
-              color: theme.colors.dark[1],
+              color: theme.other.colors.page_text,
               fontWeight: 600,
-              transition: 'background-color 0.1s',
+              transition: 'background 0.1s',
 
               '&:hover': {
-                backgroundColor: theme.colors.dark[6],
+                background: theme.other.colors.page_hover,
               },
               '&[data-active]': {
-                backgroundColor: theme.colors.dark[6],
+                background: theme.other.colors.page_hover,
+                color: theme.other.colors.page_text,
                 '&:hover': {
-                  backgroundColor: theme.colors.dark[6],
+                  background: theme.other.colors.page_hover,
                 },
               },
             },
@@ -343,8 +344,8 @@ export default function SidePanelView(props: SidePanelViewProps) {
 
           <Divider
             sx={(theme) => ({
-              color: theme.colors.dark[5],
-              borderColor: theme.colors.dark[5],
+              color: theme.other.colors.page_border,
+              borderColor: theme.other.colors.page_border,
             })}
           />
 

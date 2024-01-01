@@ -51,7 +51,12 @@ export function hasRepeatEvent(day: Moment, event: CalendarEvent) {
       const start = moment(day).subtract(startDayBefore ? 1 : 0, 'days');
 
       // Return true if not overridden
-      return !event.repeat.overrides || event.repeat.overrides.findIndex(x => moment(x).isSame(start, 'day')) < 0;
+      return (
+        !event.repeat.overrides ||
+        event.repeat.overrides.findIndex((x) =>
+          moment(x).isSame(start, 'day'),
+        ) < 0
+      );
     }
   }
 
@@ -122,7 +127,7 @@ export function getAllRepeatEvents(
         ) >= 0)
     )
       return;
-      
+
     events.push({
       ...event,
       start: moment(time),

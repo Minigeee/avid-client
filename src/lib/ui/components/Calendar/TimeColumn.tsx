@@ -258,8 +258,8 @@ function TimeColumnImpl(props: TimeColumnProps) {
           w='100%'
           h={slotHeight}
           sx={(theme) => ({
-            backgroundColor: props.day.isSame(now, 'date')
-              ? theme.colors.dark[6]
+            background: props.day.isSame(now, 'date')
+              ? theme.other.elements.calendar_today
               : undefined,
             borderBottom: `1px solid ${props.style.colors.cellBorder}`,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
@@ -282,7 +282,6 @@ function TimeColumnImpl(props: TimeColumnProps) {
             })`,
             top: `calc(${e.top} * ${slotHeight})`,
             left: e.left * 95 + '%',
-            boxShadow: `0px 0px 8px #00000030`,
             opacity: props.draggedId === e.id ? 0.6 : undefined,
             cursor: 'pointer',
 
@@ -294,7 +293,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
               e.color || theme.colors.gray[6]
             } 0.25rem, color-mix(in srgb, ${
               e.color || theme.colors.gray[6]
-            } 20%, ${theme.colors.dark[7]}) 0)`,
+            } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
             fontSize: theme.fontSizes.sm,
             borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
             borderTopRightRadius: e.has_prev ? 0 : theme.radius.sm,
@@ -329,17 +328,24 @@ function TimeColumnImpl(props: TimeColumnProps) {
               : undefined
           }
         >
-          <Text color='dimmed' weight={600} size={11}>
+          <Text
+            weight={600}
+            size={11}
+            sx={(theme) => ({
+              color: theme.other.elements.calendar_block_event_dimmed,
+            })}
+          >
             {e.start.format('LT')} - {e.end.format('LT')}
           </Text>
           <Text
             weight={600}
             maw='100%'
-            sx={{
+            sx={(theme) => ({
               display: 'block',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-            }}
+              color: theme.other.elements.calendar_block_event_text,
+            })}
           >
             {e.title}
           </Text>
@@ -353,7 +359,7 @@ function TimeColumnImpl(props: TimeColumnProps) {
             width: '100%',
             height: '1px',
             top: `calc(${hours} * ${slotHeight})`,
-            backgroundColor: props.style.colors.timeIndicator,
+            background: props.style.colors.timeIndicator,
           })}
         />
       )}

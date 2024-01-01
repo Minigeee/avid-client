@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 
-import { ActionIcon, Box, Center, Tooltip } from '@mantine/core';
+import {
+  ActionIcon,
+  ActionIconProps,
+  Box,
+  Center,
+  Tooltip,
+} from '@mantine/core';
 import {
   IconMicrophone,
   IconMicrophoneOff,
@@ -22,17 +28,19 @@ export type ProducerIconProps = {
   /** Rtc state (used for mutations) */
   rtc: RtcContextState;
   /** The participant to create icons for */
-  participant: RtcParticipant;
+  participant: RtcParticipant | undefined;
   /** The type of the producer */
   type: MediaType;
   /** Indicates if the user can manage the participant */
   canManage: boolean;
+  /** Action icon props */
+  iconProps?: ActionIconProps;
 };
 
 ////////////////////////////////////////////////////////////
 export default function ProducerIcon(props: ProducerIconProps) {
-  const locked = props.participant.locked[props.type];
-  const producer = props.participant[props.type] as RtcConsumer;
+  const locked = props.participant?.locked[props.type];
+  const producer = props.participant?.[props.type] as RtcConsumer;
 
   // Icon
   const icon = useMemo(() => {
@@ -65,7 +73,9 @@ export default function ProducerIcon(props: ProducerIconProps) {
       return (
         <Tooltip label={tooltip}>
           <ActionIcon
+            {...props.iconProps}
             onClick={() => {
+              if (!props.participant) return;
               if (locked)
                 props.rtc._mutators.unlock(props.participant.id, props.type);
               else props.rtc._mutators.lock(props.participant.id, props.type);

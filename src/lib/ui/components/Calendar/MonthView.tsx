@@ -710,15 +710,17 @@ function WeekRow(props: WeekRowProps) {
             key={day_i}
             sx={(theme) => ({
               flex: '1 1 0px',
-              backgroundColor: isToday ? theme.colors.dark[6] : undefined,
+              background: isToday
+                ? theme.other.elements.calendar_today
+                : undefined,
               borderLeft: `1px solid ${props.style.colors.cellBorder}`,
               borderBottom: `1px solid ${props.style.colors.cellBorder}`,
-              '&:first-child': props.lastRow
+              '&:nth-child(2)': props.lastRow
                 ? {
                     borderBottomLeftRadius: theme.radius.md,
                   }
                 : undefined,
-              '&:nth-child(7)': {
+              '&:nth-child(8)': {
                 borderRight: `1px solid ${props.style.colors.cellBorder}`,
                 borderBottomRightRadius: props.lastRow
                   ? theme.radius.md
@@ -730,8 +732,15 @@ function WeekRow(props: WeekRowProps) {
               <ActionIcon
                 size='md'
                 sx={(theme) => ({
-                  color: inRange ? undefined : theme.colors.dark[3],
+                  color: inRange
+                    ? theme.other.elements.calendar_text
+                    : theme.other.elements.calendar_dimmed,
                   userSelect: 'none',
+                  '&:hover': {
+                    background: isToday
+                      ? theme.other.elements.calendar_active
+                      : theme.other.elements.calendar_hover,
+                  },
                 })}
                 onClick={() => props.setDay(date)}
               >
@@ -754,7 +763,7 @@ function WeekRow(props: WeekRowProps) {
                   sx={(theme) => ({
                     padding: '0.0625rem 0.25rem',
                     borderRadius: theme.radius.sm,
-                    transition: 'background-color 0.18s',
+                    transition: 'background 0.18s',
                     opacity:
                       props.draggedId === e.id
                         ? 0.6
@@ -763,7 +772,9 @@ function WeekRow(props: WeekRowProps) {
                           : 0.8,
 
                     '&:hover': {
-                      backgroundColor: theme.colors.dark[isToday ? 5 : 6],
+                      background: isToday
+                        ? theme.other.elements.calendar_active
+                        : theme.other.elements.calendar_hover,
                     },
                   })}
                   draggable={props.editable}
@@ -839,12 +850,13 @@ function WeekRow(props: WeekRowProps) {
             background: e.has_prev
               ? `color-mix(in srgb, ${
                   e.color || props.style.colors.event
-                } 20%, ${theme.colors.dark[7]})`
+                } 20%, ${theme.other.elements.calendar_block_event})`
               : `linear-gradient(to right, ${
                   e.color || props.style.colors.event
                 } 0.25rem, color-mix(in srgb, ${
                   e.color || props.style.colors.event
-                } 20%, ${theme.colors.dark[7]}) 0)`,
+                } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+            color: theme.other.elements.calendar_block_event_text,
             fontSize: theme.fontSizes.sm,
             borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
             borderBottomLeftRadius: e.has_prev ? 0 : theme.radius.sm,
@@ -1025,7 +1037,8 @@ export default function MonthView(props: MonthViewProps) {
             pt={3}
             sx={(theme) => ({
               flex: '1 1 0px',
-              backgroundColor: theme.colors.dark[8],
+              background: theme.other.elements.calendar_month_header,
+              color: theme.other.elements.calendar_month_header_text,
               paddingBottom: '0.125rem',
               borderLeft: `1px solid ${props.style.colors.cellBorder}`,
               borderTop: `1px solid ${props.style.colors.cellBorder}`,
@@ -1052,7 +1065,7 @@ export default function MonthView(props: MonthViewProps) {
           editable={props.editable}
           style={props.style}
           setDay={props.setDay}
-          lastRow={week_i === 4}
+          lastRow={week_i === numWeeks - 1}
           draggedId={dragDropDay.event?.id || dragDropMulti.event?.id}
           onDragStart={(ev, position, offset, multiday) => {
             if (!multiday) dragDropDay.onDragStart(ev, offset);
@@ -1083,7 +1096,7 @@ export default function MonthView(props: MonthViewProps) {
               height: '1.625rem',
               top: `calc(${rect.y}px + 2rem)`,
               left: rect.x,
-              boxShadow: `0px 0px 16px #00000030`,
+              boxShadow: theme.other.elements.calendar_block_event_shadow,
               cursor: 'grab',
               userSelect: 'none',
 
@@ -1092,12 +1105,13 @@ export default function MonthView(props: MonthViewProps) {
               background: rect.has_prev
                 ? `color-mix(in srgb, ${
                     newEventObj.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]})`
+                  } 20%, ${theme.other.elements.calendar_block_event})`
                 : `linear-gradient(to right, ${
                     newEventObj.color || props.style.colors.event
                   } 0.25rem, color-mix(in srgb, ${
                     newEventObj.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]}) 0)`,
+                  } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+              color: theme.other.elements.calendar_block_event_text,
               fontSize: theme.fontSizes.sm,
               borderTopLeftRadius: rect.has_prev ? 0 : theme.radius.sm,
               borderBottomLeftRadius: rect.has_prev ? 0 : theme.radius.sm,
@@ -1120,11 +1134,11 @@ export default function MonthView(props: MonthViewProps) {
               width: dragDropDay.rect.w,
               top: `calc(${dragDropDay.rect.y}px + 2rem)`,
               left: dragDropDay.rect.x,
-              boxShadow: `0px 0px 16px #00000030`,
+              boxShadow: theme.other.elements.calendar_block_event_shadow,
               cursor: 'grab',
 
               padding: '0.0625rem 0.25rem',
-              background: theme.colors.dark[6],
+              background: theme.other.elements.calendar_hover,
               borderRadius: theme.radius.sm,
             };
           }}

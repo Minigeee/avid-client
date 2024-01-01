@@ -10,6 +10,7 @@ import config from '@/config';
 import SessionProvider from '@/lib/contexts/session';
 import { swrHandler } from '@/lib/utility/error-handler';
 import { DatesProvider } from '@mantine/dates';
+import { useColorScheme } from '@mantine/hooks';
 
 export default function App(props: AppProps) {
   const { Component, pageProps } = props;
@@ -25,7 +26,6 @@ export default function App(props: AppProps) {
           withGlobalStyles
           withNormalizeCSS
           theme={{
-            colorScheme: 'dark',
             colors: {
               dark: [
                 '#E9ECF0',
@@ -55,88 +55,6 @@ export default function App(props: AppProps) {
             primaryColor: 'indigo',
             primaryShade: 5,
             defaultGradient: { from: 'violet', to: 'pink' },
-
-            components: {
-              DatePickerInput: {
-                styles: (theme) => ({
-                  day: {
-                    '&[data-today="true"]:not([data-selected="true"])': {
-                      backgroundColor: theme.colors.dark[4],
-                      '&:hover': { backgroundColor: theme.colors.dark[3] },
-                    },
-                    '&[data-weekend="true"]': {
-                      color: theme.colors.dark[2],
-                      fontWeight: 700,
-                    },
-                    '&[data-weekend="true"][data-selected="true"]': {
-                      color: theme.colors.dark[0],
-                    },
-                  },
-                }),
-              },
-
-              Input: {
-                styles: (theme) => ({
-                  wrapper: {
-                    marginTop: 5,
-                  },
-                }),
-              },
-
-              InputWrapper: {
-                styles: (theme) => ({
-                  description: {
-                    marginTop: 1,
-                    marginBottom: 10,
-                  },
-                }),
-              },
-
-              MultiSelect: {
-                styles: (theme) => ({
-                  dropdown: {
-                    boxShadow: '0px 2px 10px #00000022',
-                  },
-                  item: {
-                    '&[data-hovered]': {
-                      background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
-                    },
-                  },
-                }),
-              },
-
-              Select: {
-                styles: (theme) => ({
-                  dropdown: {
-                    boxShadow: '0px 2px 10px #00000022',
-                  },
-                  item: {
-                    whiteSpace: 'normal',
-                    '&[data-hovered]': {
-                      background: `linear-gradient(to right, ${theme.colors.dark[3]} 4px, ${theme.colors.dark[5]} 0)`,
-                    },
-                    '&[data-selected]': {
-                      background: `linear-gradient(to right, ${theme.colors.indigo[5]} 4px, ${theme.colors.dark[4]} 0)`,
-                    },
-                  },
-                }),
-              },
-
-              Slider: {
-                styles: (theme) => ({
-                  trackContainer: { cursor: 'default' },
-                }),
-              },
-
-              Tooltip: {
-                styles: (theme) => ({
-                  tooltip: {
-                    backgroundColor: theme.colors.dark[9],
-                    color: theme.colors.dark[0],
-                  },
-                }),
-              },
-            },
           }}
         >
           <Notifications position='top-right' />

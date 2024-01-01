@@ -84,7 +84,10 @@ export default function CalendarView(props: CalendarViewProps) {
       if (!events._exists) return;
 
       // Update event
-      events._mutators.updateEvent(event_id, event, { optimistic: true, override });
+      events._mutators.updateEvent(event_id, event, {
+        optimistic: true,
+        override,
+      });
     },
     [events],
   );

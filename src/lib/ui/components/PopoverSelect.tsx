@@ -58,12 +58,16 @@ export type PopoverSelectProps<T> = {
   filter?: (search: string, value: T) => boolean;
 
   /** Function that gets called on item select */
-  onSelect?: (item: T) => boolean | undefined | void | Promise<boolean | undefined | void>;
+  onSelect?: (
+    item: T,
+  ) => boolean | undefined | void | Promise<boolean | undefined | void>;
 };
 
 ////////////////////////////////////////////////////////////
 export function PopoverSelectDropdown<T>(
-  props: Omit<PopoverSelectProps<T>, 'children'> & { setOpened?: (value: boolean) => void },
+  props: Omit<PopoverSelectProps<T>, 'children'> & {
+    setOpened?: (value: boolean) => void;
+  },
 ) {
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -73,7 +77,9 @@ export function PopoverSelectDropdown<T>(
 
     // FIlter function
     const lc = search.toLocaleLowerCase();
-    const filter = props.filter ? ((x: T) => props.filter?.(lc, x)) : ((x: any) => (x.label.toLocaleLowerCase().indexOf(lc) >= 0));
+    const filter = props.filter
+      ? (x: T) => props.filter?.(lc, x)
+      : (x: any) => x.label.toLocaleLowerCase().indexOf(lc) >= 0;
 
     return props.data.filter(filter);
   }, [search, props.data]);
@@ -96,7 +102,9 @@ export function PopoverSelectDropdown<T>(
         autoFocus
       />
 
-      <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+      <Divider
+        sx={(theme) => ({ borderColor: theme.other.colors.page_border })}
+      />
 
       <ScrollArea.Autosize mah='30rem' p='0.5rem' {...props.scrollAreaProps}>
         <Stack spacing={0}>
@@ -110,7 +118,7 @@ export function PopoverSelectDropdown<T>(
                 cursor: 'pointer',
 
                 '&:hover': {
-                  backgroundColor: theme.colors.dark[5],
+                  background: theme.other.colors.page_hover,
                 },
               })}
               onClick={async () => {
@@ -138,7 +146,6 @@ export function PopoverSelectDropdown<T>(
     </>
   );
 }
-
 
 ////////////////////////////////////////////////////////////
 export default function PopoverSelect<T>(props: PopoverSelectProps<T>) {

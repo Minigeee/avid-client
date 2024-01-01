@@ -157,7 +157,6 @@ export function TaskSelector(props: TaskSelectorProps) {
       itemComponent={TaskSelectItem}
       searchProps={{ placeholder: 'Search tasks' }}
       scrollAreaProps={{ mah: '15rem' }}
-
       filter={(search, task) =>
         task.summary.toLocaleLowerCase().indexOf(search) >= 0 ||
         task.sid.toString().indexOf(search) >= 0

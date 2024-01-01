@@ -46,9 +46,6 @@ export default function ProfileAvatar({
     <Avatar
       size={props.size}
       radius={props.size}
-      sx={(theme) => ({
-        backgroundColor: props.color || '#333333',
-      })}
       onClick={() => props.onClick?.()}
     >
       {content}

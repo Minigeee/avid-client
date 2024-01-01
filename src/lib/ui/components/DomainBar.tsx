@@ -90,12 +90,12 @@ function DomainAvatar({ domain, icon, active, ...props }: DomainAvatarProps) {
           sx={(theme) => ({
             cursor: 'pointer',
             margin: '0.25rem 0.4rem',
-            backgroundColor: theme.colors.dark[active ? 4 : 5],
+            background: theme.colors.dark[active ? 4 : 5],
             borderRadius: active ? 0.6 * AVATAR_RADIUS : AVATAR_RADIUS,
-            transition: 'background-color 0.1s, border-radius 0.1s',
+            transition: 'background 0.1s, border-radius 0.1s',
             '&:hover': {
               borderRadius: 0.6 * AVATAR_RADIUS,
-              backgroundColor: theme.colors.dark[4],
+              background: theme.colors.dark[4],
             },
             '&:active': {
               transform: 'translateY(1px)',
@@ -179,10 +179,10 @@ export default function DomainBar() {
             cursor: 'pointer',
             margin: '0.25rem 0.4rem 0.25rem calc(0.4rem + 4px)',
             borderRadius: AVATAR_RADIUS,
-            transition: 'background-color 0.1s, border-radius 0.1s',
+            transition: 'background 0.1s, border-radius 0.1s',
             '&:hover': {
               borderRadius: 0.6 * AVATAR_RADIUS,
-              backgroundColor: theme.colors.dark[6],
+              background: theme.colors.dark[6],
             },
             '&:active': {
               transform: 'translateY(1px)',
@@ -217,10 +217,10 @@ export default function DomainBar() {
             cursor: 'pointer',
             margin: '0.25rem 0.4rem 0.25rem calc(0.4rem + 4px)',
             borderRadius: AVATAR_RADIUS,
-            transition: 'background-color 0.1s, border-radius 0.1s',
+            transition: 'background 0.1s, border-radius 0.1s',
             '&:hover': {
               borderRadius: 0.6 * AVATAR_RADIUS,
-              backgroundColor: theme.colors.dark[6],
+              background: theme.colors.dark[6],
             },
             '&:active': {
               transform: 'translateY(1px)',

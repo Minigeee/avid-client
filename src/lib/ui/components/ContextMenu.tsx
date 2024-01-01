@@ -99,28 +99,6 @@ export function ContextMenu(props: ContextMenuProps) {
             onChange={(opened) => {
               setState({ ...state, opened });
             }}
-            styles={(theme, params, context) => {
-              // Get passed styles
-              let styles: MenuProps['styles'] = {};
-              if (props.styles) {
-                if (typeof props.styles === 'function')
-                  styles = props.styles(theme, params, context);
-                else styles = props.styles;
-              }
-
-              return merge(
-                {
-                  dropdown: {
-                    borderColor: theme.colors.dark[5],
-                    boxShadow: `0px 0px 12px #00000020`,
-                  },
-                  divider: {
-                    borderColor: theme.colors.dark[5],
-                  },
-                } as MenuProps['styles'],
-                styles,
-              );
-            }}
           >
             <Menu.Target>
               <div
@@ -131,7 +109,25 @@ export function ContextMenu(props: ContextMenuProps) {
                 }}
               />
             </Menu.Target>
-            <Menu.Dropdown {...props.dropdownProps}>{dropdown}</Menu.Dropdown>
+            <Menu.Dropdown
+              {...props.dropdownProps}
+              sx={(theme) => {
+                // Get passed in sx
+                let sx = {};
+                if (props.dropdownProps?.sx) {
+                  if (typeof props.dropdownProps.sx === 'function')
+                    sx = props.dropdownProps.sx(theme);
+                  else sx = props.dropdownProps.sx;
+                }
+
+                return {
+                  boxShadow: theme.other.elements.context_menu_shadow,
+                  ...sx,
+                };
+              }}
+            >
+              {dropdown}
+            </Menu.Dropdown>
           </Menu>
         </SubmenuContext.Provider>
       </Portal>
@@ -274,7 +270,7 @@ export function Submenu(props: SubmenuProps) {
           return merge(
             {
               dropdown: {
-                borderColor: theme.colors.dark[5],
+                borderColor: theme.other.colors.page_border,
               },
             } as PopoverProps['styles'],
             styles,
@@ -292,7 +288,7 @@ export function Submenu(props: SubmenuProps) {
               paddingBottom: '0.5rem',
 
               '.tabler-icon-chevron-right': {
-                color: theme.colors.dark[2],
+                color: theme.other.colors.page_dimmed,
               },
             })}
             onMouseEnter={() => openTimeout.start()}

@@ -50,7 +50,6 @@ export default function DomainAvatar(props: DomainAvatarProps) {
         }
 
         return {
-          backgroundColor: props.color || '#333333',
           borderWidth: 0,
           ...sx,
         };

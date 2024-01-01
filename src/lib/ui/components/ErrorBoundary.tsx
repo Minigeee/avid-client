@@ -4,7 +4,15 @@ import {
   ErrorBoundaryProps as BaseErrorBoundaryProps,
 } from 'react-error-boundary';
 
-import { Box, Button, Center, Code, Stack, Text } from '@mantine/core';
+import {
+  Box,
+  Button,
+  Center,
+  Code,
+  Stack,
+  Text,
+  useMantineTheme,
+} from '@mantine/core';
 
 import config from '@/config';
 import { notifyError } from '@/lib/utility/error-handler';
@@ -23,12 +31,25 @@ export default function ErrorBoundary({
   message,
   ...props
 }: ErrorBoundaryProps) {
+  const theme = useMantineTheme();
+
+  // Color values
+  const dimmed =
+    theme.other?.colors?.page_dimmed ||
+    theme.colors.gray[theme.colorScheme === 'light' ? 6 : 5];
+  const panel =
+    theme.other?.colors?.panel ||
+    theme.colors.gray[theme.colorScheme === 'light' ? 1 : 8];
+  const panel_text =
+    theme.other?.colors?.panel_text ||
+    theme.colors.gray[theme.colorScheme === 'light' ? 8 : 2];
+
   return (
     <BaseErrorBoundary
       fallbackRender={({ error, resetErrorBoundary }) => (
         <Center w='100%' h={props.height || '100%'}>
           <Stack spacing='xl' align='center'>
-            <Box sx={(theme) => ({ color: theme.colors.dark[3] })}>
+            <Box sx={(theme) => ({ color: dimmed })}>
               <IconAlertHexagon size={64} strokeWidth={1.5} />
             </Box>
 
@@ -60,8 +81,8 @@ export default function ErrorBoundary({
                 w='90%'
                 sx={(theme) => ({
                   padding: '0.3rem 0.5rem',
-                  backgroundColor: theme.colors.dark[6],
-                  color: theme.colors.dark[1],
+                  background: panel,
+                  color: panel_text,
                 })}
               >
                 {error.name}: {error.message}

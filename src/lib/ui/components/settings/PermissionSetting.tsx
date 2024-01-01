@@ -35,7 +35,9 @@ export default function PermissionSetting(props: PermissionSettingProps) {
       {props.withDivider !== false && (
         <Divider
           maw={config.app.ui.settings_maw}
-          sx={(theme) => ({ borderColor: theme.colors.dark[5] })}
+          sx={(theme) => ({
+            borderColor: theme.other.elements.settings_border,
+          })}
         />
       )}
     </>

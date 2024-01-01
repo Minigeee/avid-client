@@ -85,7 +85,7 @@ function AccountTab({ session, profile, ...props }: TabProps) {
           spacing='xl'
           sx={(theme) => ({
             padding: '1.2rem',
-            backgroundColor: theme.colors.dark[8],
+            background: theme.other.elements.settings_panel,
             borderRadius: theme.radius.md,
           })}
         >
@@ -102,9 +102,9 @@ function AccountTab({ session, profile, ...props }: TabProps) {
                   tooltipProps={{ position: 'right' }}
                   size='lg'
                   sx={(theme) => ({
-                    color: theme.colors.dark[1],
+                    color: theme.other.elements.settings_panel_dimmed,
                     '&:hover': {
-                      backgroundColor: theme.colors.dark[5],
+                      background: theme.other.elements.settings_panel_hover,
                     },
                   })}
                   onClick={() => {
@@ -299,7 +299,7 @@ export default function UserSettings({
         direction='column'
         sx={(theme) => ({
           flexShrink: 0,
-          backgroundColor: theme.colors.dark[6],
+          background: theme.other.elements.settings_tabs,
         })}
       >
         <SettingsMenu
@@ -324,7 +324,8 @@ export default function UserSettings({
         direction='column'
         sx={(theme) => ({
           flexGrow: 1,
-          backgroundColor: theme.colors.dark[7],
+          background: theme.other.elements.settings,
+          color: theme.other.elements.settings_text,
         })}
       >
         <Flex
@@ -332,7 +333,7 @@ export default function UserSettings({
           mb={4}
           sx={(theme) => ({
             padding: '1.0rem 1.5rem',
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            borderBottom: `1px solid ${theme.other.elements.settings_border}`,
           })}
         >
           <Title order={2}>{tab?.label}</Title>

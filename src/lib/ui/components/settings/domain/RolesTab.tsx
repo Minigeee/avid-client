@@ -135,12 +135,7 @@ function GroupPermissoinsExpandableRows({
   domain: DomainWrapper;
 }) {
   return (
-    <Stack
-      spacing={0}
-      pt={6}
-      pb={6}
-      sx={(theme) => ({ backgroundColor: theme.colors.dark[7] })}
-    >
+    <Stack spacing={0} pt={6} pb={6}>
       {data.channels.map((channel_id, idx) => (
         <Group key={channel_id} spacing='xs' p='0.3rem 0.6rem'>
           <ChannelIcon type={domain.channels[channel_id].type} size={16} />
@@ -193,7 +188,11 @@ const RoleSelectItem = forwardRef<
 >(({ label, badge, ...others }, ref) => (
   <div ref={ref} {...others}>
     <Group spacing='xs' noWrap>
-      <Box h='1.5rem' pt={2} sx={(theme) => ({ color: theme.colors.dark[3] })}>
+      <Box
+        h='1.5rem'
+        pt={2}
+        sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
+      >
         {badge ? <Emoji id={badge} size='1rem' /> : <IconBadgeOff size={19} />}
       </Box>
       <Text size='sm'>{label}</Text>
@@ -281,6 +280,7 @@ function AddMemberPopover(props: {
       opened={opened}
       position='top'
       withArrow
+      closeOnClickOutside
       onClose={() => setOpened(false)}
     >
       {props.type === 'table' && (
@@ -441,8 +441,10 @@ function GeneralTab({
             sx={(theme) => ({
               height: '2.75rem',
               width: '2.75rem',
-              backgroundColor: role.badge ? undefined : theme.colors.dark[8],
-              color: theme.colors.dark[3],
+              background: role.badge
+                ? undefined
+                : theme.other.elements.settings_panel,
+              color: theme.other.elements.settings_panel_dimmed,
               borderRadius: '3rem',
             })}
           >
@@ -470,14 +472,7 @@ function GeneralTab({
                 {role.badge ? 'Change' : 'Add'} Badge
               </Button>
             </Popover.Target>
-            <Popover.Dropdown
-              p='0.75rem 1rem'
-              sx={(theme) => ({
-                backgroundColor: theme.colors.dark[7],
-                borderColor: theme.colors.dark[5],
-                boxShadow: '0px 4px 16px #00000030',
-              })}
-            >
+            <Popover.Dropdown p='0.75rem 1rem'>
               <EmojiPicker
                 emojiSize={32}
                 onSelect={(emoji) => {
@@ -493,8 +488,10 @@ function GeneralTab({
               <ActionButton
                 tooltip={role.show_badge ? 'Hide In Chat' : 'Show In Chat'}
                 sx={(theme) => ({
-                  color: theme.colors.dark[1],
-                  '&:hover': undefined,
+                  color: theme.other.elements.settings_dimmed,
+                  '&:hover': {
+                    background: theme.other.elements.settings_hover,
+                  },
                 })}
                 onClick={() => {
                   const copy = form.values.roles.slice();
@@ -509,6 +506,12 @@ function GeneralTab({
 
               <CloseButton
                 size='md'
+                sx={(theme) => ({
+                  color: theme.other.elements.settings_dimmed,
+                  '&:hover': {
+                    background: theme.other.elements.settings_hover,
+                  },
+                })}
                 onClick={() =>
                   form.setFieldValue(`roles.${roleIdx}.badge`, null)
                 }
@@ -530,12 +533,19 @@ function GeneralTab({
               maw={config.app.ui.settings_maw}
               sx={(theme) => ({
                 padding: '0.75rem 1rem',
-                backgroundColor: theme.colors.dark[8],
+                background: theme.other.elements.settings_panel,
                 borderRadius: theme.radius.sm,
               })}
             >
               <Box sx={{ flexGrow: 1 }}>
-                <Text size='sm' weight={600} mb={2}>
+                <Text
+                  size='sm'
+                  weight={600}
+                  mb={2}
+                  sx={(theme) => ({
+                    color: theme.other.elements.settings_panel_text,
+                  })}
+                >
                   Delete this role
                 </Text>
                 <Text size='xs' color='dimmed'>
@@ -700,7 +710,9 @@ function ChildRolesTab({
               data-tag='allowRowEvents'
               h='1.5rem'
               pt={2}
-              sx={(theme) => ({ color: theme.colors.dark[3] })}
+              sx={(theme) => ({
+                color: theme.other.elements.data_table_dimmed,
+              })}
             >
               {child.badge ? (
                 <Emoji id={child.badge} size='1rem' />
@@ -846,7 +858,7 @@ function ChildRolesTab({
         rowStyles={[
           {
             when: (row) => row.id === selectedChildId,
-            style: { backgroundColor: theme.colors.dark[6] },
+            style: { background: theme.other.elements.data_table_hover },
           },
         ]}
       />
@@ -1284,8 +1296,8 @@ function PermissionsTab({
               <>
                 Allows <b>{`@${role.label}`}</b> to create and manage new roles
                 within this domain. To enable more precise role management
-                capabilities, assign <b>{`@${role.label}`}</b> as a
-                &quot;parent role&quot; to the specific roles it should handle.
+                capabilities, assign <b>{`@${role.label}`}</b> as a &quot;parent
+                role&quot; to the specific roles it should handle.
               </>
             }
             switchProps={form.getInputProps(
@@ -1305,7 +1317,7 @@ function PermissionsTab({
         <>
           <Box mb={12}>
             <Group spacing='xs' mb={4}>
-              <IconFile size={20} />
+              <IconFolder size={20} />
               <Title order={4}>Group Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
@@ -1834,7 +1846,8 @@ export function RolesTab({ ...props }: TabProps) {
                 maw={config.app.ui.settings_maw}
                 sx={(theme) => ({
                   padding: '0.5rem',
-                  backgroundColor: theme.colors.dark[8],
+                  background: theme.other.elements.settings_panel,
+                  color: theme.other.elements.settings_panel_text,
                 })}
                 {...provided.droppableProps}
               >
@@ -1847,17 +1860,18 @@ export function RolesTab({ ...props }: TabProps) {
                           w='100%'
                           p='0.4rem 0.6rem'
                           sx={(theme) => ({
-                            backgroundColor:
+                            background:
                               selectedRoleId === role.id || snapshot.isDragging
-                                ? theme.colors.dark[7]
-                                : theme.colors.dark[8],
+                                ? theme.other.elements.settings_panel_hover
+                                : undefined,
                             boxShadow: snapshot.isDragging
                               ? '0px 0px 10px #00000033'
                               : undefined,
                             borderRadius: theme.radius.sm,
 
                             '&:hover': {
-                              backgroundColor: theme.colors.dark[7],
+                              background:
+                                theme.other.elements.settings_panel_hover,
                             },
                           })}
                           onClick={() => setSelectedRoleId(role.id)}
@@ -1871,7 +1885,10 @@ export function RolesTab({ ...props }: TabProps) {
                           <Group
                             spacing='xs'
                             sx={(theme) => ({
-                              '.tabler-icon': { color: theme.colors.dark[3] },
+                              '.tabler-icon': {
+                                color:
+                                  theme.other.elements.settings_panel_dimmed,
+                              },
                             })}
                           >
                             <div style={{ height: '1.5rem' }}>
@@ -1910,7 +1927,7 @@ export function RolesTab({ ...props }: TabProps) {
 
       {aclEntries._exists && role && selectedIdx !== null && (
         <>
-          <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+          <Divider />
           <Title order={3} mb={8}>
             Edit - {role?.badge && <Emoji id={role.badge} />} {'@'}
             {role?.label}

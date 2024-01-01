@@ -87,7 +87,7 @@ export const openCreateDomain = (props: CreateDomainProps) =>
     innerProps: props,
     size: 'lg',
     styles: (theme) => ({
-      body: { backgroundColor: theme.colors.dark[5] },
+      body: { background: theme.other.elements.create_domain },
     }),
   });
 

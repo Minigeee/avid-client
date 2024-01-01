@@ -189,7 +189,7 @@ function MembersTab(props: RightPanelViewProps) {
                   padding: '0rem 0.5rem',
                   borderRadius: theme.radius.sm,
                   '&:hover': {
-                    backgroundColor: theme.colors.dark[5],
+                    background: theme.other.colors.panel_hover,
                   },
                 })}
               >
@@ -221,7 +221,9 @@ function MembersTab(props: RightPanelViewProps) {
                     ml={6}
                     size='sm'
                     weight={search.length > 0 ? 400 : 600}
-                    sx={(theme) => ({ color: theme.colors.gray[4] })}
+                    sx={(theme) => ({
+                      color: theme.other.elements.member_name,
+                    })}
                     dangerouslySetInnerHTML={{ __html: alias }}
                   />
                 </Group>
@@ -260,8 +262,8 @@ function MembersTab(props: RightPanelViewProps) {
 
       <Divider
         sx={(theme) => ({
-          color: theme.colors.dark[5],
-          borderColor: theme.colors.dark[5],
+          color: theme.other.colors.page_border,
+          borderColor: theme.other.colors.page_border,
         })}
       />
 
@@ -275,14 +277,14 @@ function MembersTab(props: RightPanelViewProps) {
               paddingRight: '0.25rem',
               borderRadius: theme.radius.sm,
               '&:hover': {
-                backgroundColor: theme.colors.dark[5],
+                background: theme.other.colors.panel_hover,
               },
             },
             label: {
               padding: '0.4rem 0.5rem',
               fontSize: theme.fontSizes.sm,
               fontWeight: 600,
-              color: theme.colors.dark[2],
+              color: theme.other.colors.panel_text,
             },
             item: {
               borderBottom: 'none',
@@ -360,7 +362,7 @@ export default function RightPanelView(props: RightPanelViewProps) {
         flexShrink: 0,
         width: '16rem',
         height: '100%',
-        backgroundColor: theme.colors.dark[6],
+        background: theme.other.colors.panel,
       })}
     >
       <Flex
@@ -371,7 +373,7 @@ export default function RightPanelView(props: RightPanelViewProps) {
           height: '3.0rem',
           paddingLeft: '0.25rem',
           paddingRight: '0.375rem',
-          borderBottom: `1px solid ${theme.colors.dark[4]}`,
+          borderBottom: `1px solid ${theme.other.colors.panel_border}`,
         })}
       >
         <Tabs
@@ -380,23 +382,23 @@ export default function RightPanelView(props: RightPanelViewProps) {
             app._mutators.setRightPanelTab(value as RightPanelTab)
           }
           variant='pills'
-          color='dark'
           styles={(theme) => ({
             root: {
               flexGrow: 1,
             },
             tab: {
-              color: theme.colors.dark[1],
               fontWeight: 600,
-              transition: 'background-color 0.1s',
+              transition: 'background 0.1s',
+              color: theme.black,
 
               '&:hover': {
-                backgroundColor: theme.colors.dark[5],
+                background: theme.other.colors.panel_hover,
               },
               '&[data-active]': {
-                backgroundColor: theme.colors.dark[5],
+                background: theme.other.colors.panel_hover,
+                color: theme.other.colors.panel_text,
                 '&:hover': {
-                  backgroundColor: theme.colors.dark[5],
+                  background: theme.other.colors.panel_hover,
                 },
               },
             },
@@ -431,7 +433,8 @@ export default function RightPanelView(props: RightPanelViewProps) {
           iconSize={20}
           onClick={() => app._mutators.setRightPanelOpened(false)}
           sx={(theme) => ({
-            '&:hover': { backgroundColor: theme.colors.dark[5] },
+            color: theme.other.colors.panel_dimmed,
+            '&:hover': { background: theme.other.colors.panel_hover },
           })}
         />
       </Flex>

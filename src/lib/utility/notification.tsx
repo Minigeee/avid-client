@@ -35,11 +35,20 @@ export function error(
           <Text>{message}</Text>
           {error && (
             <Code
-              sx={(theme) => ({
-                padding: '0.3rem 0.5rem',
-                backgroundColor: theme.colors.dark[6],
-                color: theme.colors.dark[1],
-              })}
+              sx={(theme) => {
+                const panel =
+                  theme.other?.colors?.panel ||
+                  theme.colors.gray[theme.colorScheme === 'light' ? 1 : 8];
+                const panel_text =
+                  theme.other?.colors?.panel_text ||
+                  theme.colors.gray[theme.colorScheme === 'light' ? 8 : 2];
+
+                return {
+                  padding: '0.3rem 0.5rem',
+                  background: panel,
+                  color: panel_text,
+                };
+              }}
             >
               {error.name}: {error.message}
             </Code>
@@ -49,8 +58,7 @@ export function error(
       color: 'red',
       icon: <IconX />,
       sx: (theme) => ({
-        backgroundColor: theme.colors.dark[5],
-        boxShadow: '#00000020 0px 7px 16px 0px',
+        boxShadow: theme.shadows.md,
       }),
     });
 

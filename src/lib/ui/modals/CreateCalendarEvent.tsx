@@ -63,7 +63,9 @@ export default function CreateCalendarEvent({
   innerProps: props,
 }: ContextModalProps<CreateCalendarEventProps>) {
   // Get original event if in edit mode
-  const remEvent = useCalendarEvent(props.mode === 'edit' && props.event?.id ? props.event.id : undefined);
+  const remEvent = useCalendarEvent(
+    props.mode === 'edit' && props.event?.id ? props.event.id : undefined,
+  );
 
   const mode = props.mode || 'create';
   const form = useForm({
@@ -119,7 +121,6 @@ export default function CreateCalendarEvent({
 
     setRepeatImpl(value);
   }, []);
-
 
   // Set modal description
   useEffect(() => {
@@ -190,11 +191,20 @@ export default function CreateCalendarEvent({
           key={i}
           size='lg'
           sx={(theme) => ({
-            backgroundColor: selected ? theme.colors.indigo[5] : undefined,
+            background: selected
+              ? theme.colors.accent[
+                  typeof theme.primaryShade === 'number'
+                    ? theme.primaryShade
+                    : 5
+                ]
+              : undefined,
+            color: selected ? theme.white : theme.other.colors.page_text,
             fontSize: 14,
 
             '&:hover': {
-              backgroundColor: selected ? theme.colors.indigo[5] : undefined,
+              background: selected
+                ? theme.colors.indigo[5]
+                : theme.other.colors.page_hover,
             },
           })}
           onClick={(e) => {
@@ -279,7 +289,9 @@ export default function CreateCalendarEvent({
               ...newEvent,
               start: moment(newEvent.start).unix(),
               end: moment(newEvent.end).unix(),
-            }, d);
+            },
+            d,
+          );
 
           await props.onSubmit(
             {
@@ -292,7 +304,6 @@ export default function CreateCalendarEvent({
         } else {
           await props.onSubmit(newEvent, mode);
         }
-        
 
         // Close modal
         context.closeModal(id);

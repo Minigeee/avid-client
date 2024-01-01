@@ -1,16 +1,12 @@
 import { ComponentPropsWithoutRef, forwardRef, useMemo } from 'react';
 
-import {
-  Group,
-  Select, SelectProps, Text,
-} from '@mantine/core';
+import { Group, Select, SelectProps, Text } from '@mantine/core';
 import { IconFile } from '@tabler/icons-react';
 
 import ChannelIcon from './ChannelIcon';
 
 import { DomainWrapper } from '@/lib/hooks';
 import { Channel, ChannelTypes } from '@/lib/types';
-
 
 ////////////////////////////////////////////////////////////
 interface ChannelSelectItemProps extends ComponentPropsWithoutRef<'div'> {
@@ -32,7 +28,6 @@ const ChannelSelectItem = forwardRef<HTMLDivElement, ChannelSelectItemProps>(
 );
 ChannelSelectItem.displayName = 'ChannelSelectItem';
 
-
 ////////////////////////////////////////////////////////////
 export type ChannelSelectProps = Omit<SelectProps, 'data' | 'filter'> & {
   /** Domain used to get channels to display */
@@ -42,7 +37,11 @@ export type ChannelSelectProps = Omit<SelectProps, 'data' | 'filter'> & {
 };
 
 ////////////////////////////////////////////////////////////
-export default function ChannelSelect({ domain, filter, ...props }: ChannelSelectProps) {
+export default function ChannelSelect({
+  domain,
+  filter,
+  ...props
+}: ChannelSelectProps) {
   // Get list of channels to display
   const data = useMemo(() => {
     // Group names
@@ -71,5 +70,13 @@ export default function ChannelSelect({ domain, filter, ...props }: ChannelSelec
     );
   }, [props.value, domain.channels]);
 
-  return <Select icon={icon} searchable {...props} data={data} itemComponent={ChannelSelectItem} />;
+  return (
+    <Select
+      icon={icon}
+      searchable
+      {...props}
+      data={data}
+      itemComponent={ChannelSelectItem}
+    />
+  );
 }

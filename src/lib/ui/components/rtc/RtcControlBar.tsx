@@ -50,13 +50,7 @@ function ControlButton({
 }: ControlButtonProps) {
   const CustomTooltip = useCallback(
     ({ children }: PropsWithChildren) => (
-      <Tooltip
-        label={tooltip || ''}
-        position='top'
-        withArrow
-        openDelay={500}
-        sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
-      >
+      <Tooltip label={tooltip || ''} position='top' withArrow openDelay={500}>
         {children}
       </Tooltip>
     ),
@@ -67,14 +61,19 @@ function ControlButton({
     <CustomTooltip>
       <ActionIcon
         sx={(theme) => ({
-          backgroundColor: theme.colors.dark[active ? 4 : 7],
-          color: color ? theme.colors[color[0]][color[1]] : undefined,
+          background: active ? theme.other.elements.rtc_bar_active : undefined,
+          color: color
+            ? theme.colors[color[0]][color[1]]
+            : theme.other.elements.rtc_bar_icon,
           '&:hover': {
-            backgroundColor: theme.colors.dark[active ? 4 : 6],
+            background: active
+              ? theme.other.elements.rtc_bar_active
+              : theme.other.elements.rtc_bar_hover,
           },
           '&[data-disabled]': {
-            backgroundColor: theme.colors.dark[7],
-            borderColor: theme.colors.dark[7],
+            background: 'transparent',
+            border: 'none',
+            color: theme.other.elements.rtc_bar_disabled,
           },
         })}
         disabled={disabled}
@@ -118,7 +117,7 @@ export default function RtcControlBar() {
       spacing={6}
       sx={(theme) => ({
         padding: 6,
-        backgroundColor: theme.colors.dark[7],
+        background: theme.other.elements.rtc_bar,
         borderRadius: 6,
       })}
     >

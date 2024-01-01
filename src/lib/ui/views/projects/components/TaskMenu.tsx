@@ -359,9 +359,6 @@ function TaskMenuDropdown({
             dropdownProps={{
               p: '0.0rem',
               miw: '20rem',
-              sx: (theme) => ({
-                boxShadow: '0px 0px 16px #00000030',
-              }),
             }}
           >
             <TaskSelector
@@ -383,9 +380,6 @@ function TaskMenuDropdown({
             dropdownProps={{
               p: '0.0rem',
               miw: '20rem',
-              sx: (theme) => ({
-                boxShadow: '0px 0px 16px #00000030',
-              }),
             }}
           >
             <TaskSelector

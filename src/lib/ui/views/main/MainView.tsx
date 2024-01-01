@@ -5,7 +5,6 @@ import { Box, Divider, Flex, Group, Title } from '@mantine/core';
 
 import ErrorBoundary from '@/lib/ui/components/ErrorBoundary';
 import ChannelsView from '@/lib/ui/views/main/ChannelsView';
-import HeaderView from '@/lib/ui/views/main/HeaderView';
 import MessagesView from '@/lib/ui/views/chat/MessagesView';
 import RoomView from '@/lib/ui/views/rtc/RoomView';
 import CalendarView from '@/lib/ui/views/calendar/CalendarView';
@@ -66,7 +65,7 @@ export default function MainView() {
           flexGrow: 1,
           width: 0, // idk why this works
           height: '100%',
-          backgroundColor: theme.colors.dark[7],
+          background: theme.other.colors.page,
         })}
       >
         <Group
@@ -77,7 +76,7 @@ export default function MainView() {
             height: '3.0rem',
             paddingLeft: '1.0rem',
             paddingRight: '0.3rem',
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            borderBottom: `1px solid ${theme.other.colors.page_border}`,
           })}
         >
           {channel && (
@@ -103,8 +102,11 @@ export default function MainView() {
           {!app.right_panel_opened && (
             <ActionButton
               tooltip='Open Side Panel'
-              hoverBg={(theme) => theme.colors.dark[6]}
               mr={4}
+              sx={(theme) => ({
+                color: theme.other.colors.page_dimmed,
+                '&:hover': { background: theme.other.colors.page_hover },
+              })}
               onClick={() => app._mutators.setRightPanelOpened(true)}
             >
               <IconArrowBarLeft size={18} />
@@ -159,7 +161,7 @@ export default function MainView() {
               flexGrow: 1,
               width: 0, // idk why this works
               height: '100%',
-              backgroundColor: theme.colors.dark[7],
+              background: theme.other.colors.page,
             })}
           />
         )}

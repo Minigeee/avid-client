@@ -102,18 +102,15 @@ type EditorButtonProps = PropsWithChildren & {
 ////////////////////////////////////////////////////////////
 function EditorButton({ active, tooltip, ...props }: EditorButtonProps) {
   return (
-    <Tooltip
-      label={tooltip || ''}
-      position='top'
-      withArrow
-      openDelay={500}
-      sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
-    >
+    <Tooltip label={tooltip || ''} position='top' withArrow openDelay={500}>
       <ActionIcon
         sx={(theme) => ({
-          backgroundColor: theme.colors.dark[active ? 6 : 8],
+          background: active ? theme.other.elements.rte_active : undefined,
+          color: theme.other.elements.rte_icon,
           '&:hover': {
-            backgroundColor: theme.colors.dark[active ? 6 : 7],
+            background: active
+              ? theme.other.elements.rte_active
+              : theme.other.elements.rte_hover,
           },
         })}
         onClick={props.onClick}
@@ -162,11 +159,22 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
       opened={opened}
       onChange={setOpened}
     >
-      <Popover.Target>
-        <ActionIcon onClick={() => setOpened(!opened)}>
-          <IconLink size={18} />
-        </ActionIcon>
-      </Popover.Target>
+      <Tooltip label='Insert Link' position='top' withArrow openDelay={500}>
+        <Popover.Target>
+          <ActionIcon
+            sx={(theme) => ({
+              color: theme.other.elements.rte_icon,
+              '&:hover': {
+                background: theme.other.elements.rte_hover,
+              },
+            })}
+            onClick={() => setOpened(!opened)}
+          >
+            <IconLink size={18} />
+          </ActionIcon>
+        </Popover.Target>
+      </Tooltip>
+
       <Popover.Dropdown>
         <Stack spacing='xs'>
           <TextInput
@@ -568,10 +576,10 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                   root: {
                     padding: '0.5rem 0.5rem 0.2rem 0.5rem',
                     maxWidth: '18ch',
-                    backgroundColor: theme.colors.dark[7],
+                    background: theme.other.elements.rte_panel,
                     borderRadius: theme.radius.sm,
                   },
-                  imageWrapper: { backgroundColor: theme.colors.dark[0] },
+                  imageWrapper: { background: theme.colors.dark[0] },
                   caption: {
                     overflow: 'hidden',
                     textAlign: 'left',
@@ -623,7 +631,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
           '.is-editor-empty': {
             ':first-child': {
               '::before': {
-                color: theme.colors.dark[3],
+                color: theme.other.elements.rte_dimmed,
                 content: 'attr(data-placeholder)',
                 float: 'left',
                 height: 0,
@@ -633,14 +641,16 @@ export default function RichTextEditor(props: RichTextEditorProps) {
           },
         },
 
-        border: `1px solid ${theme.colors.dark[4]}`,
+        border: `1px solid ${theme.other.elements.rte_border}`,
         borderRadius: 3,
         overflow: 'hidden',
         '&:focus-within':
           props.focusRing === false
             ? undefined
             : {
-                border: `1px solid ${theme.colors[theme.primaryColor][5]}`,
+                border: `1px solid ${
+                  theme.colors[theme.primaryColor][theme.primaryShade as number]
+                }`,
               },
 
         position: 'relative',
@@ -664,7 +674,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         <Box
           sx={(theme) => ({
             padding: '0.35rem 0.55rem',
-            backgroundColor: theme.colors.dark[8],
+            background: theme.other.elements.rte_header,
           })}
         >
           <Group spacing={2}>
@@ -743,11 +753,26 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                   withArrow
                   trapFocus
                 >
-                  <Popover.Target>
-                    <ActionIcon>
-                      <IconPalette size={18} />
-                    </ActionIcon>
-                  </Popover.Target>
+                  <Tooltip
+                    label='Color'
+                    position='top'
+                    withArrow
+                    openDelay={500}
+                  >
+                    <Popover.Target>
+                      <ActionIcon
+                        sx={(theme) => ({
+                          color: theme.other.elements.rte_icon,
+                          '&:hover': {
+                            background: theme.other.elements.rte_hover,
+                          },
+                        })}
+                      >
+                        <IconPalette size={18} />
+                      </ActionIcon>
+                    </Popover.Target>
+                  </Tooltip>
+
                   <Popover.Dropdown>
                     <ColorPicker
                       swatchesPerRow={7}
@@ -771,9 +796,14 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                     position='top'
                     withArrow
                     openDelay={500}
-                    sx={(theme) => ({ backgroundColor: theme.colors.dark[9] })}
                   >
                     <ActionIcon
+                      sx={(theme) => ({
+                        color: theme.other.elements.rte_icon,
+                        '&:hover': {
+                          background: theme.other.elements.rte_hover,
+                        },
+                      })}
                       onClick={() =>
                         editor
                           .chain()
@@ -800,8 +830,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         <Group
           sx={(theme) => ({
             padding: '0.5rem',
-            backgroundColor: theme.colors.dark[6],
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            borderBottom: `1px solid ${theme.other.elements.rte_border}`,
           })}
         >
           {previews}
@@ -812,7 +841,7 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         gap={2}
         sx={(theme) => ({
           padding: 2,
-          backgroundColor: theme.colors.dark[6],
+          background: theme.other.elements.rte,
         })}
       >
         {variant === 'minimal' && props.leftSection}

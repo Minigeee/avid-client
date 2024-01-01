@@ -1,7 +1,15 @@
 import { NextRouter, useRouter } from 'next/router';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
-import { Center, Loader, ScrollArea } from '@mantine/core';
+import {
+  Center,
+  DEFAULT_THEME,
+  Loader,
+  MantineProvider,
+  MantineThemeOverride,
+  ScrollArea,
+  Tuple,
+} from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 
 import { modals } from '@/lib/ui/modals';
@@ -34,10 +42,14 @@ import {
   Member,
   Profile,
   RemoteAppState,
+  Theme,
 } from '@/lib/types';
 import { GetServerSideProps } from 'next';
 import { refresh } from '@/lib/utility/authenticate';
 import { api } from '@/lib/api';
+
+import appTheme from '@/lib/ui/themes/light';
+import { merge, omit, pick } from 'lodash';
 
 ////////////////////////////////////////////////////////////
 function ScreenState({ router }: { router: NextRouter }) {
@@ -66,6 +78,379 @@ function ScreenState({ router }: { router: NextRouter }) {
         </>
       )}
     </>
+  );
+}
+
+////////////////////////////////////////////////////////////
+function WithAppState() {
+  const router = useRouter();
+
+  // Theme override
+  const themeOverride = useMemo(() => {
+    // Get the colors
+    const colors = {
+      ...pick(appTheme, ['primary', 'secondary', 'accent']),
+      dark: [
+        '#E9ECF0',
+        '#BFC0C6',
+        '#96999F',
+        '#626771',
+        '#434852',
+        '#32363E',
+        '#272B34',
+        '#1F242A',
+        '#181D23',
+        '#111519',
+      ] as Tuple<string, 10>,
+    };
+
+    // Default values
+    const primaryShade =
+      appTheme.default_shade === undefined ? 5 : appTheme.default_shade;
+    const defaultGradient =
+      typeof appTheme.gradient === 'function'
+        ? appTheme.gradient(DEFAULT_THEME)
+        : appTheme.gradient;
+
+    // Override object
+    const override = {
+      colorScheme: appTheme.scheme,
+      colors,
+      white: colors.primary[0],
+      black: colors.primary[9],
+      primaryColor: 'secondary',
+      primaryShade,
+      defaultGradient: { from: defaultGradient[0], to: defaultGradient[1] },
+
+      components: {
+        Avatar: {
+          styles: (theme) => ({
+            placeholder: {
+              background: theme.other.elements.avatar,
+              color: theme.other.elements.avatar_text,
+            },
+            placeholderIcon: {
+              color: theme.other.elements.avatar_text,
+            },
+          }),
+        },
+
+        DatePickerInput: {
+          styles: (theme) => ({
+            day: {
+              '&:hover': { background: theme.other.colors.page_hover },
+              '&[data-today="true"]:not([data-selected="true"])': {
+                background: theme.other.colors.panel_hover,
+                '&:hover': { background: theme.other.colors.panel_hover },
+              },
+              '&[data-weekend="true"]': {
+                color: theme.other.colors.page_dimmed,
+                fontWeight: 600,
+              },
+              '&[data-weekend="true"][data-selected="true"]': {
+                color: theme.white,
+              },
+            },
+          }),
+        },
+
+        Input: {
+          styles: (theme) => ({
+            wrapper: {
+              marginTop: 5,
+            },
+          }),
+        },
+
+        InputWrapper: {
+          styles: (theme) => ({
+            description: {
+              marginTop: 1,
+              marginBottom: 10,
+            },
+          }),
+        },
+
+        Menu: {
+          styles: (theme) => ({
+            dropdown: {
+              borderColor: theme.other.colors.page_border,
+            },
+            divider: {
+              borderColor: theme.other.colors.page_border,
+            },
+          }),
+        },
+
+        MultiSelect: {
+          styles: (theme) => ({
+            dropdown: {
+              boxShadow: '0px 2px 10px #00000022',
+            },
+            item: {
+              '&[data-hovered]': {
+                background: `linear-gradient(to right, ${theme.other.colors.neutral_highlight} 4px, ${theme.other.colors.page_hover} 0)`,
+              },
+            },
+          }),
+        },
+
+        Popover: {
+          styles: (theme) => ({
+            dropdown: {
+              boxShadow: theme.shadows.sm,
+            },
+          }),
+        },
+
+        Select: {
+          styles: (theme) => ({
+            dropdown: {
+              boxShadow: '0px 2px 10px #00000022',
+            },
+            item: {
+              whiteSpace: 'normal',
+              '&[data-hovered]': {
+                background: `linear-gradient(to right, ${theme.other.colors.neutral_highlight} 4px, ${theme.other.colors.page_hover} 0)`,
+              },
+              '&[data-selected]': {
+                background: `linear-gradient(to right, ${theme.other.colors.secondary_highlight} 4px, ${theme.other.colors.page_hover} 0)`,
+                color: theme.other.colors.page_text,
+              },
+            },
+          }),
+        },
+
+        Slider: {
+          styles: (theme) => ({
+            trackContainer: { cursor: 'default' },
+          }),
+        },
+
+        Tooltip: {
+          styles: (theme) => ({
+            tooltip: {
+              background: theme.other.elements.tooltip || theme.colors.dark[9],
+              color: theme.other.elements.tooltip_text || theme.colors.dark[0],
+            },
+          }),
+        },
+      },
+    } as MantineThemeOverride;
+
+    // Add custom properties
+    const others = omit(appTheme, ['primary', 'secondary', 'accent']);
+    const merged = merge({}, DEFAULT_THEME, override, { other: others });
+
+    // Defaults
+    others.gradient = defaultGradient;
+
+    others.colors.neutral_highlight =
+      others.colors.neutral_highlight || ((theme) => theme.colors.gray[5]);
+    others.colors.secondary_highlight =
+      others.colors.secondary_highlight ||
+      ((theme) => theme.colors.secondary[primaryShade]);
+    others.colors.ping_highlight =
+      others.colors.ping_highlight ||
+      ((theme) =>
+        theme.fn.linearGradient(0, defaultGradient[0], defaultGradient[1]));
+
+    others.elements.emoji_picker =
+      others.elements.emoji_picker || others.colors.page;
+    others.elements.emoji_picker_hover =
+      others.elements.emoji_picker_hover || others.colors.page_hover;
+    others.elements.emoji_picker_border =
+      others.elements.emoji_picker_border || others.colors.page_border;
+    others.elements.emoji_picker_icon =
+      others.elements.emoji_picker_icon || others.colors.page_dimmed;
+    others.elements.emoji_picker_icon_active =
+      others.elements.emoji_picker_icon_active || others.colors.page_text;
+    others.elements.emoji_picker_highlight =
+      others.elements.emoji_picker_highlight ||
+      merged.fn.linearGradient(50, defaultGradient[1], defaultGradient[0]);
+
+    others.elements.emote_button =
+      others.elements.emote_button || others.colors.page;
+    others.elements.emote_button_border =
+      others.elements.emote_button_border || others.colors.page_border;
+    others.elements.emote_button_text =
+      others.elements.emote_button_text || others.colors.page_text;
+
+    others.elements.message_highlight_ping =
+      others.elements.message_highlight_ping ||
+      ((theme) => `${theme.colors.accent[primaryShade]}20`);
+    others.elements.message_highlight_ping_hover =
+      others.elements.message_highlight_ping_hover ||
+      ((theme) => `${theme.colors.accent[primaryShade]}30`);
+
+    others.elements.rtc_join_panel_shadow =
+      others.elements.rtc_join_panel_shadow || merged.shadows.md;
+
+    others.elements.settings_tabs_highlight =
+      others.elements.settings_tabs_highlight ||
+      ((theme) =>
+        theme.fn.linearGradient(0, defaultGradient[0], defaultGradient[1]));
+
+    // For every function value, turn it into a string
+    for (const [k, v] of Object.entries(others)) {
+      // @ts-ignore
+      if (typeof v === 'function') others[k] = v(merged);
+    }
+    for (const [k, v] of Object.entries(others.colors || {})) {
+      // @ts-ignore
+      if (typeof v === 'function') others.colors[k] = v(merged);
+    }
+    for (const [k, v] of Object.entries(others.elements || {})) {
+      // @ts-ignore
+      if (typeof v === 'function') others.elements[k] = v(merged);
+    }
+
+    // Defaults
+    others.elements.calendar_text =
+      others.elements.calendar_text || others.colors.page_text;
+    others.elements.calendar_dimmed =
+      others.elements.calendar_dimmed || others.colors.page_dimmed;
+    others.elements.calendar_hover =
+      others.elements.calendar_hover || others.colors.page_hover;
+    others.elements.calendar_active =
+      others.elements.calendar_active || others.colors.panel_hover;
+    others.elements.calendar_border =
+      others.elements.calendar_border || others.colors.panel_border;
+    others.elements.calendar_today =
+      others.elements.calendar_today || others.colors.panel;
+    others.elements.calendar_today_text =
+      others.elements.calendar_today_text || others.colors.panel_text;
+    others.elements.calendar_today_dimmed =
+      others.elements.calendar_today_dimmed || others.colors.panel_dimmed;
+    others.elements.calendar_today_hover =
+      others.elements.calendar_today_hover || others.colors.panel_hover;
+    others.elements.calendar_time_indicator =
+      others.elements.calendar_time_indicator ||
+      merged.colors.accent[primaryShade];
+    others.elements.calendar_block_event =
+      others.elements.calendar_block_event || others.colors.page;
+    others.elements.calendar_block_event_text =
+      others.elements.calendar_block_event_text || others.colors.panel_text;
+    others.elements.calendar_block_event_dimmed =
+      others.elements.calendar_block_event_dimmed || others.colors.panel_dimmed;
+    others.elements.calendar_block_event_shadow =
+      others.elements.calendar_block_event_shadow || merged.shadows.sm;
+    others.elements.calendar_month_header =
+      others.elements.calendar_month_header || others.colors.panel;
+    others.elements.calendar_month_header_text =
+      others.elements.calendar_month_header_text || others.colors.panel_text;
+
+    others.elements.context_menu_shadow =
+      others.elements.context_menu_shadow || merged.shadows.sm;
+
+    others.elements.create_domain =
+      others.elements.create_domain || others.colors.panel;
+
+    others.elements.kanban_column =
+      others.elements.kanban_column || others.colors.document;
+    others.elements.kanban_header =
+      others.elements.kanban_header || others.colors.panel;
+    others.elements.kanban_header_hover =
+      others.elements.kanban_header_hover || others.colors.panel_hover;
+    others.elements.kanban_header_text =
+      others.elements.kanban_header_text || others.colors.panel_text;
+    others.elements.kanban_header_icon =
+      others.elements.kanban_header_icon || others.colors.panel_dimmed;
+    others.elements.kanban_card =
+      others.elements.kanban_card || others.colors.panel;
+    others.elements.kanban_card_shadow =
+      others.elements.kanban_card_shadow || merged.shadows.sm;
+    others.elements.kanban_card_text =
+      others.elements.kanban_card_text || others.colors.panel_text;
+    others.elements.kanban_card_dimmed =
+      others.elements.kanban_card_dimmed || others.colors.panel_dimmed;
+
+    others.elements.rtc_join_panel =
+      others.elements.rtc_join_panel || others.colors.panel;
+    others.elements.rtc_join_panel_hover =
+      others.elements.rtc_join_panel_hover || others.colors.panel_hover;
+    others.elements.rtc_join_panel_text =
+      others.elements.rtc_join_panel_text || others.colors.panel_text;
+    others.elements.rtc_join_panel_dimmed =
+      others.elements.rtc_join_panel_dimmed || others.colors.panel_dimmed;
+
+    others.elements.rte = others.elements.rte || others.colors.page;
+    others.elements.rte_header =
+      others.elements.rte_header || others.colors.panel;
+    others.elements.rte_panel =
+      others.elements.rte_panel || others.colors.panel;
+    others.elements.rte_border =
+      others.elements.rte_border || merged.colors.primary[4];
+    others.elements.rte_icon =
+      others.elements.rte_icon || others.colors.panel_dimmed;
+    others.elements.rte_hover =
+      others.elements.rte_hover || others.colors.panel_hover;
+    others.elements.rte_dimmed =
+      others.elements.rte_dimmed || others.colors.page_dimmed;
+
+    others.elements.settings = others.elements.settings || others.colors.page;
+    others.elements.settings_border =
+      others.elements.settings_border || others.colors.page_border;
+    others.elements.settings_text =
+      others.elements.settings_text || others.colors.page_text;
+    others.elements.settings_dimmed =
+      others.elements.settings_dimmed || others.colors.page_dimmed;
+    others.elements.settings_hover =
+      others.elements.settings_hover || others.colors.page_hover;
+    others.elements.settings_panel =
+      others.elements.settings_panel || others.colors.document;
+    others.elements.settings_panel_hover =
+      others.elements.settings_panel_hover || others.colors.document_hover;
+    others.elements.settings_panel_text =
+      others.elements.settings_panel_text || others.colors.document_text;
+    others.elements.settings_panel_dimmed =
+      others.elements.settings_panel_dimmed || others.colors.document_dimmed;
+    others.elements.settings_tabs =
+      others.elements.settings_tabs || others.colors.panel;
+    others.elements.settings_tabs_text =
+      others.elements.settings_tabs_text || others.colors.panel_text;
+    others.elements.settings_tabs_dimmed =
+      others.elements.settings_tabs_dimmed || others.colors.panel_dimmed;
+    others.elements.settings_tabs_hover =
+      others.elements.settings_tabs_hover || others.colors.panel_hover;
+
+    others.elements.data_table =
+      others.elements.data_table || others.colors.page;
+    others.elements.data_table_border =
+      others.elements.data_table_border || others.colors.panel_border;
+    others.elements.data_table_text =
+      others.elements.data_table_text || others.colors.page_text;
+    others.elements.data_table_dimmed =
+      others.elements.data_table_dimmed || others.colors.page_dimmed;
+    others.elements.data_table_hover =
+      others.elements.data_table_hover || others.colors.page_hover;
+    others.elements.data_table_header =
+      others.elements.data_table_header || others.colors.document;
+    others.elements.data_table_header_text =
+      others.elements.data_table_header_text || others.colors.panel_text;
+    others.elements.data_table_header_dimmed =
+      others.elements.data_table_header_dimmed || others.colors.document_dimmed;
+    others.elements.data_table_header_hover =
+      others.elements.data_table_header_hover || others.colors.document_hover;
+
+    override.other = others;
+
+    return override;
+  }, []);
+
+  return (
+    <MantineProvider withGlobalStyles withNormalizeCSS theme={themeOverride}>
+      <RtcProvider>
+        <ConfirmModal>
+          <ModalsProvider
+            modals={modals}
+            modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}
+          >
+            <ScreenState router={router} />
+          </ModalsProvider>
+        </ConfirmModal>
+      </RtcProvider>
+    </MantineProvider>
   );
 }
 
@@ -147,16 +532,7 @@ export default function App(props: AppProps) {
   return (
     <ErrorBoundary height='90vh'>
       <AppProvider initial={props.app}>
-        <RtcProvider>
-          <ConfirmModal>
-            <ModalsProvider
-              modals={modals}
-              modalProps={{ scrollAreaComponent: ScrollArea.Autosize }}
-            >
-              <ScreenState router={router} />
-            </ModalsProvider>
-          </ConfirmModal>
-        </RtcProvider>
+        <WithAppState />
       </AppProvider>
     </ErrorBoundary>
   );

@@ -47,18 +47,21 @@ function SettingsTab(props: SettingsTabProps) {
           alignItems: 'center',
           width: '100%',
           padding: '0.3rem 0.65rem',
-          color: theme.colors.dark[1],
+          color: theme.other.elements.settings_tabs_text,
           borderRadius: theme.radius.sm,
-          transition: 'background-color 0.1s',
+          transition: 'background 0.1s',
           '&:hover': {
-            backgroundColor: theme.colors.dark[5],
+            background: theme.other.elements.settings_tabs_hover,
           },
           '&[data-selected]': {
             paddingLeft: 'calc(0.65rem - 4px)',
-            backgroundColor: theme.colors.dark[5],
-            color: theme.colors.dark[0],
+            background: theme.other.elements.settings_tabs_hover,
+            color: theme.other.elements.settings_tabs_text,
             borderTopLeftRadius: 0,
             borderBottomLeftRadius: 0,
+          },
+          '.tabler-icon': {
+            color: theme.other.elements.settings_tabs_dimmed,
           },
         })}
         onClick={props.link ? undefined : props.onClick}
@@ -102,7 +105,15 @@ export default function SettingsMenu(props: SettingsMenuProps) {
       <Stack spacing={0} p={4} pt={8} pl={6}>
         {Object.entries(props.values).map(([group, values]) => (
           <>
-            <Text size='sm' weight={700} color='dimmed' ml={6} mb={3}>
+            <Text
+              size='sm'
+              weight={700}
+              ml={6}
+              mb={3}
+              sx={(theme) => ({
+                color: theme.other.elements.settings_tabs_dimmed,
+              })}
+            >
               {props.groupNames?.[group] || group}
             </Text>
             {values.map((tab, i) => (

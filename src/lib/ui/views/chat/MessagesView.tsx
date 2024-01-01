@@ -617,19 +617,19 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           gap: 0,
 
           padding: `0.25rem 0rem 0.25rem calc(${props.p} - 4px)`,
-          backgroundColor: props.hasPing
-            ? '#2B293A'
+          background: props.hasPing
+            ? theme.other.elements.message_highlight_ping
             : props.viewing_thread === msg.thread?.id || shouldAnimate
               ? `${theme.colors.indigo[5]}10`
               : undefined,
-          transition: 'background-color 0.08s',
+          transition: 'background 0.08s',
 
           '&:hover': {
-            backgroundColor: props.hasPing
-              ? '#312D46'
+            background: props.hasPing
+              ? theme.other.elements.message_highlight_ping_hover
               : props.viewing_thread === msg.thread?.id || shouldAnimate
                 ? `${theme.colors.indigo[5]}1A`
-                : theme.colors.dark[6],
+                : theme.other.colors.page_hover,
           },
 
           '&:first-child': {
@@ -651,7 +651,6 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
               sx={(theme) => ({
                 marginTop: '0.25rem',
                 marginRight: theme.spacing[props.avatarGap],
-                backgroundColor: theme.colors.dark[5],
               })}
             />
           </MemberPopover>
@@ -680,8 +679,10 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       >
                         <Title
                           order={6}
-                          color='gray'
-                          sx={{ cursor: 'pointer' }}
+                          sx={(theme) => ({
+                            color: theme.other.elements.member_name,
+                            cursor: 'pointer',
+                          })}
                         >
                           {msg.sender.alias}
                         </Title>
@@ -714,7 +715,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                   sx={(theme) => ({
                     borderRadius: 3,
                     '&:hover': {
-                      backgroundColor: theme.colors.dark[5],
+                      background: theme.other.colors.panel_hover,
                       cursor: 'pointer',
                     },
                   })}
@@ -731,7 +732,9 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       );
                   }}
                 >
-                  <Box sx={(theme) => ({ color: theme.colors.dark[4] })}>
+                  <Box
+                    sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
+                  >
                     <IconArrowForwardUp
                       size={20}
                       style={{ marginTop: '0.15rem' }}
@@ -744,7 +747,9 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                       <Text
                         size={12}
                         weight={600}
-                        sx={(theme) => ({ color: `${theme.colors.dark[0]}C0` })}
+                        sx={(theme) => ({
+                          color: theme.other.elements.member_name,
+                        })}
                       >
                         {repliedToSender.alias}
                       </Text>
@@ -756,7 +761,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           maxWidth: '80ch',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          color: `${theme.colors.dark[0]}C0`,
+                          color: theme.other.colors.page_dimmed,
                         })}
                       >
                         {msg.reply_to.message
@@ -767,7 +772,11 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                   )}
                   {msg.thread && !msg.reply_to && (
                     <>
-                      <Box sx={(theme) => ({ color: theme.colors.dark[2] })}>
+                      <Box
+                        sx={(theme) => ({
+                          color: theme.other.colors.page_dimmed,
+                        })}
+                      >
                         <IconMessages size={16} />
                       </Box>
                       <Text
@@ -778,7 +787,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           maxWidth: '80ch',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          color: `${theme.colors.dark[0]}C0`,
+                          color: theme.other.colors.page_dimmed,
                         })}
                       >
                         {msg.thread.name
@@ -861,15 +870,17 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                     reaction.self
                       ? (theme) => ({
                           root: {
-                            background: theme.fn.linearGradient(
-                              0,
-                              `${theme.colors.violet[9]}50`,
-                              `${theme.colors.violet[6]}50`,
-                            ),
-                            border: `1px solid ${theme.colors.grape[8]}`,
+                            background:
+                              theme.other.elements.emote_button_active,
+                            border: `1px solid ${theme.other.elements.emote_button_active_border}`,
                           },
                         })
-                      : undefined
+                      : (theme) => ({
+                          root: {
+                            background: theme.other.elements.emote_button,
+                            border: `1px solid ${theme.other.elements.emote_button_border}`,
+                          },
+                        })
                   }
                   onClick={() => {
                     if (reaction.self)
@@ -897,7 +908,11 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                         span
                         size='xs'
                         weight={600}
-                        sx={(theme) => ({ color: theme.colors.dark[0] })}
+                        sx={(theme) => ({
+                          color: reaction.self
+                            ? theme.other.elements.emote_button_active_text
+                            : theme.other.elements.emote_button_text,
+                        })}
                       >
                         {reaction.count}
                       </Text>
@@ -914,9 +929,10 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                         variant='filled'
                         size='1.5625rem'
                         sx={(theme) => ({
-                          backgroundColor: theme.colors.dark[5],
+                          background: theme.other.colors.panel,
+                          color: theme.other.colors.panel_dimmed,
                           '&:hover': {
-                            backgroundColor: theme.colors.dark[5],
+                            background: theme.other.colors.panel_hover,
                           },
                         })}
                       >
@@ -928,8 +944,8 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                   <Popover.Dropdown
                     p='0.75rem 1rem'
                     sx={(theme) => ({
-                      backgroundColor: theme.colors.dark[7],
-                      borderColor: theme.colors.dark[5],
+                      background: theme.other.elements.emoji_picker,
+                      borderColor: theme.other.elements.emoji_picker_border,
                       boxShadow: '0px 4px 16px #00000030',
                     })}
                   >
@@ -967,7 +983,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
           sx={(theme) => ({
             color: theme.colors.dark[1],
             '&:hover': {
-              backgroundColor: 'transparent',
+              background: 'transparent',
               color: theme.colors.dark[0],
             }
           })}
@@ -1010,7 +1026,7 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
           ? undefined
           : {
               '.msg-border': {
-                background: theme.colors.indigo[5],
+                background: theme.other.colors.secondary_highlight,
               },
             },
       })}
@@ -1035,13 +1051,9 @@ function MessageGroup({ msgs, ...props }: MessageGroupProps) {
           width: 4,
           height: '100%',
           background: hasPing
-            ? theme.fn.linearGradient(
-                0,
-                theme.colors.violet[5],
-                theme.colors.pink[5],
-              )
+            ? theme.other.colors.ping_highlight
             : fromUser
-              ? theme.colors.dark[5]
+              ? theme.other.colors.neutral_highlight
               : undefined,
           transition: 'background 0.08s',
           borderTopLeftRadius: 4,
@@ -1199,9 +1211,9 @@ function MessagesViewport(props: MessagesViewportProps) {
                   <Divider
                     label={moment(day).format('LL')}
                     labelPosition='center'
+                    labelProps={{ color: 'dimmed' }}
                     sx={(theme) => ({
                       marginLeft: context.style.p,
-                      color: theme.colors.dark[2],
                     })}
                   />
                   {grouped.map((consec, j) => (
@@ -1339,7 +1351,7 @@ function TextEditor(props: TextEditorProps) {
                 withinPortal: !useFormattedEditor,
               }}
               variant='transparent'
-              sx={(theme) => ({ color: theme.colors.dark[1] })}
+              sx={(theme) => ({ color: theme.other.elements.rte_dimmed })}
               onClick={() => fileInputRef.current?.click()}
             >
               <IconPaperclip size={useFormattedEditor ? 19 : 17} />
@@ -1362,7 +1374,7 @@ function TextEditor(props: TextEditorProps) {
               <Popover.Target>
                 <ActionIcon
                   variant='transparent'
-                  sx={(theme) => ({ color: theme.colors.dark[1] })}
+                  sx={(theme) => ({ color: theme.other.elements.rte_dimmed })}
                   onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
                 >
                   <IconMoodHappy size={useFormattedEditor ? 20 : 18} />
@@ -1372,8 +1384,8 @@ function TextEditor(props: TextEditorProps) {
             <Popover.Dropdown
               p='0.75rem 1rem'
               sx={(theme) => ({
-                backgroundColor: theme.colors.dark[7],
-                borderColor: theme.colors.dark[5],
+                background: theme.other.elements.emoji_picker,
+                borderColor: theme.other.elements.emoji_picker_border,
                 boxShadow: '0px 4px 16px #00000030',
               })}
             >
@@ -1408,6 +1420,7 @@ function TextEditor(props: TextEditorProps) {
               tooltip='Send'
               tooltipProps={{ position: 'top-end', withArrow: true }}
               variant='transparent'
+              sx={(theme) => ({ color: theme.other.elements.rte_dimmed })}
               onClick={onMessageSubmit}
             >
               <IconSend size={20} />
@@ -1421,7 +1434,7 @@ function TextEditor(props: TextEditorProps) {
                 withinPortal: !useFormattedEditor,
               }}
               variant='transparent'
-              sx={(theme) => ({ color: theme.colors.dark[1] })}
+              sx={(theme) => ({ color: theme.other.elements.rte_dimmed })}
               onClick={() => setUseFormattedEditor(true)}
             >
               <IconPencilPlus size={18} />
@@ -1490,7 +1503,6 @@ export default function MessagesView(props: MessagesViewProps) {
             position: 'relative',
             flexFlow: 'column',
             height: '100%',
-            backgroundColor: theme.colors.dark[7],
           })}
         >
           {/* Work around to broken justify-content: flex-end */}
@@ -1520,14 +1532,19 @@ export default function MessagesView(props: MessagesViewProps) {
                     position: 'absolute',
                     top: '-1.45rem',
                     padding: '1px 0.5rem 1px 0.3rem',
-                    backgroundColor: `${theme.colors.dark[7]}bb`,
+                    background: theme.other.elements.typing_indicator,
                     borderRadius: 3,
                     zIndex: 0,
                   })}
                   style={styles}
                 >
                   <Loader variant='dots' size='xs' />
-                  <Text size={11.5}>
+                  <Text
+                    size={11.5}
+                    sx={(theme) => ({
+                      color: theme.other.elements.typing_indicator_text,
+                    })}
+                  >
                     {context.state.typing.length <= 1 && (
                       <>
                         <b>{context.state.last_typing?.alias}</b> is typing...
@@ -1564,9 +1581,10 @@ export default function MessagesView(props: MessagesViewProps) {
                   position: 'absolute',
                   top: '-3.75rem',
                   right: '0.25rem',
-                  backgroundColor: theme.colors.dark[8],
+                  background: theme.other.elements.scroll_button,
+                  color: theme.other.elements.scroll_button_icon,
                   '&:hover': {
-                    backgroundColor: theme.colors.dark[6],
+                    background: theme.other.elements.scroll_button_hover,
                   },
                 })}
                 onClick={scrollToBottom}
@@ -1582,7 +1600,8 @@ export default function MessagesView(props: MessagesViewProps) {
                 spacing={6}
                 align='start'
                 sx={(theme) => ({
-                  backgroundColor: theme.colors.dark[8],
+                  background: theme.other.colors.panel,
+                  color: theme.other.colors.panel_dimmed,
                   borderTopLeftRadius: 3,
                   borderTopRightRadius: 3,
                 })}
@@ -1600,11 +1619,12 @@ export default function MessagesView(props: MessagesViewProps) {
                   size={11}
                   mt={3}
                   mah='1.25rem'
-                  sx={{
+                  sx={(theme) => ({
                     maxWidth: '80ch',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                  }}
+                    color: theme.other.colors.panel_text,
+                  })}
                 >
                   {replyToMsg}
                 </Text>
@@ -1614,6 +1634,7 @@ export default function MessagesView(props: MessagesViewProps) {
                   size={'xs'}
                   iconSize={15}
                   mt={2}
+                  variant='transparent'
                   onClick={() => context.state._set('replying_to', null)}
                 />
               </Group>
@@ -1656,7 +1677,7 @@ export default function MessagesView(props: MessagesViewProps) {
                 borderRight: 'none',
                 borderTopRightRadius: 0,
                 borderBottomRightRadius: 0,
-                borderColor: theme.colors.dark[5],
+                borderColor: theme.other.colors.page_border,
               })}
               onClick={() => {
                 context.state._set('show_side_panel', true);
@@ -1675,9 +1696,7 @@ export default function MessagesView(props: MessagesViewProps) {
             sx={(theme) => ({
               flexBasis: '25rem',
               height: '100%',
-              /* position: 'relative',
-            boxShadow: `0px 0px 6px ${theme.colors.dark[9]}`, */
-              borderLeft: `1px solid ${theme.colors.dark[6]}`,
+              borderLeft: `1px solid ${theme.other.colors.page_border}`,
             })}
           >
             <SidePanelView

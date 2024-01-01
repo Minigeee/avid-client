@@ -521,12 +521,12 @@ function TabView({
                         border: `3px solid ${
                           selectedAssignee === member.id
                             ? theme.colors.indigo[5]
-                            : theme.colors.dark[6]
+                            : theme.other.colors.page
                         }`,
                         filter:
                           selectedAssignee === member.id
                             ? undefined
-                            : 'brightness(0.9)',
+                            : 'brightness(0.95)',
                       })}
                       onClick={() => setSelectedAssignee(member.id)}
                     />
@@ -543,12 +543,12 @@ function TabView({
                         border: `2px solid ${
                           selectedAssignee === extraAssignee.id
                             ? theme.colors.indigo[5]
-                            : theme.colors.dark[6]
+                            : theme.other.colors.page
                         }`,
                         filter:
                           selectedAssignee === extraAssignee.id
                             ? undefined
-                            : 'brightness(0.9)',
+                            : 'brightness(0.95)',
                       })}
                       onClick={() => setSelectedAssignee(extraAssignee.id)}
                     />
@@ -573,7 +573,7 @@ function TabView({
                         radius='xl'
                         sx={(theme) => ({
                           cursor: 'pointer',
-                          backgroundColor: theme.colors.gray[7],
+                          background: theme.colors.gray[7],
                         })}
                       >
                         {assignees.length - 5}+
@@ -585,9 +585,9 @@ function TabView({
                           key={member.id}
                           icon={<MemberAvatar size={32} member={member} />}
                           sx={(theme) => ({
-                            backgroundColor:
+                            background:
                               selectedAssignee === member.id
-                                ? theme.colors.dark[4]
+                                ? theme.other.colors.panel_hover
                                 : undefined,
                           })}
                           onClick={() => {
@@ -983,7 +983,7 @@ export default function BoardView(props: BoardViewProps) {
               top: 0,
               margin: '0.0rem -0.5rem 1.0rem -1.5rem',
               padding: '0.0rem 1.5rem 0.25rem 1.5rem',
-              backgroundColor: `${theme.colors.dark[7]}E0`,
+              background: `${theme.other.colors.page}E0`,
               backdropFilter: 'blur(6px)',
               zIndex: 100,
             })}
@@ -996,7 +996,8 @@ export default function BoardView(props: BoardViewProps) {
               styles={(theme) => ({
                 input: {
                   paddingTop: 0,
-                  background: theme.colors.dark[6],
+                  background: theme.other.colors.panel,
+                  color: theme.other.colors.panel_text,
                   border: 'none',
                   fontFamily: theme.headings.fontFamily,
                   fontSize: theme.headings.sizes.h3.fontSize,
@@ -1006,7 +1007,10 @@ export default function BoardView(props: BoardViewProps) {
                   paddingTop: '0.4rem',
                   paddingBottom: '0.4rem',
                 },
-                rightSection: { pointerEvents: 'none' },
+                rightSection: {
+                  pointerEvents: 'none',
+                  color: theme.other.colors.panel_dimmed,
+                },
               })}
               value={collectionId}
               onChange={setCollectionId}
@@ -1080,7 +1084,7 @@ export default function BoardView(props: BoardViewProps) {
                   mt={6}
                   mr={8}
                   ml={6}
-                  sx={(theme) => ({ color: theme.colors.dark[2] })}
+                  sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
                 >
                   <IconClock size={32} />
                 </Box>
@@ -1127,9 +1131,10 @@ export default function BoardView(props: BoardViewProps) {
             position: 'absolute',
             top: '3.5rem',
             right: '2.5rem',
-            backgroundColor: theme.colors.dark[8],
+            background: theme.other.elements.scroll_button,
+            color: theme.other.elements.scroll_button_icon,
             '&:hover': {
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.elements.scroll_button_hover,
             },
           })}
           onClick={() => {

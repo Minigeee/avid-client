@@ -88,7 +88,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
   const [webcamPriority, setWebcamPriority] = useState<boolean>(false);
 
   // Get rtc info
-  const rtcInfo = rtc.participants[member.id];
+  const rtcInfo = rtc.participants?.[member.id];
   const display = webcamPriority
     ? rtcInfo?.video || rtcInfo?.share
     : rtcInfo?.share || rtcInfo?.video;
@@ -96,7 +96,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
 
   // Permissions
   const canManage =
-    !rtcInfo.is_admin &&
+    !rtcInfo?.is_admin &&
     (props.domain._permissions.is_admin ||
       (hasPermission(props.domain, rtc.room_id, 'can_manage_participants') &&
         !rtcInfo.is_manager));
@@ -123,12 +123,12 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
       sx={(theme) => ({
         flex: `0 0 calc(${props.cellWidth}% - 10px)`,
         margin: 5,
-        border: member.is_talking
-          ? `solid 3px ${theme.colors.grape[6]}`
-          : 'none',
-        backgroundColor: theme.colors.dark[8],
+        border: `solid 3px ${
+          member.is_talking ? theme.colors.grape[6] : theme.other.colors.panel
+        }`,
+        background: theme.other.colors.panel,
         borderRadius: 6,
-        boxShadow: 'rgba(0, 0, 0, 0.1) 0px 4px 12px',
+        boxShadow: '#00000020 0px 0px 8px',
         overflow: 'hidden',
       })}
     >
@@ -170,7 +170,7 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
                 bottom: 2,
                 padding: '0.1rem 0.5rem 0.1rem 0.5rem',
                 borderRadius: 3,
-                backgroundColor: theme.colors.dark[9] + '80',
+                background: theme.other.elements.member_name + '80',
               })}
             >
               {member.alias}
@@ -185,41 +185,71 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
             right: '0.5rem',
             top: '0.5rem',
             padding: 2,
-            backgroundColor: display ? theme.colors.dark[9] + '80' : undefined,
+            background: display ? theme.colors.dark[9] + '80' : undefined,
+            color: display
+              ? theme.colors.dark[0]
+              : theme.other.colors.panel_dimmed,
           })}
           onClick={(e) => {
             e.stopPropagation();
           }}
         >
-          {((rtcInfo.share && !rtcInfo.share.paused.remote) ||
-            rtcInfo.locked.share) && (
+          {((rtcInfo?.share && !rtcInfo.share.paused.remote) ||
+            rtcInfo?.locked.share) && (
             <ProducerIcon
               participant={rtcInfo}
               type='share'
               rtc={rtc}
               canManage={canManage}
+              iconProps={{
+                sx: (theme) => ({
+                  '&:hover': {
+                    background: display
+                      ? '#ffffff10'
+                      : theme.other.colors.panel_hover,
+                  },
+                }),
+              }}
             />
           )}
-          {((rtcInfo.video && !rtcInfo.video.paused.remote) ||
-            rtcInfo.locked.video) && (
+          {((rtcInfo?.video && !rtcInfo.video.paused.remote) ||
+            rtcInfo?.locked.video) && (
             <ProducerIcon
               participant={rtcInfo}
               type='video'
               rtc={rtc}
               canManage={canManage}
+              iconProps={{
+                sx: (theme) => ({
+                  '&:hover': {
+                    background: display
+                      ? '#ffffff10'
+                      : theme.other.colors.panel_hover,
+                  },
+                }),
+              }}
             />
           )}
-          {((rtcInfo.audio && !rtcInfo.audio.paused.remote) ||
-            rtcInfo.locked.audio) && (
+          {((rtcInfo?.audio && !rtcInfo.audio.paused.remote) ||
+            rtcInfo?.locked.audio) && (
             <ProducerIcon
               participant={rtcInfo}
               type='audio'
               rtc={rtc}
               canManage={canManage}
+              iconProps={{
+                sx: (theme) => ({
+                  '&:hover': {
+                    background: display
+                      ? '#ffffff10'
+                      : theme.other.colors.panel_hover,
+                  },
+                }),
+              }}
             />
           )}
 
-          {rtcInfo.is_deafened && (
+          {rtcInfo?.is_deafened && (
             <Center w={28} h={28}>
               <IconHeadphonesOff size={19} />
             </Center>
@@ -237,7 +267,15 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
 
           <Menu width='16rem' position='bottom-end' withArrow>
             <Menu.Target>
-              <ActionIcon>
+              <ActionIcon
+                sx={(theme) => ({
+                  '&:hover': {
+                    background: display
+                      ? '#ffffff10'
+                      : theme.other.colors.panel_hover,
+                  },
+                })}
+              >
                 <IconDotsVertical size={20} />
               </ActionIcon>
             </Menu.Target>
@@ -339,13 +377,18 @@ function JoinScreen({
           padding: '2rem',
           width: '30rem',
           maxWidth: '100%',
-          backgroundColor: theme.colors.dark[8],
+          background: theme.other.elements.rtc_join_panel,
           borderRadius: theme.radius.md,
-          boxShadow: '0px 6px 20px #00000030',
+          boxShadow: theme.other.elements.rtc_join_panel_shadow,
         })}
       >
         <Stack spacing={0} align='center'>
-          <Text size='sm' color='dimmed'>
+          <Text
+            size='sm'
+            sx={(theme) => ({
+              color: theme.other.elements.rtc_join_panel_dimmed,
+            })}
+          >
             You are about to join
           </Text>
           <Group align='center' spacing='sm'>
@@ -359,12 +402,13 @@ function JoinScreen({
         <Stack spacing={6} align='center'>
           {!participants.data?.length && (
             <>
-              <Avatar
-                size={48}
-                radius={100}
-                sx={{ backgroundColor: '#333333' }}
-              />
-              <Text size='xs' color='dimmed'>
+              <Avatar size={48} radius={100} />
+              <Text
+                size='xs'
+                sx={(theme) => ({
+                  color: theme.other.elements.rtc_join_panel_dimmed,
+                })}
+              >
                 There are no participants in this room
               </Text>
             </>
@@ -379,7 +423,7 @@ function JoinScreen({
                     member={member}
                     sx={(theme) => ({
                       borderWidth: 3,
-                      borderColor: theme.colors.dark[8],
+                      borderColor: theme.other.elements.rtc_join_panel,
                     })}
                   />
                 ))}
@@ -389,7 +433,7 @@ function JoinScreen({
                     radius={48}
                     sx={(theme) => ({
                       borderWidth: 3,
-                      borderColor: theme.colors.dark[8],
+                      borderColor: theme.other.elements.rtc_join_panel,
                     })}
                   >
                     +{participants.data.length - 3}
@@ -406,7 +450,13 @@ function JoinScreen({
 
         {canJoin && (
           <>
-            <Group spacing='sm' mt={8}>
+            <Group
+              spacing='sm'
+              mt={8}
+              sx={(theme) => ({
+                color: theme.other.elements.rtc_join_panel_text,
+              })}
+            >
               <Group spacing={6} mr={4}>
                 {webcamOn && <IconVideo size={20} />}
                 {!webcamOn && <IconVideoOff size={20} />}
@@ -445,7 +495,15 @@ function JoinScreen({
 
               <Divider orientation='vertical' />
               <Tooltip label='Settings' position='right' withArrow>
-                <ActionIcon onClick={() => openUserSettings({ tab: 'rtc' })}>
+                <ActionIcon
+                  sx={(theme) => ({
+                    color: theme.other.elements.rtc_join_panel_text,
+                    '&:hover': {
+                      background: theme.other.elements.rtc_join_panel_hover,
+                    },
+                  })}
+                  onClick={() => openUserSettings({ tab: 'rtc' })}
+                >
                   <IconSettings size={24} />
                 </ActionIcon>
               </Tooltip>
@@ -477,7 +535,7 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
 
   // Get list of participants
   const memberIds = useMemo(
-    () => Object.keys(rtc.participants),
+    () => Object.keys(rtc.participants || {}).concat([session.profile_id]),
     [rtc.participants],
   );
   const members = useMembers(props.domain.id, memberIds);
@@ -534,11 +592,7 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
         {!participants.length && (
           <Center w='100%' h='100%'>
             <Stack align='center' spacing='xl'>
-              <Avatar
-                size={avatarSize}
-                radius={100}
-                sx={{ backgroundColor: '#333333' }}
-              />
+              <Avatar size={avatarSize} radius={100} />
               <Text size={18}>Waiting for more members to join...</Text>
             </Stack>
           </Center>
@@ -574,7 +628,7 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
         sx={(theme) => ({
           flexBasis: '25rem',
           height: '100%',
-          borderLeft: `1px solid ${theme.colors.dark[6]}`,
+          borderLeft: `1px solid ${theme.other.colors.page_border}`,
         })}
       >
         <SidePanelView

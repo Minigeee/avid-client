@@ -45,14 +45,17 @@ const RoleSelectItem = forwardRef<HTMLDivElement, Role>(
     <div ref={ref} {...others}>
       <Group spacing='xs' noWrap>
         {badge ? (
-          <Box h='1.5rem' sx={(theme) => ({ color: theme.colors.dark[3] })}>
+          <Box
+            h='1.5rem'
+            sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
+          >
             <Emoji id={badge} size='1rem' />
           </Box>
         ) : (
           <Box
             h='1.5rem'
             pt={2}
-            sx={(theme) => ({ color: theme.colors.dark[3] })}
+            sx={(theme) => ({ color: theme.other.colors.page_dimmed })}
           >
             <IconBadgeOff size={19} />
           </Box>
@@ -110,7 +113,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
         spacing='sm'
         p='1.0rem 1.25rem'
         sx={(theme) => ({
-          borderBottom: `1px solid ${theme.colors.dark[5]}`,
+          borderBottom: `1px solid ${theme.other.colors.page_border}`,
         })}
       >
         <Indicator
@@ -126,7 +129,10 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
         </Indicator>
 
         <Box>
-          <Title order={5} sx={(theme) => ({ color: theme.colors.gray[5] })}>
+          <Title
+            order={5}
+            sx={(theme) => ({ color: theme.other.elements.member_name })}
+          >
             {member.alias}
           </Title>
           {member.roles && (
@@ -154,7 +160,9 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
           </Box>
         )}
 
-        <Divider sx={(theme) => ({ borderColor: theme.colors.dark[5] })} />
+        <Divider
+          sx={(theme) => ({ borderColor: theme.other.colors.page_border })}
+        />
 
         <Box mb={4}>
           <Title order={6} mb={2}>
@@ -175,7 +183,7 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
                     padding: `0px ${
                       canManageRole ? '0.3rem' : '0.6rem'
                     } 0 0.5rem`,
-                    backgroundColor: theme.colors.dark[4],
+                    background: theme.other.colors.panel,
                     borderRadius: 15,
                   })}
                 >
@@ -236,7 +244,10 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
                     size='sm'
                     radius='lg'
                     sx={(theme) => ({
-                      backgroundColor: theme.colors.dark[5],
+                      background: theme.other.colors.panel,
+                      '&:hover': {
+                        background: theme.other.colors.panel_hover,
+                      },
                     })}
                     onClick={() => setOpened(!opened)}
                   >
@@ -284,7 +295,7 @@ export default function MemberPopover(props: MemberPopoverProps) {
       <Popover.Dropdown
         sx={(theme) => ({
           padding: 0,
-          border: `solid 1px ${theme.colors.dark[5]}`,
+          border: `solid 1px ${theme.other.colors.page_border}`,
         })}
       >
         <Dropdown {...props} />

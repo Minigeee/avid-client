@@ -42,7 +42,10 @@ export type OnEditEvent = (
   override?: string,
 ) => void | Promise<void>;
 /** Callback for delete event callback function */
-export type OnDeleteEvent = (event_id: string, override?: string) => void | Promise<void>;
+export type OnDeleteEvent = (
+  event_id: string,
+  override?: string,
+) => void | Promise<void>;
 
 /** Callback for edit event callback function */
 export type OnEditEventInternal = (
@@ -50,7 +53,9 @@ export type OnEditEventInternal = (
   origEvent: MomentCalendarEvent,
 ) => void | Promise<void>;
 /** Callback for delete event callback function */
-export type OnDeleteEventInternal = (event: CalendarEvent | MomentCalendarEvent) => void | Promise<void>;
+export type OnDeleteEventInternal = (
+  event: CalendarEvent | MomentCalendarEvent,
+) => void | Promise<void>;
 
 /** Holds calendar state */
 export type CalendarState = {

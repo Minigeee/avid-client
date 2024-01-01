@@ -16,7 +16,11 @@ import TimeColumn from './TimeColumn';
 
 import { CalendarEvent } from '@/lib/types';
 
-import { useCalendarContext, useDragCreate, useDraggableGridEvents } from './hooks';
+import {
+  useCalendarContext,
+  useDragCreate,
+  useDraggableGridEvents,
+} from './hooks';
 import { CalendarStyle, MomentCalendarEvent } from './types';
 
 import moment, { Moment } from 'moment';
@@ -256,8 +260,8 @@ export default function DayView(props: DayViewProps) {
         <Box
           sx={(theme) => ({
             flex: '1 1 0px',
-            backgroundColor: start.isSame(moment(), 'date')
-              ? theme.colors.dark[6]
+            background: start.isSame(moment(), 'date')
+              ? theme.other.elements.calendar_today
               : undefined,
             borderLeft: `1px solid ${props.style.colors.cellBorder}`,
             borderBottom: `1px solid ${props.style.colors.cellBorder}`,
@@ -288,12 +292,13 @@ export default function DayView(props: DayViewProps) {
               background: e.has_prev
                 ? `color-mix(in srgb, ${
                     e.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]})`
+                  } 20%, ${theme.other.elements.calendar_block_event})`
                 : `linear-gradient(to right, ${
                     e.color || props.style.colors.event
                   } 0.25rem, color-mix(in srgb, ${
                     e.color || props.style.colors.event
-                  } 20%, ${theme.colors.dark[7]}) 0)`,
+                  } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+              color: theme.other.elements.calendar_block_event_text,
               fontSize: theme.fontSizes.sm,
               borderTopLeftRadius: e.has_prev ? 0 : theme.radius.sm,
               borderBottomLeftRadius: e.has_prev ? 0 : theme.radius.sm,
@@ -367,7 +372,7 @@ export default function DayView(props: DayViewProps) {
                   height: newEventRect.h,
                   top: newEventRect.y,
                   left: newEventRect.x,
-                  boxShadow: `0px 0px 16px #00000030`,
+                  boxShadow: theme.other.elements.calendar_block_event_shadow,
                   cursor: 'grab',
                   userSelect: 'none',
 
@@ -379,7 +384,8 @@ export default function DayView(props: DayViewProps) {
                     newEventObj.color || theme.colors.gray[6]
                   } 0.25rem, color-mix(in srgb, ${
                     newEventObj.color || theme.colors.gray[6]
-                  } 20%, ${theme.colors.dark[7]}) 0)`,
+                  } 20%, ${theme.other.elements.calendar_block_event}) 0)`,
+                  color: theme.other.elements.calendar_block_event_text,
                   fontSize: theme.fontSizes.sm,
                   borderRadius: theme.radius.sm,
                 };

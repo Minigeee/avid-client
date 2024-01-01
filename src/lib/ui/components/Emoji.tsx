@@ -198,6 +198,7 @@ function EmojiButton(props: EmojiButtonProps) {
       size={props.size + 8}
       onMouseEnter={() => props.setHovered?.(props.id)}
       onClick={props.onClick}
+      variant='transparent'
     >
       <Emoji id={props.id} skin={props.skin} size={props.size} />
     </ActionIcon>
@@ -373,7 +374,7 @@ function EmojiPickerScrollArea({
               height: 32,
               top: 0,
               zIndex: 1,
-              backgroundColor: `${theme.colors.dark[7]}D0`,
+              background: `${theme.other.elements.emoji_picker}D0`,
               backdropFilter: 'blur(6px)',
             })}
           >
@@ -397,7 +398,7 @@ function EmojiPickerScrollArea({
                 height: 32,
                 top: 0,
                 zIndex: 1,
-                backgroundColor: `${theme.colors.dark[7]}D0`,
+                background: `${theme.other.elements.emoji_picker}D0`,
                 backdropFilter: 'blur(6px)',
               })}
             >
@@ -562,7 +563,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
     <Stack spacing='sm' w='fit-content'>
       <Box
         sx={(theme) => ({
-          borderBottom: `1px solid ${theme.colors.dark[5]}`,
+          borderBottom: `1px solid ${theme.other.elements.emoji_picker_border}`,
         })}
       >
         <Group spacing={0}>
@@ -577,9 +578,13 @@ export function EmojiPicker(props: EmojiPickerProps) {
                 sx={(theme) => ({
                   color:
                     idx === activeCategoryIdx
-                      ? theme.colors.dark[0]
-                      : theme.colors.dark[1],
+                      ? theme.other.elements.emoji_picker_icon_active
+                      : theme.other.elements.emoji_picker_icon,
                   transition: 'color, 0.1s',
+
+                  '&:hover': {
+                    background: theme.other.elements.emoji_picker_hover,
+                  },
                 })}
                 onClick={() => {
                   if (!listRef.current || searchPages.length > 0) return;
@@ -603,11 +608,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
           sx={(theme) => ({
             position: 'relative',
             left: 2 + 1.5 * iconSize * activeCategoryIdx,
-            background: theme.fn.linearGradient(
-              50,
-              theme.colors.violet[5],
-              theme.colors.pink[5],
-            ),
+            background: theme.other.elements.emoji_picker_highlight,
             borderTopRightRadius: 3,
             borderTopLeftRadius: 3,
             transition: 'left, 0.1s',

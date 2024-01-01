@@ -238,7 +238,9 @@ function ThreadsTab(props: SidePanelViewProps) {
                 tooltip='Rename'
                 size='lg'
                 mb={2}
-                hoverBg={(theme) => theme.colors.dark[6]}
+                sx={(theme) => ({
+                  '&:hover': { background: theme.other.colors.page_hover },
+                })}
                 onClick={() => {
                   form.setFieldValue(
                     'name',
@@ -428,9 +430,9 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
         padding: '0.8rem 1.0rem',
         gap: '0.5rem',
 
-        backgroundColor: theme.colors.dark[6],
+        background: theme.other.colors.panel,
         borderRadius: theme.radius.sm,
-        boxShadow: '0px 0px 12px #00000030',
+        boxShadow: theme.shadows.sm,
       })}
     >
       <Group ref={ref} spacing='sm' w='100%' mb={6}>
@@ -439,13 +441,15 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
           size={38}
           sx={(theme) => ({
             marginTop: '0.25rem',
-            backgroundColor: theme.colors.dark[5],
           })}
         />
 
         <Box mt={2} sx={{ flexGrow: 1 }}>
           <Group spacing={6}>
-            <Title order={6} color='gray'>
+            <Title
+              order={6}
+              sx={(theme) => ({ color: theme.other.elements.member_name })}
+            >
               {msg.sender && typeof msg.sender !== 'string'
                 ? msg.sender.alias
                 : ''}
@@ -457,7 +461,11 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
             />
           </Group>
 
-          <Text size={11} color='dimmed' ml={2}>
+          <Text
+            size={11}
+            sx={(theme) => ({ color: theme.other.colors.panel_dimmed })}
+            ml={2}
+          >
             {moment(msg.created_at).calendar(null, {
               lastWeek: 'dddd [at] LT',
             })}
@@ -469,7 +477,10 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
             size='sm'
             iconSize={18}
             mt={2}
-            sx={{ alignSelf: 'start' }}
+            sx={(theme) => ({
+              alignSelf: 'start',
+              '&:hover': { background: theme.other.colors.panel_hover },
+            })}
             onClick={() => {
               openConfirmModal({
                 title: 'Unpin Message',
@@ -527,15 +538,16 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
                 reaction.self
                   ? (theme) => ({
                       root: {
-                        background: theme.fn.linearGradient(
-                          0,
-                          `${theme.colors.violet[9]}50`,
-                          `${theme.colors.violet[6]}50`,
-                        ),
-                        border: `1px solid ${theme.colors.grape[8]}`,
+                        background: theme.other.elements.emote_button_active,
+                        border: `1px solid ${theme.other.elements.emote_button_active_border}`,
                       },
                     })
-                  : undefined
+                  : (theme) => ({
+                      root: {
+                        background: theme.other.elements.emote_button,
+                        border: `1px solid ${theme.other.elements.emote_button_border}`,
+                      },
+                    })
               }
               onClick={() => {
                 if (reaction.self)
@@ -560,7 +572,11 @@ function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
                     span
                     size='xs'
                     weight={600}
-                    sx={(theme) => ({ color: theme.colors.dark[0] })}
+                    sx={(theme) => ({
+                      color: reaction.self
+                        ? theme.other.elements.emote_button_active_text
+                        : theme.other.elements.emote_button_text,
+                    })}
                   >
                     {reaction.count}
                   </Text>
@@ -715,20 +731,22 @@ export default function SidePanelView(props: SidePanelViewProps) {
           paddingTop: '0.2rem',
           paddingLeft: '0.3rem',
           paddingRight: '0.3rem',
-          borderBottom: `1px solid ${theme.colors.dark[6]}`,
+          borderBottom: `1px solid ${theme.other.colors.page_border}`,
         },
         tab: {
-          color: theme.colors.dark[1],
+          color: theme.other.colors.page_text,
           fontWeight: 600,
-          transition: 'background-color 0.1s',
+          transition: 'background 0.1s',
 
           '&:hover': {
-            backgroundColor: theme.colors.dark[6],
+            background: theme.other.colors.page_hover,
           },
           '&[data-active]': {
-            backgroundColor: theme.colors.dark[6],
+            background: theme.other.colors.page_hover,
+            color: theme.other.colors.page_text,
+
             '&:hover': {
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.colors.page_hover,
             },
           },
         },
@@ -745,6 +763,9 @@ export default function SidePanelView(props: SidePanelViewProps) {
         <div style={{ flexGrow: 1 }} />
         <CloseButton
           size='md'
+          sx={(theme) => ({
+            '&:hover': { background: theme.other.colors.page_hover },
+          })}
           onClick={() => {
             props.context.state._set('show_side_panel', false);
             app._mutators.setChatState(props.channel_id, {

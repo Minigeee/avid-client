@@ -39,7 +39,7 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
           input: {
             cursor: 'pointer',
             '&:hover': {
-              borderColor: theme.colors.dark[3],
+              borderColor: theme.other.colors.panel_border,
             },
           },
         })}
@@ -59,48 +59,50 @@ function useTableStyles() {
         table: {
           style: {
             borderRadius: '6px',
-            backgroundColor: theme.colors.dark[8],
-            color: theme.colors.dark[0],
+            background: theme.other.elements.data_table_header,
+            color: theme.other.elements.data_table_header_text,
           },
         },
         headRow: {
           style: {
             fontSize: `${theme.fontSizes.sm}px`,
             fontWeight: 600,
-            backgroundColor: 'transparent',
-            color: theme.colors.dark[0],
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            background: 'transparent',
+            color: theme.other.elements.data_table_header_text,
+            borderBottom: `1px solid ${theme.other.elements.data_table_border}`,
           },
         },
         rows: {
           style: {
             padding: '0.5rem 0rem',
             fontSize: `${theme.fontSizes.sm}px`,
-            color: theme.colors.dark[0],
-            backgroundColor: theme.colors.dark[7],
-            borderTop: `1px solid ${theme.colors.dark[5]}`,
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            color: theme.other.elements.data_table_text,
+            background: theme.other.elements.data_table,
+            borderTop: `1px solid ${theme.other.elements.data_table_border}`,
+            borderBottom: `1px solid ${theme.other.elements.data_table_border}`,
+            '&:not(:last-of-type)': {
+              borderBottom: 'none',
+            },
           },
           highlightOnHoverStyle: {
-            color: theme.colors.dark[0],
-            backgroundColor: theme.colors.dark[6],
+            color: theme.other.elements.data_table_text,
+            background: theme.other.elements.data_table_hover,
             transitionDuration: '0.08s',
-            transitionProperty: 'background-color',
-            borderBottomColor: 'transparent',
+            transitionProperty: 'background',
             outlineWidth: '0px',
             '&:last-child': {
-              borderBottomColor: theme.colors.dark[4],
+              borderBottomColor: theme.other.elements.data_table_border,
             },
           },
         },
         pagination: {
           style: {
-            color: theme.colors.dark[0],
+            color: theme.other.elements.data_table_header_text,
             fontSize: '13px',
             fontWeight: 600,
             minHeight: '3.0rem',
-            backgroundColor: theme.colors.dark[8],
-            borderTop: `solid 1px ${theme.colors.dark[5]}`,
+            background: theme.other.elements.data_table_header,
+            borderTop: `solid 1px ${theme.other.elements.data_table_border}`,
             borderBottomLeftRadius: '6px',
             borderBottomRightRadius: '6px',
           },
@@ -110,57 +112,57 @@ function useTableStyles() {
             width: '2.4rem',
             cursor: 'pointer',
             transition: '0.18s',
-            color: theme.colors.dark[1],
-            fill: theme.colors.dark[1],
-            backgroundColor: 'transparent',
+            color: theme.other.elements.data_table_header_text,
+            fill: theme.other.elements.data_table_header_text,
+            background: 'transparent',
             '&:disabled': {
               cursor: 'unset',
-              color: theme.colors.dark[4],
-              fill: theme.colors.dark[4],
+              color: theme.other.elements.data_table_header_dimmed,
+              fill: theme.other.elements.data_table_header_dimmed,
             },
             '&:hover:not(:disabled)': {
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.elements.data_table_header_hover,
             },
             '&:focus': {
               outline: 'none',
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.elements.data_table_header_hover,
             },
           },
         },
         expanderRow: {
           style: {
-            color: theme.colors.dark[1],
-            backgroundColor: 'transparent',
+            color: theme.other.elements.data_table_dimmed,
+            background: 'transparent',
           },
         },
         expanderButton: {
           style: {
-            color: theme.colors.dark[1],
-            fill: theme.colors.dark[1],
-            backgroundColor: 'transparent',
+            color: theme.other.elements.data_table_dimmed,
+            fill: theme.other.elements.data_table_dimmed,
+            background: 'transparent',
             height: '100%',
             width: '100%',
             '&:hover:not(:disabled)': {
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.elements.data_table_hover,
             },
             '&:focus': {
-              backgroundColor: 'transparent',
+              background: 'transparent',
             },
           },
         },
         noData: {
           style: {
             height: '10rem',
-            color: theme.colors.dark[2],
-            backgroundColor: theme.colors.dark[8],
+            color: theme.other.colors.panel_dimmed,
+            background: theme.other.colors.panel,
             borderRadius: 6,
           },
         },
         progress: {
           style: {
             height: '8rem',
-            color: theme.colors.dark[1],
-            backgroundColor: theme.colors.dark[8],
+            color: theme.other.colors.panel_text,
+            background: theme.other.colors.panel,
           },
         },
       }) as TableStyles,

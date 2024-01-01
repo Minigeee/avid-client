@@ -150,10 +150,11 @@ export type ApiSchema = {
     body: {
       mode: 'edit' | 'delete';
       date: string;
-    } & Partial<Omit<CalendarEvent, 'time_created' | 'channel' | 'id' | 'repeat'>>;
-    return: { base: CalendarEvent, new?: CalendarEvent };
+    } & Partial<
+      Omit<CalendarEvent, 'time_created' | 'channel' | 'id' | 'repeat'>
+    >;
+    return: { base: CalendarEvent; new?: CalendarEvent };
   };
-
 
   /** Channel groups */
   'GET /channel_groups': {

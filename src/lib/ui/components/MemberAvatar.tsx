@@ -54,8 +54,6 @@ const MemberAvatar = forwardRef<HTMLDivElement, MemberAvatarProps>(
           }
 
           return {
-            backgroundColor: props.color || '#333333',
-            borderWidth: 0,
             cursor: props.cursor,
             ...sx,
           };

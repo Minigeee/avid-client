@@ -96,11 +96,12 @@ export default function JoinDomain(props: Props) {
     <Center h='60vh'>
       <Paper
         p={35}
-        shadow='lg'
+        shadow='md'
         sx={(theme) => ({
           width: '50ch',
           maxWidth: '100%',
-          backgroundColor: theme.colors.dark[5],
+          background: theme.other.colors.panel,
+          color: theme.other.colors.panel_text,
         })}
       >
         <form onSubmit={form.onSubmit(onSubmit)}>

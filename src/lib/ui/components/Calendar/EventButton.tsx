@@ -163,6 +163,9 @@ export default function EventButton({
             <>
               <ActionButton
                 tooltip='Edit event'
+                sx={(theme) => ({
+                  '&:hover': { background: theme.other.colors.page_hover },
+                })}
                 onClick={() => {
                   openCreateCalendarEvent({
                     domain: calendar.domain,
@@ -176,7 +179,9 @@ export default function EventButton({
                       calendar.onEditEvent.current?.(
                         {
                           ...updated,
-                          start: updated.start ? moment(updated.start) : undefined,
+                          start: updated.start
+                            ? moment(updated.start)
+                            : undefined,
                           end: updated.end ? moment(updated.end) : undefined,
                         },
                         {
@@ -194,6 +199,9 @@ export default function EventButton({
 
               <ActionButton
                 tooltip='Delete event'
+                sx={(theme) => ({
+                  '&:hover': { background: theme.other.colors.page_hover },
+                })}
                 onClick={() => {
                   calendar.onDeleteEvent.current?.(baseEvent);
                 }}
@@ -207,7 +215,7 @@ export default function EventButton({
             size='md'
             iconSize={18}
             sx={(theme) => ({
-              '&:hover': { backgroundColor: theme.colors.dark[5] },
+              '&:hover': { background: theme.other.colors.page_hover },
             })}
             onClick={() => setOpened(false)}
           />

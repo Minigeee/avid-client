@@ -134,10 +134,10 @@ function SuggestionButton(
         const selected = props.selectedIndex === props.index;
         return {
           padding: '0.25rem 0.4rem 0.25rem 0.4rem',
-          backgroundColor: theme.colors.dark[selected ? 4 : 5],
+          background: selected ? theme.other.colors.page_hover : undefined,
           borderRadius: theme.radius.sm,
           '&:hover': {
-            backgroundColor: theme.colors.dark[4],
+            background: theme.other.colors.page_hover,
           },
           ...merge,
         };
@@ -219,9 +219,9 @@ const MentionList = forwardRef(
             padding: 3,
             width: '15rem',
             maxWidth: '100%',
-            backgroundColor: theme.colors.dark[5],
-            border: `1px solid ${theme.colors.dark[6]}`,
-            boxShadow: '0px 0px 10px #00000033',
+            background: theme.other.colors.page,
+            border: `1px solid ${theme.other.colors.page_border}`,
+            boxShadow: theme.shadows.sm,
           })}
         >
           {props.items.length ? (
@@ -253,19 +253,13 @@ const MentionList = forwardRef(
                   setSelectedIndex={setSelectedIndex}
                   sx={(theme) => ({
                     '.tabler-icon': {
-                      color: theme.colors.dark[3],
+                      color: theme.other.colors.page_dimmed,
                     },
                   })}
                 >
                   {item.badge && <Emoji id={item.badge} size='1rem' />}
                   {!item.badge && <IconBadgeOff size='1.25rem' />}
-                  <Text
-                    size='sm'
-                    weight={600}
-                    sx={(theme) => ({
-                      color: theme.colors.gray[4],
-                    })}
-                  >
+                  <Text size='sm' weight={600}>
                     @{item.name}
                   </Text>
                 </SuggestionButton>

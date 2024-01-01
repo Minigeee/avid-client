@@ -54,7 +54,7 @@ const CustomCheckbox = forwardRef((props: CheckboxProps, ref) => {
           input: {
             cursor: 'pointer',
             '&:hover': {
-              borderColor: theme.colors.dark[3],
+              borderColor: theme.other.colors.panel_border,
             },
           },
         })}
@@ -179,14 +179,13 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                 }`}
                 position='right'
                 withArrow
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
               >
                 <Group
                   noWrap
                   spacing={1}
                   align='center'
                   sx={(theme) => ({
-                    color: theme.colors.dark[2],
+                    color: theme.other.elements.data_table_dimmed,
                     cursor: 'default',
                   })}
                 >
@@ -208,13 +207,12 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                 }`}
                 position='right'
                 withArrow
-                sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
               >
                 <Group
                   spacing={1}
                   align='center'
                   sx={(theme) => ({
-                    color: theme.colors.dark[2],
+                    color: theme.other.elements.data_table_dimmed,
                     cursor: 'default',
                   })}
                 >
@@ -239,7 +237,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                   padding: '1px 13px 2px 11px',
                   width: 'fit-content',
                   maxWidth: 'calc(100% - 1.0rem)',
-                  backgroundColor: props.statuses?.[task.status].color,
+                  background: props.statuses?.[task.status].color,
+                  color: theme.colors.dark[0],
                   borderRadius: 3,
                   textOverflow: 'ellipsis',
                   overflow: 'hidden',
@@ -292,15 +291,15 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               label={moment(task.due_date).format('ll')}
               position='right'
               withArrow
-              sx={(theme) => ({
-                backgroundColor: theme.colors.dark[8],
+              sx={{
                 fontWeight: 400,
-              })}
+              }}
             >
               <Text
                 sx={(theme) => ({
                   padding: '1px 11px 2px 11px',
-                  backgroundColor: theme.colors.dark[4],
+                  background: theme.other.colors.panel,
+                  color: theme.other.colors.panel_text,
                   borderRadius: 15,
                   cursor: 'default',
                 })}
@@ -348,7 +347,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
                         key={id}
                         sx={{
                           padding: '1px 11px 2px 11px',
-                          backgroundColor: tag.color,
+                          background: tag.color,
+                          color: theme.colors.dark[0],
                           borderRadius: 15,
                           cursor: 'default',
                         }}
@@ -381,6 +381,12 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
       cols.push({
         name: (
           <ActionIcon
+            sx={(theme) => ({
+              color: theme.other.elements.data_table_header_dimmed,
+              '&:hover': {
+                background: theme.other.elements.data_table_header_hover,
+              },
+            })}
             onClick={() => {
               if (board._exists) {
                 // Add starting group data
@@ -456,8 +462,8 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
             style: {
               maxWidth: '100%',
               borderRadius: '6px',
-              backgroundColor: theme.colors.dark[8],
-              color: theme.colors.dark[0],
+              background: theme.other.elements.data_table_header,
+              color: theme.other.elements.data_table_header_text,
             },
           },
           tableWrapper: {
@@ -471,9 +477,9 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               minHeight: props.headerHeight || '3.25rem',
               fontSize: `${theme.fontSizes.sm}px`,
               fontWeight: 600,
-              backgroundColor: 'transparent',
-              color: theme.colors.dark[0],
-              borderBottom: `1px solid ${theme.colors.dark[5]}`,
+              background: 'transparent',
+              color: theme.other.elements.data_table_header_text,
+              borderBottom: `1px solid ${theme.other.elements.data_table_border}`,
             },
           },
           rows: {
@@ -481,31 +487,33 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               minHeight: props.rowHeight || '3rem',
               padding: '0.5rem 0rem',
               fontSize: `${theme.fontSizes.sm}px`,
-              color: theme.colors.dark[0],
-              backgroundColor: theme.colors.dark[7],
-              borderTop: `1px solid ${theme.colors.dark[5]}`,
-              borderBottom: `1px solid ${theme.colors.dark[5]}`,
+              color: theme.other.elements.data_table_text,
+              background: theme.other.elements.data_table,
+              borderTop: `1px solid ${theme.other.elements.data_table_border}`,
+              borderBottom: `1px solid ${theme.other.elements.data_table_border}`,
+              '&:not(:last-of-type)': {
+                borderBottom: 'none',
+              },
             },
             highlightOnHoverStyle: {
-              color: theme.colors.dark[0],
-              backgroundColor: theme.colors.dark[6],
+              color: theme.other.elements.data_table_text,
+              background: theme.other.elements.data_table_hover,
               transitionDuration: '0.08s',
-              transitionProperty: 'background-color',
-              borderBottomColor: 'transparent',
+              transitionProperty: 'background',
               outlineWidth: '0px',
               '&:last-child': {
-                borderBottomColor: theme.colors.dark[4],
+                borderBottomColor: theme.other.elements.data_table_border,
               },
             },
           },
           pagination: {
             style: {
-              color: theme.colors.dark[0],
+              color: theme.other.elements.data_table_header_text,
               fontSize: '13px',
               fontWeight: 600,
               minHeight: '3.0rem',
-              backgroundColor: theme.colors.dark[8],
-              borderTop: `solid 1px ${theme.colors.dark[5]}`,
+              background: theme.other.elements.data_table_header,
+              borderTop: `solid 1px ${theme.other.elements.data_table_border}`,
               borderBottomLeftRadius: '6px',
               borderBottomRightRadius: '6px',
             },
@@ -515,28 +523,28 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
               width: '2.4rem',
               cursor: 'pointer',
               transition: '0.18s',
-              color: theme.colors.dark[1],
-              fill: theme.colors.dark[1],
-              backgroundColor: 'transparent',
+              color: theme.other.elements.data_table_header_text,
+              fill: theme.other.elements.data_table_header_text,
+              background: 'transparent',
               '&:disabled': {
                 cursor: 'unset',
-                color: theme.colors.dark[4],
-                fill: theme.colors.dark[4],
+                color: theme.other.elements.data_table_header_dimmed,
+                fill: theme.other.elements.data_table_header_dimmed,
               },
               '&:hover:not(:disabled)': {
-                backgroundColor: theme.colors.dark[6],
+                background: theme.other.elements.data_table_header_hover,
               },
               '&:focus': {
                 outline: 'none',
-                backgroundColor: theme.colors.dark[6],
+                background: theme.other.elements.data_table_header_hover,
               },
             },
           },
           noData: {
             style: {
               height: '10rem',
-              color: theme.colors.dark[2],
-              backgroundColor: theme.colors.dark[8],
+              color: theme.other.colors.panel_dimmed,
+              background: theme.other.colors.panel,
               borderRadius: 6,
             },
           },

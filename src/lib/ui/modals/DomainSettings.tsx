@@ -60,7 +60,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
         spacing='xl'
         sx={(theme) => ({
           padding: '1.2rem',
-          backgroundColor: theme.colors.dark[8],
+          background: theme.other.elements.settings_panel,
           borderRadius: theme.radius.md,
         })}
       >
@@ -77,9 +77,9 @@ function GeneralTab({ domain, ...props }: TabProps) {
                 tooltipProps={{ position: 'right' }}
                 size='lg'
                 sx={(theme) => ({
-                  color: theme.colors.dark[1],
+                  color: theme.other.elements.settings_panel_dimmed,
                   '&:hover': {
-                    backgroundColor: theme.colors.dark[5],
+                    background: theme.other.elements.settings_panel_hover,
                   },
                 })}
                 onClick={() => {
@@ -106,7 +106,12 @@ function GeneralTab({ domain, ...props }: TabProps) {
               </ActionButton>
             )}
           </Group>
-          <Text size='xs' color='dimmed'>
+          <Text
+            size='xs'
+            sx={(theme) => ({
+              color: theme.other.elements.settings_panel_dimmed,
+            })}
+          >
             Domain icons are resized to{' '}
             {config.upload.profile_picture.image_size.w}x
             {config.upload.profile_picture.image_size.h}

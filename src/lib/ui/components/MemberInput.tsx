@@ -205,8 +205,7 @@ function MultiMemberInputValue({
         sx={(theme) => ({
           cursor: 'default',
           padding: `${rem(0)} ${rem(3)} ${rem(0.5)} ${rem(3)}`,
-          backgroundColor: theme.colors.dark[5],
-          border: `1px solid ${theme.colors.dark[4]}`,
+          background: theme.other.colors.panel,
           borderRadius: 20,
         })}
       >

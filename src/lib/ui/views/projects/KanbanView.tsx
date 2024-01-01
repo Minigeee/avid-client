@@ -84,9 +84,9 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
             mb={9}
             sx={(theme) => ({
               padding: '0.7rem 0.8rem',
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.elements.kanban_card,
               borderRadius: 3,
-              boxShadow: '0px 0px 10px #00000033',
+              boxShadow: theme.other.elements.kanban_card_shadow,
             })}
             onClick={props.onClick}
             {...provided.draggableProps}
@@ -97,7 +97,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                 size={15}
                 weight={600}
                 sx={(theme) => ({
-                  color: theme.colors.violet[0],
+                  color: theme.other.elements.kanban_card_text,
                   marginRight: 4,
                 })}
               >
@@ -111,13 +111,12 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   }`}
                   position='right'
                   withArrow
-                  sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
                 >
                   <Group
                     spacing={1}
                     align='center'
                     sx={(theme) => ({
-                      color: theme.colors.dark[2],
+                      color: theme.other.elements.kanban_card_dimmed,
                       cursor: 'default',
                     })}
                   >
@@ -134,13 +133,12 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   }`}
                   position='right'
                   withArrow
-                  sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
                 >
                   <Group
                     spacing={1}
                     align='center'
                     sx={(theme) => ({
-                      color: theme.colors.dark[2],
+                      color: theme.other.elements.kanban_card_dimmed,
                       cursor: 'default',
                     })}
                   >
@@ -155,7 +153,7 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
               size='sm'
               sx={(theme) => ({
                 marginBottom: '0.4rem',
-                color: theme.colors.dark[0],
+                color: theme.other.elements.kanban_card_text,
               })}
             >
               {task.summary}
@@ -169,12 +167,13 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   return (
                     <Box
                       key={id}
-                      sx={{
+                      sx={(theme) => ({
                         padding: '1px 11px 2px 11px',
-                        backgroundColor: tag.color || 'gray',
+                        background: tag.color || 'gray',
+                        color: theme.colors.dark[0],
                         borderRadius: 15,
                         cursor: 'default',
-                      }}
+                      })}
                     >
                       <Text size='xs' weight={500}>
                         {tag.label}
@@ -192,13 +191,13 @@ function TaskCard({ task, prefix, tags, ...props }: TaskCardProps) {
                   label={moment(task.due_date).format('ll')}
                   position='right'
                   withArrow
-                  sx={(theme) => ({ backgroundColor: theme.colors.dark[8] })}
                 >
                   <Text
                     size='xs'
                     sx={(theme) => ({
                       padding: '1px 8px',
-                      backgroundColor: theme.colors.dark[4],
+                      background: theme.other.colors.document,
+                      color: theme.other.colors.panel_text,
                       borderRadius: 15,
                       cursor: 'default',
                     })}
@@ -285,19 +284,31 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
             align='center'
             sx={(theme) => ({
               padding: '0.4rem 0.5rem 0.4rem 0.8rem',
-              backgroundColor: theme.colors.dark[4],
+              background: theme.other.elements.kanban_header,
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
             })}
           >
             {status.color && <ColorSwatch size={18} color={status.color} />}
-            <Title order={5} sx={{ flexGrow: 1 }}>
+            <Title
+              order={5}
+              sx={(theme) => ({
+                flexGrow: 1,
+                color: theme.other.elements.kanban_header_text,
+              })}
+            >
               {status.label} -{' '}
               {tasks && tasks[status.id] ? tasks[status.id].length : 0}
             </Title>
 
             {props.creatable !== false && (
               <ActionIcon
+                sx={(theme) => ({
+                  color: theme.other.elements.kanban_header_icon,
+                  '&:hover': {
+                    background: theme.other.elements.kanban_header_hover,
+                  },
+                })}
                 onClick={() => {
                   // Add starting group data
                   const groupData: Partial<CreateTaskProps> = {};
@@ -337,8 +348,8 @@ function Kanban({ board, tasks, group, ...props }: KanbanProps) {
                 ref={provided.innerRef}
                 sx={(theme) => ({
                   flexGrow: 1,
-                  padding: '9px 9px 0.1px 9px',
-                  backgroundColor: theme.colors.dark[8],
+                  padding: '9px 9px 0px 9px',
+                  background: theme.other.elements.kanban_column,
                   borderBottomLeftRadius: 6,
                   borderBottomRightRadius: 6,
                 })}

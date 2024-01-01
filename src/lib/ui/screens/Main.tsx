@@ -67,11 +67,13 @@ function DomainButton(props: DomainButtonProps) {
     <UnstyledButton
       sx={(theme) => ({
         padding: '0.5rem 0.75rem',
-        backgroundColor: theme.colors.dark[props.active ? 6 : 7],
+        background: props.active
+          ? theme.other.elements.drawer_hover
+          : undefined,
         borderRadius: theme.radius.md,
-        transition: 'background-color 0.08s',
+        transition: 'background 0.08s',
         '&:hover': {
-          backgroundColor: theme.colors.dark[6],
+          background: theme.other.elements.drawer_hover,
         },
       })}
       onClick={props.onClick}
@@ -107,10 +109,11 @@ function PersonalButton(props: PersonalButtonProps) {
     <UnstyledButton
       sx={(theme) => ({
         padding: '0.75rem',
+        color: theme.other.elements.drawer_text,
         borderRadius: theme.radius.md,
-        transition: 'background-color 0.08s',
+        transition: 'background 0.08s',
         '&:hover': {
-          backgroundColor: theme.colors.dark[6],
+          background: theme.other.elements.drawer_hover,
         },
       })}
       onClick={props.onClick}
@@ -144,21 +147,29 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
       withCloseButton={false}
       padding={0}
     >
-      <Flex direction='column' h='100vh'>
+      <Flex
+        direction='column'
+        h='100vh'
+        sx={(theme) => ({
+          background: theme.other.elements.drawer,
+        })}
+      >
         <Group
           mih='10rem'
           sx={(theme) => ({
             position: 'relative',
-            backgroundColor: theme.colors.dark[9],
+            background: theme.other.elements.drawer_banner,
           })}
         >
           <CloseButton
             size='md'
-            sx={{
+            variant='transparent'
+            sx={(theme) => ({
               position: 'absolute',
               top: '0.5rem',
               right: '0.5rem',
-            }}
+              color: theme.other.elements.drawer_close_icon,
+            })}
             onClick={onClose}
           />
         </Group>
@@ -166,13 +177,22 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
         <Group
           p={16}
           sx={(theme) => ({
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            borderBottom: `1px solid ${theme.other.elements.drawer_border}`,
           })}
         >
           <ProfileAvatar profile={profile} size={64} />
           <Stack spacing={0}>
-            <Title order={4}>{profile.username}</Title>
-            <Text size='sm' color='dimmed'>
+            <Title
+              order={4}
+              sx={(theme) => ({ color: theme.other.elements.drawer_text })}
+            >
+              {profile.username}
+            </Title>
+            <Text
+              size='sm'
+              color='dimmed'
+              sx={(theme) => ({ color: theme.other.elements.drawer_dimmed })}
+            >
               {session.email}
             </Text>
           </Stack>
@@ -180,7 +200,15 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           <div style={{ flexGrow: 1 }} />
           <Menu position='bottom-end'>
             <Menu.Target>
-              <ActionIcon size='lg'>
+              <ActionIcon
+                size='lg'
+                sx={(theme) => ({
+                  color: theme.other.elements.drawer_dimmed,
+                  '&:hover': {
+                    background: theme.other.elements.drawer_hover,
+                  },
+                })}
+              >
                 <IconChevronDown />
               </ActionIcon>
             </Menu.Target>
@@ -211,7 +239,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           spacing={0}
           sx={(theme) => ({
             padding: '0.5rem 0.25rem',
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+            borderBottom: `1px solid ${theme.other.elements.drawer_border}`,
           })}
         >
           <PersonalButton title='Messages' icon={<IconMessage2 size={22} />} />
@@ -250,13 +278,18 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           spacing={2}
           p='0.5rem'
           sx={(theme) => ({
-            borderTop: `1px solid ${theme.colors.dark[5]}`,
+            borderTop: `1px solid ${theme.other.elements.drawer_border}`,
           })}
         >
           <ActionButton
             tooltip='Settings'
             size='xl'
-            hoverBg={(theme) => theme.colors.dark[6]}
+            sx={(theme) => ({
+              color: theme.other.elements.drawer_dimmed,
+              '&:hover': {
+                background: theme.other.elements.drawer_hover,
+              },
+            })}
             onClick={() => {
               onClose();
               openUserSettings({});
@@ -270,7 +303,12 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           <ActionButton
             tooltip='New Domain'
             size='xl'
-            hoverBg={(theme) => theme.colors.dark[6]}
+            sx={(theme) => ({
+              color: theme.other.elements.drawer_dimmed,
+              '&:hover': {
+                background: theme.other.elements.drawer_hover,
+              },
+            })}
             onClick={() => {
               if (profile._exists) {
                 onClose();
@@ -327,16 +365,16 @@ function AppHeader({ app, domain }: AppHeaderProps) {
           paddingLeft: '0.75rem',
           paddingRight: '0.3rem',
           height: '3.0rem',
-          backgroundColor: theme.colors.dark[8],
+          background: theme.other.elements.header,
         })}
       >
         <ActionIcon
           size='lg'
           sx={(theme) => ({
             marginRight: '0.75rem',
-            color: theme.colors.dark[1],
+            color: theme.other.elements.header_dimmed,
             '&:hover': {
-              backgroundColor: theme.colors.dark[6],
+              background: theme.other.elements.header_hover,
             },
           })}
           onClick={() => setMenuOpened(true)}
@@ -349,7 +387,11 @@ function AppHeader({ app, domain }: AppHeaderProps) {
           <Title
             order={4}
             size='1.25rem'
-            sx={{ lineHeight: 1, marginLeft: '0.125rem' }}
+            sx={(theme) => ({
+              lineHeight: 1,
+              marginLeft: '0.125rem',
+              color: theme.other.elements.header_text,
+            })}
           >
             {domain?.name}
           </Title>
@@ -359,13 +401,9 @@ function AppHeader({ app, domain }: AppHeaderProps) {
               width='15rem'
               position='bottom-start'
               styles={(theme) => ({
-                dropdown: {
-                  backgroundColor: theme.colors.dark[7],
-                  borderColor: theme.colors.dark[5],
-                },
                 item: {
                   '&:hover': {
-                    backgroundColor: theme.colors.dark[6],
+                    background: theme.other.colors.page_hover,
                   },
                 },
               })}
@@ -374,7 +412,10 @@ function AppHeader({ app, domain }: AppHeaderProps) {
                 <ActionIcon
                   sx={(theme) => ({
                     marginTop: '0.25rem',
-                    '&:hover': { backgroundColor: theme.colors.dark[6] },
+                    color: theme.other.elements.header_dimmed,
+                    '&:hover': {
+                      background: theme.other.elements.header_hover,
+                    },
                   })}
                 >
                   <IconChevronDown size={22} />
@@ -434,7 +475,7 @@ export default function Main(props: { visible: boolean }) {
       h='100vh'
       gap={0}
       sx={(theme) => ({
-        backgroundColor: theme.colors.dark[8],
+        background: theme.other.colors.document,
         display: props.visible ? undefined : 'none',
       })}
       onContextMenu={(e) => {

@@ -37,6 +37,7 @@ export default function Login() {
       <Head>
         <title>Avid | Login</title>
       </Head>
+
       <Center w='100vw' h='90vh'>
         <Stack
           spacing='xs'
@@ -44,9 +45,12 @@ export default function Login() {
             padding: '3.2rem 2.8rem',
             width: '50ch',
             maxWidth: '100%',
-            backgroundColor: theme.colors.dark[5],
+            background:
+              theme.colorScheme === 'light'
+                ? theme.colors.gray[0]
+                : theme.colors.dark[5],
             borderRadius: theme.radius.sm,
-            boxShadow: '0px 10px 20px #00000030',
+            boxShadow: theme.shadows.md,
           })}
         >
           <Title order={3} align='center'>
