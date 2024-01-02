@@ -54,7 +54,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
         }}
       />
 
-      <Title order={3}>Domain Icon</Title>
+      <Title order={3}>{config.text.domain.base} Icon</Title>
 
       <Group
         spacing='xl'
@@ -84,11 +84,11 @@ function GeneralTab({ domain, ...props }: TabProps) {
                 })}
                 onClick={() => {
                   openConfirmModal({
-                    title: 'Remove Domain Icon',
+                    title: `Remove ${config.text.domain.base} Icon`,
                     confirmLabel: 'Remove',
                     content: (
                       <Text>
-                        Are you sure you want to remove the domain icon picture?
+                        Are you sure you want to remove the {config.text.domain.base_lc} icon picture?
                       </Text>
                     ),
                     // Optimistic mutation
@@ -112,7 +112,7 @@ function GeneralTab({ domain, ...props }: TabProps) {
               color: theme.other.elements.settings_panel_dimmed,
             })}
           >
-            Domain icons are resized to{' '}
+            {config.text.domain.base} icons are resized to{' '}
             {config.upload.profile_picture.image_size.w}x
             {config.upload.profile_picture.image_size.h}
           </Text>
@@ -120,10 +120,10 @@ function GeneralTab({ domain, ...props }: TabProps) {
       </Group>
 
       <Divider />
-      <Title order={3}>Domain Settings</Title>
+      <Title order={3}>{config.text.domain.base} Settings</Title>
 
       <TextInput
-        label='Domain Name'
+        label='Name'
         value={domain.name}
         disabled
         sx={{ width: config.app.ui.short_input_width }}

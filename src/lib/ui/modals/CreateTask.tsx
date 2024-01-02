@@ -286,7 +286,15 @@ const CollectionSelectItem = forwardRef<
 
     return (
       <div ref={ref} {...others}>
-        <Group spacing={8} align='center'>
+        <Group
+          spacing={8}
+          align='center'
+          sx={(theme) => ({
+            '.tabler-icon': {
+              color: theme.other.colors.page_dimmed,
+            },
+          })}
+        >
           {current && <IconStarFilled size={16} />}
           <Text weight={600}>{name}</Text>
         </Group>

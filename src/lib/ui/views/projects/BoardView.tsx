@@ -661,7 +661,15 @@ const GroupSelectItem = forwardRef<HTMLDivElement, GroupSelectItemProps>(
 
     return (
       <div ref={ref} {...others}>
-        <Group spacing={8} align='center'>
+        <Group
+          spacing={8}
+          align='center'
+          sx={(theme) => ({
+            '.tabler-icon': {
+              color: theme.other.colors.page_dimmed,
+            },
+          })}
+        >
           {current && <IconStarFilled size={16} />}
           <Text weight={600}>{label}</Text>
         </Group>
@@ -996,8 +1004,8 @@ export default function BoardView(props: BoardViewProps) {
               styles={(theme) => ({
                 input: {
                   paddingTop: 0,
-                  background: theme.other.colors.panel,
-                  color: theme.other.colors.panel_text,
+                  background: theme.other.colors.document,
+                  color: theme.other.colors.document_text,
                   border: 'none',
                   fontFamily: theme.headings.fontFamily,
                   fontSize: theme.headings.sizes.h3.fontSize,
@@ -1009,7 +1017,7 @@ export default function BoardView(props: BoardViewProps) {
                 },
                 rightSection: {
                   pointerEvents: 'none',
-                  color: theme.other.colors.panel_dimmed,
+                  color: theme.other.colors.document_dimmed,
                 },
               })}
               value={collectionId}

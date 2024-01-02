@@ -935,7 +935,7 @@ function ChildRolesTab({
               <>
                 Allows <b>{`@${role.label}`}</b> to assign and remove the{' '}
                 <b>{`@${selectedChild.label}`}</b> role to and from other
-                members within the domain.
+                members within the {config.text.domain.base_lc}.
               </>
             }
             switchProps={form.getInputProps(
@@ -999,8 +999,8 @@ function ChildRolesTab({
               <>
                 Allows <b>{`@${role.label}`}</b> to kick members with the{' '}
                 <b>{`@${selectedChild.label}`}</b> role. Kicking a member
-                removes them from the domain, but does not prevent them from
-                rejoining the domain.
+                removes them from the {config.text.domain.base_lc}, but does not prevent them from
+                rejoining the {config.text.domain.base_lc}.
               </>
             }
             switchProps={form.getInputProps(
@@ -1016,8 +1016,8 @@ function ChildRolesTab({
               <>
                 Allows <b>{`@${role.label}`}</b> to ban members with the{' '}
                 <b>{`@${selectedChild.label}`}</b> role. Banning a member
-                removes them from the domain and prevents them from rejoining
-                the domain.
+                removes them from the {config.text.domain.base_lc} and prevents them from rejoining
+                the {config.text.domain.base_lc}.
               </>
             }
             switchProps={form.getInputProps(
@@ -1222,20 +1222,22 @@ function PermissionsTab({
           <Box mb={8}>
             <Group spacing='xs' mb={4}>
               <IconBuildingCommunity size={19} />
-              <Title order={4}>Domain Permissions</Title>
+              <Title order={4}>{config.text.domain.base} Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed'>
-              General permissions that apply to the domain.
+              General permissions that apply to the {config.text.domain.base_lc}
+              .
             </Text>
           </Box>
 
           <PermissionSetting
-            title='Manage Domain'
+            title={`Manage ${config.text.domain.base}`}
             description={
               <>
-                Allows <b>{`@${role.label}`}</b> to manage domain settings,
-                including the domain name, icon, and banner, and to manage
-                domain permissions.
+                Allows <b>{`@${role.label}`}</b> to manage{' '}
+                {config.text.domain.base_lc} settings, including the{' '}
+                {config.text.domain.base_lc} name, icon, and banner, and to
+                manage {config.text.domain.base_lc} related permissions.
               </>
             }
             switchProps={form.getInputProps(
@@ -1250,7 +1252,7 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to create, edit, and delete
-                invites to the domain.
+                invites to the {config.text.domain.base_lc}.
               </>
             }
             switchProps={form.getInputProps(
@@ -1265,7 +1267,7 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to add and manage the
-                extensions of this domain.
+                extensions of this {config.text.domain.base_lc}.
               </>
             }
             switchProps={form.getInputProps(
@@ -1280,7 +1282,7 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to create and manage new groups
-                in this domain.
+                in this {config.text.domain.base_lc}.
               </>
             }
             switchProps={form.getInputProps(
@@ -1295,9 +1297,10 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${role.label}`}</b> to create and manage new roles
-                within this domain. To enable more precise role management
-                capabilities, assign <b>{`@${role.label}`}</b> as a &quot;parent
-                role&quot; to the specific roles it should handle.
+                within this {config.text.domain.base_lc}. To enable more precise
+                role management capabilities, assign <b>{`@${role.label}`}</b>{' '}
+                as a &quot;parent role&quot; to the specific roles it should
+                handle.
               </>
             }
             switchProps={form.getInputProps(

@@ -94,12 +94,12 @@ export default function CreateDomain({
     >
       <Stack ref={stackRef} m={20}>
         <Title order={3} align='center'>
-          Create New Domain
+          Create New {config.text.domain.base}
         </Title>
 
         <TextInput
-          label='Domain Name'
-          placeholder='New Domain'
+          label='Name'
+          placeholder={`New ${config.text.domain.base}`}
           required
           withAsterisk={false}
           data-autofocus
@@ -108,7 +108,7 @@ export default function CreateDomain({
 
         <Box>
           <Text size='sm' weight={600} mb={6}>
-            Domain Icon
+            Icon
           </Text>
 
           {!icon && (

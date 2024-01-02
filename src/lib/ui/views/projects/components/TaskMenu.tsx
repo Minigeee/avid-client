@@ -201,7 +201,15 @@ function TaskMenuDropdown({
                 onClick={updateHandler({ collection: c.id })}
               >
                 <Stack spacing={6}>
-                  <Group spacing={8} align='center'>
+                  <Group
+                    spacing={8}
+                    align='center'
+                    sx={(theme) => ({
+                      '.tabler-icon': {
+                        color: theme.other.colors.page_dimmed,
+                      },
+                    })}
+                  >
                     {current && <IconStarFilled size={16} />}
                     <Text inline weight={600} size='sm'>
                       {c.name}

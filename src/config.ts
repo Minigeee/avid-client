@@ -116,6 +116,24 @@ const config = {
     },
   },
 
+  /** Text config */
+  text: {
+    /** Words for domain */
+    domain: {
+      base: 'Community',
+      plural: 'Communities',
+      base_lc: 'community',
+      plural_lc: 'communities',
+    },
+    /** Words for channel */
+    channel: {
+      base: 'Group',
+      plural: 'Groups',
+      base_lc: 'group',
+      plural_lc: 'groups',
+    },
+  },
+
   /** Application config */
   app: {
     /** Message used to notify user to contact/report issue */

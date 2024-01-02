@@ -47,6 +47,7 @@ export const useChatStyles = (options?: {
         marginBlockEnd: 0,
         fontSize: 13 * scale,
         tabSize: '4ch',
+        whiteSpace: 'pre-wrap',
 
         padding: '0.5em 0.5em',
         background: theme.other.elements.md_code,

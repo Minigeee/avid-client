@@ -59,21 +59,23 @@ export function CreateTaskCollection({
       onSubmit={form.onSubmit(async (values) => {
         setLoading(true);
 
-        // Add collection
-        const newBoard = await props.board._mutators.addCollection({
-          ...values,
-          start_date: values.start_date?.toISOString(),
-          end_date: values.end_date?.toISOString(),
-        });
+        try {
+          // Add collection
+          const newBoard = await props.board._mutators.addCollection({
+            ...values,
+            start_date: values.start_date?.toISOString(),
+            end_date: values.end_date?.toISOString(),
+          });
 
-        setLoading(false);
-        context.closeModal(id);
-
-        // Callback
-        if (newBoard) {
-          const newCollection = newBoard.collections.at(-1);
-          assert(newCollection);
-          props.onCreate(newCollection.id);
+          // Callback
+          if (newBoard) {
+            const newCollection = newBoard.collections.at(-1);
+            assert(newCollection);
+            props.onCreate(newCollection.id);
+          }
+        } finally {
+          setLoading(false);
+          context.closeModal(id);
         }
       })}
     >
@@ -265,15 +267,17 @@ export function EditTaskCollection({
       onSubmit={form.onSubmit(async (values) => {
         setLoading(true);
 
-        // Add collection
-        await props.board._mutators.updateCollection(props.collection.id, {
-          ...values,
-          start_date: values.start_date?.toISOString() || null,
-          end_date: values.end_date?.toISOString() || null,
-        });
-
-        setLoading(false);
-        context.closeModal(id);
+        try {
+          // Add collection
+          await props.board._mutators.updateCollection(props.collection.id, {
+            ...values,
+            start_date: values.start_date?.toISOString() || null,
+            end_date: values.end_date?.toISOString() || null,
+          });
+        } finally {
+          setLoading(false);
+          context.closeModal(id);
+        }
       })}
     >
       <Stack>

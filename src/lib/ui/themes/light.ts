@@ -70,7 +70,7 @@ const theme = {
     drawer_dimmed: (theme) => theme.colors.gray[6],
     drawer_hover: (theme) => theme.colors.primary[2],
     drawer_border: (theme) => theme.colors.primary[3],
-    drawer_banner: (theme) => theme.colors.primary[4],
+    drawer_banner: (theme) => theme.colors.primary[5],
     drawer_close_icon: (theme) => theme.colors.gray[6],
 
     header: (theme) => theme.colors.primary[9],

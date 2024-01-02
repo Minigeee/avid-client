@@ -247,7 +247,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
         </Stack>
 
         <Text size='sm' color='dimmed' weight={600} mt={8} ml={12}>
-          Domains
+          {config.text.domain.plural}
         </Text>
         <ScrollArea sx={{ flexGrow: 1 }}>
           <Stack
@@ -301,7 +301,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           <div style={{ flexGrow: 1 }} />
 
           <ActionButton
-            tooltip='New Domain'
+            tooltip={`New ${config.text.domain.base}`}
             size='xl'
             sx={(theme) => ({
               color: theme.other.elements.drawer_dimmed,
