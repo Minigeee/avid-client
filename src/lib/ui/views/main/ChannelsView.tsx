@@ -1,4 +1,4 @@
-import { MouseEventHandler, useContext, useMemo, useState } from 'react';
+import { MouseEventHandler, useCallback, useContext, useMemo, useState } from 'react';
 
 import {
   ActionIcon,
@@ -40,13 +40,15 @@ import {
 } from '@/lib/ui/modals';
 import ActionButton from '@/lib/ui/components/ActionButton';
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
+import { ContextMenu } from '@/lib/ui/components/ContextMenu';
+import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
+import { ChannelGroupMenuDropdown, ChannelMenuDropdown, ChannelsViewContextMenu } from './components/ChannelMenu';
 
 import { DomainWrapper, hasPermission, useApp, useMembers } from '@/lib/hooks';
 import { Channel, ChannelGroup } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
-import MemberAvatar from '../../components/MemberAvatar';
 
 ////////////////////////////////////////////////////////////
 type SingleChannelProps = {
@@ -90,6 +92,13 @@ function SingleChannel(props: SingleChannelProps) {
       : [],
   );
 
+  // Called on channel rename
+  const onRename = useCallback(() => {
+    // Reset form value to channel name
+    form.setFieldValue('name', props.channel.name);
+    setRenaming(true);
+  }, []);
+
   const canEdit =
     hasPermission(props.domain, props.channel.id, 'can_manage_resources') ||
     hasPermission(props.domain, props.channel.id, 'can_manage');
@@ -101,7 +110,10 @@ function SingleChannel(props: SingleChannelProps) {
       isDragDisabled={!canEdit}
     >
       {(provided, snapshot) => (
-        <Flex
+        <ContextMenu.Trigger
+          // @ts-ignore
+          component={Flex}
+          context={{ type: 'channel', channel: props.channel, onRename }}
           ref={provided.innerRef}
           wrap='nowrap'
           align='stretch'
@@ -110,9 +122,7 @@ function SingleChannel(props: SingleChannelProps) {
             minHeight: '2.375rem',
             borderRadius: theme.radius.sm,
             overflow: 'hidden',
-            boxShadow: snapshot.isDragging
-              ? '0px 0px 10px #00000033'
-              : undefined,
+            boxShadow: snapshot.isDragging ? theme.shadows.sm : undefined,
             '&:hover': {
               '.btn-body': {
                 background: theme.other.elements.channels_panel_hover,
@@ -228,71 +238,11 @@ function SingleChannel(props: SingleChannelProps) {
                     setShowMenu(false);
                   }}
                 >
-                  <Menu.Label>{props.channel.name.toUpperCase()}</Menu.Label>
-                  {canEdit && (
-                    <Menu.Item
-                      icon={<IconSettings size={16} />}
-                      disabled={props.channel.type !== 'board'}
-                      onClick={() =>
-                        openChannelSettings({
-                          domain_id: props.domain.id,
-                          channel: props.channel,
-                        })
-                      }
-                    >
-                      Settings
-                    </Menu.Item>
-                  )}
-
-                  <Menu.Item icon={<IconBell size={16} />} disabled>
-                    Notifications
-                  </Menu.Item>
-
-                  {canEdit && (
-                    <Menu.Item
-                      icon={<IconPencil size={16} />}
-                      onClick={() => {
-                        // Reset form value to channel name
-                        form.setFieldValue('name', props.channel.name);
-                        setRenaming(true);
-                      }}
-                    >
-                      Rename
-                    </Menu.Item>
-                  )}
-
-                  {hasPermission(
-                    props.domain,
-                    props.channel.id,
-                    'can_manage_resources',
-                  ) && (
-                    <>
-                      <Menu.Divider />
-                      <Menu.Item
-                        color='red'
-                        icon={<IconTrash size={16} />}
-                        onClick={() => {
-                          openConfirmModal({
-                            title: 'Delete Page',
-                            content: (
-                              <Text>
-                                Are you sure you want to delete{' '}
-                                <b>{props.channel.name}</b>?
-                              </Text>
-                            ),
-                            confirmLabel: 'Delete',
-                            onConfirm: () => {
-                              props.domain._mutators.removeChannel(
-                                props.channel.id,
-                              );
-                            },
-                          });
-                        }}
-                      >
-                        Delete page
-                      </Menu.Item>
-                    </>
-                  )}
+                  <ChannelMenuDropdown
+                    domain={props.domain}
+                    channel={props.channel}
+                    onRename={onRename}
+                  />
                 </Menu.Dropdown>
               </Menu>
 
@@ -342,7 +292,7 @@ function SingleChannel(props: SingleChannelProps) {
               </Group>
             )}
           </Flex>
-        </Flex>
+        </ContextMenu.Trigger>
       )}
     </Draggable>
   );
@@ -368,8 +318,14 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
 
   const [opened, setOpened] = useState<boolean>(true);
   const [renaming, setRenaming] = useState<boolean>(false);
+  
 
-  // TODO : fix/apply inherited permissions
+  // Called on group rename
+  const onRename = useCallback(() => {
+    // Reset form value to channel name
+    form.setFieldValue('name', props.group.name);
+    setRenaming(true);
+  }, []);
 
   return (
     <Draggable
@@ -380,8 +336,9 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
       }
     >
       {(provided, snapshot) => (
-        <Box
+        <ContextMenu.Trigger
           ref={provided.innerRef}
+          context={{ type: 'group', group: props.group, onRename }}
           mb={16}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
@@ -513,101 +470,11 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
                     e.stopPropagation();
                   }}
                 >
-                  <Menu.Label>{props.group.name.toUpperCase()}</Menu.Label>
-                  <Menu.Item
-                    icon={<IconSettings size={16} />}
-                    onClick={() => {
-                      openChannelGroupSettings({
-                        domain_id: props.domain.id,
-                        group: props.group,
-                      });
-                    }}
-                  >
-                    Settings
-                  </Menu.Item>
-
-                  {hasPermission(
-                    props.domain,
-                    props.group.id,
-                    'can_manage',
-                  ) && (
-                    <Menu.Item
-                      icon={<IconPencil size={16} />}
-                      onClick={() => {
-                        // Reset form value to channel name
-                        form.setFieldValue('name', props.group.name);
-                        setRenaming(true);
-                      }}
-                    >
-                      Rename
-                    </Menu.Item>
-                  )}
-
-                  {hasPermission(
-                    props.domain,
-                    props.group.id,
-                    'can_delete_group',
-                  ) && (
-                    <>
-                      <Menu.Divider />
-                      <Menu.Item
-                        color='red'
-                        icon={<IconTrash size={16} />}
-                        onClick={() => {
-                          openConfirmModal({
-                            title: 'Delete Group',
-                            modalProps: {
-                              yOffset: `${Math.max(
-                                30 - props.group.channels.length * 0.6,
-                                1,
-                              )}vh`,
-                            },
-                            content: (
-                              <>
-                                <p style={{ marginBlockEnd: 0 }}>
-                                  Are you sure you want to delete{' '}
-                                  <b>{props.group.name}</b> and the following
-                                  pages?
-                                </p>
-                                <ul
-                                  style={{
-                                    marginBlockStart: 0,
-                                    marginBlockEnd: 0,
-                                  }}
-                                >
-                                  {props.group.channels.map((channel_id) => (
-                                    <li key={channel_id}>
-                                      <b>
-                                        {props.domain.channels[channel_id].name}
-                                      </b>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </>
-                            ),
-                            confirmLabel: 'Delete',
-                            typeToConfirm:
-                              props.group.channels.length > 2
-                                ? props.group.name
-                                : undefined,
-                            confirmText: (
-                              <>
-                                Please type <b>{props.group.name}</b> to confirm
-                                this action.
-                              </>
-                            ),
-                            onConfirm: () => {
-                              props.domain._mutators.removeGroup(
-                                props.group.id,
-                              );
-                            },
-                          });
-                        }}
-                      >
-                        Delete group
-                      </Menu.Item>
-                    </>
-                  )}
+                  <ChannelGroupMenuDropdown
+                    domain={props.domain}
+                    group={props.group}
+                    onRename={onRename}
+                  />
                 </Menu.Dropdown>
               </Menu>
             )}
@@ -660,7 +527,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               )}
             </Droppable>
           )}
-        </Box>
+        </ContextMenu.Trigger>
       )}
     </Draggable>
   );
@@ -674,6 +541,8 @@ type ChannelsViewProps = {
 
 ////////////////////////////////////////////////////////////
 export default function ChannelsView(props: ChannelsViewProps) {
+  // WIP : Add channel group dropdown
+
   return (
     <Flex
       direction='column'
@@ -762,17 +631,19 @@ export default function ChannelsView(props: ChannelsViewProps) {
                 p='0.5rem 0.25rem'
                 {...provided.droppableProps}
               >
-                {props.domain.groups.map((group, group_idx) => (
-                  <ChannelGroupComponent
-                    key={group.id}
-                    domain={props.domain}
-                    group={group}
-                    selected={props.channel_id}
-                    index={group_idx}
-                  />
-                ))}
+                <ChannelsViewContextMenu domain={props.domain}>
+                  {props.domain.groups.map((group, group_idx) => (
+                    <ChannelGroupComponent
+                      key={group.id}
+                      domain={props.domain}
+                      group={group}
+                      selected={props.channel_id}
+                      index={group_idx}
+                    />
+                  ))}
 
-                {provided.placeholder}
+                  {provided.placeholder}
+                </ChannelsViewContextMenu>
               </Stack>
             )}
           </Droppable>
