@@ -27,3 +27,24 @@ export type ExpandedMember = Member & {
   /** Indicates if the member is online */
   online?: boolean;
 };
+
+
+/** A type representing a private channel member */
+export type PrivateMember = {
+  /** Profile id */
+  id: string;
+  /** Time the user joined the private channel */
+  time_joined: Date;
+  /** Indicates if member is the private channel owner */
+  is_owner?: boolean;
+};
+
+/** Member with more fields */
+export type ExpandedPrivateMember = PrivateMember & {
+  /** The member's username */
+  alias: string;
+  /** The url of the profile picture of the member */
+  profile_picture?: string | null;
+  /** Indicates if the member is online */
+  online?: boolean;
+};

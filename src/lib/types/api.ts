@@ -8,10 +8,12 @@ import {
   ChannelGroup,
   ChannelOptions,
   ChannelTypes,
+  ExpandedPrivateChannel,
+  PrivateChannel,
 } from './channel';
 import { Label } from './common';
 import { Domain, ExpandedDomain } from './domain';
-import { ExpandedMember, Member } from './member';
+import { ExpandedMember, ExpandedPrivateMember, Member } from './member';
 import { AggregatedReaction, ExpandedMessage, Message } from './message';
 import { AclEntry } from './permissions';
 import { ExpandedProfile, Profile } from './profile';
@@ -329,6 +331,7 @@ export type ApiSchema = {
       pinned?: boolean;
       page?: number;
       limit?: number;
+      private?: boolean;
     };
     return: {
       messages: RawMessage[];
@@ -353,12 +356,16 @@ export type ApiSchema = {
     body: {
       message?: string;
       pinned?: boolean;
+      private?: boolean;
     };
     return: { message: string };
   };
 
   'DELETE /messages/:message_id': {
     params: ['message_id'];
+    query: {
+      private?: boolean;
+    };
   };
 
   /** Permissions */
@@ -383,10 +390,59 @@ export type ApiSchema = {
     };
   };
 
+  /** Private channels */
+  'GET /private_channels': {
+    return: ExpandedPrivateChannel[];
+  };
+
+  'POST /private_channels': {
+    body: {
+      name?: string;
+      members?: string[];
+      multi_member?: boolean;
+    };
+    return: ExpandedPrivateChannel;
+  };
+
+  'PATCH /private_channels/:channel_id': {
+    params: ['channel_id'];
+    body: {
+      name: string;
+    };
+    return: PrivateChannel;
+  };
+
+  'GET /private_channels/:channel_id/members': {
+    params: ['channel_id'];
+    return: ExpandedPrivateMember[];
+  };
+
+  'POST /private_channels/:channel_id/members': {
+    params: ['channel_id'];
+    body: {
+      members: string[];
+    };
+    return: ExpandedPrivateMember[];
+  };
+
+  'DELETE /private_channels/:channel_id/members/:member_id': {
+    params: ['channel_id', 'member_id'];
+  };
+
   /** Profiles */
+  'GET /profiles': {
+    query: {
+      ids: string[];
+    };
+    return: Profile[];
+  };
+
   'GET /profiles/:profile_id': {
     params: ['profile_id'];
-    return: ExpandedProfile;
+    query: {
+      with_domains?: boolean;
+    };
+    return: Profile | ExpandedProfile;
   };
 
   /** Reactions */
@@ -394,6 +450,7 @@ export type ApiSchema = {
     body: {
       message: string;
       emoji: string;
+      private?: boolean;
     };
   };
 
@@ -402,6 +459,7 @@ export type ApiSchema = {
       message: string;
       member?: string;
       emoji?: string;
+      private?: boolean;
     };
   };
 
@@ -505,6 +563,7 @@ export type ApiSchema = {
       ids?: string[];
       page?: number;
       limit?: number;
+      private?: boolean;
     };
     return: Thread[];
   };
@@ -513,6 +572,7 @@ export type ApiSchema = {
     params: ['thread_id'];
     body: {
       name: string;
+      private?: boolean;
     };
     return: Thread;
   };

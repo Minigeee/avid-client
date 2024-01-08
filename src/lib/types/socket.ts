@@ -19,7 +19,7 @@ export interface ServerToClientEvents {
     channel_id: string,
     is_event: boolean,
   ) => void;
-  'general:ping': (domain_id: string, channel_id: string) => void;
+  'general:ping': (domain_id: string | undefined, channel_id: string) => void;
 
   'chat:message': (message: RawMessage) => void;
   'chat:edit-message': (

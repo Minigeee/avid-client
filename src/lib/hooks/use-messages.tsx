@@ -11,9 +11,12 @@ import { SessionState } from '@/lib/contexts';
 import {
   AggregatedReaction,
   ExpandedMessage,
+  ExpandedPrivateMember,
   FileAttachment,
   Member,
   Message,
+  PrivateMember,
+  Profile,
   RawMessage,
   Role,
   Thread,
@@ -53,15 +56,24 @@ export type ExpandedMessageWithPing = ExpandedMessage & {
 /** Type for grouped messages within a channel. It is grouped by day, then by sender */
 export type GroupedMessages = Record<string, ExpandedMessageWithPing[][]>;
 
+/** Type for stripped down member object, to only fields that are needed */
+type MinMember = {
+  _exists?: boolean;
+  id?: string;
+  roles?: string[];
+};
+
 /** Key function for infinite loader */
 type _KeyFn = (idx: number, prevData: RawMessage[]) => string;
 
 ////////////////////////////////////////////////////////////
 type MarkdownEnv = {
-  domain: {
+  domain?: {
     id: string;
     roles?: Record<string, Role>;
   };
+  /** Members in a private channel */
+  members?: Record<string, ExpandedPrivateMember>;
 };
 
 /** Markdown renderer */
@@ -255,7 +267,9 @@ const _md = new MarkdownIt({
       const id = `profiles:${tokens[idx].content}`;
       const alias = env.domain?.id
         ? getMemberSync(env.domain.id, id)?.alias || '_'
-        : '_';
+        : env.members
+          ? env.members[id]?.alias || '_'
+          : '_';
       return `<span class="avid-highlight avid-mention-member" data-type="pingMention" data-id="${id}" data-variant="member" data-label="${alias}">@${alias}</span>`;
     };
 
@@ -304,7 +318,7 @@ function makeKeyFn(
 }
 
 /** Message fetcher */
-function fetcher(session: SessionState, domain: DomainWrapper) {
+function fetcher(session: SessionState, domain: DomainWrapper | undefined) {
   return async (key: string) => {
     const parts = key.split('.');
     const channel_id = parts[0];
@@ -317,6 +331,7 @@ function fetcher(session: SessionState, domain: DomainWrapper) {
       {
         query: {
           channel: channel_id,
+          private: channel_id.startsWith('private_channels') ? true : undefined,
           thread: thread_id,
           pinned,
           page,
@@ -329,13 +344,15 @@ function fetcher(session: SessionState, domain: DomainWrapper) {
     );
 
     // Set members
-    setMembers(domain.id, Object.values(results.members), {
-      emit: false,
-      override_online: false,
-    });
+    if (domain) {
+      setMembers(domain.id, Object.values(results.members), {
+        emit: false,
+        override_online: false,
+      });
+    }
 
     // Render thread names
-    const env = makeMarkdownEnv(domain);
+    const env = makeMarkdownEnv(domain, domain ? results.members : undefined);
     for (const thread of Object.values(results.threads))
       thread.name = renderMessage(thread.name, env);
 
@@ -599,10 +616,12 @@ function mutators(
   mutate: KeyedMutator<RawMessage[][]>,
   session: SessionState,
   channel_id: string,
-  domain_id: string,
+  domain_id: string | undefined,
   thread_id: string | undefined,
   pinned: boolean | undefined,
 ) {
+  const isPrivate = channel_id.startsWith('private_channels');
+
   return {
     /**
      * Add a message to the specified channel
@@ -615,7 +634,7 @@ function mutators(
      */
     addMessage: (
       message: string,
-      sender: Member,
+      sender_id: string,
       options?: { attachments?: FileAttachment[]; reply_to?: ExpandedMessage },
     ) => {
       // Generate temporary id so we know which message to update with correct id
@@ -626,6 +645,7 @@ function mutators(
       return mutate(
         swrErrorWrapper(
           async (messages: RawMessage[][]) => {
+            // TODO : Make attachments work in private channels
             const hasAttachments =
               domain_id &&
               options?.attachments &&
@@ -720,7 +740,7 @@ function mutators(
             const msg = {
               id: tempId,
               channel: channel_id,
-              sender: sender.id,
+              sender: sender_id,
               reply_to: replyToRaw as Message,
               thread: thread_id,
               message,
@@ -767,7 +787,7 @@ function mutators(
               'PATCH /messages/:message_id',
               {
                 params: { message_id },
-                body: { message },
+                body: { message, private: isPrivate },
               },
               { session },
             );
@@ -815,7 +835,7 @@ function mutators(
             // Send delete query
             await api(
               'DELETE /messages/:message_id',
-              { params: { message_id } },
+              { params: { message_id }, query: { private: isPrivate } },
               { session },
             );
 
@@ -953,7 +973,7 @@ function mutators(
             'PATCH /messages/:message_id',
             {
               params: { message_id },
-              body: { pinned: true },
+              body: { pinned: true, private: isPrivate },
             },
             { session },
           );
@@ -1021,7 +1041,7 @@ function mutators(
             'PATCH /messages/:message_id',
             {
               params: { message_id },
-              body: { pinned: false },
+              body: { pinned: false, private: isPrivate },
             },
             { session },
           );
@@ -1067,6 +1087,7 @@ function mutators(
      *
      * @param message_id The id of the mssage to add the reaction to
      * @param emoji The emoji to react with
+     * 
      * @returns The new messages array
      */
     addReaction: errorWrapper(
@@ -1085,7 +1106,7 @@ function mutators(
         await api(
           'POST /reactions',
           {
-            body: { message: message_id, emoji },
+            body: { message: message_id, emoji, private: isPrivate },
           },
           { session },
         );
@@ -1139,6 +1160,7 @@ function mutators(
               message: message_id,
               member: options?.self ? session.profile_id : undefined,
               emoji: options?.emoji,
+              private: isPrivate,
             },
           },
           { session },
@@ -1290,15 +1312,18 @@ export type MessagesWrapper<Loaded extends boolean = true> = SwrWrapper<
  * @returns A list of messages sorted oldest first
  */
 export function useMessages(
-  channel_id: string,
-  domain: DomainWrapper,
+  channel_id: string | undefined,
+  domain: DomainWrapper | undefined,
   options?: { thread_id?: string; pinned?: boolean },
 ) {
   const session = useSession();
 
   // Key function
   const keyFn = useMemo(
-    () => makeKeyFn(channel_id, options?.thread_id, options?.pinned, session),
+    () =>
+      channel_id
+        ? makeKeyFn(channel_id, options?.thread_id, options?.pinned, session)
+        : () => undefined,
     [channel_id, options?.thread_id, options?.pinned, session],
   );
 
@@ -1325,7 +1350,12 @@ export function useMessages(
     },
     pageSize: config.app.message.query_limit,
     mutators,
-    mutatorParams: [channel_id, domain.id, options?.thread_id, options?.pinned],
+    mutatorParams: [
+      channel_id,
+      domain?.id,
+      options?.thread_id,
+      options?.pinned,
+    ],
     separate: true,
     session,
   });
@@ -1337,14 +1367,15 @@ export function useMessages(
 ////////////////////////////////////////////////////////////
 
 /** Create markdown render env */
-export function makeMarkdownEnv(domain: DomainWrapper) {
+export function makeMarkdownEnv(domain: DomainWrapper | undefined, members?: Record<string, ExpandedPrivateMember>): MarkdownEnv {
   // Construct roles map
   const roleMap: Record<string, Role> = {};
-  for (const r of domain.roles || []) roleMap[r.id] = r;
+  for (const r of domain?.roles || []) roleMap[r.id] = r;
 
   return {
-    domain: { id: domain.id, roles: roleMap },
-  };
+    domain: domain ? { id: domain.id, roles: roleMap } : undefined,
+    members,
+  } as MarkdownEnv;
 }
 
 /** Render a single message */
@@ -1386,9 +1417,11 @@ function addMessageToDayGroup(
 /** Group a list of messages */
 function groupAllMessages(
   messages: RawMessage[],
-  reader: MemberWrapper,
+  reader: MinMember,
   env: MarkdownEnv,
 ): GroupedMessages {
+  assert(reader.id);
+
   const rendered: ExpandedMessageWithPing[] = [];
 
   // Render message
@@ -1417,7 +1450,10 @@ function groupAllMessages(
       let membersLoaded = true;
       for (const id of msg.mentions?.members || [])
         membersLoaded =
-          membersLoaded && getMemberSync(env.domain.id, id) !== null;
+          membersLoaded &&
+          (env.members !== undefined ||
+            (env.domain !== undefined &&
+              getMemberSync(env.domain.id, id) !== null));
 
       // Save to cache
       cached = {
@@ -1450,10 +1486,15 @@ function groupAllMessages(
     }
 
     // Add to rendered list
+    console.log('render msg', env)
     const renderedMsg = {
       ...msg,
       message: cached.rendered,
-      sender: msg.sender ? getMemberSync(env.domain.id, msg.sender) : null,
+      sender: msg.sender
+        ? env.domain
+          ? getMemberSync(env.domain.id, msg.sender)
+          : env.members?.[msg.sender]
+        : null,
       thread: msg.thread ? getThreadSync(msg.thread) : null,
       pinged: cached.has_ping,
       reply_to: renderedReplied,
@@ -1485,27 +1526,39 @@ function groupAllMessages(
  * Renders and groups a list of raw messages
  *
  * @param messages The list of raw messages
- * @param domain The domain the channel belongs to (used to correctly render mentions, emotes, etc.)
  * @param reader The member that is viewing the messages (used to highlight member pings)
+ * @param options.domain The domain the channel belongs to (used to correctly render mentions, emotes, etc.)
  * @returns The messages rendered and grouped
  */
 export function useGroupedMessages(
   messages: RawMessage[],
-  domain: DomainWrapper<false>,
-  reader: MemberWrapper<false>,
+  reader: MinMember,
+  options?: {
+    domain?: DomainWrapper<false>;
+    members?: ExpandedPrivateMember[];
+  },
 ) {
   const members = useMemberCache();
   const threads = useThreadCache();
 
   // Create md render env
   const env = useMemo<MarkdownEnv | undefined>(() => {
-    if (!domain._exists) return;
-    return makeMarkdownEnv(domain);
-  }, [domain.id, domain.roles]);
+    if (options?.domain && !options.domain._exists) return;
+    // Create member map if needed
+    const memberMap: Record<string, ExpandedPrivateMember> = {};
+    if (options?.members) {
+      for (const m of options.members)
+        memberMap[m.id] = m;
+    }
+
+    return makeMarkdownEnv(options?.domain as DomainWrapper, options?.members ? memberMap : undefined);
+  }, [options?.domain?.id, options?.domain?.roles, options?.members]);
+
+  // WIP : make side panel buttons work, make chat app state work
 
   return useMemo(() => {
-    // console.log(messages, members, reader._exists, env)
-    if (!reader._exists || !env) return;
+    console.log(messages, members, env)
+    if (reader._exists === false || !env) return;
     return groupAllMessages(messages, reader, env);
   }, [messages, members, threads, reader._exists, env]);
 }

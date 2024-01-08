@@ -70,12 +70,12 @@ const theme = {
     drawer_dimmed: (theme) => theme.colors.gray[6],
     drawer_hover: (theme) => theme.colors.primary[2],
     drawer_border: (theme) => theme.colors.primary[3],
-    drawer_banner: (theme) => theme.colors.primary[5],
+    profile_banner: (theme) => theme.colors.primary[5],
     drawer_close_icon: (theme) => theme.colors.gray[6],
 
     header: (theme) => theme.colors.primary[9],
     header_text: (theme) => theme.colors.primary[0],
-    header_dimmed: (theme) => theme.colors.primary[3],
+    header_dimmed: (theme) => theme.colors.primary[4],
     header_hover: (theme) => `${theme.colors.primary[0]}10`,
 
     channels_panel: (theme) => theme.colors.primary[2],

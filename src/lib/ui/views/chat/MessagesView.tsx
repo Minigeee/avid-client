@@ -91,6 +91,7 @@ import {
 import {
   ExpandedMember,
   ExpandedMessage,
+  ExpandedPrivateMember,
   FileAttachment,
   Member,
   Message,
@@ -107,6 +108,7 @@ import { motion } from 'framer-motion';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/vs2015.css';
 import { throttle } from 'lodash';
+import { renderNativeEmojis } from '@/lib/utility/emoji';
 
 const AVATAR_SIZE = 38;
 const MIN_IMAGE_WIDTH = 400;
@@ -115,15 +117,22 @@ const MAX_IMAGE_WIDTH = 600;
 const MAX_IMAGE_HEIGHT = 1000;
 
 ////////////////////////////////////////////////////////////
+type MinMember = Pick<ExpandedMember, 'id' | 'time_joined' | 'alias' | 'profile_picture' | 'roles' | 'online'>;
+
 type MessagesViewProps = {
-  channel_id: string;
-  domain: DomainWrapper;
+  channel_id: string | undefined;
+  domain: DomainWrapper | undefined;
   /** Thread that should be shown in message view */
   thread_id?: string;
   /** Should the side panel be shown */
   withSidePanel?: boolean;
   /** Input box placeholder */
   placeholder?: string;
+  /** Custom message send handler */
+  onMessageSend?: (message: string, attachments: FileAttachment[]) => boolean;
+  
+  /** List of private channel members (if applicable) */
+  members?: MinMember[];
 
   /** Side padding */
   p?: string;
@@ -156,17 +165,22 @@ type MessageViewState = {
 /** Message view context state, used to pass current state within message view */
 export type MessageViewContextState = {
   /** Domain of the message channel */
-  domain: DomainWrapper;
+  domain: DomainWrapper | undefined;
   /** Id of the message channel */
   channel_id: string;
+  /** Indicates if the channel is a private channel */
+  private: boolean;
   /** Thread that should be shown in message view */
   thread_id: string | undefined;
   /** The sender member */
-  sender: MemberWrapper<false>;
+  sender: MemberWrapper<false> | (MinMember & { _exists: boolean });
   /** Raw messages */
   messages: MessagesWrapper<false>;
   /** Grouped messages */
   grouped: GroupedMessages;
+
+  /** List of private channel members (if applicable) */
+  members?: Record<string, MinMember>;
 
   /** Refs */
   refs: {
@@ -225,23 +239,27 @@ function useInitMessageViewContext({
   domain,
   channel_id,
   ...props
-}: MessagesViewProps) {
+}: Omit<MessagesViewProps, 'channel_id'> & { channel_id: string }) {
   // Default styling
   const sidePadding = props.p || '2.0rem';
   const bottomPadding = props.pb || '1.8rem';
   const avatarGap = props.avatarGap || 'lg';
+  const privateCh = channel_id.startsWith('private_channels');
 
   // Data
   const app = useApp();
   const session = useSession();
-  const sender = useMember(domain.id, session.profile_id);
+  const sender = useMember(domain?.id, session.profile_id);
   const messages = useMessages(channel_id, domain, {
     thread_id: props.thread_id,
   });
   const groupedMessages = useGroupedMessages(
     messages.data || [],
-    domain,
-    sender,
+    privateCh ? { id: session.profile_id } : sender,
+    {
+      domain,
+      members: props.members,
+    },
   );
 
   // Editor ref
@@ -251,6 +269,13 @@ function useInitMessageViewContext({
     useScrollIntoView<HTMLDivElement>({
       duration: 500,
     });
+
+  // Member map
+  const memberMap = useMemo(() => {
+    const map: Record<string, MinMember> = {};
+    for (const m of props.members || []) map[m.id] = m;
+    return map;
+  }, [props.members]);
 
   /** States */
   const [state, setState] = useCachedState<
@@ -262,13 +287,21 @@ function useInitMessageViewContext({
     view_thread: null,
     viewing_thread: null,
     show_side_panel:
-      app.chat_states?.[channel_id]?.side_panel_opened === undefined
+      app[privateCh ? 'private_channel_states' : 'chat_states']?.[channel_id]
+        ?.side_panel_opened === undefined
         ? true
-        : app.chat_states[channel_id].side_panel_opened || false,
+        : app[privateCh ? 'private_channel_states' : 'chat_states']?.[channel_id]
+            .side_panel_opened || false,
   });
 
+  // Typing info
   const [typingIds, setTypingIds] = useState<string[]>([]);
-  const typing = useMembers(domain.id, typingIds);
+  const typingStd = useMembers(domain?.id, typingIds);
+  const typing = useMemo(() => {
+    return !privateCh
+      ? typingStd
+      : { _exists: true, data: typingIds.map((id) => memberMap[id]) };
+  }, [typingStd, typingIds, memberMap]);
   const lastTyping = typing.data?.length ? typing.data[0] : _lastTyping;
 
   // Updates last typing
@@ -410,13 +443,25 @@ function useInitMessageViewContext({
     setState({ ...state, scroll_to: null });
   }, [state.scroll_to]);
 
+  // The rest of context data
+  const privSender = props.members?.find((m) => m.id === session.profile_id);
+  assert(!channel_id || !privateCh || privSender);
+
   return {
     domain,
     channel_id,
+    private: privateCh,
     thread_id: props.thread_id,
-    sender,
+    sender: privateCh
+      ? {
+          ...privSender,
+          _exists: true,
+        }
+      : sender,
     messages,
     grouped: groupedMessages,
+
+    members: privateCh ? memberMap : undefined,
 
     refs: {
       editor: editorRef,
@@ -440,7 +485,7 @@ function useInitMessageViewContext({
 }
 
 /** Use message view context */
-function useMessageViewContext<Loaded extends boolean = false>() {
+export function useMessageViewContext<Loaded extends boolean = false>() {
   return useContext(MessageViewContext) as Loaded extends true
     ? LoadedMessageViewContextState
     : MessageViewContextState;
@@ -462,6 +507,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
       <RichTextEditor
         editorRef={editorRef}
         domain={context.domain}
+        members={context.members ? Object.values(context.members) : undefined}
         value={msg.message}
         markdown
         autofocus
@@ -505,7 +551,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
 
 ////////////////////////////////////////////////////////////
 type MessageGroupProps = {
-  domain: DomainWrapper;
+  domain: DomainWrapper | undefined;
   msgs: ExpandedMessageWithPing[];
   style: string;
   rolesMap: Record<string, Role & { index: number }>;
@@ -517,6 +563,7 @@ type MessageGroupProps = {
   p: string;
   avatarGap: 'sm' | 'md' | 'lg';
 
+  membersRef: MutableRefObject<Record<string, MinMember> | undefined>;
   setState: MutableRefObject<
     <K extends keyof MessageViewState>(
       key: K,
@@ -539,13 +586,29 @@ type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
 
 ////////////////////////////////////////////////////////////
 function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
+  console.log('single msg', msg);
+
   const addReactionBtnRef = useRef<HTMLButtonElement>(null);
 
   // Replied to message's sender
-  const repliedToSender = useMember(
-    props.domain.id,
+  const repliedToSenderStd = useMember(
+    props.domain?.id,
     msg.reply_to?.sender || undefined,
   );
+  const repliedToSender = useMemo(() => {
+    const extMember = props.domain
+      ? undefined
+      : props.membersRef.current?.[msg.reply_to?.sender || ''];
+    return extMember ? { ...extMember, _exists: true } : repliedToSenderStd;
+  }, [repliedToSenderStd, props.domain]);
+
+  // Rendered reply/thread
+  const renderedReplyThread = useMemo(() => {
+    const rendered = (msg.reply_to?.message || msg.thread?.name)
+      ?.replace(/<\/?[^>]+(>|$)/g, ' ')
+      .replace(/<[^>]+>/g, '');
+    return rendered ? renderNativeEmojis(rendered) : undefined;
+  }, [msg.reply_to?.message, msg.thread?.name]);
 
   // Tracks if message should be animated
   const [shouldAnimate, setShouldAnimate] = useState<boolean>(false);
@@ -763,11 +826,12 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           textOverflow: 'ellipsis',
                           color: theme.other.colors.page_dimmed,
                         })}
-                      >
-                        {msg.reply_to.message
-                          .replace(/<\/?[^>]+(>|$)/g, ' ')
-                          .replace(/<[^>]+>/g, '')}
-                      </Text>
+                        dangerouslySetInnerHTML={
+                          renderedReplyThread
+                            ? { __html: renderedReplyThread }
+                            : undefined
+                        }
+                      />
                     </>
                   )}
                   {msg.thread && !msg.reply_to && (
@@ -789,11 +853,12 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
                           textOverflow: 'ellipsis',
                           color: theme.other.colors.page_dimmed,
                         })}
-                      >
-                        {msg.thread.name
-                          ?.replace(/<\/?[^>]+(>|$)/g, ' ')
-                          .replace(/<[^>]+>/g, '')}
-                      </Text>
+                        dangerouslySetInnerHTML={
+                          renderedReplyThread
+                            ? { __html: renderedReplyThread }
+                            : undefined
+                        }
+                      />
                     </>
                   )}
                 </Group>
@@ -1006,7 +1071,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
 ////////////////////////////////////////////////////////////
 function MessageGroup({ msgs, ...props }: MessageGroupProps) {
   // Don't use context bc it forces all groups to rerender (bad performance)
-  // console.log('rerender msg')
+  console.log('rerender msg')
 
   // Indicates if this group came from the user
   const fromUser = props.sender.id === msgs[0].sender?.id;
@@ -1090,6 +1155,7 @@ function MessagesViewport(props: MessagesViewportProps) {
   const context = useMessageViewContext();
   const { messages, grouped } = context;
   const { classes } = useChatStyles();
+  console.log('a', messages, grouped)
 
   // Ref to message mutators, so messages can call latest mutators without rerendering each time
   const mutatorsRef = useRef<MessageMutators | null>(
@@ -1106,15 +1172,20 @@ function MessagesViewport(props: MessagesViewportProps) {
     setStateRef.current = context.state._set;
   }, [context.state._set]);
 
+  // Members ref
+  const membersRef = useRef(context.members);
+
   // Roles map for rendering badges
   const rolesMap = useMemo(() => {
+    if (!context.domain) return {};
+
     const map: Record<string, Role & { index: number }> = {};
     for (let i = 0; i < context.domain.roles.length; ++i) {
       const role = context.domain.roles[i];
       map[role.id] = { ...role, index: i };
     }
     return map;
-  }, [context.domain.roles]);
+  }, [context.domain?.roles]);
 
   // Calculate editing message to minimize memo component change
   const cachedProps = useMemo(() => {
@@ -1182,14 +1253,11 @@ function MessagesViewport(props: MessagesViewportProps) {
   );
 
   // Determines if user can send reactions
-  const canSendReactions = hasPermission(
-    context.domain,
-    context.channel_id,
-    'can_send_reactions',
-  );
+  const canSendReactions = context.domain
+    ? hasPermission(context.domain, context.channel_id, 'can_send_reactions')
+    : true;
 
-  // TODO : Show messages skeleton
-  if (!context.sender._exists || !messages._exists) return null;
+  if (!messages._exists) return null;
 
   ////////////////////////////////////////////////////////////
   return (
@@ -1206,46 +1274,50 @@ function MessagesViewport(props: MessagesViewportProps) {
         <MessageContextMenu context={context as LoadedMessageViewContextState}>
           <Stack spacing='lg'>
             {messages._exists &&
-              Object.entries(grouped).map(([day, grouped], i) => (
-                <Fragment key={day}>
-                  <Divider
-                    label={moment(day).format('LL')}
-                    labelPosition='center'
-                    labelProps={{ color: 'dimmed' }}
-                    sx={(theme) => ({
-                      marginLeft: context.style.p,
-                    })}
-                  />
-                  {grouped.map((consec, j) => (
-                    <>
-                      <MemoMessageGroup
-                        key={j}
-                        domain={context.domain}
-                        msgs={consec}
-                        style={classes.typography}
-                        rolesMap={rolesMap}
-                        sender={context.sender as MemberWrapper}
-                        thread_id={
-                          context.style.withSidePanel ? context.thread_id : '_'
-                        }
-                        viewing_thread={
-                          context.style.withSidePanel
-                            ? context.state.viewing_thread
-                            : null
-                        }
-                        editing={cachedProps[`${day}.${j}`].editing}
-                        p={context.style.p}
-                        avatarGap={context.style.avatarGap}
-                        setState={setStateRef}
-                        scrollToRef={context.refs.scroll_to}
-                        scrollTo={cachedProps[`${day}.${j}`].scrollTo}
-                        canSendReactions={canSendReactions}
-                        mutators={mutatorsRef}
-                      />
-                    </>
-                  ))}
-                </Fragment>
-              ))}
+              Object.entries(grouped).map(([day, grouped], i) => {
+                console.log(i)
+                return (
+                  <Fragment key={day}>
+                    <Divider
+                      label={moment(day).format('LL')}
+                      labelPosition='center'
+                      labelProps={{ color: 'dimmed' }}
+                      sx={(theme) => ({
+                        marginLeft: context.style.p,
+                      })}
+                    />
+                    {grouped.map((consec, j) => (
+                      <>
+                        <MemoMessageGroup
+                          key={j}
+                          domain={context.domain}
+                          msgs={consec}
+                          style={classes.typography}
+                          rolesMap={rolesMap}
+                          sender={context.sender as MemberWrapper}
+                          thread_id={
+                            context.style.withSidePanel ? context.thread_id : '_'
+                          }
+                          viewing_thread={
+                            context.style.withSidePanel
+                              ? context.state.viewing_thread
+                              : null
+                          }
+                          editing={cachedProps[`${day}.${j}`].editing}
+                          p={context.style.p}
+                          avatarGap={context.style.avatarGap}
+                          setState={setStateRef}
+                          membersRef={membersRef}
+                          scrollToRef={context.refs.scroll_to}
+                          scrollTo={cachedProps[`${day}.${j}`].scrollTo}
+                          canSendReactions={canSendReactions}
+                          mutators={mutatorsRef}
+                        />
+                      </>
+                    ))}
+                  </Fragment>
+                );
+              })}
 
             <div style={{ height: '0.9rem' }} />
           </Stack>
@@ -1322,6 +1394,7 @@ function TextEditor(props: TextEditorProps) {
     <RichTextEditor
       editorRef={context.refs.editor}
       domain={context.domain}
+      members={context.members ? Object.values(context.members) : undefined}
       variant={useFormattedEditor ? 'full' : 'minimal'}
       placeholder={props.placeholder || 'Message'}
       markdown
@@ -1461,7 +1534,8 @@ function TextEditor(props: TextEditorProps) {
 export default function MessagesView(props: MessagesViewProps) {
   // Data
   const app = useApp();
-  const context = useInitMessageViewContext(props);
+  const session = useSession();
+  const context = useInitMessageViewContext({ ...props, channel_id: props.channel_id || '' });
   const { sender, messages } = context;
 
   // Determines if scroll to bottom button should be shown
@@ -1507,7 +1581,7 @@ export default function MessagesView(props: MessagesViewProps) {
         >
           {/* Work around to broken justify-content: flex-end */}
           <div style={{ flexGrow: 1 }} />
-          {lagged && sender._exists && messages._exists && (
+          {lagged && messages._exists && props.channel_id && (
             <MessagesViewport
               showScrollBottom={showScrollBottom}
               setShowScrollBottom={setShowScrollBottom}
@@ -1640,34 +1714,44 @@ export default function MessagesView(props: MessagesViewProps) {
               </Group>
             )}
 
-            {hasPermission(
-              props.domain,
-              props.channel_id,
-              'can_send_messages',
-            ) && (
+            {(!props.domain ||
+              !props.channel_id ||
+              hasPermission(
+                props.domain,
+                props.channel_id,
+                'can_send_messages',
+              )) && (
               <TextEditor
                 placeholder={props.placeholder}
-                canSendAttachments={hasPermission(
-                  props.domain,
-                  props.channel_id,
-                  'can_send_attachments',
-                )}
-                onSubmit={(message, attachments) => {
-                  // If these don't exist, return false to indicate submit was not handled, don't clear input
-                  if (!messages._exists || !sender._exists) return false;
+                canSendAttachments={
+                  // TODO : Make attachments sendable in private channels
+                  props.domain !== undefined &&
+                  props.channel_id !== undefined &&
+                  hasPermission(
+                    props.domain,
+                    props.channel_id,
+                    'can_send_attachments',
+                  )
+                }
+                onSubmit={
+                  props.onMessageSend ||
+                  ((message, attachments) => {
+                    // If these don't exist, return false to indicate submit was not handled, don't clear input
+                    if (!messages._exists) return false;
 
-                  // Send message
-                  messages._mutators.addMessage(message, sender, {
-                    attachments,
-                    reply_to: context.state.replying_to || undefined,
-                  });
-                  return true;
-                }}
+                    // Send message
+                    messages._mutators.addMessage(message, session.profile_id, {
+                      attachments,
+                      reply_to: context.state.replying_to || undefined,
+                    });
+                    return true;
+                  })
+                }
               />
             )}
           </Box>
 
-          {!context.state.show_side_panel && (
+          {props.channel_id && !context.state.show_side_panel && (
             <ActionIcon
               sx={(theme) => ({
                 position: 'absolute',
@@ -1680,10 +1764,20 @@ export default function MessagesView(props: MessagesViewProps) {
                 borderColor: theme.other.colors.page_border,
               })}
               onClick={() => {
+                assert(props.channel_id);
+
                 context.state._set('show_side_panel', true);
-                app._mutators.setChatState(props.channel_id, {
-                  side_panel_opened: true,
-                });
+
+                // Save state
+                if (!context.private) {
+                  app._mutators.setChatState(props.channel_id, {
+                    side_panel_opened: true,
+                  });
+                } else {
+                  app._mutators.setPrivateChannelState(props.channel_id, {
+                    side_panel_opened: true,
+                  });
+                }
               }}
             >
               <IconChevronLeft />
@@ -1691,21 +1785,23 @@ export default function MessagesView(props: MessagesViewProps) {
           )}
         </Box>
 
-        {props.withSidePanel !== false && context.state.show_side_panel && (
-          <Box
-            sx={(theme) => ({
-              flexBasis: '25rem',
-              height: '100%',
-              borderLeft: `1px solid ${theme.other.colors.page_border}`,
-            })}
-          >
-            <SidePanelView
-              channel_id={props.channel_id}
-              domain={props.domain}
-              context={context}
-            />
-          </Box>
-        )}
+        {props.channel_id &&
+          props.withSidePanel !== false &&
+          context.state.show_side_panel && (
+            <Box
+              sx={(theme) => ({
+                flexBasis: '25rem',
+                height: '100%',
+                borderLeft: `1px solid ${theme.other.colors.page_border}`,
+              })}
+            >
+              <SidePanelView
+                channel_id={props.channel_id}
+                domain={props.domain}
+                context={context}
+              />
+            </Box>
+          )}
       </Flex>
     </MessageViewContext.Provider>
   );

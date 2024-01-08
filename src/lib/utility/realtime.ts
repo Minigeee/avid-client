@@ -10,6 +10,7 @@ import {
   getMemberSync,
   updateMemberLocal,
   updateMemberQueryLocal,
+  updateProfileLocal,
   useApp,
   useSession,
 } from '@/lib/hooks';
@@ -23,9 +24,7 @@ import {
 } from '@/lib/types';
 
 import { notifyError, errorWrapper } from '@/lib/utility/error-handler';
-import notification from '@/lib/utility/notification';
 
-import { merge } from 'lodash';
 
 /** Realtime server socket */
 let _socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
@@ -105,7 +104,6 @@ export function useRealtimeHandlers() {
   // Join/leave handler
   useEffect(() => {
     function onUserJoin(profile_id: string) {
-      console.log('trigger');
       updateMemberLocal(
         profile_id,
         (member) => ({ ...member, online: true }),
@@ -121,6 +119,11 @@ export function useRealtimeHandlers() {
 
           return count;
         },
+      );
+
+      updateProfileLocal(
+        profile_id,
+        (profile) => ({ ...profile, online: true }),
       );
     }
 
@@ -140,6 +143,11 @@ export function useRealtimeHandlers() {
 
           return count;
         },
+      );
+
+      updateProfileLocal(
+        profile_id,
+        (profile) => ({ ...profile, online: false }),
       );
     }
 
@@ -185,7 +193,7 @@ export function useRealtimeHandlers() {
       }
     }
 
-    function onPing(domain_id: string, channel_id: string) {
+    function onPing(domain_id: string | undefined, channel_id: string) {
       app._mutators.setPings(channel_id, (app.pings?.[channel_id] || 0) + 1);
     }
 

@@ -12,11 +12,13 @@ export type BadgeMap = Record<string, { index: number; badge: JSX.Element }>;
 
 ////////////////////////////////////////////////////////////
 export function useRoleBadges(
-  domain: DomainWrapper,
+  domain: DomainWrapper | undefined,
   props?: { size?: number; cursor?: 'default' | 'pointer' },
 ) {
   // Create map of role badges, skipping ones that are hidden
   return useMemo(() => {
+    if (!domain) return {};
+
     // Map of badges
     const badges: BadgeMap = {};
     for (let i = 0; i < domain.roles.length; ++i) {
@@ -38,7 +40,7 @@ export function useRoleBadges(
     }
 
     return badges;
-  }, [domain.roles]);
+  }, [domain?.roles]);
 }
 
 ////////////////////////////////////////////////////////////

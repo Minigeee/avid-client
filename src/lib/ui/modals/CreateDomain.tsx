@@ -20,12 +20,12 @@ import { IconPhoto, IconUpload, IconX } from '@tabler/icons-react';
 import AvatarEditor from 'react-avatar-editor';
 
 import config from '@/config';
-import { ProfileWrapper } from '@/lib/hooks';
+import { CurrentProfileWrapper } from '@/lib/hooks';
 import { useElementSize } from '@mantine/hooks';
 
 ////////////////////////////////////////////////////////////
 export type CreateDomainProps = {
-  profile: ProfileWrapper;
+  profile: CurrentProfileWrapper;
   onCreate?: (domain_id: string) => any;
 };
 

@@ -152,8 +152,6 @@ export type Theme = {
     drawer_hover: ThemeValue;
     /** App drawer border color */
     drawer_border: ThemeValue;
-    /** App drawer profile banner bg color */
-    drawer_banner: ThemeValue;
     /** App drawer close icon color */
     drawer_close_icon: ThemeValue;
 
@@ -237,6 +235,9 @@ export type Theme = {
     message_highlight_ping?: ThemeValue;
     /** Message ping highlight color (hovered) */
     message_highlight_ping_hover?: ThemeValue;
+    
+    /** Profile banner bg color */
+    profile_banner: ThemeValue;
 
     /** Rtc join panel body */
     rtc_join_panel?: ThemeValue;

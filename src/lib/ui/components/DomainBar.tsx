@@ -21,7 +21,7 @@ import {
 } from '@tabler/icons-react';
 
 import { Domain } from '@/lib/types';
-import { useApp, useProfile, useSession } from '@/lib/hooks';
+import { useApp, useCurrentProfile, useProfile, useSession } from '@/lib/hooks';
 import { openCreateDomain, openUserSettings } from '@/lib/ui/modals';
 
 const AVATAR_RADIUS = 24;
@@ -129,7 +129,7 @@ export default function DomainBar() {
   const app = useApp();
   const session = useSession();
 
-  const profile = useProfile(session.profile_id);
+  const profile = useCurrentProfile();
 
   // WIP : Update domain avatar in profile object
 

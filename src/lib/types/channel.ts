@@ -1,4 +1,5 @@
 import { Resource } from './common';
+import { ExpandedPrivateMember } from './member';
 import { Date } from './util';
 
 /** All possible channel types */
@@ -66,4 +67,30 @@ export type ExpandedChannelGroup = Omit<ChannelGroup, 'channels'> & {
 /**
  * Relations:
  * - channels->channel_of->domains
+ */
+
+
+/** Private channel (i.e. for dms) */
+export type PrivateChannel = {
+  /** Id of the private channel */
+  id: string;
+  /** The name of the group */
+  name?: string;
+  /** Determines if more than two users can participate */
+  multi_member: boolean;
+  /** Time the channel was created */
+  time_created: Date;
+  /** Time the latest event occurred */
+  _last_event: Date;
+};
+
+/** Private channel with extra fields */
+export type ExpandedPrivateChannel = PrivateChannel & {
+  /** Ids of members in the channel */
+  members: string[];
+};
+
+/**
+ * Relations:
+ * - profiles->private_member_of->private_channels
  */

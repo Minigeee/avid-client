@@ -42,6 +42,7 @@ import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import MessagesView, {
   LoadedMessageViewContextState,
   MessageViewContextState,
+  useMessageViewContext,
 } from './MessagesView';
 import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import ActionButton from '@/lib/ui/components/ActionButton';
@@ -128,7 +129,12 @@ function ThreadsTab(props: SidePanelViewProps) {
       ),
     [threads.data],
   );
-  const threadStarters = useMembers(props.domain.id, threadStarterIds);
+  const threadStartersStd = useMembers(props.domain?.id, threadStarterIds);
+  const threadStarters = useMemo(() => {
+    return !props.context.private
+      ? threadStartersStd
+      : { _exists: true, data: Object.values(props.context.members || []) };
+  }, [threadStartersStd, threadStarterIds]);
 
   // Set initial thread
   useEffect(() => {
@@ -183,6 +189,7 @@ function ThreadsTab(props: SidePanelViewProps) {
     const t = threads.data.find((x) => x.id === thread);
     return (
       t?.starters.find((x) => x === session.profile_id) !== undefined ||
+      !props.domain ||
       hasPermission(props.domain, props.channel_id, 'can_manage')
     );
   }, [threads.data, thread]);
@@ -261,6 +268,11 @@ function ThreadsTab(props: SidePanelViewProps) {
             channel_id={props.channel_id}
             thread_id={thread}
             domain={props.domain}
+            members={
+              props.context.members
+                ? Object.values(props.context.members)
+                : undefined
+            }
             p='1.2rem'
             pb='1.8rem'
             avatarGap='md'
@@ -291,7 +303,7 @@ function ThreadsTab(props: SidePanelViewProps) {
 
 ////////////////////////////////////////////////////////////
 type MessageEditorProps = {
-  domain: DomainWrapper;
+  domain: DomainWrapper | undefined;
   msg: ExpandedMessage;
   onEdit: (message: string) => void;
   onCancel: () => void;
@@ -299,6 +311,8 @@ type MessageEditorProps = {
 
 ////////////////////////////////////////////////////////////
 function MessageEditor({ msg, ...props }: MessageEditorProps) {
+  const context = useMessageViewContext<true>();
+
   const editorRef = useRef<Editor>(null);
 
   return (
@@ -306,6 +320,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
       <RichTextEditor
         editorRef={editorRef}
         domain={props.domain}
+        members={context.members ? Object.values(context.members) : undefined}
         value={msg.message}
         markdown
         autofocus
@@ -341,7 +356,7 @@ function MessageEditor({ msg, ...props }: MessageEditorProps) {
 
 ////////////////////////////////////////////////////////////
 type PinnedMessageProps = {
-  domain: DomainWrapper;
+  domain: DomainWrapper | undefined;
   style: string;
   badges: BadgeMap;
   msg: Omit<ExpandedMessage, 'thread'>;
@@ -357,6 +372,7 @@ type PinnedMessageProps = {
 ////////////////////////////////////////////////////////////
 function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
   const { open: openConfirmModal } = useConfirmModal();
+  console.log('pinned', msg)
 
   const { ref, width } = useElementSize();
   // Lagged state to reactivate attachments
@@ -638,22 +654,25 @@ function PinnedTab(props: SidePanelViewProps) {
       .map((m) => ({
         ...m,
         message: renderMessage(m.message, env),
-        sender: m.sender ? getMemberSync(props.domain.id, m.sender) : null,
+        sender:
+          m.sender && props.domain
+            ? getMemberSync(props.domain.id, m.sender)
+            : props.context.members?.[m.sender || ''] || null,
         reply_to: undefined,
       }))
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
-  }, [messages.data, props.domain.roles]);
+  }, [messages.data, props.domain?.roles]);
 
   // Determines if user can send reactions
-  const canSendReactions = hasPermission(
+  const canSendReactions = !props.domain || hasPermission(
     props.domain,
     props.channel_id,
     'can_send_reactions',
   );
-  const canPinMessages = hasPermission(
+  const canPinMessages = !props.domain || hasPermission(
     props.domain,
     props.channel_id,
     'can_manage_messages',
@@ -692,7 +711,7 @@ function PinnedTab(props: SidePanelViewProps) {
 ////////////////////////////////////////////////////////////
 type SidePanelViewProps = {
   channel_id: string;
-  domain: DomainWrapper;
+  domain: DomainWrapper | undefined;
   context: MessageViewContextState;
 };
 
@@ -768,9 +787,17 @@ export default function SidePanelView(props: SidePanelViewProps) {
           })}
           onClick={() => {
             props.context.state._set('show_side_panel', false);
-            app._mutators.setChatState(props.channel_id, {
-              side_panel_opened: false,
-            });
+
+            // Save state
+            if (!props.context.private) {
+              app._mutators.setChatState(props.channel_id, {
+                side_panel_opened: false,
+              });
+            } else {
+              app._mutators.setPrivateChannelState(props.channel_id, {
+                side_panel_opened: false,
+              });
+            }
           }}
         />
       </Tabs.List>

@@ -28,6 +28,7 @@ import {
   setMemberQuery,
   setMembers,
   setProfileDefault,
+  useCurrentProfile,
   useProfile,
   useRtc,
   useSession,
@@ -459,7 +460,7 @@ export default function App(props: AppProps) {
   const router = useRouter();
 
   const session = useSession();
-  const profile = useProfile(session.profile_id);
+  const profile = useCurrentProfile();
 
   // Initialization logic (auth, emotes)
   useEffect(() => {
@@ -759,11 +760,12 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
         ? {
             ...app,
             channels: recordKeys(app.channels, 'domains'),
-            expansions: recordKeys(app.expansions, 'domains'),
             last_accessed: recordKeys(app.last_accessed, 'domains', (v) =>
               recordKeys(v, 'channels'),
             ),
             pings: recordKeys(app.pings, 'channels'),
+            private_pings: recordKeys(app.private_pings, 'private_channels'),
+            private_channel_states: recordKeys(app.private_channel_states, 'private_channels'),
             chat_states: recordKeys(app.chat_states, 'channels'),
             board_states: recordKeys(app.board_states, 'boards'),
           }

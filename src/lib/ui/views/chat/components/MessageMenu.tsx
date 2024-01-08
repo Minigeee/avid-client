@@ -87,6 +87,7 @@ export function MessageMenuDropdown({
   // Delete all reactions
   if (
     msg.reactions?.length &&
+    context.domain &&
     hasPermission(context.domain, context.channel_id, 'can_manage_messages')
   ) {
     deleteSection.push(
@@ -117,7 +118,8 @@ export function MessageMenuDropdown({
   // Delete message
   if (
     context.sender.id === msg.sender?.id ||
-    hasPermission(context.domain, context.channel_id, 'can_manage_messages')
+    (context.domain &&
+      hasPermission(context.domain, context.channel_id, 'can_manage_messages'))
   ) {
     deleteSection.push(
       <Menu.Item
@@ -172,11 +174,12 @@ export function MessageMenuDropdown({
         Reply
       </Menu.Item>
 
-      {hasPermission(
-        context.domain,
-        context.channel_id,
-        'can_send_reactions',
-      ) && (
+      {(!context.domain ||
+        hasPermission(
+          context.domain,
+          context.channel_id,
+          'can_send_reactions',
+        )) && (
         <ContextMenu.Submenu
           id='add-reaction'
           label='Add reaction'
@@ -206,11 +209,12 @@ export function MessageMenuDropdown({
         </ContextMenu.Submenu>
       )}
 
-      {hasPermission(
-        context.domain,
-        context.channel_id,
-        'can_manage_messages',
-      ) && (
+      {(!context.domain ||
+        hasPermission(
+          context.domain,
+          context.channel_id,
+          'can_manage_messages',
+        )) && (
         <Menu.Item
           icon={
             msg.pinned ? <IconPinnedOff size={16} /> : <IconPin size={16} />

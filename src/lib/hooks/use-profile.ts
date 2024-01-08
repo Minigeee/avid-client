@@ -2,7 +2,7 @@ import { KeyedMutator } from 'swr';
 import assert from 'assert';
 
 import { deleteProfile, uploadDomainImage, uploadProfile } from '@/lib/api';
-import { ExpandedProfile } from '@/lib/types';
+import { ExpandedProfile, Profile } from '@/lib/types';
 import { SessionState } from '@/lib/contexts';
 
 import { api } from '@/lib/api/utility';
@@ -12,6 +12,262 @@ import { SwrWrapper } from './use-swr-wrapper';
 import { updateMemberLocal } from './use-members';
 
 import { useApiQuery } from './use-api-query';
+import config from '@/config';
+import { useMemo, useSyncExternalStore } from 'react';
+import { useSession } from './use-session';
+
+/** Profile cache entry */
+export type ProfileEntry = {
+  /** Profile data */
+  data: Profile;
+  /** Time the entry was updated */
+  time: number;
+};
+
+/** Member cache */
+type ProfileCache = Record<string, ProfileEntry>;
+
+/** Global state */
+const _ = {
+  /** Profile cache */
+  profiles: {} as ProfileCache,
+  /** Map of keys that are loading a fetch */
+  loading: new Set<string>(),
+  /** List of listeners */
+  listeners: [] as (() => void)[],
+};
+
+/** Subscribe func for external store */
+function _subscribe(listener: () => void) {
+  _.listeners = [..._.listeners, listener];
+  return () => {
+    _.listeners = _.listeners.filter((l) => l !== listener);
+  };
+}
+
+/** Snapshot func for external store */
+function _getSnapshot() {
+  return _.profiles;
+}
+
+/** Function to notify that store changes occurred */
+function _emitChange() {
+  for (const listener of _.listeners) listener();
+}
+
+/** Checks if an entry needs to be fetched */
+function _needFetch(
+  key: string,
+  entry: { time: number } | undefined,
+  lifetime: number = config.app.member.cache_lifetime, // reuse member cache lifetime
+) {
+  return (
+    (entry === undefined ||
+      entry === null ||
+      Date.now() - entry.time >= lifetime * 1000) &&
+    (!key || !_.loading.has(key))
+  );
+}
+
+/** Gets member entry */
+function _getProfileEntry(
+  profile_id: string,
+  cache: ProfileCache = _.profiles,
+) {
+  return cache[profile_id] as ProfileEntry | undefined;
+}
+
+/** Set profiles options */
+type SetProfilesOptions = {
+  /** If this change should be emitted (default true) */
+  emit?: boolean;
+  /** Should the `online` property be overridden (default true) */
+  override_online?: boolean;
+};
+
+/** Set profiles to store */
+export function setProfiles(
+  profiles: Profile[],
+  options?: SetProfilesOptions,
+) {
+  const now = Date.now();
+  const cache = {} as ProfileCache;
+
+  // Set all profiles
+  for (const profile of profiles) {
+    const newProfile =
+      options?.override_online === false && cache[profile.id]
+        ? { ...profile, online: cache[profile.id].data.online }
+        : profile;
+        cache[profile.id] = { data: newProfile, time: now };
+  }
+
+  // Update profiles cache
+  _.profiles = { ..._.profiles, ...cache };
+
+  // Emit changes
+  if (options?.emit !== false) _emitChange();
+}
+
+
+/**
+ * Get profile cache. Should be used in a component for it to recieve cache changes.
+ *
+ * @returns Profile cache
+ */
+export function useProfileCache() {
+  return useSyncExternalStore(_subscribe, _getSnapshot);
+}
+
+/** Single profile wrapper */
+export type ProfileWrapper<Loaded extends boolean = true> =
+  | ({ _exists: true } & Profile)
+  | (Loaded extends true
+      ? never
+      : { _exists: false } & Partial<Profile>);
+
+/**
+ * Get a single profile
+ *
+ * @param profile_id The profile id to retrieve
+ * @returns The profile
+ */
+export function useProfile(profile_id: string | undefined) {
+  const session = useSession();
+  const profiles = useSyncExternalStore(_subscribe, _getSnapshot);
+
+  return useMemo(() => {
+    if (!profile_id) return { _exists: false } as ProfileWrapper<false>;
+
+    const key = profile_id;
+    const cached = _getProfileEntry(profile_id);
+    const _exists = cached !== undefined;
+
+    // Check if need fetch
+    const needFetch = _needFetch(key, cached);
+    if (needFetch) {
+      _.loading.add(key);
+
+      // Fetch profile and set to store
+      api(
+        'GET /profiles/:profile_id',
+        {
+          params: { profile_id },
+          query: {},
+        },
+        { session },
+      ).then((profile) => {
+        setProfiles([profile]);
+        _.loading.delete(key);
+      });
+    }
+
+    // Return null or existing while refetching
+    return { ...cached?.data, _exists } as ProfileWrapper<false>;
+  }, [profile_id, profiles]);
+}
+
+
+/** Multi profile wrapper */
+export type ProfilesWrapper<Loaded extends boolean = true> =
+  | { _exists: true; data: Profile[] }
+  | (Loaded extends true ? never : { _exists: false; data?: Profile[] });
+
+/**
+ * Get a list of profiles
+ *
+ * @param profile_ids The profile ids to retrieve
+ * @returns The profile
+ */
+export function useProfiles(profile_ids: string[] | undefined) {
+  const session = useSession();
+  const profiles = useSyncExternalStore(_subscribe, _getSnapshot);
+
+  return useMemo(() => {
+    if (!profile_ids?.length) return { _exists: true, data: [] };
+
+    let needFetch = false;
+    let _exists = true;
+
+    // Cache keys
+    const keys = profile_ids;
+
+    // Get cached
+    const cached: ProfileEntry[] = [];
+    for (let i = 0; i < profile_ids.length; ++i) {
+      const entry = _getProfileEntry(profile_ids[i]);
+      needFetch = needFetch || _needFetch(keys[i], entry);
+      _exists = entry !== undefined;
+
+      if (entry) cached.push(entry);
+    }
+
+    // Check if need fetch
+    if (needFetch) {
+      for (const key of keys) _.loading.add(key);
+
+      // Fetch profile and set to store
+      api(
+        'GET /profiles',
+        {
+          query: { ids: profile_ids },
+        },
+        { session },
+      ).then((profiles) => {
+        assert(Array.isArray(profiles));
+        setProfiles(profiles);
+
+        for (const key of keys) _.loading.delete(key);
+      });
+    }
+
+    // Return null or existing while refetching
+    return {
+      _exists,
+      data: _exists ? cached.map((x) => x.data) : undefined,
+    } as ProfilesWrapper<false>;
+  }, [profile_ids, profiles]);
+}
+
+
+/**
+ * Get a profile from cache, even if the data is stale
+ *
+ * @param profile_id The profile id
+ * @returns The profile object
+ */
+export function getProfileSync(
+  profile_id: string,
+): Profile | null {
+  return _getProfileEntry(profile_id)?.data || null;
+}
+
+/**
+ * Update profiles with the given profile id.
+ * This function only updates profile values locally
+ *
+ * @param profile_id The id of the profile
+ * @param fn The update function
+ * @param emit Indicates if this change should be emitted
+ */
+export function updateProfileLocal(
+  profile_id: string,
+  fn: (profile: Profile) => Profile,
+  emit: boolean = true,
+) {
+  // Quit if profile does not exist
+  if (!_.profiles[profile_id]) return;
+
+  // Create copy
+  const copy = { ..._.profiles };
+  copy[profile_id] = { ...copy[profile_id], data: fn(copy[profile_id].data) };
+
+  // Set cache
+  _.profiles = copy;
+
+  if (emit) _emitChange();
+}
+
 
 ////////////////////////////////////////////////////////////
 function mutators(
@@ -164,12 +420,12 @@ function mutators(
 }
 
 /** Mutators that will be attached to the profile swr wrapper */
-export type ProfileMutators = ReturnType<typeof mutators>;
+export type CurrentProfileMutators = ReturnType<typeof mutators>;
 /** Swr data wrapper for a profile object */
-export type ProfileWrapper<Loaded extends boolean = true> = SwrWrapper<
+export type CurrentProfileWrapper<Loaded extends boolean = true> = SwrWrapper<
   ExpandedProfile,
   Loaded,
-  ProfileMutators
+  CurrentProfileMutators
 >;
 
 /** Default value for domain */
@@ -183,25 +439,27 @@ export function setProfileDefault(profile: ExpandedProfile) {
 /**
  * A swr hook that retrieves the current profile.
  *
- * @param profile_id The id of the domain to retrieve
- * @returns A swr wrapper object containing the requested profile
+ * @returns A swr wrapper object containing the current profile
  */
-export function useProfile(profile_id: string | undefined) {
+export function useCurrentProfile() {
+  const session = useSession();
+
   return useApiQuery(
-    profile_id,
+    session.profile_id,
     'GET /profiles/:profile_id',
     {
-      params: { profile_id: profile_id || '' },
+      params: { profile_id: session.profile_id },
+      query: { with_domains: true },
     },
     {
       then: (result) => {
         // Reset default
-        if (_defaults[profile_id || '']) delete _defaults[profile_id || ''];
+        if (_defaults[session.profile_id]) delete _defaults[session.profile_id];
 
-        return result;
+        return result as ExpandedProfile;
       },
       mutators,
-      initial: profile_id ? _defaults[profile_id] : undefined,
+      initial: _defaults[session.profile_id],
     },
   );
 }

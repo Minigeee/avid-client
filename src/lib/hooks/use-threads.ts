@@ -25,7 +25,7 @@ const _ = {
 const { useExternalStore, emit: emitChange } = makeExternalStore('threads', _);
 
 /** Mutators */
-function mutators(mutate: KeyedMutator<Thread[]>, session: SessionState) {
+function mutators(mutate: KeyedMutator<Thread[]>, session: SessionState, isPrivate: boolean) {
   return {
     /**
      * Set the name of a thread
@@ -43,7 +43,7 @@ function mutators(mutate: KeyedMutator<Thread[]>, session: SessionState) {
               'PATCH /threads/:thread_id',
               {
                 params: { thread_id },
-                body: { name },
+                body: { name, private: isPrivate },
               },
               { session },
             );
@@ -99,7 +99,9 @@ export type ThreadsWrapperNoMutators<Loaded extends boolean = true> =
  * @param domain The domain the channel belongs to (used to render thread names, as they are often message contents)
  * @returns A list of threads sorted lastest activity first
  */
-export function useThreads(channel_id: string, domain: DomainWrapper) {
+export function useThreads(channel_id: string, domain: DomainWrapper | undefined) {
+  const isPrivate = channel_id.startsWith('private_channels');
+
   return useApiQuery(
     channel_id ? `${channel_id}.threads` : undefined,
     'GET /threads',
@@ -107,6 +109,7 @@ export function useThreads(channel_id: string, domain: DomainWrapper) {
       query: {
         channel: channel_id,
         limit: config.app.thread.query_limit,
+        private: isPrivate,
       },
     },
     {
@@ -123,6 +126,9 @@ export function useThreads(channel_id: string, domain: DomainWrapper) {
         return threads;
       },
       mutators,
+      mutatorParams: [
+        isPrivate,
+      ],
     },
   );
 }
@@ -174,6 +180,7 @@ export function useThreadsById(
           query: {
             channel: channel_id,
             ids: ids,
+            private: channel_id.startsWith('private_channels'),
           },
         },
         { session },

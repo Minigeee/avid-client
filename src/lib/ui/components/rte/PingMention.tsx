@@ -31,6 +31,10 @@ import { SessionState } from '@/lib/contexts';
 import { ExpandedMember, Role } from '@/lib/types';
 import { DomainWrapper, listMembers } from '@/lib/hooks';
 import { IconBadgeOff } from '@tabler/icons-react';
+import assert from 'assert';
+
+////////////////////////////////////////////////////////////
+type MinMember = Pick<ExpandedMember, 'id' | 'alias' | 'profile_picture'>;
 
 ////////////////////////////////////////////////////////////
 type SuggestionType = {
@@ -46,15 +50,16 @@ type SuggestionType = {
 ////////////////////////////////////////////////////////////
 type PingMentionOptions = MentionOptions & {
   session: SessionState;
-  domain: DomainWrapper;
+  domain?: DomainWrapper;
+  members?: MinMember[];
 };
 
 ////////////////////////////////////////////////////////////
 type PingMentionStorage = {
   session: SessionState;
-  domain: DomainWrapper;
-  has_more_results: Record<string, boolean>;
-  members: ExpandedMember[];
+  domain?: DomainWrapper;
+  hasMoreResults: Record<string, boolean>;
+  members: MinMember[];
 };
 
 ////////////////////////////////////////////////////////////
@@ -73,23 +78,30 @@ const PingMention = Mention.extend<PingMentionOptions, PingMentionStorage>({
     return {
       session: this.options.session,
       domain: this.options.domain,
-      has_more_results: { '': true },
+      memberMap: this.options.members,
+      hasMoreResults: { '': true },
       members: [],
     };
   },
 
   onCreate() {
-    // Get initial members list
-    listMembers(this.options.domain.id, {}, this.options.session).then(
-      ({ data }) => {
-        // Copy members array to storage
-        this.storage.members = data;
+    if (this.options.domain) {
+      // Get initial members list
+      listMembers(this.options.domain.id, {}, this.options.session).then(
+        ({ data }) => {
+          // Copy members array to storage
+          this.storage.members = data;
 
-        // Determine if more results are available by if query limit is reached
-        this.storage.has_more_results[''] =
-          data.length >= config.app.member.query_limit;
-      },
-    );
+          // Determine if more results are available by if query limit is reached
+          this.storage.hasMoreResults[''] =
+            data.length >= config.app.member.query_limit;
+        },
+      );
+    } else if (this.options.members) {
+      // Set all members given, and indicate that there are no more results
+      this.storage.members = this.options.members;
+      this.storage.hasMoreResults[''] = false;
+    }
   },
 
   renderHTML({ HTMLAttributes, node }) {
@@ -242,7 +254,7 @@ const MentionList = forwardRef(
                 </SuggestionButton>
               ))}
 
-              {members.length > 0 && <Divider sx={{ margin: '0.25rem' }} />}
+              {members.length > 0 && roles.length > 0 && <Divider sx={{ margin: '0.25rem' }} />}
 
               {roles.map((item, index) => (
                 <SuggestionButton
@@ -281,84 +293,101 @@ MentionList.displayName = 'MentionList';
 const MentionSuggestor: Omit<SuggestionOptions<SuggestionType>, 'editor'> = {
   items: async ({ editor, query }) => {
     const storage = editor.storage.pingMention as PingMentionStorage;
-    const members: ExpandedMember[] = storage.members;
-    const roles: Role[] = storage.domain.roles;
+    const members: MinMember[] = storage.members;
 
-    // Filter members by name
-    query = query.toLowerCase();
-    let filteredM = members.filter((x) =>
-      x.alias.toLowerCase().includes(query),
-    );
+    if (storage.domain) {
+      const roles = storage.domain.roles;
 
-    // Check if more members need to be requested
-    if (
-      filteredM.length <= config.app.member.new_query_threshold &&
-      query.length &&
-      storage.has_more_results[query.slice(0, -1)]
-    ) {
-      // Request new search query
-      const { data: newMembers } = await listMembers(
-        storage.domain.id,
-        { search: query },
-        storage.session,
+      // Filter members by name
+      query = query.toLowerCase();
+      let filteredM = members.filter((x) =>
+        x.alias.toLowerCase().includes(query),
       );
 
-      // Merge members lists
-      const memberMap: Record<string, ExpandedMember> = {};
-      for (const member of members) memberMap[member.id] = member;
+      // Check if more members need to be requested
+      if (
+        filteredM.length <= config.app.member.new_query_threshold &&
+        query.length &&
+        storage.hasMoreResults[query.slice(0, -1)]
+      ) {
+        // Request new search query
+        const { data: newMembers } = await listMembers(
+          storage.domain.id,
+          { search: query },
+          storage.session,
+        );
 
-      // Add new members to list
-      for (const member of newMembers) {
-        if (!memberMap[member.id]) members.push(member);
+        // Merge members lists
+        const memberMap: Record<string, MinMember> = {};
+        for (const member of members) memberMap[member.id] = member;
+
+        // Add new members to list
+        for (const member of newMembers) {
+          if (!memberMap[member.id]) members.push(member);
+        }
+
+        // Sort members array
+        members.sort((a, b) => a.alias.localeCompare(b.alias));
+
+        // Refilter and evaluate
+        filteredM = members.filter((x) =>
+          x.alias.toLowerCase().includes(query.toLowerCase()),
+        );
+
+        // There are potentially more query results if the number of new members is equal to
+        // the query limit (indicating the results are forcefully limited)
+        storage.hasMoreResults[query] =
+          newMembers.length >= config.app.member.query_limit;
+      } else {
+        // Update flag that indicates if there are potentially more results to see
+        storage.hasMoreResults[query] =
+          storage.hasMoreResults[query.slice(0, -1)];
       }
 
-      // Sort members array
-      members.sort((a, b) => a.alias.localeCompare(b.alias));
+      // Filter roles
+      const defRole = storage.domain._default_role;
+      const filteredR = roles
+        .filter((x) => x.label.toLowerCase().startsWith(query))
+        .sort((a, b) =>
+          a.id === defRole
+            ? -1
+            : b.id === defRole
+              ? 1
+              : a.label.localeCompare(b.label),
+        );
 
-      // Refilter and evaluate
-      filteredM = members.filter((x) =>
-        x.alias.toLowerCase().includes(query.toLowerCase()),
-      );
+      // Merge lists
+      const filtered = [
+        ...filteredM.map((x) => ({
+          type: 'member',
+          id: x.id,
+          name: x.alias,
+          pfp: x.profile_picture || undefined,
+        })),
+        ...filteredR.map((x) => ({
+          type: 'role',
+          id: x.id,
+          name: x.label,
+          badge: x.badge,
+        })),
+      ] as SuggestionType[];
 
-      // There are potentially more query results if the number of new members is equal to
-      // the query limit (indicating the results are forcefully limited)
-      storage.has_more_results[query] =
-        newMembers.length >= config.app.member.query_limit;
-    } else {
-      // Update flag that indicates if there are potentially more results to see
-      storage.has_more_results[query] =
-        storage.has_more_results[query.slice(0, -1)];
+      return filtered;
     }
-
-    // Filter roles
-    const defRole = storage.domain._default_role;
-    const filteredR = roles
-      .filter((x) => x.label.toLowerCase().startsWith(query))
-      .sort((a, b) =>
-        a.id === defRole
-          ? -1
-          : b.id === defRole
-            ? 1
-            : a.label.localeCompare(b.label),
+    else {
+      // Filter members by name
+      query = query.toLowerCase();
+      const filtered = members.filter((x) =>
+        x.alias.toLowerCase().includes(query),
       );
 
-    // Merge lists
-    const filtered = [
-      ...filteredM.map((x) => ({
+      return filtered.map((x) => ({
         type: 'member',
         id: x.id,
         name: x.alias,
-        pfp: x.profile_picture,
-      })),
-      ...filteredR.map((x) => ({
-        type: 'role',
-        id: x.id,
-        name: x.label,
-        badge: x.badge,
-      })),
-    ] as SuggestionType[];
-
-    return filtered;
+        pfp: x.profile_picture || undefined,
+      }));
+    }
   },
 
   render: () => {

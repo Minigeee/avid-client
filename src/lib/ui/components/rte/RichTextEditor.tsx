@@ -80,7 +80,7 @@ import {
 
 import { uid } from 'uid';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
-import { FileAttachment } from '@/lib/types';
+import { ExpandedMember, FileAttachment } from '@/lib/types';
 import { emojiSearch } from '@/lib/utility/emoji';
 
 ////////////////////////////////////////////////////////////
@@ -282,6 +282,7 @@ export type RichTextEditorProps = {
   focusRing?: boolean;
 
   domain?: DomainWrapper;
+  members?: Pick<ExpandedMember, 'id' | 'alias' | 'profile_picture'>[];
 
   // Text
   value?: string;
@@ -508,11 +509,12 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       Color,
       Emojis,
       Link.configure({ openOnClick: false }),
-      ...(props.domain?._exists
+      ...(props.domain?._exists || props.members
         ? [
             PingMention.configure({
               session,
               domain: props.domain,
+              members: props.members,
             }),
           ]
         : []),

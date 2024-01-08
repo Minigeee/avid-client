@@ -28,8 +28,10 @@ import SettingsMenu from '@/lib/ui/components/settings/SettingsMenu';
 import config from '@/config';
 import { AppState, SessionState } from '@/lib/contexts';
 import {
+  CurrentProfileWrapper,
   ProfileWrapper,
   useApp,
+  useCurrentProfile,
   useMemoState,
   useProfile,
   useRtc,
@@ -58,7 +60,7 @@ for (const tabs of Object.values(TABS)) FLATTENED = FLATTENED.concat(tabs);
 type TabProps = {
   app: AppState;
   session: SessionState;
-  profile: ProfileWrapper;
+  profile: CurrentProfileWrapper;
 };
 
 ////////////////////////////////////////////////////////////
@@ -282,7 +284,7 @@ export default function UserSettings({
 }: ContextModalProps<UserSettingsProps>) {
   const app = useApp();
   const session = useSession();
-  const profile = useProfile(session.profile_id);
+  const profile = useCurrentProfile();
 
   const [tab, setTab] = useMemoState(() => {
     const tabId = props.tab || 'account';

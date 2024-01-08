@@ -233,12 +233,12 @@ export type MemberWrapper<Loaded extends boolean = true> =
  * @param profile_id The profile id of the member
  * @returns The member
  */
-export function useMember(domain_id: string, profile_id: string | undefined) {
+export function useMember(domain_id: string | undefined, profile_id: string | undefined) {
   const session = useSession();
   const members = useSyncExternalStore(_subscribe, _getSnapshot);
 
   return useMemo(() => {
-    if (!profile_id) return { _exists: false } as MemberWrapper<false>;
+    if (!profile_id || !domain_id) return { _exists: false } as MemberWrapper<false>;
 
     const key = `${domain_id}.${profile_id}`;
     const cached = _getMemberEntry(domain_id, profile_id);
@@ -280,12 +280,12 @@ export type MembersWrapper<Loaded extends boolean = true> =
  * @param profile_id The profile id of the member
  * @returns The member
  */
-export function useMembers(domain_id: string, profile_ids: string[]) {
+export function useMembers(domain_id: string | undefined, profile_ids: string[]) {
   const session = useSession();
   const members = useSyncExternalStore(_subscribe, _getSnapshot);
 
   return useMemo(() => {
-    if (!profile_ids.length) return { _exists: true, data: [] };
+    if (!profile_ids.length || !domain_id) return { _exists: true, data: [] };
 
     let needFetch = false;
     let _exists = true;

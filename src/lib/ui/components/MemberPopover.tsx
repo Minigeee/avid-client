@@ -9,8 +9,10 @@ import {
   Indicator,
   Popover,
   PopoverProps,
+  SimpleGrid,
   Stack,
   Text,
+  TextInput,
   Title,
   Tooltip,
   TooltipProps,
@@ -27,17 +29,24 @@ import {
   DomainWrapper,
   hasMemberPermission,
   hasPermission,
+  useApp,
   useMemberMutators,
+  usePrivateChannels,
   useProfile,
+  useSession,
 } from '@/lib/hooks';
 
 import moment from 'moment';
 import {
   IconBadgeOff,
   IconCake,
+  IconMessage2,
   IconPlus,
   IconUser,
 } from '@tabler/icons-react';
+import RichTextEditor from './rte/RichTextEditor';
+import ActionButton from './ActionButton';
+import assert from 'assert';
 
 ////////////////////////////////////////////////////////////
 const RoleSelectItem = forwardRef<HTMLDivElement, Role>(
@@ -71,6 +80,10 @@ RoleSelectItem.displayName = 'RoleSelectItem';
 function Dropdown({ member, ...props }: MemberPopoverProps) {
   const { open: openConfirmModal } = useConfirmModal();
 
+  const app = useApp();
+  const session = useSession();
+  const dms = usePrivateChannels();
+
   const profile = useProfile(member.id);
   const memberMutators = useMemberMutators();
 
@@ -78,19 +91,23 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
 
   // Map to display roles list
   const roleMap = useMemo(() => {
+    if (!props.domain) return {};
+
     const map: Record<string, Role> = {};
     for (const role of props.domain.roles) map[role.id] = role;
     return map;
-  }, [props.domain.roles]);
+  }, [props.domain?.roles]);
 
   // Check if user can manage member
   const canManageMember = useMemo(
-    () => hasMemberPermission(props.domain, member, 'can_manage_member_roles'),
+    () => props.domain ? hasMemberPermission(props.domain, member, 'can_manage_member_roles') : false,
     [props.domain, member],
   );
 
   // List of addable roles
   const addableRoles = useMemo(() => {
+    if (!props.domain) return [];
+
     // Set of already added roles
     const added = new Set(member.roles);
     const addable: Role[] = [];
@@ -105,71 +122,116 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
     }
 
     return addable;
-  }, [props.domain.roles, member.roles]);
+  }, [props.domain?.roles, member.roles]);
+
+  // Check if user can message this member
+  const canMessage = profile.id !== session.profile_id;
 
   return (
     <>
       <Group
-        spacing='sm'
+        mih='6rem'
+        sx={(theme) => ({
+          background: theme.other.elements.profile_banner,
+        })}
+      />
+
+      <Stack
         p='1.0rem 1.25rem'
+        spacing='lg'
         sx={(theme) => ({
           borderBottom: `1px solid ${theme.other.colors.page_border}`,
         })}
       >
-        <Indicator
-          inline
-          position='bottom-end'
-          offset={6}
-          size={12}
-          color='teal'
-          withBorder
-          disabled={!member.online}
-        >
-          <MemberAvatar member={member} size={48} />
-        </Indicator>
-
-        <Box>
-          <Title
-            order={5}
-            sx={(theme) => ({ color: theme.other.elements.member_name })}
+        <Group spacing='sm'>
+          <Indicator
+            inline
+            position='bottom-end'
+            offset={6}
+            size={12}
+            color='teal'
+            withBorder
+            disabled={!member.online}
           >
-            {member.alias}
-          </Title>
-          {member.roles && (
-            <RoleBadges badges={badges} role_ids={member.roles} />
-          )}
-        </Box>
-      </Group>
+            <MemberAvatar member={member} size={48} />
+          </Indicator>
 
-      <Stack p='1.0rem 1.25rem' spacing='sm'>
-        <Box>
-          <Group mb={2} spacing={8}>
-            <IconUser size={16} />
-            <Title order={6}>Member Since</Title>
-          </Group>
-          <Text size='sm'>{moment(member.time_joined).format('LL')}</Text>
-        </Box>
-
-        {profile._exists && (
           <Box>
-            <Group mb={2} spacing={8}>
-              <IconCake size={16} />
-              <Title order={6}>Profile Created</Title>
+            <Group spacing={6}>
+              <Title
+                order={5}
+                sx={(theme) => ({ color: theme.other.elements.member_name })}
+              >
+                {member.alias}
+              </Title>
+              {member.roles && (
+                <RoleBadges badges={badges} role_ids={member.roles} />
+              )}
             </Group>
-            <Text size='sm'>{moment(profile.time_created).format('LL')}</Text>
+
+            {canMessage && (
+              <Group mt={2}>
+                <ActionButton
+                  tooltip='Send Message'
+                  size='xs'
+                  variant='transparent'
+                  onClick={() => {
+                    if (!dms._exists || !profile._exists) return;
+
+                    // Check if private channel exists
+                    const privChannel = dms.data.find(
+                      (x) =>
+                        !x.multi_member &&
+                        x.members.findIndex((y) => y === member.id) >= 0,
+                    );
+
+                    // If private channel exists, switch to it
+                    if (privChannel) {
+                      app._mutators.setPrivateChannel(privChannel.id);
+                    } else {
+                      // Otherwise, switch to new channel screen
+                      app._mutators.setView('dm');
+                      app._mutators.setNewPrivateChannel(profile);
+                    }
+                  }}
+                >
+                  <IconMessage2 size={16} />
+                </ActionButton>
+              </Group>
+            )}
           </Box>
-        )}
+        </Group>
 
-        <Divider
-          sx={(theme) => ({ borderColor: theme.other.colors.page_border })}
-        />
+        <Group spacing='xl'>
+          <Box>
+            <Group mb={2} spacing={8} noWrap>
+              <IconUser size={16} />
+              <Title order={6}>Member Since</Title>
+            </Group>
+            <Text size='sm'>{moment(member.time_joined).format('LL')}</Text>
+          </Box>
 
-        <Box mb={4}>
+          {profile._exists && (
+            <Box>
+              <Group mb={2} spacing={8} noWrap>
+                <IconCake size={16} />
+                <Title order={6}>Profile Created</Title>
+              </Group>
+              <Text size='sm'>{moment(profile.time_created).format('LL')}</Text>
+            </Box>
+          )}
+        </Group>
+      </Stack>
+
+      {props.domain && (
+        <Box p='1.0rem 1.25rem' mb={4}>
           <Title order={6} mb={2}>
             Roles
           </Title>
           <Group spacing={6}>
             {member.roles?.map((id) => {
+              assert(props.domain);
+
               const role = roleMap[id];
               const canManageRole =
                 canManageMember ||
@@ -210,12 +272,14 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
                               </Text>
                             ),
                             confirmLabel: 'Remove',
-                            onConfirm: () =>
+                            onConfirm: () => {
+                              assert(props.domain);
                               memberMutators.removeRole(
                                 props.domain.id,
                                 member.id,
                                 id,
-                              ),
+                              );
+                            },
                           })
                         }
                       />
@@ -231,6 +295,8 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
                 itemComponent={RoleSelectItem}
                 searchProps={{ placeholder: 'Search roles' }}
                 onSelect={async (item) => {
+                  assert(props.domain);
+
                   // Add single role
                   await memberMutators.addRoles(
                     props.domain.id,
@@ -258,14 +324,14 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
             )}
           </Group>
         </Box>
-      </Stack>
+      )}
     </>
   );
 }
 
 ////////////////////////////////////////////////////////////
 export type MemberPopoverProps = PropsWithChildren & {
-  domain: DomainWrapper;
+  domain: DomainWrapper | undefined;
   member: ExpandedMember;
   popoverProps?: Partial<PopoverProps>;
   withinPortal?: boolean;
@@ -278,7 +344,7 @@ export default function MemberPopover(props: MemberPopoverProps) {
   return (
     <Popover
       radius='sm'
-      width='18rem'
+      width='22rem'
       position='bottom-start'
       zIndex={199}
       {...props.popoverProps}
@@ -296,6 +362,7 @@ export default function MemberPopover(props: MemberPopoverProps) {
         sx={(theme) => ({
           padding: 0,
           border: `solid 1px ${theme.other.colors.page_border}`,
+          overflow: 'hidden',
         })}
       >
         <Dropdown {...props} />

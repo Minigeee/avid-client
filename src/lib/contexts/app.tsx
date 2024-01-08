@@ -15,7 +15,9 @@ import config from '@/config';
 import { useSession } from '@/lib/hooks';
 import {
   DeepPartial,
+  ExpandedProfile,
   LocalAppState,
+  Profile,
   RemoteAppState,
   RightPanelTab,
 } from '@/lib/types';
@@ -44,6 +46,21 @@ function remoteMutators(
     setRemote: setState,
 
     /**
+     * Switch to the given view.
+     *
+     * @param view The view to switch to
+     */
+    setView: (view: RemoteAppState['view']) => {
+      // Don't set if already the same
+      if (state.view === view) return;
+
+      const diff = { view } as Partial<RemoteAppState>;
+      setState(merge({}, state, diff));
+
+      save(diff);
+    },
+
+    /**
      * Switch to viewing the given domain.
      * This function saves the new navigation state to the database.
      *
@@ -51,9 +68,10 @@ function remoteMutators(
      */
     setDomain: (domain_id: string) => {
       // Don't set if already the same
-      if (state.domain === domain_id) return;
+      if (state.domain === domain_id && state.view === 'main') return;
 
       const diff: Partial<RemoteAppState> = {
+        view: 'main',
         domain: domain_id,
       };
 
@@ -109,26 +127,23 @@ function remoteMutators(
     },
 
     /**
-     * Switch to viewing the given expansion. If a domain id is provided,
-     * then it is used, otherwise the current domain is used. If neither
-     * exist, then the function is not executed.
-     * This function saves the new navigation state to the database.
+     * Switch to view a certain private channel (dm).
+     * If the user is not in the dm view, they are switched to it.
      *
-     * @param expansion_id The id of the expansion to switch to
-     * @param domain_id The id of the domain to switch to
+     * @param channel_id The id of the channel to switch to
      */
-    setExpansion: (expansion_id: string, domain_id?: string) => {
-      domain_id = domain_id || state.domain || undefined;
-      if (!domain_id) return;
+    setPrivateChannel: (channel_id: string) => {
+      // Don't switch if already viewing
+      if (state.private_channel === channel_id && state.view === 'dm') return;
 
-      // Don't set if already the same
-      if (state.expansions?.[domain_id] === expansion_id) return;
-
+      // Set new state
       const diff = {
-        expansions: { [domain_id]: expansion_id },
+        view: 'dm',
+        private_channel: channel_id,
       } as Partial<RemoteAppState>;
       setState(merge({}, state, diff));
 
+      // Save
       save(diff);
     },
 
@@ -166,6 +181,26 @@ function remoteMutators(
         ...state,
         right_panel_opened: opened,
       });
+
+      save(diff);
+    },
+
+    /**
+     * Set the private channel state by merging
+     *
+     * @param channel_id The id of the private channel state to save
+     * @param chatState The new channel state values that should be set
+     */
+    setPrivateChannelState: (
+      channel_id: string,
+      channelState: Partial<
+        NonNullable<RemoteAppState['private_channel_states']>[string]
+      >,
+    ) => {
+      const diff = {
+        private_channel_states: { [id(channel_id)]: channelState },
+      } as Partial<RemoteAppState>;
+      setState(merge({}, state, diff));
 
       save(diff);
     },
@@ -253,6 +288,21 @@ function localMutators(
         right_panel_tab: { ...state.right_panel_tab, [domain_id]: tab },
       });
     },
+    
+    /**
+     * Set the new private channel info
+     * 
+     * @param profile The profile to start a new channel with (single dm)
+     */
+    setNewPrivateChannel: (profile: Profile | null) => {
+      // Don't set if profile id already matches
+      if (state.new_private_channel?.id === profile?.id) return;
+
+      setState({
+        ...state,
+        new_private_channel: profile,
+      });
+    }
   };
 }
 
@@ -282,9 +332,10 @@ export default function AppProvider({
   const [remote, setRemote] = useState<RemoteAppState>(
     merge(
       {
+        view: 'main' as RemoteAppState['view'],
         domain: null,
         channels: {},
-        expansions: {},
+        private_channel: null,
         last_accessed: {},
         right_panel_opened: true,
       },

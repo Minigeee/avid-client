@@ -20,6 +20,7 @@ import { useClipboard } from '@mantine/hooks';
 
 import {
   IconArrowBarLeft,
+  IconBuildingCommunity,
   IconCalendar,
   IconChevronDown,
   IconCopy,
@@ -38,6 +39,8 @@ import {
   openUserSettings,
 } from '@/lib/ui/modals';
 import MainView from '@/lib/ui/views/main/MainView';
+import DmView from '@/lib/ui/views/main/DmView';
+import ActionButton from '@/lib/ui/components/ActionButton';
 import ProfileAvatar from '@/lib/ui/components/ProfileAvatar';
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 
@@ -46,12 +49,12 @@ import { AppState } from '@/lib/contexts';
 import {
   DomainWrapper,
   useApp,
+  useCurrentProfile,
   useDomain,
   useProfile,
   useSession,
 } from '@/lib/hooks';
 import { Domain } from '@/lib/types';
-import ActionButton from '../components/ActionButton';
 
 ////////////////////////////////////////////////////////////
 type DomainButtonProps = {
@@ -99,6 +102,7 @@ function DomainButton(props: DomainButtonProps) {
 type PersonalButtonProps = {
   icon: JSX.Element;
   title: string;
+  active: boolean;
 
   onClick?: () => void;
 };
@@ -109,6 +113,9 @@ function PersonalButton(props: PersonalButtonProps) {
     <UnstyledButton
       sx={(theme) => ({
         padding: '0.75rem',
+        background: props.active
+          ? theme.other.elements.drawer_hover
+          : undefined,
         color: theme.other.elements.drawer_text,
         borderRadius: theme.radius.md,
         transition: 'background 0.08s',
@@ -138,7 +145,7 @@ type AppDrawerProps = {
 function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
   const app = useApp();
   const session = useSession();
-  const profile = useProfile(session.profile_id);
+  const profile = useCurrentProfile();
 
   return (
     <Drawer
@@ -158,7 +165,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
           mih='10rem'
           sx={(theme) => ({
             position: 'relative',
-            background: theme.other.elements.drawer_banner,
+            background: theme.other.elements.profile_banner,
           })}
         >
           <CloseButton
@@ -242,11 +249,22 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
             borderBottom: `1px solid ${theme.other.elements.drawer_border}`,
           })}
         >
-          <PersonalButton title='Messages' icon={<IconMessage2 size={22} />} />
-          <PersonalButton title='Calendar' icon={<IconCalendar size={22} />} />
+          <PersonalButton
+            title='Messages'
+            icon={<IconMessage2 size={22} />}
+            active={app.view === 'dm'}
+            onClick={() => {
+              app._mutators.setView('dm');
+              onClose();
+            }}
+          />
         </Stack>
 
         <Text size='sm' color='dimmed' weight={600} mt={8} ml={12}>
+          <IconBuildingCommunity
+            size={14}
+            style={{ marginRight: 4, marginBottom: -2 }}
+          />
           {config.text.domain.plural}
         </Text>
         <ScrollArea sx={{ flexGrow: 1 }}>
@@ -260,9 +278,9 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
               <DomainButton
                 key={domain.id}
                 domain={domain}
-                active={domain.id === app.domain}
+                active={app.view === 'main' && domain.id === app.domain}
                 onClick={() => {
-                  if (domain.id !== app.domain) {
+                  if (app.view !== 'main' || domain.id !== app.domain) {
                     onClose();
 
                     // Switch domain in separate thread to prevent ui freeze
@@ -363,7 +381,7 @@ function AppHeader({ app, domain }: AppHeaderProps) {
         sx={(theme) => ({
           flexShrink: 0,
           paddingLeft: '0.75rem',
-          paddingRight: '0.3rem',
+          paddingRight: '0.75rem',
           height: '3.0rem',
           background: theme.other.elements.header,
         })}
@@ -382,8 +400,79 @@ function AppHeader({ app, domain }: AppHeaderProps) {
           <IconMenu2 size={22} />
         </ActionIcon>
 
-        <Group spacing={8}>
-          {domain && <DomainAvatar domain={domain} size={32} />}
+        {app.view === 'main' && (
+          <Group spacing={8}>
+            {domain && <DomainAvatar domain={domain} size={32} />}
+            <Title
+              order={4}
+              size='1.25rem'
+              sx={(theme) => ({
+                lineHeight: 1,
+                marginLeft: '0.125rem',
+                color: theme.other.elements.header_text,
+              })}
+            >
+              {domain?.name}
+            </Title>
+
+            {domain && (
+              <Menu
+                width='15rem'
+                position='bottom-start'
+                styles={(theme) => ({
+                  item: {
+                    '&:hover': {
+                      background: theme.other.colors.page_hover,
+                    },
+                  },
+                })}
+              >
+                <Menu.Target>
+                  <ActionIcon
+                    sx={(theme) => ({
+                      marginTop: '0.25rem',
+                      color: theme.other.elements.header_dimmed,
+                      '&:hover': {
+                        background: theme.other.elements.header_hover,
+                      },
+                    })}
+                  >
+                    <IconChevronDown size={22} />
+                  </ActionIcon>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
+                  {canManageDomain && (
+                    <Menu.Item
+                      icon={<IconSettings size={16} />}
+                      onClick={() =>
+                        openDomainSettings({ domain_id: domain.id })
+                      }
+                    >
+                      Settings
+                    </Menu.Item>
+                  )}
+
+                  <Menu.Item
+                    icon={<IconCopy size={16} />}
+                    onClick={() =>
+                      clipboard.copy(
+                        `${config.domains.site}/join/${
+                          domain.id.split(':')[1]
+                        }`,
+                      )
+                    }
+                  >
+                    Copy Invite URL
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+          </Group>
+        )}
+
+        {app.view === 'dm' && (
           <Title
             order={4}
             size='1.25rem'
@@ -393,60 +482,31 @@ function AppHeader({ app, domain }: AppHeaderProps) {
               color: theme.other.elements.header_text,
             })}
           >
-            {domain?.name}
+            Messages
           </Title>
+        )}
 
-          {domain && (
-            <Menu
-              width='15rem'
-              position='bottom-start'
-              styles={(theme) => ({
-                item: {
-                  '&:hover': {
-                    background: theme.other.colors.page_hover,
-                  },
-                },
-              })}
-            >
-              <Menu.Target>
-                <ActionIcon
-                  sx={(theme) => ({
-                    marginTop: '0.25rem',
-                    color: theme.other.elements.header_dimmed,
-                    '&:hover': {
-                      background: theme.other.elements.header_hover,
-                    },
-                  })}
-                >
-                  <IconChevronDown size={22} />
-                </ActionIcon>
-              </Menu.Target>
+        <div style={{ flexGrow: 1 }} />
 
-              <Menu.Dropdown>
-                <Menu.Label>{domain.name.toUpperCase()}</Menu.Label>
-                {canManageDomain && (
-                  <Menu.Item
-                    icon={<IconSettings size={16} />}
-                    onClick={() => openDomainSettings({ domain_id: domain.id })}
-                  >
-                    Settings
-                  </Menu.Item>
-                )}
-
-                <Menu.Item
-                  icon={<IconCopy size={16} />}
-                  onClick={() =>
-                    clipboard.copy(
-                      `${config.domains.site}/join/${domain.id.split(':')[1]}`,
-                    )
-                  }
-                >
-                  Copy Invite URL
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          )}
-        </Group>
+        <ActionButton
+          tooltip='Messages'
+          tooltipProps={{ openDelay: 500, position: 'bottom-end' }}
+          size='lg'
+          sx={(theme) => ({
+            color:
+              app.view === 'dm'
+                ? theme.other.elements.header_text
+                : theme.other.elements.header_dimmed,
+            '&:hover': {
+              background: theme.other.elements.header_hover,
+            },
+          })}
+          onClick={() => {
+            app._mutators.setView('dm');
+          }}
+        >
+          <IconMessage2 size={22} />
+        </ActionButton>
       </Group>
     </>
   );
@@ -457,7 +517,7 @@ export default function Main(props: { visible: boolean }) {
   const app = useApp();
   const session = useSession();
 
-  const profile = useProfile(session.profile_id);
+  const profile = useCurrentProfile();
   const domain = useDomain(
     app.domain?.startsWith('domains') ? app.domain : undefined,
   );
@@ -492,8 +552,9 @@ export default function Main(props: { visible: boolean }) {
           height: '100%',
         }}
       >
-        <AppHeader app={app} domain={domain._exists ? domain : undefined} />
-        {domain._exists && <MainView />}
+        <AppHeader app={app} domain={app.view === 'main' && domain._exists ? domain : undefined} />
+        {app.view === 'main' && domain._exists && <MainView />}
+        {app.view === 'dm' && <DmView />}
         {app.domain && !app.domain.startsWith('domains') && (
           <Center w='100%' h='100%'>
             <Text>Coming soon :&#41;</Text>

@@ -14,7 +14,7 @@ import { useForm } from '@mantine/form';
 
 import DomainAvatar from '@/lib/ui/components/DomainAvatar';
 
-import { useApp, useDomain, useProfile, useSession } from '@/lib/hooks';
+import { useApp, useCurrentProfile, useDomain, useProfile, useSession } from '@/lib/hooks';
 import { socket } from '@/lib/utility/realtime';
 import { Domain, ExpandedDomain, Member } from '@/lib/types';
 import { api, withAccessToken } from '@/lib/api/utility';
@@ -31,7 +31,7 @@ interface Props {
 export default function JoinDomain(props: Props) {
   const app = useApp();
   const session = useSession();
-  const profile = useProfile(session.profile_id);
+  const profile = useCurrentProfile();
 
   const [domain, setDomain] = useState<{ name: string; icon: string } | null>(
     null,
