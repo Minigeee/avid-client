@@ -162,6 +162,12 @@ export function useRealtimeHandlers() {
 
   // Channel activity handler
   useEffect(() => {
+    function onDomainUpdate(domain_id: string, force: boolean) {
+      // Just refresh domain
+      if (force) mutate(domain_id);
+      else app._mutators.setStale(domain_id, true);
+    }
+
     function onActivity(
       domain_id: string,
       channel_id: string,
@@ -197,10 +203,12 @@ export function useRealtimeHandlers() {
       app._mutators.setPings(channel_id, (app.pings?.[channel_id] || 0) + 1);
     }
 
+    _socket.on('general:domain-update', onDomainUpdate);
     _socket.on('general:activity', onActivity);
     _socket.on('general:ping', onPing);
 
     return () => {
+      _socket.off('general:domain-update', onDomainUpdate);
       _socket.off('general:activity', onActivity);
       _socket.off('general:ping', onPing);
     };

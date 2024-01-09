@@ -30,6 +30,7 @@ import {
   IconPlus,
   IconSettings,
   IconTrash,
+  IconRefresh,
 } from '@tabler/icons-react';
 
 import {
@@ -45,7 +46,7 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import { ChannelGroupMenuDropdown, ChannelMenuDropdown, ChannelsViewContextMenu } from './components/ChannelMenu';
 
-import { DomainWrapper, hasPermission, useApp, useMembers } from '@/lib/hooks';
+import { DomainWrapper, hasPermission, useApp, useCachedState, useMembers } from '@/lib/hooks';
 import { Channel, ChannelGroup } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
@@ -316,7 +317,10 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
     initialValues: { name: props.group.name },
   });
 
-  const [opened, setOpened] = useState<boolean>(true);
+  const [opened, setOpened] = useCachedState<boolean>(
+    `${props.group.id}.opened`,
+    true,
+  );
   const [renaming, setRenaming] = useState<boolean>(false);
   
 
@@ -542,6 +546,7 @@ type ChannelsViewProps = {
 ////////////////////////////////////////////////////////////
 export default function ChannelsView(props: ChannelsViewProps) {
   // WIP : Add channel group dropdown
+  const app = useApp();
 
   return (
     <Flex
@@ -554,6 +559,7 @@ export default function ChannelsView(props: ChannelsViewProps) {
       })}
     >
       <Group
+        spacing={4}
         sx={(theme) => ({
           width: '100%',
           height: '3.0rem',
@@ -572,6 +578,24 @@ export default function ChannelsView(props: ChannelsViewProps) {
           Groups
         </Title>
         <div style={{ flexGrow: 1 }} />
+
+        {app.stale[props.domain.id] && (
+          <ActionButton
+            tooltip='Refresh'
+            sx={(theme) => ({
+              '&:hover': {
+                background: theme.other.elements.channels_panel_hover,
+              },
+            })}
+            onClick={() => {
+              app._mutators.setStale(props.domain.id, false);
+              props.domain._refresh();
+            }}
+          >
+            <IconRefresh size={18} />
+          </ActionButton>
+        )}
+
         {hasPermission(props.domain, props.domain.id, 'can_create_groups') && (
           <Tooltip label='New Group' position='left' withArrow>
             <ActionIcon

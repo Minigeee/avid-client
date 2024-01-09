@@ -254,17 +254,17 @@ function localMutators(
     setLocal: setState,
 
     /**
-     * Mark or unmark a channel as containing stale data.
+     * Mark or unmark an object as containing stale data.
      *
-     * @param channel_id The channel to mark as (un)stale
+     * @param id The id of the object to mark as (un)stale
      */
-    setStale: (channel_id: string, stale: boolean) => {
+    setStale: (id: string, stale: boolean) => {
       // Don't set if already the same
-      if (state.stale[channel_id] === stale) return;
+      if (state.stale[id] === stale) return;
 
       setState({
         ...state,
-        stale: { ...state.stale, [channel_id]: stale },
+        stale: { ...state.stale, [id]: stale },
       });
     },
 

@@ -20,6 +20,8 @@ export interface ServerToClientEvents {
     is_event: boolean,
   ) => void;
   'general:ping': (domain_id: string | undefined, channel_id: string) => void;
+  /** Domain structure/settings have changed */
+  'general:domain-update': (domain_id: string, forceUpdate: boolean) => void;
 
   'chat:message': (message: RawMessage) => void;
   'chat:edit-message': (

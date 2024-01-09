@@ -56,7 +56,7 @@ export type RemoteAppState = {
 
 /** App state that is only tracked locally within a single session */
 export type LocalAppState = {
-  /** A map of channels to stale status */
+  /** A map of channels/domains to stale status */
   stale: Record<string, boolean>;
   /** The right panel tab the user is viewing for each domain */
   right_panel_tab: Record<string, RightPanelTab>;
