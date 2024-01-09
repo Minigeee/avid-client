@@ -43,7 +43,6 @@ import {
   Member,
   Profile,
   RemoteAppState,
-  Theme,
 } from '@/lib/types';
 import { GetServerSideProps } from 'next';
 import { refresh } from '@/lib/utility/authenticate';

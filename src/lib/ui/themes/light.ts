@@ -1,4 +1,4 @@
-import { Theme } from '@/lib/types';
+import { Theme } from './types';
 
 const theme = {
   scheme: 'light',
