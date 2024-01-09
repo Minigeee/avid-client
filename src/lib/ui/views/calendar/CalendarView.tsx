@@ -116,6 +116,7 @@ export default function CalendarView(props: CalendarViewProps) {
   return (
     <Box h='100%' p='1.25rem'>
       <Calendar
+        id={`${props.channel.id}/calendar`}
         domain={props.domain}
         events={events.data || []}
         editable={canManageEvents}

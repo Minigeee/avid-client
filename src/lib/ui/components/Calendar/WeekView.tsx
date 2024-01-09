@@ -698,6 +698,7 @@ export default function WeekView(props: WeekViewProps) {
             ? (ev) => {
                 // Only LMB
                 if (ev.button !== 0) return;
+                console.log('m down')
 
                 // Down
                 multidayDragStateRef.current = 'down';
@@ -816,18 +817,28 @@ export default function WeekView(props: WeekViewProps) {
               borderTopRightRadius: e.has_next ? 0 : theme.radius.sm,
               borderBottomRightRadius: e.has_next ? 0 : theme.radius.sm,
             })}
-            draggable
-            onDragStart={(ev) => {
-              ev.preventDefault();
+            draggable={props.editable}
+            onDragStart={
+              props.editable
+                ? (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+
+                    const rect = ev.currentTarget.getBoundingClientRect();
+                    const offset = {
+                      x: ev.pageX - rect.x,
+                      y: ev.pageY - rect.y,
+                    };
+
+                    // console.log('drag', offset);
+                    dragDropMultiday.onDragStart(e, offset);
+                  }
+                : undefined
+            }
+            onMouseDown={(ev) => {
+              console.log('stopping prop')
               ev.stopPropagation();
-
-              const rect = ev.currentTarget.getBoundingClientRect();
-              const offset = { x: ev.pageX - rect.x, y: ev.pageY - rect.y };
-
-              // console.log('drag', offset);
-              dragDropMultiday.onDragStart(e, offset);
             }}
-            onMouseDown={(ev) => ev.stopPropagation()}
           >
             {e.title}
           </EventButton>

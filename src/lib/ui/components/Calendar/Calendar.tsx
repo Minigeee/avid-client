@@ -43,7 +43,7 @@ import { CalendarEventContextMenu } from './EventMenu';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 
 import { CalendarEvent, DeepPartial } from '@/lib/types';
-import { DomainWrapper } from '@/lib/hooks';
+import { DomainWrapper, useCachedState } from '@/lib/hooks';
 
 import moment, { Moment } from 'moment';
 import { merge, range } from 'lodash';
@@ -53,6 +53,8 @@ export type CalendarView = 'month' | 'week' | 'day' | 'resource';
 
 ////////////////////////////////////////////////////////////
 export type CalendarProps = {
+  /** Optional id to cache calendar states */
+  id?: string;
   /** List of events */
   events: CalendarEvent[];
   /** Domain the calendar is part of, used for context */
@@ -302,9 +304,9 @@ export default function Calendar(props: CalendarProps) {
   const onDeleteEventRef = useRef(onDeleteEventInternal);
 
   // Time the calendar should display
-  const [time, setTimeImpl] = useState<Moment>(moment());
+  const [time, setTimeImpl] = useCachedState<Moment>(`${props.id || 'calendar'}.time`, moment());
   // Calendar view
-  const [view, setView] = useState<CalendarView>('week');
+  const [view, setView] = useCachedState<CalendarView>(`${props.id || 'calendar'}.view`, 'week');
   // The id of the currently opened popup
   const [popupId, setPopupId] = useState<string | null>(null);
 

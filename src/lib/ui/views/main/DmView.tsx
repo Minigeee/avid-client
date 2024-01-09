@@ -468,7 +468,9 @@ export default function DmView() {
                 width: '100%',
               })}
             >
-              {dms._exists && <DmMessageView channel={channel} dms={dms} />}
+              {dms._exists && (
+                <DmMessageView key={channel?.id} channel={channel} dms={dms} />
+              )}
             </Box>
           )}
         </ErrorBoundary>

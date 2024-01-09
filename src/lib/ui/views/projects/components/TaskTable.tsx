@@ -158,9 +158,20 @@ export default function TaskTable({ board, tasks, ...props }: TaskTableProps) {
       },
       id: {
         name: 'ID',
-        grow: 1,
+        grow: 1.5,
         style: { fontWeight: 600 },
-        selector: (task: ExpandedTask) => `${board.prefix}-${task.sid}`,
+        cell: (task: ExpandedTask) => (
+          <Tooltip
+            label={`${board.prefix}-${task.sid}`}
+            position='left'
+            openDelay={500}
+            withArrow
+          >
+            <Text data-tag='allowRowEvents'>
+              {board.prefix}-{task.sid}
+            </Text>
+          </Tooltip>
+        ),
         sortable: true,
         sortFunction: (a: ExpandedTask, b: ExpandedTask) => a.sid - b.sid,
       },

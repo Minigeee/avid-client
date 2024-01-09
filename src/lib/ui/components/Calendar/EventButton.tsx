@@ -145,7 +145,12 @@ export default function EventButton({
         </ContextMenu.Trigger>
       </Popover.Target>
 
-      <Popover.Dropdown miw='24rem' maw='36rem' p='0.875rem 1.0rem'>
+      <Popover.Dropdown
+        miw='24rem'
+        maw='36rem'
+        p='0.875rem 1.0rem'
+        onMouseDown={(ev) => ev.stopPropagation()}
+      >
         <Flex gap={6} wrap='nowrap' align='center'>
           <ColorSwatch
             color={event.color || PRESET_COLORS.at(-1) || ''}
