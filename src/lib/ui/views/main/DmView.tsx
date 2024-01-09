@@ -123,6 +123,7 @@ function DmViewChannels({ dms, channels, ...props }: DmViewChannelsProps) {
 
             return (
               <UnstyledButton
+                key={ch.id}
                 onClick={() => {
                   app._mutators.setPrivateChannel(ch.id);
                 }}

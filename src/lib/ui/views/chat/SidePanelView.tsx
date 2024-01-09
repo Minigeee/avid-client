@@ -372,7 +372,7 @@ type PinnedMessageProps = {
 ////////////////////////////////////////////////////////////
 function PinnedMessage({ msg, ...props }: PinnedMessageProps) {
   const { open: openConfirmModal } = useConfirmModal();
-  console.log('pinned', msg)
+  // console.log('pinned', msg)
 
   const { ref, width } = useElementSize();
   // Lagged state to reactivate attachments

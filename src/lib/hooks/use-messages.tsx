@@ -1053,7 +1053,7 @@ function mutators(
             updateSwrMessages(
               (messages, thread_id, pinned) => {
                 // If a pin hook, delete the message
-                console.log(messages, thread_id, pinned);
+                // console.log(messages, thread_id, pinned);
                 if (pinned !== undefined)
                   return deleteMessageLocal(messages, message_id);
                 else
@@ -1486,7 +1486,7 @@ function groupAllMessages(
     }
 
     // Add to rendered list
-    console.log('render msg', env)
+    // console.log('render msg', env)
     const renderedMsg = {
       ...msg,
       message: cached.rendered,
@@ -1557,7 +1557,7 @@ export function useGroupedMessages(
   // WIP : make side panel buttons work, make chat app state work
 
   return useMemo(() => {
-    console.log(messages, members, env)
+    // console.log(messages, members, env)
     if (reader._exists === false || !env) return;
     return groupAllMessages(messages, reader, env);
   }, [messages, members, threads, reader._exists, env]);

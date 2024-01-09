@@ -698,7 +698,6 @@ export default function WeekView(props: WeekViewProps) {
             ? (ev) => {
                 // Only LMB
                 if (ev.button !== 0) return;
-                console.log('m down')
 
                 // Down
                 multidayDragStateRef.current = 'down';
@@ -836,7 +835,6 @@ export default function WeekView(props: WeekViewProps) {
                 : undefined
             }
             onMouseDown={(ev) => {
-              console.log('stopping prop')
               ev.stopPropagation();
             }}
           >

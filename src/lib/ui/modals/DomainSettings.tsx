@@ -22,7 +22,7 @@ import { SettingsModal } from '@/lib/ui/components/settings/SettingsModal';
 
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
-import { DomainWrapper, useDomain, useProfile, useSession } from '@/lib/hooks';
+import { DomainWrapper, useCurrentProfile, useDomain, useProfile, useSession } from '@/lib/hooks';
 
 ////////////////////////////////////////////////////////////
 type TabProps = {
@@ -32,7 +32,7 @@ type TabProps = {
 
 ////////////////////////////////////////////////////////////
 function GeneralTab({ domain, ...props }: TabProps) {
-  const profile = useProfile(props.session.profile_id);
+  const profile = useCurrentProfile();
 
   const { open: openConfirmModal } = useConfirmModal();
   const { ImageModal, open: openImageModal } = useImageModal();

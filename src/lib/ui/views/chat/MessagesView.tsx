@@ -586,7 +586,7 @@ type SingleMessageProps = Omit<MessageGroupProps, 'msgs'> & {
 
 ////////////////////////////////////////////////////////////
 function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
-  console.log('single msg', msg);
+  // console.log('single msg', msg);
 
   const addReactionBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -1071,7 +1071,7 @@ function SingleMessage({ msg, style, ...props }: SingleMessageProps) {
 ////////////////////////////////////////////////////////////
 function MessageGroup({ msgs, ...props }: MessageGroupProps) {
   // Don't use context bc it forces all groups to rerender (bad performance)
-  console.log('rerender msg')
+  // console.log('rerender msg')
 
   // Indicates if this group came from the user
   const fromUser = props.sender.id === msgs[0].sender?.id;
@@ -1155,7 +1155,7 @@ function MessagesViewport(props: MessagesViewportProps) {
   const context = useMessageViewContext();
   const { messages, grouped } = context;
   const { classes } = useChatStyles();
-  console.log('a', messages, grouped)
+  // console.log('a', messages, grouped)
 
   // Ref to message mutators, so messages can call latest mutators without rerendering each time
   const mutatorsRef = useRef<MessageMutators | null>(
@@ -1275,7 +1275,6 @@ function MessagesViewport(props: MessagesViewportProps) {
           <Stack spacing='lg'>
             {messages._exists &&
               Object.entries(grouped).map(([day, grouped], i) => {
-                console.log(i)
                 return (
                   <Fragment key={day}>
                     <Divider
