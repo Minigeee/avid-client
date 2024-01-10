@@ -45,7 +45,6 @@ import {
   IconDotsVertical,
   IconEye,
   IconEyeOff,
-  IconFile,
   IconFolder,
   IconPlus,
   IconSearch,
@@ -902,7 +901,7 @@ function ChildRolesTab({
                 <b>{`@${selectedChild.label}`}</b>. This permission is required
                 for members of <b>{`@${role.label}`}</b> to modify{' '}
                 <b>{`@${selectedChild.label}`}</b> permissions for any section
-                or resource, but they must be able to manage that page to modify
+                or resource, but they must be able to manage that {config.text.channel.base_lc} to modify
                 its permissions.
               </>
             }

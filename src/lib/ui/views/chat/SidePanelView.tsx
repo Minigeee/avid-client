@@ -78,6 +78,7 @@ import { ExpandedMember, ExpandedMessage, Member } from '@/lib/types';
 import moment from 'moment';
 import { Editor } from '@tiptap/react';
 import { motion } from 'framer-motion';
+import config from '@/config';
 
 ////////////////////////////////////////////////////////////
 interface ThreadItemProps extends React.ComponentPropsWithoutRef<'div'> {
@@ -286,7 +287,7 @@ function ThreadsTab(props: SidePanelViewProps) {
           <div>
             <Text color='dimmed' align='center'>
               {threads._exists && threads.data.length === 0
-                ? 'This page has no threads'
+                ? `This ${config.text.channel.base_lc} has no threads`
                 : 'No thread is selected'}
             </Text>
             {threads._exists && threads.data.length === 0 && (
@@ -701,7 +702,7 @@ function PinnedTab(props: SidePanelViewProps) {
 
       {messages._exists && messages.data.length === 0 && (
         <Center h='8rem'>
-          <Text color='dimmed'>This page has no pinned messages</Text>
+          <Text color='dimmed'>This {config.text.channel.base_lc} has no pinned messages</Text>
         </Center>
       )}
     </ScrollArea>

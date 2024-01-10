@@ -127,10 +127,10 @@ const config = {
     },
     /** Words for channel */
     channel: {
-      base: 'Group',
-      plural: 'Groups',
-      base_lc: 'group',
-      plural_lc: 'groups',
+      base: 'Channel',
+      plural: 'Channels',
+      base_lc: 'channel',
+      plural_lc: 'channels',
     },
   },
 

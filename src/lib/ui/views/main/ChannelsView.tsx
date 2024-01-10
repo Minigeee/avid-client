@@ -25,7 +25,6 @@ import {
   IconCornerDownRight,
   IconDotsVertical,
   IconFolderPlus,
-  IconFile,
   IconPencil,
   IconPlus,
   IconSettings,
@@ -50,6 +49,7 @@ import { DomainWrapper, hasPermission, useApp, useCachedState, useMembers } from
 import { Channel, ChannelGroup } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
+import config from '@/config';
 
 ////////////////////////////////////////////////////////////
 type SingleChannelProps = {
@@ -426,7 +426,7 @@ function ChannelGroupComponent(props: ChannelGroupProps) {
               'can_manage_resources',
             ) && (
               <ActionButton
-                tooltip='Add Page'
+                tooltip={`Add ${config.text.channel.base}`}
                 size='sm'
                 sx={(theme) => ({
                   '&:hover': {

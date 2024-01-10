@@ -9,6 +9,7 @@ import {
   RefObject,
   useCallback,
   useMemo,
+  CSSProperties,
 } from 'react';
 
 import {
@@ -26,6 +27,7 @@ import {
   Popover,
   ScrollArea,
   Stack,
+  Sx,
   Text,
   TextInput,
   Tooltip,
@@ -34,6 +36,11 @@ import {
 
 import {
   IconBold,
+  IconDotsVertical,
+  IconH1,
+  IconH2,
+  IconH3,
+  IconH4,
   IconItalic,
   IconLink,
   IconList,
@@ -53,6 +60,7 @@ import {
   EditorOptions,
   Extension,
   ReactRenderer,
+  FloatingMenu,
   JSONContent,
 } from '@tiptap/react';
 import BulletList from '@tiptap/extension-bullet-list';
@@ -73,7 +81,9 @@ import PingMention from './PingMention';
 import config from '@/config';
 import {
   DomainWrapper,
+  useCachedState,
   useChatStyles,
+  useDocumentStyles,
   useSession,
   useTimeout,
 } from '@/lib/hooks';
@@ -82,6 +92,7 @@ import { uid } from 'uid';
 import { IMAGE_MIME_TYPE } from '@mantine/dropzone';
 import { ExpandedMember, FileAttachment } from '@/lib/types';
 import { emojiSearch } from '@/lib/utility/emoji';
+import { useForm } from '@mantine/form';
 
 ////////////////////////////////////////////////////////////
 const PRESET_COLORS: string[] = [];
@@ -124,11 +135,14 @@ function EditorButton({ active, tooltip, ...props }: EditorButtonProps) {
 ////////////////////////////////////////////////////////////
 function LinkInterface({ editor }: { editor: Editor | null }) {
   const [opened, setOpened] = useState<boolean>(false);
-  const [title, setTitle] = useState<string>('');
-  const [link, setLink] = useState<string>('');
-  const [dirty, setDirty] = useState<boolean>(false);
+  const form = useForm({
+    initialValues: {
+      title: '',
+      link: '',
+    },
+  });
 
-  function onSubmit() {
+  function onSubmit({ title, link }: typeof form.values) {
     if (editor && title && link) {
       const start = editor.state.selection.from;
 
@@ -137,16 +151,17 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
         .focus()
         .insertContent(title + ' ')
         .setTextSelection({ from: start, to: start + title.length })
-        .setLink({ href: link })
+        .setLink({ href: (link.startsWith('http') ? '' : 'https://') + link })
         .setTextSelection(start + title.length + 1)
         .run();
     }
 
-    setTitle('');
-    setLink('');
-    setDirty(false);
+    form.reset();
     setOpened(false);
   }
+
+  // Does selection have link
+  const hasLink = editor?.isActive('link');
 
   return (
     <Popover
@@ -159,16 +174,35 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
       opened={opened}
       onChange={setOpened}
     >
-      <Tooltip label='Insert Link' position='top' withArrow openDelay={500}>
+      <Tooltip
+        label={hasLink ? 'Remove Link' : 'Insert Link'}
+        position='top'
+        withArrow
+        openDelay={500}
+      >
         <Popover.Target>
           <ActionIcon
             sx={(theme) => ({
               color: theme.other.elements.rte_icon,
+              background: hasLink ? theme.other.elements.rte_active : undefined,
               '&:hover': {
                 background: theme.other.elements.rte_hover,
               },
             })}
-            onClick={() => setOpened(!opened)}
+            onClick={() => {
+              if (hasLink) {
+                editor?.chain().focus().unsetLink().run();
+              } else {
+                setOpened(!opened);
+
+                // Set default title
+                const selection = editor?.view.state.selection;
+                if (selection && selection.from !== selection.to)
+                  form.setFieldValue('title',
+                    editor.state.doc.textBetween(selection.from, selection.to),
+                  );
+              }
+            }}
           >
             <IconLink size={18} />
           </ActionIcon>
@@ -176,59 +210,33 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
       </Tooltip>
 
       <Popover.Dropdown>
-        <Stack spacing='xs'>
-          <TextInput
-            label='Title'
-            placeholder='Link title'
-            value={title}
-            onChange={(e) => setTitle(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.repeat) return;
-              if (e.key === 'Enter' && title && link) {
-                e.preventDefault();
-                onSubmit();
-              }
-
-              setDirty(true);
-            }}
-          />
-          <TextInput
-            label='Link'
-            placeholder='https://www.your-link.com'
-            value={link}
-            mb={5}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              setLink(value);
-              if (!dirty) setTitle(value);
-            }}
-            onKeyDown={(e) => {
-              if (e.repeat) return;
-              if (e.key === 'Enter' && title && link) {
-                e.preventDefault();
-                onSubmit();
-              }
-            }}
-          />
-          {editor?.isActive('link') && (
-            <Button
-              variant='default'
-              onClick={() => {
-                editor?.chain().focus().unsetLink().run();
-
-                setTitle('');
-                setLink('');
-                setDirty(false);
-                setOpened(false);
+        <form onSubmit={form.onSubmit(onSubmit)}>
+          <Stack spacing='xs'>
+            <TextInput
+              label='Link'
+              placeholder='https://www.your-link.com'
+              required
+              withAsterisk={false}
+              {...form.getInputProps('link')}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                form.setFieldValue('link', value);
+                if (!form.isTouched('title')) form.setFieldValue('title', value);
               }}
-            >
-              Remove Link
+            />
+            <TextInput
+              label='Title'
+              placeholder='Link title'
+              required
+              withAsterisk={false}
+              {...form.getInputProps('title')}
+            />
+
+            <Button variant='gradient' type='submit' mt={4}>
+              Insert Link
             </Button>
-          )}
-          <Button variant='gradient' onClick={onSubmit}>
-            Insert Link
-          </Button>
-        </Stack>
+          </Stack>
+        </form>
       </Popover.Dropdown>
     </Popover>
   );
@@ -270,6 +278,7 @@ export type RichTextEditorProps = {
 
   // UI
   variant?: 'minimal' | 'full' | 'inline';
+  toolbarVariant?: 'default' | 'document';
   placeholder?: string;
   autofocus?: boolean;
   markdown?: boolean;
@@ -280,6 +289,8 @@ export type RichTextEditorProps = {
   maxWidth?: string | number;
   maxHeight?: string | number;
   focusRing?: boolean;
+  textStyle?: 'default' | 'document';
+  editorStyle?: Sx;
 
   domain?: DomainWrapper;
   members?: Pick<ExpandedMember, 'id' | 'alias' | 'profile_picture'>[];
@@ -437,12 +448,256 @@ function useFunctions(
   return funcsRef;
 }
 
+/** Tool bar for rte */
+function RteToolbar({
+  editor,
+  ...props
+}: { editor: Editor } & Pick<
+  RichTextEditorProps,
+  'markdown' | 'rightSection' | 'toolbarVariant'
+>) {
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  return (
+    <>
+      <Group spacing={2} noWrap>
+        <EditorButton
+          tooltip='Bold'
+          active={editor?.isActive('bold')}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        >
+          <IconBold size={18} />
+        </EditorButton>
+        <EditorButton
+          tooltip='Italic'
+          active={editor?.isActive('italic')}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        >
+          <IconItalic size={18} />
+        </EditorButton>
+
+        {props.toolbarVariant !== 'document' && (
+          <>
+            <EditorButton
+              tooltip='Underline'
+              active={editor?.isActive('underline')}
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+            >
+              <IconUnderline size={19} />
+            </EditorButton>
+            <EditorButton
+              tooltip='Strikethrough'
+              active={editor?.isActive('strike')}
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+            >
+              <IconStrikethrough size={18} />
+            </EditorButton>
+            <EditorButton
+              tooltip='Subscript'
+              active={editor?.isActive('subscript')}
+              onClick={() => editor.chain().focus().toggleSubscript().run()}
+            >
+              <IconSubscript size={18} />
+            </EditorButton>
+            <EditorButton
+              tooltip='Superscript'
+              active={editor?.isActive('superscript')}
+              onClick={() => editor.chain().focus().toggleSuperscript().run()}
+            >
+              <IconSuperscript size={18} />
+            </EditorButton>
+          </>
+        )}
+
+        {props.toolbarVariant === 'document' && (
+          <>
+            <Divider orientation='vertical' mt={3} mb={3} />
+
+            <EditorButton
+              tooltip='Title'
+              active={editor.isActive('heading', { level: 1 })}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 1 }).run()
+              }
+            >
+              <IconH1 size={18} />
+            </EditorButton>
+            <EditorButton
+              tooltip='Header'
+              active={editor.isActive('heading', { level: 2 })}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+            >
+              <IconH2 size={18} />
+            </EditorButton>
+            <EditorButton
+              tooltip='Subheader'
+              active={editor.isActive('heading', { level: 3 })}
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 3 }).run()
+              }
+            >
+              <IconH3 size={18} />
+            </EditorButton>
+          </>
+        )}
+
+        <Divider orientation='vertical' mt={3} mb={3} />
+
+        <EditorButton
+          tooltip='Bullet List'
+          active={editor?.isActive('bulletList')}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        >
+          <IconList size={19} />
+        </EditorButton>
+        <EditorButton
+          tooltip='Ordered List'
+          active={editor?.isActive('orderedList')}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
+          <IconListNumbers size={19} />
+        </EditorButton>
+
+        <Divider orientation='vertical' mt={3} mb={3} />
+
+        <LinkInterface editor={editor} />
+
+        {!props.markdown && (
+          <>
+            <Divider orientation='vertical' mt={3} mb={3} />
+
+            <Popover
+              position='top'
+              shadow='lg'
+              withinPortal
+              withArrow
+              trapFocus
+            >
+              <Tooltip label='Color' position='top' withArrow openDelay={500}>
+                <Popover.Target>
+                  <ActionIcon
+                    sx={(theme) => ({
+                      color: theme.other.elements.rte_icon,
+                      '&:hover': {
+                        background: theme.other.elements.rte_hover,
+                      },
+                    })}
+                  >
+                    <IconPalette size={18} />
+                  </ActionIcon>
+                </Popover.Target>
+              </Tooltip>
+
+              <Popover.Dropdown>
+                <ColorPicker
+                  swatchesPerRow={7}
+                  swatches={PRESET_COLORS}
+                  value={editor.getAttributes('textStyle').color}
+                  onChange={(value) =>
+                    editor
+                      .chain()
+                      .focus()
+                      .setColor(value)
+                      .setTextSelection(editor.state.selection.to)
+                      .run()
+                  }
+                />
+              </Popover.Dropdown>
+            </Popover>
+
+            {editor.getAttributes('textStyle')?.color && (
+              <Tooltip
+                label='Reset Color'
+                position='top'
+                withArrow
+                openDelay={500}
+              >
+                <ActionIcon
+                  sx={(theme) => ({
+                    color: theme.other.elements.rte_icon,
+                    '&:hover': {
+                      background: theme.other.elements.rte_hover,
+                    },
+                  })}
+                  onClick={() =>
+                    editor
+                      .chain()
+                      .focus()
+                      .unsetColor()
+                      .setTextSelection(editor.state.selection.to)
+                      .run()
+                  }
+                >
+                  <IconPaletteOff size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </>
+        )}
+
+        {props.toolbarVariant === 'document' && (
+          <>
+            <Divider orientation='vertical' mt={3} mb={3} />
+
+            <EditorButton
+              tooltip='More Options'
+              active={expanded}
+              onClick={() => setExpanded(!expanded)}
+            >
+              <IconDotsVertical size={18} />
+            </EditorButton>
+          </>
+        )}
+
+        <div style={{ flexGrow: 1 }} />
+
+        {props.rightSection}
+      </Group>
+
+      {expanded && props.toolbarVariant === 'document' && (
+        <Group spacing={2} mt={4}>
+          <EditorButton
+            tooltip='Underline'
+            active={editor?.isActive('underline')}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+          >
+            <IconUnderline size={19} />
+          </EditorButton>
+          <EditorButton
+            tooltip='Strikethrough'
+            active={editor?.isActive('strike')}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+          >
+            <IconStrikethrough size={18} />
+          </EditorButton>
+          <EditorButton
+            tooltip='Subscript'
+            active={editor?.isActive('subscript')}
+            onClick={() => editor.chain().focus().toggleSubscript().run()}
+          >
+            <IconSubscript size={18} />
+          </EditorButton>
+          <EditorButton
+            tooltip='Superscript'
+            active={editor?.isActive('superscript')}
+            onClick={() => editor.chain().focus().toggleSuperscript().run()}
+          >
+            <IconSuperscript size={18} />
+          </EditorButton>
+        </Group>
+      )}
+    </>
+  );
+}
+
 ////////////////////////////////////////////////////////////
 export default function RichTextEditor(props: RichTextEditorProps) {
   const variant = props.variant || 'full';
 
   const session = useSession();
-  const { classes } = useChatStyles();
+  const { classes } = (props.textStyle === 'document' ? useDocumentStyles : useChatStyles)();
 
   // Set attachments
   const setAttachments = useCallback(
@@ -627,6 +882,10 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         maxWidth: props.maxWidth,
 
         '.ProseMirror': {
+          ...(typeof props.editorStyle === 'function'
+            ? props.editorStyle(theme)
+            : props.editorStyle),
+
           '&:focus': {
             outline: 'none',
           },
@@ -638,12 +897,16 @@ export default function RichTextEditor(props: RichTextEditorProps) {
                 float: 'left',
                 height: 0,
                 pointerEvents: 'none',
+                fontSize: props.textStyle === 'document' ? 16 : 14,
               },
             },
           },
         },
 
-        border: `1px solid ${theme.other.elements.rte_border}`,
+        border:
+          props.variant === 'inline'
+            ? undefined
+            : `1px solid ${theme.other.elements.rte_border}`,
         borderRadius: 3,
         overflow: 'hidden',
         '&:focus-within':
@@ -679,153 +942,12 @@ export default function RichTextEditor(props: RichTextEditorProps) {
             background: theme.other.elements.rte_header,
           })}
         >
-          <Group spacing={2}>
-            <EditorButton
-              tooltip='Bold'
-              active={editor?.isActive('bold')}
-              onClick={() => editor.chain().focus().toggleBold().run()}
-            >
-              <IconBold size={18} />
-            </EditorButton>
-            <EditorButton
-              tooltip='Italic'
-              active={editor?.isActive('italic')}
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-            >
-              <IconItalic size={18} />
-            </EditorButton>
-            <EditorButton
-              tooltip='Underline'
-              active={editor?.isActive('underline')}
-              onClick={() => editor.chain().focus().toggleUnderline().run()}
-            >
-              <IconUnderline size={19} />
-            </EditorButton>
-            <EditorButton
-              tooltip='Strikethrough'
-              active={editor?.isActive('strike')}
-              onClick={() => editor.chain().focus().toggleStrike().run()}
-            >
-              <IconStrikethrough size={18} />
-            </EditorButton>
-            <EditorButton
-              tooltip='Subscript'
-              active={editor?.isActive('subscript')}
-              onClick={() => editor.chain().focus().toggleSubscript().run()}
-            >
-              <IconSubscript size={18} />
-            </EditorButton>
-            <EditorButton
-              tooltip='Superscript'
-              active={editor?.isActive('superscript')}
-              onClick={() => editor.chain().focus().toggleSuperscript().run()}
-            >
-              <IconSuperscript size={18} />
-            </EditorButton>
-
-            <Divider orientation='vertical' mt={3} mb={3} />
-
-            <EditorButton
-              tooltip='Bullet List'
-              active={editor?.isActive('bulletList')}
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-            >
-              <IconList size={19} />
-            </EditorButton>
-            <EditorButton
-              tooltip='Ordered List'
-              active={editor?.isActive('orderedList')}
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            >
-              <IconListNumbers size={19} />
-            </EditorButton>
-
-            <Divider orientation='vertical' mt={3} mb={3} />
-
-            <LinkInterface editor={editor} />
-
-            {!props.markdown && (
-              <>
-                <Divider orientation='vertical' mt={3} mb={3} />
-
-                <Popover
-                  position='top'
-                  shadow='lg'
-                  withinPortal
-                  withArrow
-                  trapFocus
-                >
-                  <Tooltip
-                    label='Color'
-                    position='top'
-                    withArrow
-                    openDelay={500}
-                  >
-                    <Popover.Target>
-                      <ActionIcon
-                        sx={(theme) => ({
-                          color: theme.other.elements.rte_icon,
-                          '&:hover': {
-                            background: theme.other.elements.rte_hover,
-                          },
-                        })}
-                      >
-                        <IconPalette size={18} />
-                      </ActionIcon>
-                    </Popover.Target>
-                  </Tooltip>
-
-                  <Popover.Dropdown>
-                    <ColorPicker
-                      swatchesPerRow={7}
-                      swatches={PRESET_COLORS}
-                      value={editor.getAttributes('textStyle').color}
-                      onChange={(value) =>
-                        editor
-                          .chain()
-                          .focus()
-                          .setColor(value)
-                          .setTextSelection(editor.state.selection.to)
-                          .run()
-                      }
-                    />
-                  </Popover.Dropdown>
-                </Popover>
-
-                {editor.getAttributes('textStyle')?.color && (
-                  <Tooltip
-                    label='Reset Color'
-                    position='top'
-                    withArrow
-                    openDelay={500}
-                  >
-                    <ActionIcon
-                      sx={(theme) => ({
-                        color: theme.other.elements.rte_icon,
-                        '&:hover': {
-                          background: theme.other.elements.rte_hover,
-                        },
-                      })}
-                      onClick={() =>
-                        editor
-                          .chain()
-                          .focus()
-                          .unsetColor()
-                          .setTextSelection(editor.state.selection.to)
-                          .run()
-                      }
-                    >
-                      <IconPaletteOff size={18} />
-                    </ActionIcon>
-                  </Tooltip>
-                )}
-              </>
-            )}
-
-            <div style={{ flexGrow: 1 }} />
-
-            {props.rightSection}
-          </Group>
+          <RteToolbar
+            editor={editor}
+            markdown={props.markdown}
+            rightSection={props.rightSection}
+            toolbarVariant={props.toolbarVariant}
+          />
         </Box>
       )}
       {previews && previews.length > 0 && (
@@ -848,15 +970,49 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       >
         {variant === 'minimal' && props.leftSection}
 
-        <ScrollArea.Autosize
-          mah={props.maxHeight || '60ch'}
-          sx={{
-            flexGrow: 1,
-            margin: '0.35rem 0.1rem 0.3rem 0.6rem',
-          }}
-        >
-          <EditorContent className={classes.typography} editor={editor} />
-        </ScrollArea.Autosize>
+        {variant === 'inline' && (
+          <Box sx={{ flexGrow: 1 }}>
+            {props.variant === 'inline' && (
+              <FloatingMenu
+                editor={editor}
+                tippyOptions={{ duration: 100, placement: 'bottom-start' }}
+                shouldShow={({ view }) =>
+                  view.state.selection.from !== view.state.selection.to
+                }
+              >
+                <Box
+                  sx={(theme) => ({
+                    padding: '0.25rem',
+                    background: theme.other.elements.rte_header,
+                    borderRadius: theme.radius.sm,
+                    shadow: theme.shadows.md,
+                  })}
+                >
+                  <RteToolbar
+                    editor={editor}
+                    markdown={props.markdown}
+                    rightSection={props.rightSection}
+                    toolbarVariant={props.toolbarVariant}
+                  />
+                </Box>
+              </FloatingMenu>
+            )}
+
+            <EditorContent className={classes.typography} editor={editor} />
+          </Box>
+        )}
+
+        {variant !== 'inline' && (
+          <ScrollArea.Autosize
+            mah={props.maxHeight || '60ch'}
+            sx={{
+              flexGrow: 1,
+              margin: '0.35rem 0.1rem 0.3rem 0.6rem',
+            }}
+          >
+            <EditorContent className={classes.typography} editor={editor} />
+          </ScrollArea.Autosize>
+        )}
 
         {variant === 'minimal' && props.rightSection}
       </Flex>

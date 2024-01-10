@@ -21,6 +21,7 @@ import { Role } from './role';
 import { ExpandedTask, Task, TaskPriority } from './task';
 import { Thread } from './thread';
 import { NoId, WithId } from './util';
+import { Wiki } from './wiki';
 
 /** Blueprint for api schema object */
 export type ApiSchemaTemplate = Partial<{
@@ -578,4 +579,22 @@ export type ApiSchema = {
   };
 
   /** Users */
+
+  /** Wikis */
+  'GET /wikis/:wiki_id': {
+    params: ['wiki_id'];
+    query: {
+      draft?: boolean;
+    };
+    return: Wiki;
+  },
+
+  'PATCH /wikis/:wiki_id': {
+    params: ['wiki_id'];
+    body: {
+      content?: string;
+      draft?: string;
+    };
+    return: Wiki;
+  },
 };

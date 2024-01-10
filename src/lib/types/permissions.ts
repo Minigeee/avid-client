@@ -82,13 +82,19 @@ export type CalendarPermissions =
   /** Allows users to manage calendar events (create, edit, remove) */
   'can_manage_events';
 
+/** Wiki permissions */
+export type WikiPermissions =
+  /** Allows users to edit the wiki document */
+  'can_edit_document';
+
 /** All channel permissions */
 export type AllChannelPermissions =
   | ChannelPermissions
   | TextChannelPermissions
   | BoardPermissions
   | RtcChannelPermissions
-  | CalendarPermissions;
+  | CalendarPermissions
+  | WikiPermissions;
 
 /** All permissions types */
 export type AllPermissions =

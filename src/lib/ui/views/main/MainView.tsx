@@ -17,6 +17,7 @@ import ChannelIcon from '../../components/ChannelIcon';
 import RtcControlBar from '../../components/rtc/RtcControlBar';
 import ActionButton from '../../components/ActionButton';
 import { IconArrowBarLeft } from '@tabler/icons-react';
+import WikiView from '../wiki/WikiView';
 
 const HEADER_HEIGHT = '2.8rem';
 
@@ -148,6 +149,13 @@ export default function MainView() {
                 <BoardView
                   key={channel.id}
                   channel={channel as Channel<'board'>}
+                  domain={domain}
+                />
+              )}
+              {channel.type === 'wiki' && (
+                <WikiView
+                  key={channel.id}
+                  channel={channel as Channel<'wiki'>}
                   domain={domain}
                 />
               )}

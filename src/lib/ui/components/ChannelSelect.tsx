@@ -1,7 +1,7 @@
 import { ComponentPropsWithoutRef, forwardRef, useMemo } from 'react';
 
 import { Group, Select, SelectProps, Text } from '@mantine/core';
-import { IconFile } from '@tabler/icons-react';
+import { IconHash } from '@tabler/icons-react';
 
 import ChannelIcon from './ChannelIcon';
 
@@ -66,7 +66,7 @@ export default function ChannelSelect({
     return channel ? (
       <ChannelIcon type={channel.type} size={16} />
     ) : (
-      <IconFile size={16} />
+      <IconHash size={16} />
     );
   }, [props.value, domain.channels]);
 

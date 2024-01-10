@@ -11,6 +11,7 @@ import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import { Channel, ChannelGroup } from '@/lib/types';
 import { DomainWrapper, hasPermission } from '@/lib/hooks';
 import { ContextMenu } from '@/lib/ui/components/ContextMenu';
+import config from '@/config';
 
 
 ////////////////////////////////////////////////////////////
@@ -93,7 +94,7 @@ export function ChannelMenuDropdown(props: ChannelMenuDropdownProps) {
             icon={<IconTrash size={16} />}
             onClick={() => {
               openConfirmModal({
-                title: 'Delete Page',
+                title: `Delete ${config.text.channel.base}`,
                 content: (
                   <Text>
                     Are you sure you want to delete <b>{props.channel.name}</b>?
@@ -106,7 +107,7 @@ export function ChannelMenuDropdown(props: ChannelMenuDropdownProps) {
               });
             }}
           >
-            Delete page
+            Delete {config.text.channel.base_lc}
           </Menu.Item>
         </>
       )}
@@ -166,7 +167,7 @@ export function ChannelGroupMenuDropdown(props: ChannelGroupMenuDropdownProps) {
                   <>
                     <p style={{ marginBlockEnd: 0 }}>
                       Are you sure you want to delete <b>{props.group.name}</b>{' '}
-                      and the following pages?
+                      and the following {config.text.channel.plural_lc}?
                     </p>
                     <ul
                       style={{

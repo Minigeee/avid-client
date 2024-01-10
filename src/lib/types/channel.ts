@@ -3,7 +3,7 @@ import { ExpandedPrivateMember } from './member';
 import { Date } from './util';
 
 /** All possible channel types */
-export type ChannelTypes = 'text' | 'rtc' | 'board' | 'calendar';
+export type ChannelTypes = 'text' | 'rtc' | 'board' | 'calendar' | 'wiki';
 
 /** Data object for each channel type */
 export type ChannelData<Type extends ChannelTypes> = Type extends 'text'

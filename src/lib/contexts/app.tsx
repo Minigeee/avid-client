@@ -28,6 +28,7 @@ import { merge, throttle } from 'lodash';
 import { api } from '../api';
 import { socket } from '../utility/realtime';
 import { id } from '../db';
+import { events } from '../utility/events';
 
 /** All subparts put together */
 type _AppState = RemoteAppState & LocalAppState;
@@ -58,6 +59,15 @@ function remoteMutators(
       setState(merge({}, state, diff));
 
       save(diff);
+
+      // Event
+      events.emit(
+        'channel-change',
+        view === 'main'
+          ? state.channels[state.domain || '']
+          : state.private_channel || undefined,
+        view === 'main' ? state.domain || undefined : undefined,
+      );
     },
 
     /**
@@ -94,6 +104,9 @@ function remoteMutators(
 
       if (channel_id)
         socket().emit('general:switch-room', domain_id, channel_id);
+
+      // Event
+      events.emit('channel-change', channel_id, domain_id);
     },
 
     /**
@@ -124,6 +137,9 @@ function remoteMutators(
       // Don't save using standard method, switch room will handle that for use
 
       socket().emit('general:switch-room', domain_id, channel_id);
+
+      // Event
+      events.emit('channel-change', channel_id, domain_id);
     },
 
     /**
@@ -145,6 +161,9 @@ function remoteMutators(
 
       // Save
       save(diff);
+
+      // Event
+      events.emit('channel-change', channel_id, '');
     },
 
     /**

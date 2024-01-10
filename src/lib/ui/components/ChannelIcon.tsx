@@ -1,5 +1,7 @@
 import {
   IconCalendar,
+  IconFileDescription,
+  IconLicense,
   IconListDetails,
   IconMessage,
   IconVideo,
@@ -19,5 +21,6 @@ export default function ChannelIcon({ type, ...props }: ChannelIconProps) {
   else if (type === 'rtc') return <IconVideo {...props} />;
   else if (type === 'board') return <IconListDetails {...props} />;
   else if (type === 'calendar') return <IconCalendar {...props} />;
+  else if (type === 'wiki') return <IconLicense {...props} />;
   else return null;
 }

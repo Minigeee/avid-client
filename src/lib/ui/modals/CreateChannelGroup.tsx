@@ -17,6 +17,7 @@ import { ContextModalProps } from '@mantine/modals';
 import { IconFolder } from '@tabler/icons-react';
 
 import { DomainWrapper } from '@/lib/hooks';
+import config from '@/config';
 
 ////////////////////////////////////////////////////////////
 export type CreateChannelGroupProps = {
@@ -74,7 +75,7 @@ export default function CreateChannelGroup({
               Allow <b>{'@everyone'}</b> to access this group
             </Text>
             <Text size='xs' color='dimmed'>
-              Enabling this will allow <b>@everyone</b> to access pages within
+              Enabling this will allow <b>@everyone</b> to access {config.text.channel.plural_lc} within
               this group. For more precise access control, disable this and add
               custom permissions for the roles that should have access to this
               group.

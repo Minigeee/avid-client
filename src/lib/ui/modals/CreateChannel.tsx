@@ -13,15 +13,23 @@ import {
 import { useForm } from '@mantine/form';
 import { ContextModalProps } from '@mantine/modals';
 
-import { IconFolder, IconFile } from '@tabler/icons-react';
+import { IconFolder, IconHash } from '@tabler/icons-react';
 
 import ChannelIcon from '@/lib/ui/components/ChannelIcon';
 
 import { DomainWrapper } from '@/lib/hooks';
 import { ChannelData, ChannelOptions, ChannelTypes } from '@/lib/types';
+import config from '@/config';
 
 ////////////////////////////////////////////////////////////
 const CHANNEL_TYPES = [
+  {
+    value: 'wiki',
+    label: 'Wiki',
+    group: 'General',
+    description: 'Create and share information using an editable blog-style document',
+    disabled: false,
+  },
   {
     value: 'calendar',
     label: 'Calendar',
@@ -116,7 +124,7 @@ export default function CreateChannel({
   const form = useForm({
     initialValues: {
       name: '',
-      type: 'text' as ChannelTypes,
+      type: 'wiki' as ChannelTypes,
       group:
         props.group_id ||
         (props.domain.groups.length > 0 ? props.domain.groups[0].id : null),
@@ -162,7 +170,6 @@ export default function CreateChannel({
 
     try {
       // Add channel
-      // WIP : Make sure channel create works, implement react-big-calendar and get it to work
       await props.domain._mutators.addChannel(
         name,
         type,
@@ -183,8 +190,8 @@ export default function CreateChannel({
       <Stack>
         <TextInput
           label='Name'
-          placeholder='New Page'
-          icon={<IconFile size={16} />}
+          placeholder={`New ${config.text.channel.base}`}
+          icon={<IconHash size={16} />}
           required
           withAsterisk={false}
           data-autofocus

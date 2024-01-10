@@ -16,4 +16,5 @@ export * from './socket';
 export * from './task';
 export * from './thread';
 export * from './user';
+export * from './wiki';
 export type { DeepPartial, NoId, WithId } from './util';

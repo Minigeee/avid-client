@@ -29,6 +29,7 @@ import ChannelGroupSettings, {
 import UserSettings, { UserSettingsProps } from './UserSettings';
 
 import AttachmentPreview, { AttachmentPreviewProps } from './AttachmentPreview';
+import config from '@/config';
 
 ////////////////////////////////////////////////////////////
 export const modals = {
@@ -67,7 +68,7 @@ export const openCreateCalendarEvent = (props: CreateCalendarEventProps) =>
 export const openCreateChannel = (props: CreateChannelProps) =>
   openContextModal({
     modal: 'create-channel',
-    title: 'New Page',
+    title: `New ${config.text.channel.base}`,
     innerProps: props,
   });
 

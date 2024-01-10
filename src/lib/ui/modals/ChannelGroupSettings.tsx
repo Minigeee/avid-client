@@ -527,7 +527,7 @@ function PermissionsTab({
               <Title order={4}>General Permissions</Title>
             </Group>
             <Text size='sm' color='dimmed' maw={config.app.ui.settings_maw}>
-              General permissions for pages and resources in this group.
+              General permissions for {config.text.channel.plural_lc} and resources in this group.
             </Text>
           </Box>
 
@@ -536,7 +536,7 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to view this group and
-                the pages and resources within this group.
+                the {config.text.channel.plural_lc} and resources within this group.
               </>
             }
             switchProps={form.getInputProps(
@@ -551,7 +551,7 @@ function PermissionsTab({
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to manage group
-                settings, edit settings for existing pages within the group, and
+                settings, edit settings for existing {config.text.channel.plural_lc} within the group, and
                 manage role access and permissions.
               </>
             }
@@ -577,11 +577,11 @@ function PermissionsTab({
           />
 
           <PermissionSetting
-            title='Manage Pages'
+            title={`Manage ${config.text.channel.plural}`}
             description={
               <>
                 Allows <b>{`@${selectedRole.label}`}</b> to create, edit, and
-                delete pages within this group.
+                delete {config.text.channel.plural_lc} within this group.
               </>
             }
             switchProps={form.getInputProps(
