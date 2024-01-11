@@ -96,7 +96,10 @@ const theme = {
     emote_button_active_text: (theme) => theme.colors.primary[0],
 
     md_code: (theme) => theme.colors.primary[1],
+    md_code_border: (theme) => theme.colors.primary[3],
     md_code_text: (theme) => theme.colors.gray[8],
+    md_inline_code: (theme) => theme.colors.primary[2],
+    md_inline_code_text: (theme) => theme.colors.gray[8],
     md_table_header: (theme) => theme.colors.primary[1],
     md_table_border: (theme) => theme.colors.primary[2],
     md_divider: (theme) => theme.colors.gray[4],

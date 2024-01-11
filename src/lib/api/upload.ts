@@ -2,13 +2,14 @@ import { id } from '@/lib/db';
 import { SessionState } from '@/lib/contexts';
 import {
   Attachment,
+  ExpandedAttachment,
   ExpandedDomain,
   ExpandedProfile,
   FileAttachment,
 } from '@/lib/types';
 
 import axios from 'axios';
-import { withAccessToken } from './utility';
+import { api, withAccessToken } from './utility';
 
 /**
  * Upload a profile image
@@ -118,22 +119,24 @@ export async function uploadAttachments(
   domain_id: string,
   files: FileAttachment[],
   session: SessionState,
-): Promise<Attachment[]> {
+): Promise<ExpandedAttachment[]> {
   // Generate form data
   const formData = new FormData();
-  for (const f of files) formData.append('attachments', f.file, f.file.name);
-
-  // Send image post
-  const results = await axios.post<{ urls: string[] }>(
-    `/api/upload/attachment/${id(domain_id)}`,
-    formData,
-    withAccessToken(session),
+  for (const f of files) formData.append('files', f.file, f.file.name);
+  formData.set(
+    'attachments',
+    JSON.stringify(files.map((f) => ({ ...f, file: undefined }))),
   );
 
-  return results.data.urls.map((url, i) => ({
-    ...files[i],
-    url,
-    filename: files[i].file.name,
-    file: undefined,
-  }));
+  // Send image post
+  const results = await api(
+    'POST /attachments/:domain_id',
+    {
+      params: { domain_id },
+      form: formData,
+    },
+    { session }
+  );
+
+  return results;
 }

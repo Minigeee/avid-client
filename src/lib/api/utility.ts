@@ -39,8 +39,11 @@ export function withAccessToken(
 /** Param options for api req function */
 export type ApiReqParams<Path extends ApiPath> = Omit<
   ApiSchema[Path],
-  'params' | 'return'
+  'params' | 'return' | 'body' | 'req'
 > &
+  (ApiSchema[Path] extends { body: any }
+    ? { body: ApiSchema[Path]['body'] } | { form: FormData }
+    : {}) &
   (ApiSchema[Path] extends { params: string[] }
     ? {
         params: Record<ApiSchema[Path]['params'][number], string>;
@@ -125,7 +128,7 @@ export async function api<P extends ApiPath>(
     try {
       if (method === 'get') results = await axios.get(p, axiosOpts);
       else if (method === 'post')
-        results = await axios.post(p, _params.body, axiosOpts);
+        results = await axios.post(p, _params.form || _params.body, axiosOpts);
       else if (method === 'put')
         results = await axios.put(p, _params.body, axiosOpts);
       else if (method === 'patch')

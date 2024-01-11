@@ -213,6 +213,12 @@ export type Theme = {
     md_code: ThemeValue;
     /** Markdown text code text */
     md_code_text: ThemeValue;
+    /** Markdown text code border */
+    md_code_border: ThemeValue;
+    /** Inline code bg */
+    md_inline_code: ThemeValue;
+    /** Inline code text */
+    md_inline_code_text: ThemeValue;
     /** Markdown table header */
     md_table_header: ThemeValue;
     /** Markdown table header */

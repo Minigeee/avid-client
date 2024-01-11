@@ -47,6 +47,8 @@ import {
   IconListNumbers,
   IconPalette,
   IconPaletteOff,
+  IconPhoto,
+  IconPhotoPlus,
   IconStrikethrough,
   IconSubscript,
   IconSuperscript,
@@ -54,14 +56,14 @@ import {
 } from '@tabler/icons-react';
 
 import {
-  useEditor,
+  BubbleMenu,
   Editor,
   EditorContent,
   EditorOptions,
   Extension,
-  ReactRenderer,
   FloatingMenu,
   JSONContent,
+  useEditor,
 } from '@tiptap/react';
 import BulletList from '@tiptap/extension-bullet-list';
 import CharacterCount from '@tiptap/extension-character-count';
@@ -74,6 +76,8 @@ import Superscript from '@tiptap/extension-superscript';
 import StarterKit from '@tiptap/starter-kit';
 import TextStyle from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
+import ImageExtension from '@tiptap/extension-image';
+import Youtube from '@tiptap/extension-youtube';
 
 import { Emojis } from './Emojis';
 import PingMention from './PingMention';
@@ -285,10 +289,15 @@ export type RichTextEditorProps = {
   leftSection?: JSX.Element;
   leftWidth?: MantineNumberSize;
   rightSection?: JSX.Element;
+  floatingMenu?: JSX.Element;
   maxCharacters?: number;
   maxWidth?: string | number;
   maxHeight?: string | number;
   focusRing?: boolean;
+  /** Allow inline images (default false) */
+  image?: boolean;
+  /** Allow youtube embeds (default false) */
+  youtube?: boolean;
   textStyle?: 'default' | 'document';
   editorStyle?: Sx;
 
@@ -343,7 +352,7 @@ async function _getImageDims(
 ////////////////////////////////////////////////////////////
 function useFunctions(
   props: RichTextEditorProps,
-  setAttachments: (files: File[]) => Promise<void>,
+  setAttachments: ((files: FileAttachment[]) => Promise<void>) | undefined,
 ) {
   // Ref for keeping updated function versions
   const funcsRef = useRef<Partial<_Funcs>>({});
@@ -352,10 +361,10 @@ function useFunctions(
   useEffect(() => {
     funcsRef.current.handlePaste = (view, event, slice) => {
       // Don't handle anything if no attachments storage
-      if (!props.onAttachmentsChange) return false;
+      if (!setAttachments) return false;
 
       // Async handler
-      const renameImgs = async (files: Record<number, File>) => {
+      const renameImgs = async (files: Record<number, FileAttachment>) => {
         // Get items to get image text
         const items = Array.from(event.clipboardData?.items || []);
         for (let i = 0; i < items.length; ++i) {
@@ -370,16 +379,23 @@ function useFunctions(
             });
 
             // Check if there is an image source
-            const match = html.match(/src\s*=\s*"(.+?)"/);
-            const file = files[i + 1];
-            if (match && file) {
+            const srcMatch = html.match(/src\s*=\s*"(.+?)"/);
+            const altMatch = html.match(/alt\s*=\s*"(.+?)"/);
+            const file = files[i + 1]?.file;
+
+            if (srcMatch && file) {
               // Rename file
-              const fname = (match[1].split('/').at(-1) || 'image.png').split(
-                '.',
-              )[0];
-              files[i + 1] = new File([file], `${fname}.png`, {
-                type: file.type,
-              });
+              const fname = (
+                srcMatch[1].split('/').at(-1) || 'image.png'
+              ).split('.')[0];
+
+              files[i + 1] = {
+                type: 'image',
+                file: new File([file], `${fname}.png`, {
+                  type: file.type,
+                }),
+                alt: altMatch?.[1] || undefined,
+              };
             }
           }
         }
@@ -392,7 +408,7 @@ function useFunctions(
       if (event.clipboardData?.files.length) {
         // Get files
         const items = Array.from(event.clipboardData?.items || []);
-        const files: Record<number, File> = {};
+        const files: Record<number, FileAttachment> = {};
         let hasRename = false;
 
         for (let i = 0; i < items.length; ++i) {
@@ -403,7 +419,7 @@ function useFunctions(
             if (!item.type.startsWith('image')) continue;
 
             let file = item.getAsFile();
-            if (file) files[i] = file;
+            if (file) files[i] = { file, type: 'image' };
           } else if (item.type === 'text/html') hasRename = true;
         }
 
@@ -697,29 +713,33 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   const variant = props.variant || 'full';
 
   const session = useSession();
-  const { classes } = (props.textStyle === 'document' ? useDocumentStyles : useChatStyles)();
+  const { classes } = (
+    props.textStyle === 'document' ? useDocumentStyles : useChatStyles
+  )();
 
   // Set attachments
   const setAttachments = useCallback(
-    async (files: File[]) => {
+    async (files: FileAttachment[]) => {
       // If any files are default named, assign them a random uid
       for (let i = 0; i < files.length; ++i) {
-        const f = files[i];
-        if (f.name === 'image.png')
-          files[i] = new File([f], `${uid(16)}.png`, { type: f.type });
+        const attachment = files[i];
+        if (attachment.file.name === 'image.png')
+          files[i].file = new File([attachment.file], `${uid(16)}.png`, {
+            type: attachment.file.type,
+          });
       }
 
       // Construct file attachment objects
       const fileAttachments: FileAttachment[] = [];
-      for (const f of files) {
-        if (f.type.startsWith('image')) {
-          const dims = await _getImageDims(f);
-          fileAttachments.push({ file: f, type: 'image', ...dims });
+      for (const attachment of files) {
+        if (attachment.type === 'image') {
+          const dims = await _getImageDims(attachment.file);
+          fileAttachments.push({ ...attachment, ...dims });
         }
 
         // Default attachment
         else {
-          fileAttachments.push({ file: f, type: 'file' });
+          fileAttachments.push(attachment);
         }
       }
 
@@ -732,7 +752,10 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   );
 
   // Editor handler functions
-  const funcsRef = useFunctions(props, setAttachments);
+  const funcsRef = useFunctions(
+    props,
+    props.onAttachmentsChange ? setAttachments : undefined,
+  );
 
   // New extension for each instance bc shared storage for some reason
   const CustomNewline = useMemo(
@@ -783,6 +806,8 @@ export default function RichTextEditor(props: RichTextEditorProps) {
       }),
       TextStyle,
       Underline,
+      ...(props.image ? [ImageExtension] : []),
+      ...(props.youtube ? [Youtube] : []),
     ],
     content: props.value,
     onUpdate: ({ editor }) => {
@@ -792,13 +817,13 @@ export default function RichTextEditor(props: RichTextEditorProps) {
 
     editorProps: {
       handleKeyDown: (view, event) => {
-        funcsRef.current.handleKeyDown?.(view, event);
+        return funcsRef.current.handleKeyDown?.(view, event);
       },
       handlePaste: (view, event, slice) => {
-        funcsRef.current.handlePaste?.(view, event, slice);
+        return funcsRef.current.handlePaste?.(view, event, slice);
       },
       handleTextInput: (view, from, to, text) => {
-        funcsRef.current.handleTextInput?.(view, from, to, text);
+        return funcsRef.current.handleTextInput?.(view, from, to, text);
       },
     },
   });
@@ -921,15 +946,21 @@ export default function RichTextEditor(props: RichTextEditorProps) {
         position: 'relative',
       })}
     >
-      {props.attachments && props.onAttachmentsChange && (
+      {props.onAttachmentsChange && (
         <input
           ref={props.fileInputRef}
           type='file'
           accept={IMAGE_MIME_TYPE.join(',')}
           onChange={(event) => {
             // Add all chosen files
+            // TODO : Support non image files
             if (event.target.files)
-              setAttachments(Array.from(event.target.files));
+              setAttachments(
+                Array.from(event.target.files).map((f) => ({
+                  file: f,
+                  type: 'image',
+                })),
+              );
           }}
           style={{ display: 'none' }}
         />
@@ -972,28 +1003,51 @@ export default function RichTextEditor(props: RichTextEditorProps) {
 
         {variant === 'inline' && (
           <Box sx={{ flexGrow: 1 }}>
-            {props.variant === 'inline' && (
+            <BubbleMenu
+              editor={editor}
+              updateDelay={100}
+              tippyOptions={{ duration: 100, placement: 'bottom-start' }}
+            >
+              <Box
+                sx={(theme) => ({
+                  padding: '0.25rem',
+                  background: theme.other.elements.rte_header,
+                  border: `1px solid ${theme.other.elements.rte_border}`,
+                  borderRadius: theme.radius.sm,
+                  boxShadow: theme.shadows.sm,
+                })}
+              >
+                <RteToolbar
+                  editor={editor}
+                  markdown={props.markdown}
+                  rightSection={props.rightSection}
+                  toolbarVariant={props.toolbarVariant}
+                />
+              </Box>
+            </BubbleMenu>
+
+            {props.floatingMenu !== undefined && (
               <FloatingMenu
                 editor={editor}
-                tippyOptions={{ duration: 100, placement: 'bottom-start' }}
-                shouldShow={({ view }) =>
-                  view.state.selection.from !== view.state.selection.to
-                }
+                tippyOptions={{ duration: 100, placement: 'left' }}
               >
                 <Box
                   sx={(theme) => ({
                     padding: '0.25rem',
                     background: theme.other.elements.rte_header,
+                    color: theme.other.elements.rte_icon,
+                    border: `1px solid ${theme.other.elements.rte_border}`,
                     borderRadius: theme.radius.sm,
-                    shadow: theme.shadows.md,
+                    boxShadow: theme.shadows.sm,
+
+                    button: {
+                      '&:hover': {
+                        background: theme.other.elements.rte_hover,
+                      },
+                    },
                   })}
                 >
-                  <RteToolbar
-                    editor={editor}
-                    markdown={props.markdown}
-                    rightSection={props.rightSection}
-                    toolbarVariant={props.toolbarVariant}
-                  />
+                  {props.floatingMenu}
                 </Box>
               </FloatingMenu>
             )}

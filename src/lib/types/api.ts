@@ -1,5 +1,5 @@
 import { RemoteAppState } from './app_state';
-import { Attachment } from './attachment';
+import { Attachment, ExpandedAttachment, FileAttachment } from './attachment';
 import { Board, TaskCollection } from './board';
 import { CalendarEvent } from './calendar';
 import {
@@ -21,7 +21,7 @@ import { Role } from './role';
 import { ExpandedTask, Task, TaskPriority } from './task';
 import { Thread } from './thread';
 import { NoId, WithId } from './util';
-import { Wiki } from './wiki';
+import { ExpandedWiki, Wiki } from './wiki';
 
 /** Blueprint for api schema object */
 export type ApiSchemaTemplate = Partial<{
@@ -74,6 +74,17 @@ export type ApiSchema = {
   'GET /app': {
     return: Partial<RemoteAppState> | null;
   };
+
+  /** Attachments */
+  'POST /attachments/:domain_id': {
+    params: ['domain_id'];
+    body: {
+      files: File[];
+      attachments: Omit<FileAttachment, 'file'>[];
+    };
+    return: ExpandedAttachment[];
+    req: { keys: string[] };
+  },
 
   /** Boards */
   'GET /boards/:board_id': {
@@ -586,7 +597,7 @@ export type ApiSchema = {
     query: {
       draft?: boolean;
     };
-    return: Wiki;
+    return: ExpandedWiki;
   },
 
   'PATCH /wikis/:wiki_id': {
@@ -594,6 +605,7 @@ export type ApiSchema = {
     body: {
       content?: string;
       draft?: string;
+      attachments?: string[];
     };
     return: Wiki;
   },

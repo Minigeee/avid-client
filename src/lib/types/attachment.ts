@@ -9,6 +9,8 @@ type _BaseAttachment = {
   width?: number;
   /** The height of the attachment if the type is image (px) */
   height?: number;
+  /** Alternate text */
+  alt?: string;
 };
 
 /** Type representing an attachment with a file object */
@@ -24,3 +26,11 @@ export type Attachment = _BaseAttachment & {
   /** Original filename */
   filename: string;
 };
+
+/** Attachment that gets returned from db route */
+export type ExpandedAttachment = Attachment & {
+  /** Id of the attachment */
+  id: string;
+  /** The url to the actual image (if the attachment is an image) */
+  base_url?: string;
+}

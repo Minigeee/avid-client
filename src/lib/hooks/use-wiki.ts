@@ -4,7 +4,7 @@ import assert from 'assert';
 import config from '@/config';
 import { api } from '@/lib/api';
 import { SessionState } from '@/lib/contexts';
-import { Wiki } from '@/lib/types';
+import { Attachment, ExpandedWiki, Wiki, WithId } from '@/lib/types';
 
 import { renderNativeEmojis } from '@/lib/utility/emoji';
 import { swrErrorWrapper } from '@/lib/utility/error-handler';
@@ -17,7 +17,7 @@ import { setMembers } from './use-members';
 
 
 ////////////////////////////////////////////////////////////
-function _sanitize(wiki: Wiki) {
+function _sanitize(wiki: ExpandedWiki) {
   wiki.content = renderNativeEmojis(
     sanitizeHtml(wiki.content, config.sanitize),
   );
@@ -30,7 +30,7 @@ function _sanitize(wiki: Wiki) {
 
 ////////////////////////////////////////////////////////////
 function mutators(
-  mutate: KeyedMutator<Wiki>,
+  mutate: KeyedMutator<ExpandedWiki>,
   session: SessionState | undefined,
 ) {
   assert(session);
@@ -41,23 +41,32 @@ function mutators(
      * 
      * @param options.content The new content to set (saves and publishes newest changes)
      * @param options.draft The work in progress text that will only be visible by document editors
+     * @param options.attachments A list of attachments to add to the wiki
      * @returns The new wiki document
      */
-    updateWiki: (options: { content?: string; draft?: string }) =>
+    updateWiki: (options: { content?: string; draft?: string, attachments?: WithId<Attachment>[] }) =>
       mutate(
         swrErrorWrapper(
-          async (wiki: Wiki) => {
+          async (wiki: ExpandedWiki) => {
             // Update wiki
             const result = await api(
               'PATCH /wikis/:wiki_id',
               {
                 params: { wiki_id: wiki.id },
-                body: options,
+                body: {
+                  ...options,
+                  attachments: options.attachments?.map((x) => x.id),
+                },
               },
               { session },
             );
 
-            return _sanitize(result);
+            return {
+              ..._sanitize(result as ExpandedWiki),
+              attachments: (wiki.attachments || []).concat(
+                options.attachments || [],
+              ),
+            };
           },
           { message: 'An error occurred while updating wiki document' },
         ),

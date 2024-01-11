@@ -4,7 +4,10 @@ import { MantineTheme, createStyles } from '@mantine/core';
 const DEFAULT_THEMES = {
   light: {
     md_code: (theme) => theme.colors.primary[1],
+    md_code_border: (theme) => theme.colors.primary[3],
     md_code_text: (theme) => theme.colors.gray[8],
+    md_inline_code: (theme) => theme.colors.primary[2],
+    md_inline_code_text: (theme) => theme.colors.gray[8],
     md_table_header: (theme) => theme.colors.primary[1],
     md_table_border: (theme) => theme.colors.primary[2],
     md_divider: (theme) => theme.colors.gray[4],
@@ -308,11 +311,11 @@ export const useDocumentStyles = (options?: {
 
           code: {
             fontFamily: theme.fontFamilyMonospace,
-            fontSize: 15,
+            fontSize: 14,
 
             padding: '0.2em 0.35em',
-            background: colors.md_code,
-            color: colors.md_code_text,
+            background: colors.md_inline_code,
+            color: colors.md_inline_code_text,
             borderRadius: 3,
           },
 
@@ -324,17 +327,18 @@ export const useDocumentStyles = (options?: {
         pre: {
           marginBlockStart: 0,
           marginBlockEnd: 0,
-          fontSize: 15 * scale,
+          fontSize: 14 * scale,
           tabSize: '4ch',
           whiteSpace: 'pre-wrap',
 
-          padding: '0.5em 0.5em',
+          padding: '0.5rem 0.75rem',
           background: colors.md_code,
           color: colors.md_code_text,
-          borderRadius: 4,
+          border: `1px solid ${colors.md_code_border}`,
+          borderRadius: theme.radius.sm,
 
           '&:not(:last-child)': {
-            marginBlockEnd: '0.8em',
+            marginBlockEnd: theme.spacing.md,
           },
 
           code: {
@@ -429,18 +433,25 @@ export const useDocumentStyles = (options?: {
         },
 
         h1: {
-          marginBlockStart: 0,
-          marginBlockEnd: '0.4em',
+          fontSize: '2.25rem',
+          marginBlockStart: theme.spacing.xl,
+          marginBlockEnd: theme.spacing.sm,
+
+          '&:first-child': {
+            marginBlockStart: 0,
+          },
         },
 
         h2: {
-          marginBlockStart: 0,
-          marginBlockEnd: '0.4em',
+          fontSize: '1.625rem',
+          marginBlockStart: theme.spacing.xl,
+          marginBlockEnd: theme.spacing.sm,
         },
 
         h3: {
-          marginBlockStart: 0,
-          marginBlockEnd: '0.6em',
+          fontSize: '1.375rem',
+          marginBlockStart: theme.spacing.lg,
+          marginBlockEnd: theme.spacing.sm,
         },
 
         h4: {
@@ -468,8 +479,8 @@ export const useDocumentStyles = (options?: {
         },
 
         hr: {
-          marginBlockStart: '1.5em',
-          marginBlockEnd: '1.5em',
+          marginBlockStart: '2.5rem',
+          marginBlockEnd: '2.5rem',
           marginLeft: '0.25rem',
           marginRight: '0.25rem',
           height: 1,
@@ -479,15 +490,17 @@ export const useDocumentStyles = (options?: {
         },
 
         img: {
-          maxWidth: '60ch',
+          width: '100%',
+          borderRadius: theme.radius.sm,
+          marginBlockEnd: theme.spacing.md,
         },
 
         '.katex-display': {
           margin: 0,
 
           padding: '0.5em 0.5em',
-          background: colors.md_code,
-          color: colors.md_code_text,
+          background: colors.md_inline_code,
+          color: colors.md_inline_code_text,
           borderRadius: 4,
         },
 
@@ -496,16 +509,29 @@ export const useDocumentStyles = (options?: {
           alignItems: 'baseline',
           width: '100%',
 
-          padding: '0em 0.6em',
+          padding: '0.5rem 0.75rem',
           background: colors.md_code,
           color: colors.md_code_text,
-          borderRadius: 4,
+          border: `1px solid ${colors.md_code_border}`,
+          borderRadius: theme.radius.sm,
 
           fontSize: 17 * scale,
 
           eqn: {
             flexGrow: 1,
             fontSize: 18 * scale,
+          },
+        },
+
+
+
+        'div[data-youtube-video]': {
+          width: '100%',
+          marginBlockEnd: theme.spacing.md,
+
+          iframe: {
+            width: '100%',
+            aspectRatio: 16 / 9,
           },
         },
 

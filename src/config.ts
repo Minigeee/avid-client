@@ -79,15 +79,18 @@ const config = {
 
   /** Html sanitization options */
   sanitize: {
-    allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img'],
+    allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img', 'iframe'],
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
       '*': ['style'],
+      div: ['data-youtube-video'],
+      iframe: ['src'],
     },
     allowedClasses: {
       code: ['language-*'],
       '*': ['avid*', 'hljs*'],
     },
+    allowedIframeHostnames: ['www.youtube.com'],
   } as sanitizeHtml.IOptions,
 
   /** Digital Ocean Spaces config */

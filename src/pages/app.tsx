@@ -230,8 +230,8 @@ function WithAppState() {
         Tooltip: {
           styles: (theme) => ({
             tooltip: {
-              background: theme.other.elements.tooltip || theme.colors.dark[9],
-              color: theme.other.elements.tooltip_text || theme.colors.dark[0],
+              background: theme.other.elements.tooltip,
+              color: theme.other.elements.tooltip_text,
             },
           }),
         },
@@ -290,6 +290,9 @@ function WithAppState() {
       others.elements.settings_tabs_highlight ||
       ((theme) =>
         theme.fn.linearGradient(0, defaultGradient[0], defaultGradient[1]));
+
+    others.elements.tooltip = others.elements.tooltip || ((theme) => theme.colors.dark[9]);
+    others.elements.tooltip_text = others.elements.tooltip_text || ((theme) => theme.colors.dark[0]);
 
     // For every function value, turn it into a string
     for (const [k, v] of Object.entries(others)) {
