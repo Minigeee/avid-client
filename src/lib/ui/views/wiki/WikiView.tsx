@@ -10,14 +10,16 @@ import {
   Flex,
   Group,
   Loader,
+  Popover,
   ScrollArea,
+  Select,
   Text,
   Tooltip,
   Transition,
   useMantineTheme,
 } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
-import { IconBookmark, IconPencil, IconPhotoPlus, IconUpload } from '@tabler/icons-react';
+import { IconBookmark, IconCode, IconCopy, IconEye, IconPencil, IconPhotoPlus, IconUpload } from '@tabler/icons-react';
 
 import RichTextEditor from '@/lib/ui/components/rte/RichTextEditor';
 import { useConfirmModal } from '../../modals/ConfirmModal';
@@ -37,11 +39,24 @@ import { socket } from '@/lib/utility/realtime';
 import { events } from '@/lib/utility/events';
 
 import { Editor } from '@tiptap/react';
-import parseHtml, { Element } from 'html-react-parser';
+import parseHtml, { Element, Text as DomText } from 'html-react-parser';
 import assert from 'assert';
 import { api, uploadAttachments } from '@/lib/api';
 import { config as spacesConfig, getResourceUrl, getImageUrl, getResourceKey } from '@/lib/utility/spaces-util';
 import ActionButton from '../../components/ActionButton';
+
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { startCase } from 'lodash';
+
+/** Supported code languages */
+const SUPPORTED_LANGUAGES = [
+  { value: '', label: 'None' },
+  ...SyntaxHighlighter.supportedLanguages.map((lang) => ({
+    value: lang,
+    label: startCase(lang),
+  })),
+];
 
 ////////////////////////////////////////////////////////////
 export type WikiViewProps = {
@@ -76,6 +91,8 @@ export default function WikiView(props: WikiViewProps) {
     `${props.channel.id}/wiki.editing`,
     false,
   );
+  // In view draft mode?
+  const [viewDraft, setViewDraft] = useState<boolean>(false);
   // Saved draft
   const [savedDraft, setSavedDraft] = useCachedState<string>(
     `${props.channel.id}/wiki.saved_draft`,
@@ -156,11 +173,12 @@ export default function WikiView(props: WikiViewProps) {
   // Parse html string
   const docContents = useMemo(() => {
     if (!wiki._exists) return null;
+    if (editing) return null;
 
     // IMG DIMS
     const IMG_WIDTH = 800;
 
-    return parseHtml(wiki.content, {
+    return parseHtml(!viewDraft ? wiki.content : wiki.draft || '', {
       replace: (node) => {
         if (!(node instanceof Element)) return;
 
@@ -190,9 +208,38 @@ export default function WikiView(props: WikiViewProps) {
             />
           );
         }
+        else if (node.name === 'pre') {
+          const child = node.firstChild;
+          if (!(child instanceof Element) || child.name !== 'code') return;
+          if (!(child.firstChild instanceof DomText) || !child.firstChild.data) return;
+
+          const lang = child.attribs.class?.split('language-')[1];
+          const code = child.firstChild.data;
+
+          return (
+            <Box sx={{ position: 'relative' }}>
+              <SyntaxHighlighter language={lang} style={oneLight}>
+                {child.firstChild.data}
+              </SyntaxHighlighter>
+
+              <ActionButton
+                tooltip='Copy code'
+                tooltipProps={{ position: 'left', openDelay: 500 }}
+                sx={{
+                  position: 'absolute',
+                  top: '0.5rem',
+                  right: '0.5rem',
+                }}
+                onClick={() => navigator.clipboard.writeText(code)}
+              >
+                <IconCopy size={16} />
+              </ActionButton>
+            </Box>
+          );
+        }
       },
     });
-  }, [wiki.content, wiki.attachments]);
+  }, [wiki.content, wiki.draft, wiki.attachments, viewDraft, editing]);
 
   // Function for uploading images
   const onAttachmentsChange = useCallback(
@@ -242,11 +289,49 @@ export default function WikiView(props: WikiViewProps) {
       <>
         <ActionButton
           tooltip='Add Image'
-          tooltipProps={{ openDelay: 500 }}
+          tooltipProps={{
+            openDelay: 500,
+            position: 'left',
+            withinPortal: true,
+          }}
           onClick={() => fileInputRef.current?.click()}
         >
           <IconPhotoPlus size={16} />
         </ActionButton>
+        <Popover position='bottom-start'>
+          <Tooltip
+            label='Code Block'
+            openDelay={500}
+            position='left'
+            withinPortal
+            withArrow
+          >
+            <Popover.Target>
+              <ActionIcon
+                onClick={() => {
+                  //
+                }}
+              >
+                <IconCode size={16} />
+              </ActionIcon>
+            </Popover.Target>
+          </Tooltip>
+          <Popover.Dropdown>
+            <Select
+              data={SUPPORTED_LANGUAGES}
+              placeholder='Language'
+              searchable
+              onChange={(value) =>
+                editorRef.current
+                  ?.chain()
+                  .focus()
+                  .toggleCodeBlock({ language: value || '' })
+                  .run()
+              }
+              autoFocus
+            />
+          </Popover.Dropdown>
+        </Popover>
       </>
     );
   }, []);
@@ -333,18 +418,44 @@ export default function WikiView(props: WikiViewProps) {
           }}
         >
           {!editing && (
-            <Button
-              variant='default'
-              leftIcon={<IconPencil size={16} />}
-              onClick={() => setEditing(true)}
-            >
-              Edit
-            </Button>
+            <>
+              {viewDraft && (
+                <Tooltip label='View Published'>
+                  <CloseButton
+                    size='lg'
+                    iconSize={24}
+                    sx={(theme) => ({
+                      background: `${theme.other.colors.page}D0`,
+                      '&:hover': {
+                        background: theme.other.colors.page_hover,
+                      },
+                    })}
+                    onClick={() => setViewDraft(false)}
+                  />
+                </Tooltip>
+              )}
+              {wiki.draft && !viewDraft && (
+                <Button
+                  variant='default'
+                  leftIcon={<IconEye size={16} />}
+                  onClick={() => setViewDraft(true)}
+                >
+                  View Draft
+                </Button>
+              )}
+              <Button
+                variant='default'
+                leftIcon={<IconPencil size={16} />}
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </Button>
+            </>
           )}
 
           {editing && (
             <>
-              <Tooltip label='Exit'>
+              <Tooltip label='Leave Edit Mode'>
                 <CloseButton
                   size='lg'
                   iconSize={24}

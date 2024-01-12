@@ -282,6 +282,7 @@ export const useDocumentStyles = (options?: {
 }) => {
   const scale = options?.scale || 1;
 
+  // @ts-ignore
   return createStyles((theme) => {
     const colors: Record<string, string> = theme.other?.elements;
     if (!theme.other?.elements) {
