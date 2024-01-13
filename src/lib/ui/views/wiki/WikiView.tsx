@@ -223,7 +223,7 @@ export default function WikiView(props: WikiViewProps) {
               </SyntaxHighlighter>
 
               <ActionButton
-                tooltip='Copy code'
+                tooltip='Copy'
                 tooltipProps={{ position: 'left', openDelay: 500 }}
                 sx={{
                   position: 'absolute',

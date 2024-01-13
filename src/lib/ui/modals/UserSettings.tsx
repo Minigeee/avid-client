@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 
 import {
   Box,
@@ -8,6 +9,7 @@ import {
   Divider,
   Flex,
   Group,
+  Image as MantineImage,
   ScrollArea,
   Select,
   Stack,
@@ -68,15 +70,23 @@ function AccountTab({ session, profile, ...props }: TabProps) {
   const { open: openConfirmModal } = useConfirmModal();
   const { ImageModal, open: openImageModal } = useImageModal();
 
+  const [mode, setMode] = useState<'icon' | 'banner'>('icon');
+
   return (
     <>
       <ImageModal
-        subtext='Image must not exceed 2MB.'
-        maxSize={2 * 1024 ** 2}
-        imgSize={config.upload.profile_picture.image_size}
-        size='md'
+        subtext={`Image must not exceed ${mode === 'icon' ? 3 : 5}MB.`}
+        maxSize={(mode === 'icon' ? 3 : 5) * 1024 ** 2}
+        imgSize={
+          config.upload[mode === 'icon' ? 'profile_picture' : 'profile_banner']
+            .image_size
+        }
+        shape={mode === 'icon' ? 'circle' : 'rect'}
+        size={mode === 'icon' ? 'md' : 'xl'}
         onUpload={(image, fname) => {
-          if (image) profile._mutators.setPicture(image, fname);
+          if (!image) return;
+          if (mode === 'icon') profile._mutators.setPicture(image, fname);
+          else profile._mutators.setBanner(image, fname);
         }}
       />
 
@@ -94,7 +104,13 @@ function AccountTab({ session, profile, ...props }: TabProps) {
           <ProfileAvatar profile={profile} size={120} />
           <Stack spacing='sm'>
             <Group spacing='sm'>
-              <Button variant='gradient' onClick={openImageModal}>
+              <Button
+                variant='gradient'
+                onClick={() => {
+                  setMode('icon');
+                  openImageModal();
+                }}
+              >
                 {profile.profile_picture ? 'Change' : 'Upload'} Image
               </Button>
 
@@ -134,6 +150,87 @@ function AccountTab({ session, profile, ...props }: TabProps) {
               Profile pictures are resized to{' '}
               {config.upload.profile_picture.image_size.w}x
               {config.upload.profile_picture.image_size.h}
+            </Text>
+          </Stack>
+        </Group>
+
+        <Title order={3}>Profile Banner</Title>
+
+        <Group
+          spacing='xl'
+          sx={(theme) => ({
+            padding: '1.2rem',
+            background: theme.other.elements.settings_panel,
+            borderRadius: theme.radius.md,
+          })}
+        >
+          {!profile.banner && (
+            <MantineImage
+              width='18.75rem'
+              height='6rem'
+              alt='Profile banner'
+              withPlaceholder
+              radius='sm'
+            />
+          )}
+          {profile.banner && (
+            <Image
+              width={300}
+              height={96}
+              alt='Profile banner'
+              src={profile.banner}
+              style={{ borderRadius: '0.25rem' }}
+            />
+          )}
+
+          <Stack spacing='sm'>
+            <Group spacing='sm'>
+              <Button
+                variant='gradient'
+                onClick={() => {
+                  setMode('banner');
+                  openImageModal();
+                }}
+              >
+                {profile.banner ? 'Change' : 'Upload'} Image
+              </Button>
+
+              {profile.banner && (
+                <ActionButton
+                  tooltip='Remove Image'
+                  tooltipProps={{ position: 'right' }}
+                  size='lg'
+                  sx={(theme) => ({
+                    color: theme.other.elements.settings_panel_dimmed,
+                    '&:hover': {
+                      background: theme.other.elements.settings_panel_hover,
+                    },
+                  })}
+                  onClick={() => {
+                    openConfirmModal({
+                      title: 'Remove Profile Banner',
+                      confirmLabel: 'Remove',
+                      content: (
+                        <Text>
+                          Are you sure you want to remove your profile banner?
+                        </Text>
+                      ),
+                      // Optimistic mutation
+                      onConfirm: () => {
+                        // Remove profile banner
+                        profile._mutators.removeBanner();
+                      },
+                    });
+                  }}
+                >
+                  <IconTrash size={22} />
+                </ActionButton>
+              )}
+            </Group>
+            <Text size='xs' color='dimmed'>
+              Profile banners are resized to{' '}
+              {config.upload.profile_banner.image_size.w}x
+              {config.upload.profile_banner.image_size.h}
             </Text>
           </Stack>
         </Group>

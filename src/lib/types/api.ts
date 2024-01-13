@@ -457,6 +457,32 @@ export type ApiSchema = {
     return: Profile | ExpandedProfile;
   };
 
+  'POST /profiles/:profile_id/icon': {
+    params: ['profile_id'];
+    body: {
+      file: File,
+    };
+    return: { profile_picture: string };
+    req: { image_url: string };
+  },
+
+  'DELETE /profiles/:profile_id/icon': {
+    params: ['profile_id'];
+  },
+
+  'POST /profiles/:profile_id/banner': {
+    params: ['profile_id'];
+    body: {
+      file: File,
+    };
+    return: { banner: string };
+    req: { image_url: string };
+  },
+
+  'DELETE /profiles/:profile_id/banner': {
+    params: ['profile_id'];
+  },
+
   /** Reactions */
   'POST /reactions': {
     body: {

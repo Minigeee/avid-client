@@ -14,6 +14,8 @@ export type Profile = {
   username: string;
   /** Url of the profile picture image */
   profile_picture?: string | null;
+  /** Url of the banner image */
+  banner?: string | null;
   /** Time the profile was created */
   time_created: Date;
   /** Indicates if profile is online or not */

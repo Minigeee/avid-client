@@ -31,13 +31,12 @@ export async function uploadProfile(
   formData.append('image', image, fname);
 
   // Send image post
-  const results = await axios.post<{ image: string }>(
-    `/api/upload/profile/${id(profile.id)}`,
-    formData,
-    withAccessToken(session),
-  );
+  const result = await api('POST /profiles/:profile_id/icon', {
+    params: { profile_id: profile.id },
+    form: formData,
+  }, { session });
 
-  return results.data.image;
+  return result.profile_picture;
 }
 
 /**
@@ -51,9 +50,12 @@ export async function deleteProfile(
   session: SessionState,
 ) {
   // Send delete request
-  await axios.delete(
-    `/api/upload/profile/${id(profile.id)}`,
-    withAccessToken(session),
+  await api(
+    'DELETE /profiles/:profile_id/icon',
+    {
+      params: { profile_id: profile.id },
+    },
+    { session },
   );
 }
 

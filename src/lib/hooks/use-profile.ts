@@ -416,6 +416,91 @@ function mutators(
           },
         },
       ),
+
+    /**
+     * Upload and set the specified image as the profile banner.
+     *
+     * @param image The image data to set as profile banner
+     * @param fname The name of the original image file
+     * @returns The new profile object
+     */
+    setBanner: (image: Blob, fname: string) =>
+      mutate(
+        swrErrorWrapper(
+          async (profile: ExpandedProfile) => {
+            // Generate form data
+            const formData = new FormData();
+            formData.append('image', image, fname);
+
+            // Upload profile image
+            const result = await api(
+              'POST /profiles/:profile_id/banner',
+              {
+                params: { profile_id: profile.id },
+                form: formData,
+              },
+              { session },
+            );
+            const url = result.banner;
+
+            // Update member objects
+            updateMemberLocal(profile.id, (member) => ({
+              ...member,
+              banner: url,
+            }));
+
+            return {
+              ...profile,
+              banner: url,
+            };
+          },
+          { message: 'An error occurred while setting profile banner' },
+        ),
+        { revalidate: false },
+      ),
+
+    /**
+     * Remove the current profile banner. Performs optimistic update.
+     *
+     * @returns The new profile picture
+     */
+    removeBanner: () =>
+      mutate(
+        swrErrorWrapper(
+          async (profile: ExpandedProfile) => {
+            // Delete profile banner
+            await api(
+              'DELETE /profiles/:profile_id/banner',
+              {
+                params: { profile_id: profile.id },
+              },
+              { session },
+            );
+
+            // Update member objects
+            updateMemberLocal(profile.id, (member) => ({
+              ...member,
+              banner: null,
+            }));
+
+            return {
+              ...profile,
+              banner: null,
+            };
+          },
+          { message: 'An error occurred while removing profile banner' },
+        ),
+        {
+          revalidate: false,
+          optimisticData: (profile) => {
+            assert(profile);
+            return {
+              ...profile,
+              banner: null,
+            };
+          },
+        },
+      ),
   };
 }
 

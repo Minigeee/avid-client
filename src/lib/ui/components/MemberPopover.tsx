@@ -47,6 +47,7 @@ import {
 import RichTextEditor from './rte/RichTextEditor';
 import ActionButton from './ActionButton';
 import assert from 'assert';
+import Image from 'next/image';
 
 ////////////////////////////////////////////////////////////
 const RoleSelectItem = forwardRef<HTMLDivElement, Role>(
@@ -130,11 +131,21 @@ function Dropdown({ member, ...props }: MemberPopoverProps) {
   return (
     <>
       <Group
-        mih='6rem'
+        h='7.04rem'
         sx={(theme) => ({
           background: theme.other.elements.profile_banner,
         })}
-      />
+      >
+        {member.banner && (
+          <Image
+            width={375}
+            height={120}
+            src={member.banner}
+            alt={`${member.alias} profile banner`}
+            style={{ width: '100%', height: '100%' }}
+          />
+        )}
+      </Group>
 
       <Stack
         p='1.0rem 1.25rem'

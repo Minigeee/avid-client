@@ -58,7 +58,7 @@ export default function ImageModal(props: ImageModalProps) {
     <Modal
       opened={props._opened}
       onClose={() => props._setOpened(false)}
-      title={`${files.length > 0 ? 'Edit' : 'Upload'} Image`}
+      title={`${files.length > 0 ? 'Edit' : 'Upload'} Image ${props.shape || 'circle'}`}
       size={files.length > 0 ? props.size || 'lg' : 'xl'}
       zIndex={201}
       overlayProps={{ zIndex: 202 }}

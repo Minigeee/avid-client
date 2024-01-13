@@ -550,6 +550,7 @@ const MEMBER_SELECT_FIELDS = [
   'roles',
   'time_joined',
   'in.profile_picture AS profile_picture',
+  'in.banner AS banner',
   'in.online AS online',
 ];
 

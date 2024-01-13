@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 
 import {
   ActionIcon,
@@ -162,12 +163,22 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
         })}
       >
         <Group
-          mih='10rem'
+          h='8.8rem'
           sx={(theme) => ({
             position: 'relative',
             background: theme.other.elements.profile_banner,
           })}
         >
+          {profile.banner && (
+            <Image
+              width={500}
+              height={160}
+              src={profile.banner}
+              alt='Profile banner'
+              style={{ width: '100%', height: '100%' }}
+            />
+          )}
+
           <CloseButton
             size='md'
             variant='transparent'
@@ -184,6 +195,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
         <Group
           p={16}
           sx={(theme) => ({
+            borderTop: `1px solid ${theme.other.elements.drawer_border}`,
             borderBottom: `1px solid ${theme.other.elements.drawer_border}`,
           })}
         >
@@ -263,7 +275,7 @@ function AppDrawer({ opened, onClose, ...props }: AppDrawerProps) {
         <Text size='sm' color='dimmed' weight={600} mt={8} ml={12}>
           <IconBuildingCommunity
             size={14}
-            style={{ marginRight: 4, marginBottom: -2 }}
+            style={{ marginRight: 6, marginBottom: -2 }}
           />
           {config.text.domain.plural}
         </Text>

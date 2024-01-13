@@ -24,6 +24,8 @@ export type Member = {
 export type ExpandedMember = Member & {
   /** The url of the profile picture of the member */
   profile_picture?: string | null;
+  /** Url of the banner image of the member */
+  banner?: string | null;
   /** Indicates if the member is online */
   online?: boolean;
 };
@@ -45,6 +47,8 @@ export type ExpandedPrivateMember = PrivateMember & {
   alias: string;
   /** The url of the profile picture of the member */
   profile_picture?: string | null;
+  /** Url of the banner image of the member */
+  banner?: string | null;
   /** Indicates if the member is online */
   online?: boolean;
 };
