@@ -1723,14 +1723,14 @@ export default function MessagesView(props: MessagesViewProps) {
               <TextEditor
                 placeholder={props.placeholder}
                 canSendAttachments={
-                  // TODO : Make attachments sendable in private channels
-                  props.domain !== undefined &&
-                  props.channel_id !== undefined &&
-                  hasPermission(
-                    props.domain,
-                    props.channel_id,
-                    'can_send_attachments',
-                  )
+                  context.private ||
+                  (props.domain !== undefined &&
+                    props.channel_id !== undefined &&
+                    hasPermission(
+                      props.domain,
+                      props.channel_id,
+                      'can_send_attachments',
+                    ))
                 }
                 onSubmit={
                   props.onMessageSend ||

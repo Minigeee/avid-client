@@ -76,8 +76,11 @@ export type ApiSchema = {
   };
 
   /** Attachments */
-  'POST /attachments/:domain_id': {
-    params: ['domain_id'];
+  'POST /attachments/:container_id': {
+    params: ['container_id'];
+    query: {
+      private?: boolean;
+    };
     body: {
       files: File[];
       attachments: Omit<FileAttachment, 'file'>[];

@@ -112,13 +112,13 @@ export async function deleteDomainImage(
 /**
  * Upload message attachments
  *
- * @param domain_id The domain under which the attachment is being uploaded
+ * @param container_id The domain or private channel under which the attachment is being uploaded
  * @param files The files to upload
  * @param session Session used to authenticate request
  * @returns The urls of the uploaded files, and their dimensions if the file is an image
  */
 export async function uploadAttachments(
-  domain_id: string,
+  container_id: string,
   files: FileAttachment[],
   session: SessionState,
 ): Promise<ExpandedAttachment[]> {
@@ -132,9 +132,10 @@ export async function uploadAttachments(
 
   // Send image post
   const results = await api(
-    'POST /attachments/:domain_id',
+    'POST /attachments/:container_id',
     {
-      params: { domain_id },
+      params: { container_id },
+      query: { private: container_id.startsWith('private_channels') },
       form: formData,
     },
     { session }

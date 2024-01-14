@@ -621,6 +621,7 @@ function mutators(
   pinned: boolean | undefined,
 ) {
   const isPrivate = channel_id.startsWith('private_channels');
+  assert(domain_id || isPrivate);
 
   return {
     /**
@@ -647,14 +648,13 @@ function mutators(
           async (messages: RawMessage[][]) => {
             // TODO : Make attachments work in private channels
             const hasAttachments =
-              domain_id &&
               options?.attachments &&
               options.attachments.length > 0;
 
             // Post all attachments
             const uploads = hasAttachments
               ? await uploadAttachments(
-                  domain_id,
+                  isPrivate ? channel_id : domain_id || '',
                   options?.attachments || [],
                   session,
                 )
