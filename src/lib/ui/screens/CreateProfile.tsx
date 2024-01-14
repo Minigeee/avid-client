@@ -49,8 +49,8 @@ export default function CreateProfile(props: Props) {
       sx={(theme) => ({
         width: '50ch',
         maxWidth: '100%',
-        background: theme.other.colors.panel,
-        color: theme.other.colors.panel_text,
+        background: theme.colors.gray[1],
+        color: theme.colors.gray[8],
       })}
     >
       <form onSubmit={form.onSubmit(onSubmit)}>

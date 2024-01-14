@@ -77,6 +77,15 @@ function mutators(
   };
 }
 
+/** Mutators that will be attached to the wiki swr wrapper */
+export type WikiMutators = ReturnType<typeof mutators>;
+/** Swr data wrapper for a wiki object */
+export type WikiWrapper<Loaded extends boolean = true> = SwrWrapper<
+  ExpandedWiki,
+  Loaded,
+  WikiMutators
+>;
+
 /**
  * Get wiki document
  * 

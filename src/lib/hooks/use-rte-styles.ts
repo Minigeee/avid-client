@@ -536,6 +536,10 @@ export const useDocumentStyles = (options?: {
           },
         },
 
+        '.avid-pre': {
+          marginBlockEnd: theme.spacing.md,
+        },
+
         '.avid-highlight': {
           padding: '1px 4px 1.5px 3px',
           fontSize: 15,
