@@ -155,7 +155,7 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
           borderRadius: 15,
         })}
       >
-        <Text size='xs' weight={500}>
+        <Text size='xs' weight={500} sx={(theme) => ({ color: theme.colors.dark[0] })}>
           {label}
         </Text>
       </Box>
@@ -198,12 +198,11 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
               sx={(theme) => ({
                 padding: '1px 5px 2px 11px',
                 background: tagColor || color,
-                color: theme.colors.dark[0],
                 borderRadius: 15,
               })}
             >
               <Group spacing={2} align='end'>
-                <Text size='xs' weight={500}>
+                <Text size='xs' weight={500} sx={(theme) => ({ color: theme.colors.dark[0] })}>
                   {label}
                 </Text>
                 <CloseButton
@@ -212,6 +211,7 @@ function TagSelectValue(onTagColorChange: (id: string, color: string) => void) {
                   variant='transparent'
                   tabIndex={-1}
                   onMouseDown={onRemove}
+                  sx={(theme) => ({ color: theme.colors.dark[0] })}
                 />
               </Group>
             </UnstyledButton>
@@ -1827,12 +1827,13 @@ export function EditTask({
                   // TODO : Make sure the tag want to create doesn't exist already
                   return (
                     <Box
-                      sx={{
+                      sx={(theme) => ({
                         width: 'fit-content',
                         padding: '1px 11px 2px 11px',
                         background: config.app.board.default_tag_color,
+                        color: theme.colors.dark[0],
                         borderRadius: 15,
-                      }}
+                      })}
                     >
                       <Text size='xs' weight={500}>
                         {query}

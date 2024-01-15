@@ -1085,7 +1085,7 @@ export default function BoardView(props: BoardViewProps) {
             <div style={{ flexGrow: 1 }} />
             {collection && (collection.start_date || collection.end_date) && (
               <>
-                <Text size='sm' color='dimmed' weight={600} align='right'>
+                <Text size='sm' color='dimmed' weight={600} align='right' sx={{ lineHeight: 1.3 }}>
                   {timeText}
                 </Text>
                 <Box

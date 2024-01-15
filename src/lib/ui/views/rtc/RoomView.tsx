@@ -170,7 +170,8 @@ function ParticipantView({ member, rtc, ...props }: ParticipantViewProps) {
                 bottom: 2,
                 padding: '0.1rem 0.5rem 0.1rem 0.5rem',
                 borderRadius: 3,
-                background: theme.other.elements.member_name + '80',
+                background: theme.other.elements.tooltip + 'C0',
+                color: theme.other.elements.tooltip_text,
               })}
             >
               {member.alias}

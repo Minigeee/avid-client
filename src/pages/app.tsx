@@ -509,7 +509,6 @@ export default function App(props: AppProps) {
       });
     } else {
       session._mutators.applyToken(props.token);
-      console.log('found token', props.app?.last_accessed)
     }
   }, []);
 

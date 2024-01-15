@@ -23,12 +23,13 @@ const TagSelectItem = forwardRef<HTMLDivElement, TagItemProps>(
   ({ label, color, ...others }: TagItemProps, ref) => (
     <div ref={ref} {...others}>
       <Box
-        sx={{
+        sx={(theme) => ({
           width: 'fit-content',
           padding: '1px 11px 2px 11px',
           background: color,
+          color: theme.colors.dark[0],
           borderRadius: 15,
-        }}
+        })}
       >
         <Text size='xs' weight={500}>
           {label}
@@ -50,11 +51,12 @@ function TagSelectValue({
   return (
     <div {...others}>
       <UnstyledButton
-        sx={{
+        sx={(theme) => ({
           padding: '1px 5px 2px 11px',
           background: color,
+          color: theme.colors.dark[0],
           borderRadius: 15,
-        }}
+        })}
       >
         <Group spacing={2} align='end'>
           <Text size='xs' weight={500}>
@@ -66,6 +68,7 @@ function TagSelectValue({
             variant='transparent'
             tabIndex={-1}
             onMouseDown={onRemove}
+            sx={(theme) => ({ color: theme.colors.dark[0] })}
           />
         </Group>
       </UnstyledButton>
