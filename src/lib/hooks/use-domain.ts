@@ -484,6 +484,36 @@ function mutators(
       ),
 
     /**
+     * Rename domain
+     *
+     * @param name The new domain name
+     * @returns The new domain object
+     */
+    rename: (name: string) =>
+      mutate(
+        swrErrorWrapper(
+          async (domain: ExpandedDomain) => {
+            // Rename
+            const result = await api(
+              'PATCH /domains/:domain_id',
+              {
+                params: { domain_id: domain.id },
+                body: { name },
+              },
+              { session },
+            );
+
+            return {
+              ...domain,
+              name: result.name,
+            };
+          },
+          { message: 'An error occurred while renaming domain' },
+        ),
+        { revalidate: false },
+      ),
+
+    /**
      * Upload and set the specified image as the domain icon picture.
      *
      * @param image The image data to set as domain icon

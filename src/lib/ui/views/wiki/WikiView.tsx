@@ -303,9 +303,8 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
         <Flex pos='relative' w='85%' left='15%'>
           {headings && (
             <nav>
-              <Stack
+              <Box
                 mr={40}
-                spacing={0}
                 sx={{
                   position: 'sticky',
                   top: '2.0rem',
@@ -326,52 +325,62 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
                     Table of Contents
                   </Text>
                 </Group>
-                {headings.map((heading) => (
-                  <UnstyledButton
-                    component='a'
-                    href={`#${heading.id}`}
-                    sx={(theme) => ({
-                      position: 'relative',
-                      background:
-                        activeHeading === heading.id
-                          ? theme.other.colors.page_hover
-                          : undefined,
-                      borderRadius: theme.radius.sm,
-                      overflow: 'hidden',
-                      '&:hover': {
-                        background: theme.other.colors.page_hover,
-                      },
-                    })}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document
-                        ?.querySelector(`#${heading.id}`)
-                        ?.scrollIntoView({
-                          behavior: 'smooth',
-                        });
-                    }}
-                  >
-                    <Flex>
-                      {activeHeading === heading.id && (
-                        <Box
-                          sx={(theme) => ({
-                            position: 'absolute',
-                            width: '0.25rem',
-                            height: '100%',
-                            background: true
-                              ? theme.other.elements.channels_panel_highlight
-                              : undefined,
-                          })}
-                        />
-                      )}
 
-                      <Text p='0.5rem 0.75rem' size='sm' sx={{ alignItems: 'center' }}>
-                        {heading.title}
-                      </Text>
-                    </Flex>
-                  </UnstyledButton>
-                ))}
-              </Stack>
+                <ScrollArea.Autosize mah='calc(80vh - 8.0rem)'>
+                  <Stack spacing={0}>
+                    {headings.map((heading) => (
+                      <UnstyledButton
+                        component='a'
+                        href={`#${heading.id}`}
+                        sx={(theme) => ({
+                          position: 'relative',
+                          background:
+                            activeHeading === heading.id
+                              ? theme.other.colors.page_hover
+                              : undefined,
+                          borderRadius: theme.radius.sm,
+                          overflow: 'hidden',
+                          '&:hover': {
+                            background: theme.other.colors.page_hover,
+                          },
+                        })}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          document
+                            ?.querySelector(`#${heading.id}`)
+                            ?.scrollIntoView({
+                              behavior: 'smooth',
+                            });
+                        }}
+                      >
+                        <Flex>
+                          {activeHeading === heading.id && (
+                            <Box
+                              sx={(theme) => ({
+                                position: 'absolute',
+                                width: '0.25rem',
+                                height: '100%',
+                                background: true
+                                  ? theme.other.elements
+                                      .channels_panel_highlight
+                                  : undefined,
+                              })}
+                            />
+                          )}
+
+                          <Text
+                            p='0.5rem 0.75rem'
+                            size='sm'
+                            sx={{ alignItems: 'center' }}
+                          >
+                            {heading.title}
+                          </Text>
+                        </Flex>
+                      </UnstyledButton>
+                    ))}
+                  </Stack>
+                </ScrollArea.Autosize>
+              </Box>
             </nav>
           )}
 

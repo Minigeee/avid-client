@@ -19,7 +19,10 @@ function RtcVoice({ participant }: RtcVoiceProps) {
     // Set audio element source
     const mstream = new MediaStream([participant.audio.track]);
     audioRef.current.srcObject = mstream;
-    audioRef.current.play();
+    audioRef.current
+      .play()
+      .then(() => console.log('autoplay success'))
+      .catch((err) => console.error('failed to autoplay audio', err));
   }, [participant.audio, audioRef.current]);
 
   // Setting audio volume

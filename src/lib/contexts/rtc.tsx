@@ -1091,14 +1091,14 @@ async function makeMediasoupDevice(
   //
   // Just get access to the mic and DO NOT close the mic track for a while.
   // Super hack!
-  {
+  /* {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const audioTrack = stream.getAudioTracks()[0];
 
     audioTrack.enabled = false;
 
     setTimeout(() => audioTrack.stop(), 120000);
-  }
+  } */
 
   // Create send transport
   if (producerConfig) {
@@ -1240,7 +1240,9 @@ function makeRtcSocket(
         assert(_.socket);
 
         // Set up mediasoup device
+        console.log('pre device')
         await makeMediasoupDevice(capabilities, producerConfig, consumerConfig);
+        console.log('post device')
         if (!_.device) return;
 
         // Send client config

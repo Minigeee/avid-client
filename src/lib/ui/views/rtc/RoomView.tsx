@@ -535,7 +535,7 @@ function RoomScreen({ rtc, ...props }: SubviewProps) {
 
   // Get list of participants
   const memberIds = useMemo(
-    () => Object.keys(rtc.participants || {}).concat([session.profile_id]),
+    () => Object.keys(rtc.participants || {}),
     [rtc.participants],
   );
   const members = useMembers(props.domain.id, memberIds);

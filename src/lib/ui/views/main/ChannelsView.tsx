@@ -45,11 +45,12 @@ import MemberAvatar from '@/lib/ui/components/MemberAvatar';
 import { useConfirmModal } from '@/lib/ui/modals/ConfirmModal';
 import { ChannelGroupMenuDropdown, ChannelMenuDropdown, ChannelsViewContextMenu } from './components/ChannelMenu';
 
+import config from '@/config';
 import { DomainWrapper, hasPermission, useApp, useCachedState, useMembers } from '@/lib/hooks';
 import { Channel, ChannelGroup } from '@/lib/types';
 
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
-import config from '@/config';
+import moment from 'moment';
 
 ////////////////////////////////////////////////////////////
 type SingleChannelProps = {
@@ -79,9 +80,15 @@ function SingleChannel(props: SingleChannelProps) {
   const seen = useMemo(() => {
     const lastAccessedStr =
       app.last_accessed[props.domain.id]?.[props.channel.id];
+    console.log(
+      lastAccessedStr,
+      props.channel,
+      lastAccessedStr !== undefined &&
+        moment(props.channel._last_event).isBefore(lastAccessedStr),
+    );
     return (
       lastAccessedStr !== undefined &&
-      new Date(lastAccessedStr) >= new Date(props.channel._last_event)
+      moment(props.channel._last_event).isBefore(lastAccessedStr)
     );
   }, [app.last_accessed, props.channel._last_event]);
 

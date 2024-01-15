@@ -263,7 +263,7 @@ export type ApiSchema = {
   'PATCH /domains/:domain_id': {
     params: ['domain_id'];
     body: {
-      name?: string;
+      name: string;
     };
     return: { name: string };
   };

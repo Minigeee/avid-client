@@ -10,6 +10,7 @@ import {
   Title,
 } from '@mantine/core';
 import { ContextModalProps } from '@mantine/modals';
+import { useForm } from '@mantine/form';
 
 import { IconTrash } from '@tabler/icons-react';
 
@@ -23,6 +24,7 @@ import { SettingsModal } from '@/lib/ui/components/settings/SettingsModal';
 import config from '@/config';
 import { SessionState } from '@/lib/contexts';
 import { DomainWrapper, useCurrentProfile, useDomain, useProfile, useSession } from '@/lib/hooks';
+import { diff } from '@/lib/utility';
 
 ////////////////////////////////////////////////////////////
 type TabProps = {
@@ -36,6 +38,14 @@ function GeneralTab({ domain, ...props }: TabProps) {
 
   const { open: openConfirmModal } = useConfirmModal();
   const { ImageModal, open: openImageModal } = useImageModal();
+
+  // Form
+  const initialValues = useMemo(() => {
+    return {
+      name: domain.name,
+    };
+  }, [domain.name]);
+  const form = useForm({ initialValues });
 
   return (
     <>
@@ -88,7 +98,8 @@ function GeneralTab({ domain, ...props }: TabProps) {
                     confirmLabel: 'Remove',
                     content: (
                       <Text>
-                        Are you sure you want to remove the {config.text.domain.base_lc} icon picture?
+                        Are you sure you want to remove the{' '}
+                        {config.text.domain.base_lc} icon picture?
                       </Text>
                     ),
                     // Optimistic mutation
@@ -124,9 +135,17 @@ function GeneralTab({ domain, ...props }: TabProps) {
 
       <TextInput
         label='Name'
-        value={domain.name}
-        disabled
+        {...form.getInputProps('name')}
         sx={{ width: config.app.ui.short_input_width }}
+      />
+
+      <SettingsModal.Unsaved
+        form={form}
+        initialValues={initialValues}
+        onSave={async () => {
+          const d = diff(initialValues, form.values);
+          if (d?.name) domain._mutators.rename(d.name);
+        }}
       />
     </>
   );
