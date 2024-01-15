@@ -56,6 +56,21 @@ function remoteMutators(
       if (state.view === view) return;
 
       const diff = { view } as Partial<RemoteAppState>;
+      if (view === 'main' && state.domain && state.channels[state.domain]) {
+        diff.last_accessed = {
+          [state.domain]: {
+            [state.channels[state.domain]]: new Date().toISOString(),
+          },
+        };
+        diff.pings = { [state.channels[state.domain]]: 0 };
+      }
+      else if (view === 'dm' && state.private_channel) {
+        diff.private_last_accessed = {
+          [state.private_channel]: new Date().toISOString(),
+        };
+        diff.private_pings = { [state.private_channel]: 0 };
+      }
+
       setState(merge({}, state, diff));
 
       save(diff);
@@ -156,6 +171,10 @@ function remoteMutators(
       const diff = {
         view: 'dm',
         private_channel: channel_id,
+        private_last_accessed: {
+          [channel_id]: new Date().toISOString(),
+        },
+        private_pings: { [channel_id]: 0 },
       } as Partial<RemoteAppState>;
       setState(merge({}, state, diff));
 
@@ -181,6 +200,25 @@ function remoteMutators(
         ...state,
         pings: {
           ...state.pings,
+          [channel_id]: count,
+        },
+      });
+    },
+
+    /**
+     * Updates the private ping counter for a channel locally. Does not update the
+     * database state.
+     *
+     * @param channel_id The channel to set the ping counter for
+     * @param count The new ping counter value
+     */
+    setPrivatePings: (channel_id: string, count: number) => {
+      if (state.private_pings?.[channel_id] === count) return;
+
+      setState({
+        ...state,
+        private_pings: {
+          ...state.private_pings,
           [channel_id]: count,
         },
       });
@@ -356,6 +394,7 @@ export default function AppProvider({
         channels: {},
         private_channel: null,
         last_accessed: {},
+        private_last_accessed: {},
         right_panel_opened: true,
       },
       props.initial || {},

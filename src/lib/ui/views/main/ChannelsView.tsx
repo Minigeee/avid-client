@@ -83,6 +83,7 @@ function SingleChannel(props: SingleChannelProps) {
     console.log(
       lastAccessedStr,
       props.channel,
+      app.last_accessed,
       lastAccessedStr !== undefined &&
         moment(props.channel._last_event).isBefore(lastAccessedStr),
     );

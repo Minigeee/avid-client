@@ -200,7 +200,13 @@ export function useRealtimeHandlers() {
     }
 
     function onPing(domain_id: string | undefined, channel_id: string) {
-      app._mutators.setPings(channel_id, (app.pings?.[channel_id] || 0) + 1);
+      if (channel_id.startsWith('private_channels'))
+        app._mutators.setPrivatePings(
+          channel_id,
+          (app.private_pings?.[channel_id] || 0) + 1,
+        );
+      else
+        app._mutators.setPings(channel_id, (app.pings?.[channel_id] || 0) + 1);
     }
 
     _socket.on('general:domain-update', onDomainUpdate);

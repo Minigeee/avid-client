@@ -46,6 +46,7 @@ import ActionButton from '../../components/ActionButton';
 import { IconArrowBarLeft, IconPlus } from '@tabler/icons-react';
 import ProfileAvatar from '../../components/ProfileAvatar';
 import MemberAvatar from '../../components/MemberAvatar';
+import moment from 'moment';
 
 ////////////////////////////////////////////////////////////
 type DmChannel = ExpandedPrivateChannel & {
@@ -56,6 +57,136 @@ type DmChannel = ExpandedPrivateChannel & {
   /** If partner is online (for non multi member channels) */
   online?: boolean;
 };
+
+////////////////////////////////////////////////////////////
+type DmSingleChannelProps = {
+  channel: DmChannel;
+  selected: boolean;
+};
+
+////////////////////////////////////////////////////////////
+function DmSingleChannel({ channel, ...props }: DmSingleChannelProps) {
+  const app = useApp();
+
+  // Is channel seen
+  const seen = useMemo(() => {
+    const lastAccessedStr = app.private_last_accessed[channel.id];
+    return (
+      lastAccessedStr !== undefined &&
+      moment(channel._last_event).isBefore(lastAccessedStr)
+    );
+  }, [app.last_accessed, channel._last_event]);
+
+  return (
+    <UnstyledButton
+      key={channel.id}
+      onClick={() => {
+        app._mutators.setPrivateChannel(channel.id);
+      }}
+    >
+      <Flex
+        wrap='nowrap'
+        align='stretch'
+        sx={(theme) => ({
+          width: '100%',
+          minHeight: '2.375rem',
+          borderRadius: theme.radius.sm,
+          overflow: 'hidden',
+          '&:hover': {
+            '.btn-body': {
+              background: theme.other.elements.channels_panel_hover,
+            },
+            '.dropdown': { visibility: 'visible' },
+            '.ping-indicator': { display: 'none' },
+          },
+          '&:focus-within': {
+            '.dropdown': { visibility: 'visible' },
+            '.ping-indicator': { display: 'none' },
+          },
+        })}
+      >
+        <Box
+          sx={(theme) => ({
+            flexShrink: 0,
+            flexBasis: '0.25rem',
+            background: props.selected
+              ? theme.other.elements.channels_panel_highlight
+              : undefined,
+          })}
+        />
+
+        <Flex
+          className='btn-body'
+          direction='column'
+          justify='center'
+          p='0.25rem 0.25rem 0.25rem 0.75rem'
+          sx={(theme) => ({
+            flexGrow: 1,
+            background: props.selected
+              ? theme.other.elements.channels_panel_hover
+              : undefined,
+            color:
+              seen && !props.selected
+                ? theme.other.elements.channels_panel_dimmed
+                : theme.other.elements.channels_panel_text,
+            transition: 'background 0.1s, color 0.1s',
+          })}
+        >
+          <Flex gap={12} align='center'>
+            <Indicator
+              inline
+              position='bottom-end'
+              offset={4}
+              size={12}
+              color='teal'
+              withBorder
+              disabled={!channel.online}
+            >
+              <MemberAvatar member={channel} size={32} />
+            </Indicator>
+            <Stack spacing={0} sx={{ flexGrow: 1 }}>
+              <Text size='sm' weight={600}>
+                {channel.name}
+              </Text>
+              {channel.multi_member && (
+                <Text
+                  size='xs'
+                  mt={-2}
+                  sx={(theme) => ({
+                    color: theme.other.elements.channels_panel_dimmed,
+                  })}
+                >
+                  {channel.members.length} member
+                  {channel.members.length === 1 ? '' : 's'}
+                </Text>
+              )}
+            </Stack>
+
+            {app.private_pings?.[channel.id] !== undefined &&
+              app.private_pings[channel.id] > 0 && (
+                <Text
+                  className='ping-indicator'
+                  size='xs'
+                  weight={600}
+                  inline
+                  sx={(theme) => ({
+                    display: false ? 'none' : undefined,
+                    padding: '0.15rem 0.3rem 0.25rem 0.3rem',
+                    marginRight: '0.4rem',
+                    background: theme.colors.red[5],
+                    color: theme.colors.dark[0],
+                    borderRadius: '1.0rem',
+                  })}
+                >
+                  {app.private_pings?.[channel.id]}
+                </Text>
+              )}
+          </Flex>
+        </Flex>
+      </Flex>
+    </UnstyledButton>
+  );
+}
 
 ////////////////////////////////////////////////////////////
 type DmViewChannelsProps = {
@@ -117,120 +248,9 @@ function DmViewChannels({ dms, channels, ...props }: DmViewChannelsProps) {
 
       <ScrollArea sx={{ flexGrow: 1 }}>
         <Stack spacing={0} p='0.5rem 0.25rem'>
-          {channels?.map((ch) => {
-            const selected = channelId === ch.id;
-            const seen = true;
-
-            return (
-              <UnstyledButton
-                key={ch.id}
-                onClick={() => {
-                  app._mutators.setPrivateChannel(ch.id);
-                }}
-              >
-                <Flex
-                  wrap='nowrap'
-                  align='stretch'
-                  sx={(theme) => ({
-                    width: '100%',
-                    minHeight: '2.375rem',
-                    borderRadius: theme.radius.sm,
-                    overflow: 'hidden',
-                    '&:hover': {
-                      '.btn-body': {
-                        background: theme.other.elements.channels_panel_hover,
-                      },
-                      '.dropdown': { visibility: 'visible' },
-                      '.ping-indicator': { display: 'none' },
-                    },
-                    '&:focus-within': {
-                      '.dropdown': { visibility: 'visible' },
-                      '.ping-indicator': { display: 'none' },
-                    },
-                  })}
-                >
-                  <Box
-                    sx={(theme) => ({
-                      flexShrink: 0,
-                      flexBasis: '0.25rem',
-                      background: selected
-                        ? theme.other.elements.channels_panel_highlight
-                        : undefined,
-                    })}
-                  />
-
-                  <Flex
-                    className='btn-body'
-                    direction='column'
-                    justify='center'
-                    p='0.25rem 0.25rem 0.25rem 0.75rem'
-                    sx={(theme) => ({
-                      flexGrow: 1,
-                      background: selected
-                        ? theme.other.elements.channels_panel_hover
-                        : undefined,
-                      color:
-                        seen && !selected
-                          ? theme.other.elements.channels_panel_dimmed
-                          : theme.other.elements.channels_panel_text,
-                      transition: 'background 0.1s, color 0.1s',
-                    })}
-                  >
-                    <Flex gap={12} align='center'>
-                      <Indicator
-                        inline
-                        position='bottom-end'
-                        offset={4}
-                        size={12}
-                        color='teal'
-                        withBorder
-                        disabled={!ch.online}
-                      >
-                        <MemberAvatar member={ch} size={32} />
-                      </Indicator>
-                      <Stack spacing={0} sx={{ flexGrow: 1 }}>
-                        <Text size='sm' weight={600}>
-                          {ch.name}
-                        </Text>
-                        {ch.multi_member && (
-                          <Text
-                            size='xs'
-                            mt={-2}
-                            sx={(theme) => ({
-                              color: theme.other.elements.channels_panel_dimmed,
-                            })}
-                          >
-                            {ch.members.length} member
-                            {ch.members.length === 1 ? '' : 's'}
-                          </Text>
-                        )}
-                      </Stack>
-
-                      {app.private_pings?.[ch.id] !== undefined &&
-                        app.private_pings[ch.id] > 0 && (
-                          <Text
-                            className='ping-indicator'
-                            size='xs'
-                            weight={600}
-                            inline
-                            sx={(theme) => ({
-                              display: false ? 'none' : undefined,
-                              padding: '0.15rem 0.3rem 0.25rem 0.3rem',
-                              marginRight: '0.4rem',
-                              background: theme.colors.red[5],
-                              color: theme.colors.dark[0],
-                              borderRadius: '1.0rem',
-                            })}
-                          >
-                            {app.private_pings?.[ch.id]}
-                          </Text>
-                        )}
-                    </Flex>
-                  </Flex>
-                </Flex>
-              </UnstyledButton>
-            );
-          })}
+          {channels?.map((ch) => (
+            <DmSingleChannel channel={ch} selected={channelId === ch.id} />
+          ))}
         </Stack>
       </ScrollArea>
     </Flex>

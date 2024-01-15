@@ -39,8 +39,10 @@ import {
   Domain,
   ExpandedDomain,
   ExpandedMember,
+  ExpandedPrivateChannel,
   ExpandedProfile,
   Member,
+  PrivateChannel,
   Profile,
   RemoteAppState,
 } from '@/lib/types';
@@ -505,7 +507,10 @@ export default function App(props: AppProps) {
             `/login?redirect=${encodeURIComponent(router.asPath)}`,
           );
       });
-    } else session._mutators.applyToken(props.token);
+    } else {
+      session._mutators.applyToken(props.token);
+      console.log('found token', props.app?.last_accessed)
+    }
   }, []);
 
   // Realtime server
@@ -632,6 +637,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
       ExpandedMember[],
       ExpandedMember[],
       ExpandedMember[],
+      ExpandedPrivateChannel[],
       RemoteAppState,
     ]
   >(
@@ -703,6 +709,12 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
         }),
       }),
 
+      // Get private channels (dms)
+      sql.select<PrivateChannel>(['*', '<-private_member_of.in AS members'], {
+        from: `${profile_id}->private_member_of->private_channels`,
+        sort: [{ field: '_last_event', order: 'DESC' }],
+      }),
+
       // Return app state
       sql.return('$app'),
     ]),
@@ -710,7 +722,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
   );
   if (!_1) return tokenRet;
 
-  const [_, profiles, members, online, offline, selfs, app] = _1;
+  const [_, profiles, members, online, offline, selfs, dms, app] = _1;
 
   // Get domain
   let domain: ExpandedDomain | null = null;
@@ -759,6 +771,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
       domain: domain || undefined,
       members: Object.values(memberMap),
       counts,
+      dms,
       app: app
         ? {
             ...app,
@@ -766,6 +779,7 @@ export const getServerSideProps: GetServerSideProps<AppProps> = async (ctx) => {
             last_accessed: recordKeys(app.last_accessed, 'domains', (v) =>
               recordKeys(v, 'channels'),
             ),
+            private_last_accessed: recordKeys(app.private_last_accessed, 'private_channels'),
             pings: recordKeys(app.pings, 'channels'),
             private_pings: recordKeys(app.private_pings, 'private_channels'),
             private_channel_states: recordKeys(app.private_channel_states, 'private_channels'),

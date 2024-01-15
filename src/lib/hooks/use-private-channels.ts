@@ -117,6 +117,15 @@ export type PrivateChannelsWrapper<Loaded extends boolean = true> = SwrWrapper<
   PrivateChannelsMutators
 >;
 
+
+/** Default value for domain */
+let _defaults: Record<string, ExpandedPrivateChannel[]> = {};
+
+/** Get domain swr key */
+export function setPrivChannelsDefault(channels: ExpandedPrivateChannel[]) {
+  _defaults.value = channels;
+}
+
 /**
  * Retrieve a list of private channels the user has access to.
  *
@@ -129,6 +138,12 @@ export function usePrivateChannels() {
     {},
     {
       mutators,
+      then: (results) => {
+        // Reset default
+        if (_defaults.value) delete _defaults.value;
+        return results;
+      },
+      initial: _defaults.value,
     },
   );
 }

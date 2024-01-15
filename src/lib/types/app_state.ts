@@ -18,6 +18,8 @@ export type RemoteAppState = {
 
   /** A map of channels to the time they were last accessed */
   last_accessed: Record<string, Record<string, Date>>;
+  /** A map of private channels to the time they were last accessed */
+  private_last_accessed: Record<string, Date>;
   /** A map of channels to number of pings */
   pings?: Record<string, number>;
   /** A map of private channels to number of pings */
