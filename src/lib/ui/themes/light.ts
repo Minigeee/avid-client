@@ -3,18 +3,7 @@ import { Theme } from './types';
 const theme = {
   scheme: 'light',
 
-  primary: [
-    '#F8F9FA',
-    '#F1F3F5',
-    '#E9ECEF',
-    '#DEE2E6',
-    '#CED4DA',
-    '#ADB5BD',
-    '#868E96',
-    '#495057',
-    '#343A40',
-    '#212529',
-  ],
+  primary: ['#fafafb', '#f1f2f4', '#e7e8ec', '#dcdde3', '#c3c4ce', '#b2b4c0', '#9ea1b0', '#63677a', '#494b5a', '#25272e'],
   secondary: [
     '#EDF2FF',
     '#DBE4FF',
@@ -46,19 +35,19 @@ const theme = {
     document: (theme) => theme.colors.primary[2],
     document_hover: (theme) => theme.colors.primary[3],
     document_text: (theme) => theme.colors.primary[8],
-    document_dimmed: (theme) => theme.colors.gray[5],
+    document_dimmed: (theme) => theme.colors.primary[5],
 
     page: (theme) => theme.colors.primary[0],
     page_border: (theme) => theme.colors.primary[2],
     page_hover: (theme) => theme.colors.primary[1],
     page_text: (theme) => theme.colors.primary[9],
-    page_dimmed: (theme) => theme.colors.gray[5],
+    page_dimmed: (theme) => theme.colors.primary[5],
 
     panel: (theme) => theme.colors.primary[1],
     panel_border: (theme) => theme.colors.primary[3],
     panel_hover: (theme) => theme.colors.primary[2],
-    panel_text: (theme) => theme.colors.gray[8],
-    panel_dimmed: (theme) => theme.colors.gray[6],
+    panel_text: (theme) => theme.colors.primary[8],
+    panel_dimmed: (theme) => theme.colors.primary[6],
   },
 
   elements: {
@@ -79,11 +68,11 @@ const theme = {
     header_hover: (theme) => `${theme.colors.primary[0]}10`,
 
     channels_panel: (theme) => theme.colors.primary[2],
-    channels_panel_border: (theme) => theme.colors.primary[4],
+    channels_panel_border: (theme) => `${theme.colors.primary[4]}80`,
     channels_panel_text: (theme) => theme.colors.primary[8],
     channels_panel_dimmed: (theme) => `${theme.colors.primary[6]}D0`,
     channels_panel_hover: (theme) => theme.colors.primary[3],
-    channels_panel_double_hover: (theme) => `${theme.colors.primary[4]}A0`,
+    channels_panel_double_hover: (theme) => `${theme.colors.primary[4]}80`,
     channels_panel_highlight: (theme) =>
       theme.fn.linearGradient(0, theme.colors.violet[4], theme.colors.pink[4]),
 

@@ -363,7 +363,6 @@ export default function RightPanelView(props: RightPanelViewProps) {
         width: '16rem',
         height: '100%',
         background: theme.other.colors.panel,
-        borderLeft: `1px solid ${theme.other.colors.page_border}`,
       })}
     >
       <Flex
