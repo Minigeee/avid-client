@@ -292,7 +292,7 @@ export const useDocumentStyles = (options?: {
 
     return {
       typography: {
-        lineHeight: 1.6,
+        lineHeight: 1.65,
         
         '.emoji': {
           fontFamily:

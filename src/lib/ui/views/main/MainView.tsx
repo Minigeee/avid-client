@@ -31,9 +31,7 @@ export default function MainView() {
   // Get channel, using nav state as first choice and first channel as back up
   const channel_id =
     app.channels[app.domain] ||
-    (Object.keys(domain?.channels || {}).length
-      ? Object.keys(domain?.channels || {})[0]
-      : undefined);
+    (domain.groups?.length ? domain.groups?.[0]?.channels?.[0] : undefined);
 
   // Retrieve channel object
   const channel = channel_id

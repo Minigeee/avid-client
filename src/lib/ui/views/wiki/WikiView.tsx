@@ -102,6 +102,13 @@ type HeadingData = {
   visible: boolean;
 };
 
+/** Html text to normal text */
+function htmlDecode(input: string) {
+  const doc = new DOMParser().parseFromString(input, 'text/html');
+  return doc.documentElement.textContent || '';
+}
+
+////////////////////////////////////////////////////////////
 /** Wiki official doc view */
 function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -124,10 +131,14 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
     const content = !viewDraft ? wiki.content : wiki.draft;
     if (!content) return;
 
-    const headerMatches = content.matchAll(/<h2.*>(.+)<\/h2>/g);
+    const headerMatches = content.matchAll(/<h2.*?>(.+?)<\/h2>/g);
     const headings = Array.from(headerMatches).map((match) => ({
-      title: match[1],
-      id: match[1].toLocaleLowerCase().replaceAll(/\s+/g, '_'),
+      title: htmlDecode(match[1]),
+      id: match[1]
+        .toLocaleLowerCase()
+        .replaceAll(/&.\w+?;/g, '')
+        .replaceAll(/[^\w\s]+/g, '')
+        .replaceAll(/\s+/g, '_'),
     }));
 
     return headings;
@@ -144,7 +155,7 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
         .filter(([_, data]) => data.visible)
         .map(([id, _]) => id),
     );
-    console.log(Array.from(visibleHeadings))
+    console.log(Array.from(visibleHeadings));
     headingDataRef.current = {};
 
     let headingIndex = 0;
@@ -183,7 +194,10 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
           const child = node.firstChild;
           if (!(child instanceof DomText) || !child.data) return;
 
-          const id = child.data.toLocaleLowerCase().replaceAll(/\s+/g, '_');
+          const id = child.data
+            .toLocaleLowerCase()
+            .replaceAll(/[^\w\s]+/g, '')
+            .replaceAll(/\s+/g, '_');
           const ref = createRef<HTMLHeadingElement>();
 
           // Add ref to map of refs
@@ -242,10 +256,9 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
       (headings) => {
         if (headings.length === 0) return;
 
-        // Toggle visiblities
+        // Update visiblities
         for (const elem of headings)
-          headingDataRef.current[elem.target.id].visible =
-            !headingDataRef.current[elem.target.id].visible;
+          headingDataRef.current[elem.target.id].visible = elem.isIntersecting;
 
         // Find top most visible heading
         let minIndex = 1000000;
@@ -257,11 +270,10 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
           }
         }
 
-        if (minHeading)
-          setActiveHeading(minHeading);
+        if (minHeading) setActiveHeading(minHeading);
       },
       {
-        rootMargin: '0px 0px 0px 0px',
+        rootMargin: '0px 0px -40% 0px',
       },
     );
 
@@ -292,6 +304,9 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
     [showScrollTop],
   );
 
+  // Has toc headings
+  const hasHeadings = headings && headings.length > 0;
+
   return (
     <>
       <ScrollArea
@@ -300,8 +315,20 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
         h='100%'
         w='100%'
       >
-        <Flex pos='relative' w='85%' left='15%'>
-          {headings && (
+        <Flex
+          pos='relative'
+          sx={
+            hasHeadings
+              ? {
+                  width: '85%',
+                  left: '15%',
+                }
+              : {
+                  justifyContent: 'center',
+                }
+          }
+        >
+          {hasHeadings && (
             <nav>
               <Box
                 mr={40}
