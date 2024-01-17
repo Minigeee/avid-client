@@ -385,7 +385,7 @@ function WithAppState() {
     others.elements.rte_panel =
       others.elements.rte_panel || others.colors.panel;
     others.elements.rte_border =
-      others.elements.rte_border || merged.colors.primary[4];
+      others.elements.rte_border || merged.colors.gray[4];
     others.elements.rte_icon =
       others.elements.rte_icon || others.colors.panel_dimmed;
     others.elements.rte_hover =

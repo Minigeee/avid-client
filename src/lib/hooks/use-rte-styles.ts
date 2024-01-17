@@ -77,8 +77,8 @@ export const useChatStyles = (options?: {
             fontFamily: theme.fontFamilyMonospace,
 
             padding: '0.2em 0.35em',
-            background: colors.md_code,
-            color: colors.md_code_text,
+            background: colors.md_inline_code,
+            color: colors.md_inline_code_text,
             borderRadius: 3,
           },
 
@@ -245,8 +245,8 @@ export const useChatStyles = (options?: {
           margin: 0,
 
           padding: '0.5em 0.5em',
-          background: colors.md_code,
-          color: colors.md_code_text,
+          background: colors.md_inline_code,
+          color: colors.md_inline_code_text,
           borderRadius: 4,
         },
 

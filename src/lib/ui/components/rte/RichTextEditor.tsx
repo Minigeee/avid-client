@@ -222,11 +222,6 @@ function LinkInterface({ editor }: { editor: Editor | null }) {
               required
               withAsterisk={false}
               {...form.getInputProps('link')}
-              onChange={(e) => {
-                const value = e.currentTarget.value;
-                form.setFieldValue('link', value);
-                if (!form.isTouched('title')) form.setFieldValue('title', value);
-              }}
             />
             <TextInput
               label='Title'
