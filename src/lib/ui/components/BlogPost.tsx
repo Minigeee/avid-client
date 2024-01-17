@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useChatStyles } from '@/lib/hooks';
+import { useChatStyles, useDocumentStyles } from '@/lib/hooks';
 
 import hljs from 'highlight.js';
 import MarkdownIt from 'markdown-it';
@@ -39,7 +39,7 @@ export type BlogPostProps = {
 
 ////////////////////////////////////////////////////////////
 export default function BlogPost(props: BlogPostProps) {
-  const { classes } = useChatStyles({ scale: props.fontScale });
+  const { classes } = useDocumentStyles({ scale: props.fontScale });
 
   // Render post
   const rendered = useMemo(() => {

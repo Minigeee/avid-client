@@ -357,6 +357,7 @@ function DocView({ wiki, ...props }: SubviewProps & { canEdit?: boolean }) {
                   <Stack spacing={0}>
                     {headings.map((heading) => (
                       <UnstyledButton
+                        key={heading.id}
                         component='a'
                         href={`#${heading.id}`}
                         sx={(theme) => ({

@@ -1,26 +1,41 @@
 import { MantineTheme, createStyles } from '@mantine/core';
 
+
+////////////////////////////////////////////////////////////
+const LIGHT_PRIMARY = [
+  '#fafafb',
+  '#f1f2f4',
+  '#e7e8ec',
+  '#dcdde3',
+  '#c3c4ce',
+  '#b2b4c0',
+  '#9ea1b0',
+  '#63677a',
+  '#494b5a',
+  '#25272e',
+];
+
 ////////////////////////////////////////////////////////////
 const DEFAULT_THEMES = {
   light: {
-    md_code: (theme) => theme.colors.primary[1],
-    md_code_border: (theme) => theme.colors.primary[3],
+    md_code: (theme) => 'rgb(250, 250, 250)',
+    md_code_border: (theme) => LIGHT_PRIMARY[3],
     md_code_text: (theme) => theme.colors.gray[8],
-    md_inline_code: (theme) => theme.colors.primary[2],
+    md_inline_code: (theme) => LIGHT_PRIMARY[2],
     md_inline_code_text: (theme) => theme.colors.gray[8],
-    md_table_header: (theme) => theme.colors.primary[1],
-    md_table_border: (theme) => theme.colors.primary[2],
+    md_table_header: (theme) => LIGHT_PRIMARY[1],
+    md_table_border: (theme) => LIGHT_PRIMARY[2],
     md_divider: (theme) => theme.colors.gray[4],
-    md_ping_member: (theme) => `${theme.colors.secondary[2]}80`,
+    md_ping_member: (theme) => `${theme.colors.gray[2]}80`,
     md_ping_member_text: (theme) => theme.colors.gray[8],
-    md_ping_role: (theme) => `${theme.colors.secondary[1]}80`,
+    md_ping_role: (theme) => `${theme.colors.gray[1]}80`,
     md_ping_role_text: (theme) => theme.colors.gray[8],
   },
   dark: {
-    md_code: (theme) => theme.colors.primary[1],
+    md_code: (theme) => LIGHT_PRIMARY[1],
     md_code_text: (theme) => theme.colors.gray[8],
-    md_table_header: (theme) => theme.colors.primary[1],
-    md_table_border: (theme) => theme.colors.primary[2],
+    md_table_header: (theme) => LIGHT_PRIMARY[1],
+    md_table_border: (theme) => LIGHT_PRIMARY[2],
     md_divider: (theme) => theme.colors.gray[6],
     md_ping_member: (theme) => `${theme.colors.secondary[2]}80`,
     md_ping_member_text: (theme) => theme.colors.gray[8],
@@ -284,7 +299,7 @@ export const useDocumentStyles = (options?: {
 
   // @ts-ignore
   return createStyles((theme) => {
-    const colors: Record<string, string> = theme.other?.elements;
+    const colors: Record<string, string> = theme.other?.elements || {};
     if (!theme.other?.elements) {
       for (const [k, v] of Object.entries(DEFAULT_THEMES[theme.colorScheme]))
         colors[k] = v(theme);

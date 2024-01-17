@@ -249,7 +249,11 @@ function DmViewChannels({ dms, channels, ...props }: DmViewChannelsProps) {
       <ScrollArea sx={{ flexGrow: 1 }}>
         <Stack spacing={0} p='0.5rem 0.25rem'>
           {channels?.map((ch) => (
-            <DmSingleChannel channel={ch} selected={channelId === ch.id} />
+            <DmSingleChannel
+              key={ch.id}
+              channel={ch}
+              selected={channelId === ch.id}
+            />
           ))}
         </Stack>
       </ScrollArea>

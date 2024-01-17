@@ -3,7 +3,18 @@ import { Theme } from './types';
 const theme = {
   scheme: 'light',
 
-  primary: ['#fafafb', '#f1f2f4', '#e7e8ec', '#dcdde3', '#c3c4ce', '#b2b4c0', '#9ea1b0', '#63677a', '#494b5a', '#25272e'],
+  primary: [
+    '#fafafb',
+    '#f1f2f4',
+    '#e7e8ec',
+    '#dcdde3',
+    '#c3c4ce',
+    '#b2b4c0',
+    '#9ea1b0',
+    '#63677a',
+    '#494b5a',
+    '#25272e',
+  ],
   secondary: [
     '#EDF2FF',
     '#DBE4FF',
